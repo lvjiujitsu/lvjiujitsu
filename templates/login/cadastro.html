@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>LV JIU JITSU | Cadastro</title>
+  <link rel="stylesheet" href="../../static/system/css/login.css">
+</head>
+<body>
+  <main class="screen-shell">
+    <section class="screen-card screen-card-inner" aria-label="Tela de cadastro">
+      <div class="screen-tools">
+        <a class="back-link" href="./login.html">Voltar</a>
+      </div>
+
+      <div class="inner-header">
+        <div class="logo-frame logo-frame-small">
+          <img
+            class="brand-logo brand-logo-small"
+            src="../../static/system/img/logo-lv-bjj-vetorizada.png"
+            alt="Logo LV JIU JITSU"
+          >
+        </div>
+
+        <div>
+          <h1>Formul&aacute;rio de Cadastro</h1>
+          <p class="inner-copy">Escolha a estrutura do cadastro e preencha os dados necess&aacute;rios.</p>
+        </div>
+      </div>
+
+      <form class="form-stack" id="client-registration-form">
+        <section class="form-section">
+          <h2 class="section-title">Estrutura do cadastro</h2>
+
+          <div class="choice-grid choice-grid-registration">
+            <label class="choice-card choice-card-selectable is-selected" data-choice-card>
+              <input type="radio" name="registration_profile" value="holder" checked>
+              <span class="choice-card-marker" aria-hidden="true"></span>
+              <span class="choice-card-label">Aluno titular</span>
+            </label>
+
+            <label class="choice-card choice-card-selectable" data-choice-card>
+              <input type="radio" name="registration_profile" value="guardian">
+              <span class="choice-card-marker" aria-hidden="true"></span>
+              <span class="choice-card-label">Respons&aacute;vel</span>
+            </label>
+          </div>
+
+          <label class="switch-card" id="dependent-toggle-card">
+            <input type="checkbox" id="include-dependent" name="include_dependent">
+            <span class="switch-card-marker" aria-hidden="true"></span>
+            <span>Incluir dependente</span>
+          </label>
+        </section>
+
+        <section class="form-section" data-flow-section="holder">
+          <h2 class="section-title">Dados do aluno titular</h2>
+
+          <div class="field-grid">
+            <label class="field field-full" for="holder-name">
+              <span>Nome completo</span>
+              <input id="holder-name" name="holder_name" type="text" placeholder="Digite o nome completo">
+            </label>
+
+            <label class="field" for="holder-cpf">
+              <span>CPF</span>
+              <input id="holder-cpf" name="holder_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00">
+            </label>
+
+            <label class="field field-full" for="holder-birthdate">
+              <span>Data de nascimento</span>
+              <input id="holder-birthdate" name="holder_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday" data-date-mask>
+            </label>
+
+            <label class="field" for="holder-phone">
+              <span>Telefone</span>
+              <input id="holder-phone" name="holder_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000">
+            </label>
+
+            <label class="field" for="holder-email">
+              <span>E-mail</span>
+              <input id="holder-email" name="holder_email" type="email" placeholder="voc&ecirc;@exemplo.com">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section is-hidden" data-flow-section="holder-dependent">
+          <h2 class="section-title">Dados do dependente</h2>
+
+          <div class="field-grid">
+            <label class="field field-full" for="dependent-name">
+              <span>Nome completo do dependente</span>
+              <input id="dependent-name" name="dependent_name" type="text" placeholder="Digite o nome do dependente">
+            </label>
+
+            <label class="field" for="dependent-cpf">
+              <span>CPF do dependente</span>
+              <input id="dependent-cpf" name="dependent_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00">
+            </label>
+
+            <label class="field field-full" for="dependent-birthdate">
+              <span>Data de nascimento do dependente</span>
+              <input id="dependent-birthdate" name="dependent_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section is-hidden" data-flow-section="guardian">
+          <h2 class="section-title">Dados do respons&aacute;vel</h2>
+
+          <div class="field-grid">
+            <label class="field field-full" for="guardian-name">
+              <span>Nome completo do respons&aacute;vel</span>
+              <input id="guardian-name" name="guardian_name" type="text" placeholder="Digite o nome do respons&aacute;vel">
+            </label>
+
+            <label class="field" for="guardian-cpf">
+              <span>CPF do respons&aacute;vel</span>
+              <input id="guardian-cpf" name="guardian_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00">
+            </label>
+
+            <label class="field" for="guardian-phone">
+              <span>Telefone do respons&aacute;vel</span>
+              <input id="guardian-phone" name="guardian_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000">
+            </label>
+
+            <label class="field" for="guardian-email">
+              <span>E-mail do respons&aacute;vel</span>
+              <input id="guardian-email" name="guardian_email" type="email" placeholder="voc&ecirc;@exemplo.com">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section is-hidden" data-flow-section="guardian">
+          <h2 class="section-title">Dados do aluno</h2>
+
+          <div class="field-grid">
+            <label class="field field-full" for="student-name">
+              <span>Nome completo do aluno</span>
+              <input id="student-name" name="student_name" type="text" placeholder="Digite o nome do aluno">
+            </label>
+
+            <label class="field" for="student-cpf">
+              <span>CPF do aluno</span>
+              <input id="student-cpf" name="student_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00">
+            </label>
+
+            <label class="field field-full" for="student-birthdate">
+              <span>Data de nascimento do aluno</span>
+              <input id="student-birthdate" name="student_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section" data-flow-section="medical-holder">
+          <h2 class="section-title">Prontu&aacute;rio do aluno titular</h2>
+
+          <div class="field-grid">
+            <label class="field" for="holder-blood-type">
+              <span>Tipo sangu&iacute;neo</span>
+              <select id="holder-blood-type" name="holder_blood_type">
+                <option selected disabled>Selecione</option>
+                <option>A+</option>
+                <option>A-</option>
+                <option>B+</option>
+                <option>B-</option>
+                <option>AB+</option>
+                <option>AB-</option>
+                <option>O+</option>
+                <option>O-</option>
+              </select>
+            </label>
+
+            <label class="field field-full" for="holder-allergies">
+              <span>Alergias</span>
+              <textarea id="holder-allergies" name="holder_allergies" rows="3" placeholder="Informe alergias importantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="holder-injuries">
+              <span>Les&otilde;es pr&eacute;vias</span>
+              <textarea id="holder-injuries" name="holder_injuries" rows="3" placeholder="Informe les&otilde;es ou restri&ccedil;&otilde;es relevantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="holder-emergency-contact">
+              <span>Contato de emerg&ecirc;ncia</span>
+              <input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato de emerg&ecirc;ncia">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section is-hidden" data-flow-section="medical-dependent">
+          <h2 class="section-title">Prontu&aacute;rio do dependente</h2>
+
+          <div class="field-grid">
+            <label class="field" for="dependent-blood-type">
+              <span>Tipo sangu&iacute;neo</span>
+              <select id="dependent-blood-type" name="dependent_blood_type">
+                <option selected disabled>Selecione</option>
+                <option>A+</option>
+                <option>A-</option>
+                <option>B+</option>
+                <option>B-</option>
+                <option>AB+</option>
+                <option>AB-</option>
+                <option>O+</option>
+                <option>O-</option>
+              </select>
+            </label>
+
+            <label class="field field-full" for="dependent-allergies">
+              <span>Alergias</span>
+              <textarea id="dependent-allergies" name="dependent_allergies" rows="3" placeholder="Informe alergias importantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="dependent-injuries">
+              <span>Les&otilde;es pr&eacute;vias</span>
+              <textarea id="dependent-injuries" name="dependent_injuries" rows="3" placeholder="Informe les&otilde;es ou restri&ccedil;&otilde;es relevantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="dependent-emergency-contact">
+              <span>Contato de emerg&ecirc;ncia</span>
+              <input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato de emerg&ecirc;ncia">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section is-hidden" data-flow-section="medical-guardian">
+          <h2 class="section-title">Prontu&aacute;rio do aluno</h2>
+
+          <div class="field-grid">
+            <label class="field" for="student-blood-type">
+              <span>Tipo sangu&iacute;neo</span>
+              <select id="student-blood-type" name="student_blood_type">
+                <option selected disabled>Selecione</option>
+                <option>A+</option>
+                <option>A-</option>
+                <option>B+</option>
+                <option>B-</option>
+                <option>AB+</option>
+                <option>AB-</option>
+                <option>O+</option>
+                <option>O-</option>
+              </select>
+            </label>
+
+            <label class="field field-full" for="student-allergies">
+              <span>Alergias</span>
+              <textarea id="student-allergies" name="student_allergies" rows="3" placeholder="Informe alergias importantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="student-injuries">
+              <span>Les&otilde;es pr&eacute;vias</span>
+              <textarea id="student-injuries" name="student_injuries" rows="3" placeholder="Informe les&otilde;es ou restri&ccedil;&otilde;es relevantes"></textarea>
+            </label>
+
+            <label class="field field-full" for="student-emergency-contact">
+              <span>Contato de emerg&ecirc;ncia</span>
+              <input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato de emerg&ecirc;ncia">
+            </label>
+          </div>
+        </section>
+
+        <button class="primary-button" type="button">Enviar cadastro</button>
+      </form>
+
+      <div class="screen-tools-floating" aria-hidden="false">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+    </section>
+  </main>
+  <script src="../../static/system/js/theme-toggle.js"></script>
+  <script src="../../static/system/js/cadastro-flow.js"></script>
+</body>
+</html>

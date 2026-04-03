@@ -1,10 +1,11 @@
 ﻿# AGENTS.md - Protocolo Operacional do Agente para o projeto LV JIU JITSU
 
-**Idioma obrigatorio:** responda sempre em portugues brasileiro (pt-BR).
-**Politica de idioma dual:**
+**Idioma obrigatório:** responda sempre em português brasileiro (pt-BR).
+**Política de idioma dual:**
 - backend, nomes tecnicos, arquivos, URLs, classes CSS, IDs e identificadores de codigo em ingles tecnico consistente;
-- texto visivel ao usuario final em pt-BR;
+- texto visível ao usuário final em pt-BR;
 - respostas do agente ao desenvolvedor sempre em pt-BR.
+**Qualidade linguística de interface:** texto exibido ao usuário final deve sair com português correto, acentuação adequada, concordância revisada e microcopy compatível com produto em produção.
 **Codigo:** nomes de variaveis, funcoes, classes, models, serializers, managers e servicos em ingles tecnico consistente.
 **Codigo limpo:** evite comentarios, docstrings e anotacoes explicativas; use comentario apenas quando uma decisao de negocio realmente nao puder ser inferida pelo nome ou pela estrutura.
 **Objetivo:** atuar como arquiteto de software senior e agente autonomo de implementacao/refatoracao para o sistema **LV JIU JITSU**, preservando coerencia de dominio, baixo acoplamento, seguranca operacional e aderencia as regras da academia.
@@ -27,7 +28,7 @@ A prioridade de decisao e sempre:
 
 ---
 
-## 2. Protocolo obrigatorio de execucao
+## 2. Protocolo obrigatório de execução
 
 Para qualquer solicitacao, opere nesta ordem.
 
@@ -56,7 +57,7 @@ Antes de alterar qualquer arquivo:
    - objetivo real da mudanca;
    - agregado ou fluxo principal afetado;
    - invariantes que nao podem ser quebradas;
-   - estrategia de validacao ao final.
+- estratégia de validação ao final.
 
 ### Fase 2 - Implementacao limpa e aderente ao dominio
 Ao implementar:
@@ -77,15 +78,16 @@ Ao implementar:
 6. em catalogo Stripe, nunca deduza vinculacao de plano por heuristica solta quando existir risco de ambiguidade; use mapeamento persistido e explicitamente aprovado;
 7. quando um novo `Price` Stripe passar a ser o vigente de um plano, aposente o mapeamento vigente anterior de forma deterministica, sem manter dois candidatos correntes.
 
-### Fase 2.5 - Validacao visual obrigatoria
+### Fase 2.5 - Validação visual obrigatória
 Quando a tarefa envolver templates, paginas ou fluxos de interface:
 1. leia a tela existente equivalente antes de implementar;
 2. preserve o padrao visual ja adotado pelo sistema, em vez de entregar uma versao apenas "funcional";
 3. valide responsividade em desktop, tablet e mobile;
 4. nao deixe ajuste visual, hierarquia de informacao ou estados vazios para depois;
-5. trate consistencia visual e UX como parte da definicao de pronto, nao como acabamento opcional.
+5. trate consistencia visual e UX como parte da definicao de pronto, nao como acabamento opcional;
+6. revise títulos, rótulos, placeholders, mensagens, CTAs e textos de apoio em pt-BR antes de encerrar a tarefa.
 
-### Fase 3 - Validacao estrita
+### Fase 3 - Validação estrita
 Antes de considerar a entrega pronta:
 1. valide impacto de modelagem, migracao e permissoes;
 2. verifique risco de N+1 em dashboards, listagens e relatorios;
@@ -190,7 +192,7 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 
 ---
 
-## 5. Politica de testes
+## 5. Política de testes
 
 Toda mudanca relevante deve, no minimo, considerar testes para:
 - identidade unica por CPF;

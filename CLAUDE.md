@@ -56,9 +56,10 @@ Arquitetura alvo:
 6. **Segurança por camadas.** UI, permissão, validação de negócio e auditoria trabalham juntas.
 7. **Planejamento orientado a agregado.** Toda mudança deve deixar claro qual domínio é fonte de verdade e qual domínio apenas reflete ou consome estado.
 8. **Política de idioma dual.** Código, identificadores técnicos, arquivos e rotas em inglês; texto visível ao usuário final em pt-BR.
-9. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
-10. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
-11. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
+9. **Qualidade linguística de interface é regra de produto.** Título, label, placeholder, CTA, ajuda contextual, estado vazio e mensagem exibidos ao usuário final devem estar em português correto, com acentuação adequada e revisão final antes da entrega.
+10. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
+11. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
+12. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
 
 ### 2.1 Regra operacional de ambiente
 - O projeto deve possuir e usar uma `.venv` local.

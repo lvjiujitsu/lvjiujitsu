@@ -1,7 +1,0 @@
-{% if messages %}
-    <section class="message-stack" aria-label="Mensagens do sistema">
-        {% for message in messages %}
-            <div class="message message-{{ message.tags|default:'info' }}">{{ message }}</div>
-        {% endfor %}
-    </section>
-{% endif %}
