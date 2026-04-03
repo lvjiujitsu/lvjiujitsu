@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Consulta de Certificado</title>
+</head>
+<body>
+    <main>
+        <h1>Consulta de certificado</h1>
+
+        <form method="post">
+            {% csrf_token %}
+            {{ certificate_form.as_p }}
+            <button type="submit">Consultar</button>
+        </form>
+
+        {% if certificate %}
+            <section>
+                <h2>Certificado localizado</h2>
+                <p>Aluno: {{ certificate.student.user.full_name }}</p>
+                <p>Exame: {{ certificate.exam.title }}</p>
+                <p>Promocao: {{ certificate.suggested_stage_label }}</p>
+                <p>Codigo: {{ certificate.certificate_code }}</p>
+                <p>Emitido em: {{ certificate.certificate_issued_at }}</p>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Editar aluno</title>
+</head>
+<body>
+    <main>
+        <h1>{{ student.user.full_name }}</h1>
+        <p>CPF: {{ student.user.cpf }}</p>
+
+        <section>
+            <h2>Cadastro do aluno</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="student">
+                {{ student_form.as_p }}
+                <button type="submit">Salvar aluno</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Prontuario de emergencia</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="emergency">
+                {{ emergency_form.as_p }}
+                <button type="submit">Salvar prontuario</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Historico documental</h2>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="document">
+                {{ document_form.as_p }}
+                <button type="submit">Registrar documento</button>
+            </form>
+
+            <h3>Documentos anexados</h3>
+            <ul>
+                {% for item in documents %}
+                    <li>{{ item.title }} - {{ item.get_document_type_display }} - {{ item.issued_at }}</li>
+                {% empty %}
+                    <li>Nenhum documento administrativo anexado.</li>
+                {% endfor %}
+            </ul>
+
+            <h3>Termos aceitos</h3>
+            <ul>
+                {% for item in consent_history %}
+                    <li>{{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at }}</li>
+                {% empty %}
+                    <li>Nenhum termo aceito.</li>
+                {% endfor %}
+            </ul>
+
+            <h3>Comprovantes financeiros</h3>
+            <ul>
+                {% for item in payment_proofs %}
+                    <li>{{ item.original_filename }} - {{ item.invoice.reference_month|date:"m/Y" }} - {{ item.get_status_display }}</li>
+                {% empty %}
+                    <li>Nenhum comprovante vinculado.</li>
+                {% endfor %}
+            </ul>
+
+            <h3>Certificados</h3>
+            <ul>
+                {% for item in certificates %}
+                    <li>
+                        {{ item.suggested_stage_label }} - codigo {{ item.certificate_code }}
+                        - <a href="{% url 'system:certificate-lookup' %}">consulta publica</a>
+                    </li>
+                {% empty %}
+                    <li>Nenhum certificado emitido.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Responsaveis e vinculos</h2>
+            <ul>
+                {% for link in guardian_links %}
+                    <li>
+                        {{ link.responsible_user.full_name }} - {{ link.get_relationship_type_display }}
+                        {% if not link.end_date %}
+                            <form method="post" action="{% url 'system:guardian-link-deactivate' link.uuid %}">
+                                {% csrf_token %}
+                                <button type="submit">Encerrar vinculo</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% empty %}
+                    <li>Nenhum responsavel vinculado.</li>
+                {% endfor %}
+            </ul>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="guardian">
+                {{ guardian_form.as_p }}
+                <button type="submit">Vincular responsavel</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Status</h2>
+            <form method="post" action="{% url 'system:student-toggle-status' student.uuid %}">
+                {% csrf_token %}
+                <button type="submit">
+                    {% if student.is_active %}Inativar{% else %}Reativar{% endif %}
+                </button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Solicitacoes LGPD do cadastro</h2>
+            <ul>
+                {% for item in student_lgpd_requests %}
+                    <li>{{ item.get_request_type_display }} - {{ item.get_status_display }}</li>
+                {% empty %}
+                    <li>Nenhuma solicitacao vinculada a este cadastro.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Onboarding - Confirmacao</title>
+</head>
+<body>
+    <main>
+        <h1>Confirmacao do cadastro</h1>
+        <p>Etapa 3 de 3: revise os dados e confirme os termos.</p>
+
+        <section>
+            <h2>Titular</h2>
+            <p>{{ holder_data.holder_full_name }} - {{ holder_data.holder_cpf }}</p>
+            <p>{{ holder_data.holder_email }}</p>
+        </section>
+
+        <section>
+            <h2>Dependentes</h2>
+            {% if dependents_data %}
+                <ul>
+                    {% for dependent in dependents_data %}
+                        <li>{{ dependent.full_name }} - {{ dependent.cpf }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Nenhum dependente informado.</p>
+            {% endif %}
+        </section>
+
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Concluir cadastro</button>
+        </form>
+    </main>
+</body>
+</html>

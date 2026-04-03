@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Onboarding - Titular</title>
+</head>
+<body>
+    <main>
+        <h1>Cadastro inicial do titular</h1>
+        <p>Etapa 1 de 3: dados do titular, contato e responsavel financeiro.</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Continuar</button>
+        </form>
+    </main>
+</body>
+</html>

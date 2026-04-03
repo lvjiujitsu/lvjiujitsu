@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Minhas faturas</title>
+</head>
+<body>
+    <main>
+        <h1>Minhas faturas</h1>
+        {% if stripe_is_configured %}
+            <section>
+                <h2>Assinaturas recorrentes</h2>
+                <ul>
+                    {% for subscription in subscriptions %}
+                        <li>
+                            <strong>{{ subscription.plan.name }}</strong> - {{ subscription.get_status_display }}
+                            {% if subscription.stripe_subscription_link %}
+                                <span> | Stripe: {{ subscription.stripe_subscription_link.get_stripe_status_display }}</span>
+                                <form method="post" action="{% url 'system:customer-portal-start' subscription.uuid %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.path }}">
+                                    <button type="submit">Abrir portal Stripe</button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'system:subscription-checkout-start' subscription.uuid %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.path }}">
+                                    <button type="submit">Iniciar checkout recorrente</button>
+                                </form>
+                            {% endif %}
+                            {% with last_request=subscription.checkout_requests.all.0 %}
+                                {% if last_request %}
+                                    <p>Ultima tentativa: {{ last_request.get_status_display }}</p>
+                                {% endif %}
+                            {% endwith %}
+                        </li>
+                    {% empty %}
+                        <li>Voce ainda nao possui contratos elegiveis para checkout recorrente.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% else %}
+            <p>A integracao Stripe ainda nao esta configurada neste ambiente.</p>
+        {% endif %}
+        {% if proof_form.non_field_errors %}
+            <div>
+                {% for error in proof_form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <ul>
+            {% for invoice in invoices %}
+                <li>
+                    {{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }} - {{ invoice.get_status_display }}
+                    {% if invoice.status != 'PAID' and invoice.status != 'CANCELLED' %}
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="invoice_uuid" value="{{ invoice.uuid }}">
+                        <input type="file" name="uploaded_file" required>
+                        <button type="submit">Enviar comprovante</button>
+                    </form>
+                    {% endif %}
+                    <ul>
+                        {% for proof in invoice.payment_proofs.all %}
+                            <li>{{ proof.original_filename }} - {{ proof.get_status_display }}</li>
+                        {% empty %}
+                            <li>Nenhum comprovante enviado.</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% empty %}
+                <li>Voce nao possui faturas sob sua responsabilidade financeira.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

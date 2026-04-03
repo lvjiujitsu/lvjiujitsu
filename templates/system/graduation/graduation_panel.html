@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Painel de graduacao</title>
+</head>
+<body>
+    <main>
+        <h1>Painel de graduacao</h1>
+        <p><a href="{% url 'system:portal-dashboard' %}">Voltar ao portal</a></p>
+
+        <section>
+            <h2>Filtros tecnicos</h2>
+            <form method="get">
+                {{ filter_form.as_p }}
+                <button type="submit">Aplicar filtros</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Candidatos avaliados pelo motor tecnico</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ exam_form.as_p }}
+                <ul>
+                    {% for candidate in candidates %}
+                        <li>
+                            {% if candidate.eligible %}
+                                <label>
+                                    <input type="checkbox" name="selected_students" value="{{ candidate.student.uuid }}">
+                                    Selecionar para avaliacao
+                                </label>
+                            {% endif %}
+                            <p><strong>{{ candidate.student.user.full_name }}</strong></p>
+                            <p>Etapa atual: {{ candidate.current_history.stage_label }}</p>
+                            <p>Status operacional: {{ candidate.student.get_operational_status_display }}</p>
+                            <p>Tempo ativo: {{ candidate.summary.active_days }} dia(s)</p>
+                            <p>Frequencia valida: {{ candidate.summary.attendance_count }} presenca(s)</p>
+                            <p>Ultima presenca: {% if candidate.summary.last_attendance_on %}{{ candidate.summary.last_attendance_on|date:"d/m/Y" }}{% else %}Nenhuma{% endif %}</p>
+                            <p>Referencia oficial: {% if candidate.official_rule %}{{ candidate.official_rule.target_belt.name }} - Grau {{ candidate.official_rule.target_degree }}{% else %}Nao configurada{% endif %}</p>
+                            <p>Regra interna aplicada: {% if candidate.internal_rule %}{{ candidate.internal_rule.target_belt.name }} - Grau {{ candidate.internal_rule.target_degree }}{% else %}Nao configurada{% endif %}</p>
+                            <p>Elegibilidade: {% if candidate.eligible %}Apto para avaliacao{% else %}Bloqueado pelo motor tecnico{% endif %}</p>
+                            {% if candidate.blocking_reasons %}
+                                <ul>
+                                    {% for reason in candidate.blocking_reasons %}
+                                        <li>{{ reason }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li>Nenhum aluno encontrado para os filtros atuais.</li>
+                    {% endfor %}
+                </ul>
+                <button type="submit">Abrir avaliacao com selecionados</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Avaliacoes recentes</h2>
+            <ul>
+                {% for exam in recent_exams %}
+                    <li>
+                        <p><strong>{{ exam.title }}</strong> - {{ exam.scheduled_for|date:"d/m/Y" }} - {{ exam.get_status_display }}</p>
+                        {% if exam.class_group %}
+                            <p>Turma: {{ exam.class_group.name }}</p>
+                        {% endif %}
+                        <ul>
+                            {% for participation in exam.participations.all %}
+                                <li>
+                                    <p>{{ participation.student.user.full_name }} - {{ participation.current_stage_label }} para {{ participation.suggested_stage_label }}</p>
+                                    <p>Status: {{ participation.get_status_display }}</p>
+                                    {% if participation.certificate_code %}
+                                        <p>Certificado gerado: {{ participation.certificate_code }}</p>
+                                    {% endif %}
+                                    {% if participation.status == "PENDING" %}
+                                        <form method="post" action="{% url 'system:graduation-participation-decision' participation.uuid %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="decision-{{ participation.uuid }}-target_belt" value="{{ participation.suggested_belt.id }}">
+                                            <input type="hidden" name="decision-{{ participation.uuid }}-target_degree" value="{{ participation.suggested_degree }}">
+                                            <p>
+                                                <label for="id_decision_{{ participation.uuid }}_status">Decisao</label>
+                                                <select id="id_decision_{{ participation.uuid }}_status" name="decision-{{ participation.uuid }}-status">
+                                                    <option value="APPROVED">Aprovar promocao</option>
+                                                    <option value="POSTPONED">Adiar</option>
+                                                    <option value="REJECTED">Nao aprovar</option>
+                                                </select>
+                                            </p>
+                                            <p>
+                                                <label for="id_decision_{{ participation.uuid }}_promotion_date">Data</label>
+                                                <input
+                                                    id="id_decision_{{ participation.uuid }}_promotion_date"
+                                                    type="date"
+                                                    name="decision-{{ participation.uuid }}-promotion_date"
+                                                    value="{{ exam.scheduled_for|date:'Y-m-d' }}">
+                                            </p>
+                                            <p>
+                                                <label for="id_decision_{{ participation.uuid }}_notes">Observacoes</label>
+                                                <textarea id="id_decision_{{ participation.uuid }}_notes" name="decision-{{ participation.uuid }}-decision_notes"></textarea>
+                                            </p>
+                                            <button type="submit">Registrar decisao</button>
+                                        </form>
+                                    {% else %}
+                                        <p>Decidido por {{ participation.decided_by.full_name }} em {{ participation.decided_at|date:"d/m/Y H:i" }}</p>
+                                    {% endif %}
+                                </li>
+                            {% empty %}
+                                <li>Nenhum participante neste exame.</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% empty %}
+                    <li>Nenhuma avaliacao registrada ainda.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

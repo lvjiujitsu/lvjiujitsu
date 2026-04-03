@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Gestao de Professores</title>
+</head>
+<body>
+    <main>
+        <h1>Professores</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Salvar professor</button>
+        </form>
+
+        <ul>
+            {% for instructor in instructors %}
+                <li>
+                    {{ instructor.user.full_name }}
+                    <a href="{% url 'system:instructor-update' instructor.uuid %}">Editar</a>
+                </li>
+            {% empty %}
+                <li>Nenhum professor cadastrado.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

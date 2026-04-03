@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Solicitacoes LGPD</title>
+</head>
+<body>
+    <main>
+        <h1>Solicitacoes LGPD</h1>
+
+        <form method="get">
+            <label for="status">Status</label>
+            <input id="status" type="text" name="status" value="{{ status_filter }}">
+            <button type="submit">Filtrar</button>
+        </form>
+
+        <ul>
+            {% for item in lgpd_requests %}
+                <li>
+                    <strong>{{ item.user.full_name }}</strong> - {{ item.get_request_type_display }} - {{ item.get_status_display }}
+                    {% if item.confirmed_at %} - confirmado em {{ item.confirmed_at }}{% endif %}
+                    <form method="post" action="{% url 'system:lgpd-request-process' item.uuid %}">
+                        {% csrf_token %}
+                        {{ decision_form.as_p }}
+                        <button type="submit">Processar</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li>Nenhuma solicitacao LGPD encontrada.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

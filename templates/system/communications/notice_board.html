@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Mural Interno</title>
+</head>
+<body>
+    <main>
+        <h1>Mural interno</h1>
+        <ul>
+            {% for item in notices %}
+                <li>
+                    <strong>{{ item.title }}</strong><br>
+                    {{ item.body }}<br>
+                    Vigencia: {{ item.starts_at }}{% if item.ends_at %} ate {{ item.ends_at }}{% endif %}
+                </li>
+            {% empty %}
+                <li>Nenhum aviso ativo para este perfil.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

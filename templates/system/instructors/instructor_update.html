@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Professor</title>
+</head>
+<body>
+    <main>
+        <h1>Editar professor</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Atualizar professor</button>
+        </form>
+    </main>
+</body>
+</html>

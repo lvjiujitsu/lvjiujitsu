@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Prontuario de Emergencia</title>
+</head>
+<body>
+    <main>
+        <h1>Prontuario de emergencia</h1>
+
+        <form method="get">
+            <label for="q">Buscar aluno</label>
+            <input id="q" type="text" name="q" value="{{ query }}" placeholder="Nome ou CPF">
+            <button type="submit">Buscar</button>
+        </form>
+
+        <section>
+            <h2>Resultados</h2>
+            <ul>
+                {% for item in students %}
+                    <li>
+                        <a href="{% url 'system:emergency-quick-access' %}?q={{ query }}&student={{ item.uuid }}">
+                            {{ item.user.full_name }}
+                        </a>
+                    </li>
+                {% empty %}
+                    <li>Nenhum aluno encontrado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        {% if selected_student %}
+            <section>
+                <h2>Dados minimos vitais</h2>
+                <p>Aluno: {{ selected_student.user.full_name }}</p>
+                {% if emergency_record %}
+                    <p>Tipo sanguineo: {{ emergency_record.blood_type|default:"Nao informado" }}</p>
+                    <p>Alergias: {{ emergency_record.allergies|default:"Nao informado" }}</p>
+                    <p>Medicacoes: {{ emergency_record.medications|default:"Nao informado" }}</p>
+                    <p>Observacoes medicas: {{ emergency_record.medical_notes|default:"Nao informado" }}</p>
+                    <p>Contato principal: {{ emergency_record.emergency_contact_name }} - {{ emergency_record.emergency_contact_phone }}</p>
+                    <p>Vinculo: {{ emergency_record.emergency_contact_relationship }}</p>
+                {% else %}
+                    <p>Nao ha prontuario de emergencia preenchido.</p>
+                {% endif %}
+
+                <h3>Responsaveis ativos</h3>
+                <ul>
+                    {% for link in selected_student.guardian_links.all %}
+                        <li>{{ link.responsible_user.full_name }} - {{ link.get_relationship_type_display }}</li>
+                    {% empty %}
+                        <li>Nenhum responsavel ativo.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

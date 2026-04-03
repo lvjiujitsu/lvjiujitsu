@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Meu Perfil</title>
+</head>
+<body>
+    <main>
+        <h1>Meu perfil</h1>
+
+        <section>
+            <h2>Dados da conta</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="profile">
+                {{ profile_form.as_p }}
+                <button type="submit">Salvar perfil</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Alterar senha</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="password">
+                {{ password_form.as_p }}
+                <button type="submit">Atualizar senha</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Solicitacao LGPD</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="lgpd">
+                {{ lgpd_form.as_p }}
+                <button type="submit">Registrar solicitacao</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Consultar certificado</h2>
+            <form method="post" action="{% url 'system:certificate-lookup' %}">
+                {% csrf_token %}
+                {{ certificate_lookup_form.as_p }}
+                <button type="submit">Consultar certificado</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Perfis visiveis</h2>
+            <ul>
+                {% for student in visible_students %}
+                    <li>{{ student.user.full_name }} - {{ student.get_student_type_display }}</li>
+                {% empty %}
+                    <li>Nenhum perfil esportivo vinculado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Historico de termos</h2>
+            <ul>
+                {% for item in consent_history %}
+                    <li>
+                        {{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at }}
+                        {% if item.term.attachment %}
+                            - anexo disponivel
+                        {% endif %}
+                    </li>
+                {% empty %}
+                    <li>Nenhum termo aceito ainda.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Solicitacoes LGPD</h2>
+            <ul>
+                {% for item in lgpd_requests %}
+                    <li>
+                        {{ item.get_request_type_display }} - {{ item.get_status_display }}
+                        {% if item.requires_confirmation and not item.confirmed_at and item.status == 'OPEN' %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="confirm_lgpd">
+                                <input type="hidden" name="request_uuid" value="{{ item.uuid }}">
+                                <button type="submit">Confirmar intencao</button>
+                            </form>
+                        {% elif item.confirmed_at %}
+                            - confirmado em {{ item.confirmed_at }}
+                        {% endif %}
+                    </li>
+                {% empty %}
+                    <li>Nenhuma solicitacao registrada.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Documentos disponiveis</h2>
+            <ul>
+                {% for item in documents %}
+                    <li>
+                        {{ item.title }} - {{ item.get_document_type_display }}
+                        {% if item.version_label %} - {{ item.version_label }}{% endif %}
+                        - {{ item.issued_at }}
+                    </li>
+                {% empty %}
+                    <li>Nenhum documento compartilhado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Comprovantes financeiros</h2>
+            <ul>
+                {% for item in payment_proofs %}
+                    <li>
+                        {{ item.original_filename }} - {{ item.invoice.reference_month|date:"m/Y" }}
+                        - {{ item.get_status_display }}
+                    </li>
+                {% empty %}
+                    <li>Nenhum comprovante historico.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Certificados emitidos</h2>
+            <ul>
+                {% for item in certificates %}
+                    <li>
+                        {{ item.student.user.full_name }} - {{ item.suggested_stage_label }}
+                        - codigo {{ item.certificate_code }}
+                    </li>
+                {% empty %}
+                    <li>Nenhum certificado emitido.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

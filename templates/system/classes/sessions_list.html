@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Sessoes de Aula</title>
+</head>
+<body>
+    <main>
+        <h1>Sessoes de aula</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Salvar sessao</button>
+        </form>
+
+        <ul>
+            {% for session in sessions %}
+                <li>
+                    {{ session.class_group.name }} - {{ session.starts_at }} - {{ session.get_status_display }}
+                    <form method="post" action="{% url 'system:session-open' session.uuid %}">
+                        {% csrf_token %}
+                        <button type="submit">Abrir</button>
+                    </form>
+                    <form method="post" action="{% url 'system:session-close' session.uuid %}">
+                        {% csrf_token %}
+                        <button type="submit">Encerrar</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li>Nenhuma sessao cadastrada.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

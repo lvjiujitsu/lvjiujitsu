@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Turmas</title>
+</head>
+<body>
+    <main>
+        <h1>Turmas</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Salvar turma</button>
+        </form>
+
+        <ul>
+            {% for class_group in class_groups %}
+                <li>
+                    {{ class_group.name }} - {{ class_group.modality.name }}
+                    <a href="{% url 'system:class-group-update' class_group.uuid %}">Editar</a>
+                </li>
+            {% empty %}
+                <li>Nenhuma turma cadastrada.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

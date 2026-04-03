@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard do Professor</title>
+</head>
+<body>
+    <main>
+        <h1>Dashboard do professor</h1>
+        <p><a href="{% url 'system:graduation-panel' %}">Ir para o painel de graduacao</a></p>
+        <ul>
+            {% for session in sessions %}
+                <li>
+                    {{ session.class_group.name }} - {{ session.starts_at }} - {{ session.get_status_display }}
+                    <form method="post" action="{% url 'system:professor-session-open' session.uuid %}">
+                        {% csrf_token %}
+                        <button type="submit">Iniciar aula</button>
+                    </form>
+                    <form method="post" action="{% url 'system:professor-session-qr' session.uuid %}">
+                        {% csrf_token %}
+                        <button type="submit">Gerar QR</button>
+                    </form>
+                    <form method="post" action="{% url 'system:professor-manual-attendance' session.uuid %}">
+                        {% csrf_token %}
+                        {{ manual_form.as_p }}
+                        <button type="submit">Presenca manual</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li>Nenhuma sessao vinculada ao professor.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

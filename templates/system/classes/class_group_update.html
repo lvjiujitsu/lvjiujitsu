@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Turma</title>
+</head>
+<body>
+    <main>
+        <h1>Editar turma</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Atualizar turma</button>
+        </form>
+    </main>
+</body>
+</html>

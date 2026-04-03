@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Modalidades</title>
+</head>
+<body>
+    <main>
+        <h1>Modalidades</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Salvar modalidade</button>
+        </form>
+
+        <ul>
+            {% for discipline in disciplines %}
+                <li>
+                    {{ discipline.name }}
+                    <a href="{% url 'system:discipline-update' discipline.uuid %}">Editar</a>
+                </li>
+            {% empty %}
+                <li>Nenhuma modalidade cadastrada.</li>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

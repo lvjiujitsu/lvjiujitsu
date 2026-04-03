@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Fechamento de caixa</title>
+</head>
+<body>
+    <main>
+        <h1>Fechamento de caixa</h1>
+        <p><a href="{% url 'system:pdv-dashboard' %}">Voltar ao PDV</a></p>
+
+        <section>
+            <h2>Resumo do turno</h2>
+            <p>Operador: {{ cash_session.operator_user.full_name }}</p>
+            <p>Status: {{ cash_session.get_status_display }}</p>
+            <p>Abertura: {{ cash_session.opening_balance }}</p>
+            <p>Esperado em dinheiro: {{ closure_summary.expected_cash_total }}</p>
+            <p>Total em dinheiro: {{ closure_summary.total_cash_in }}</p>
+            <p>Saidas em dinheiro: {{ closure_summary.total_cash_out }}</p>
+            <p>Recebimentos nao dinheiro: {{ closure_summary.total_non_cash }}</p>
+            <p>Quantidade de vendas: {{ closure_summary.sales_count }}</p>
+            {% if cash_session.requires_attention %}
+                <p>Alerta gerencial: {{ cash_session.manager_alert_reason }}</p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2>Conferencia final</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ close_form.as_p }}
+                <button type="submit">Encerrar caixa</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

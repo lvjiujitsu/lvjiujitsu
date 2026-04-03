@@ -1,4 +1,4 @@
-# CLAUDE.md — Spec Arquitetural e de Domínio do projeto LV JIU JITSU
+﻿# CLAUDE.md — Spec Arquitetural e de Domínio do projeto LV JIU JITSU
 
 > **Fonte única de verdade técnica do projeto.**  
 > Este documento descreve arquitetura, domínios, invariantes, integrações, fluxos críticos e restrições operacionais do sistema **LV JIU JITSU**.  
@@ -22,7 +22,7 @@ Esta spec deve ser atualizada sempre que surgir:
 
 ## 1. Visão do sistema
 
-O **LV JIU JITSU** é um monólito modular Django para academias de Jiu-Jitsu, com foco em:
+O **LV JIU JITSU** é um monólito Django com app único `system` e modularização interna forte, com foco em:
 - identidade única por pessoa;
 - gestão de planos, pagamentos e inadimplência;
 - presença antifraude por QR dinâmico;
@@ -37,6 +37,7 @@ Arquitetura alvo:
 - **autenticação:** `django-allauth`;
 - **banco principal:** PostgreSQL;
 - **dev/local:** SQLite opcional, com limitações conhecidas para concorrência;
+- **ambiente Python:** `.venv` local obrigatória e isolada do Python global;
 - **filas e tarefas assíncronas:** Celery + Redis;
 - **frontend:** templates Django + JS progressivo;
 - **pagamentos:** `dj-stripe` + `stripe-python`;
@@ -47,28 +48,77 @@ Arquitetura alvo:
 
 ## 2. Princípios arquiteturais
 
-1. **Monólito modular primeiro.** Não fragmentar o domínio cedo demais.
+1. **App único `system` primeiro.** Não fragmentar o domínio físico cedo demais; modularizar internamente com disciplina.
 2. **Identidade centralizada.** Pessoa é uma só; perfis de negócio se acumulam.
 3. **Regras do domínio no backend.** Frontend melhora UX, mas não decide o que é permitido.
 4. **Fluxos críticos são auditáveis.** Pagamento, presença, exclusão de dados, prontuário e exportação precisam de rastreabilidade.
 5. **Configuração é externa ou persistida.** Nada importante deve ficar hardcoded.
 6. **Segurança por camadas.** UI, permissão, validação de negócio e auditoria trabalham juntas.
+7. **Planejamento orientado a agregado.** Toda mudança deve deixar claro qual domínio é fonte de verdade e qual domínio apenas reflete ou consome estado.
+8. **Política de idioma dual.** Código, identificadores técnicos, arquivos e rotas em inglês; texto visível ao usuário final em pt-BR.
+9. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
+10. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
+11. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
+
+### 2.1 Regra operacional de ambiente
+- O projeto deve possuir e usar uma `.venv` local.
+- É proibido instalar dependências no Python global para atender este repositório.
+- `manage.py`, testes e scripts operacionais devem ser executados com o interpretador da `.venv`.
+- Se a `.venv` existir, comandos fora dela devem ser tratados como erro operacional.
+- Artefatos temporários de teste devem ser gerados preferencialmente dentro do workspace do projeto.
 
 ---
 
-## 3. Topologia sugerida de apps/domínios
+## 3. Topologia de app único e módulos internos
 
-A organização sugerida do monólito deve refletir o domínio real do negócio e os nomes físicos de app precisam ser mantidos exatamente assim para evitar ambiguidade futura:
+A organização física do monólito deve usar **um único app Django chamado `system/`**.
+O crescimento do produto deve acontecer por **módulos internos, pacotes e fronteiras de domínio**, não por multiplicação precoce de apps.
 
-- `core/` — landing page, home, base layout, mural e páginas públicas;
-- `accounts/` — autenticação, usuário, perfis, permissões e anonimização LGPD;
-- `clientes/` — perfil do aluno, dependentes, prontuário e histórico de treino;
-- `professores/` — perfil docente, especialidades, agenda e alocação em turmas;
-- `presenca_graduacao/` — modalidades, turmas, QR dinâmico, check-in, motor de faixas e elegibilidade;
-- `financeiro/` — planos locais, descontos, bolsas, caixa, PDV, inadimplência e pausa;
-- `pagamentos/` — Stripe Checkout, webhooks e comprovantes manuais;
-- `dashboard/` — painéis de indicadores para admin, professor e aluno;
-- `relatorios/` — auditoria, exportações fail-fast e BI.
+Estrutura-alvo:
+
+- `system/` — app único contendo domínio, autenticação, operações, integrações, auditoria e entrega web/API;
+- `system/models/` — modelos agrupados por domínio e arquivo temático;
+- `system/views/` — views separadas por jornada e contexto operacional;
+- `system/forms/` — forms HTML por fluxo;
+- `system/serializers/` — serializers explícitos para API e integrações;
+- `system/services/` — orquestrações e regras compostas;
+- `system/selectors/` — consultas de leitura e montagem de dashboards/listagens;
+- `system/tests/` — testes por módulo interno e por nível de validação;
+- `system/management/commands/` — comandos operacionais e seeds;
+- `templates/system/` — templates segmentados por jornada;
+- `static/system/` — assets e comportamento frontend do sistema.
+
+### 3.1 Módulos internos obrigatórios dentro de `system/`
+- `public` — landing, páginas abertas, mural e recuperação de acesso.
+- `identity_access` — autenticação, usuário, papéis, permissões e trilhas de acesso.
+- `student_registry` — aluno titular, dependentes, responsável financeiro, prontuário e documentos.
+- `instructor_ops` — perfil docente, agenda, especialidades e alocação em turma.
+- `class_catalog` — modalidades, turmas, sessões, agenda e capacidade.
+- `attendance_qr` — reserva, elegibilidade, QR dinâmico, leitura e presença.
+- `finance_contracts` — plano local, matrícula, desconto, bolsa, inadimplência, pausa, PDV e caixa.
+- `payments_stripe` — checkout, customer portal, webhook, invoices, subscriptions e reconciliação.
+- `graduation_engine` — tempo ativo, critérios técnicos, exames e promoção.
+- `communications` — mural, comunicados, notificações e trilha de envio.
+- `documents_lgpd` — consentimentos, anonimização, exclusão e retenção.
+- `reports_audit` — dashboards, relatórios, exportações e evidências operacionais.
+- `settings_seed` — parâmetros operacionais, catálogos internos e carga inicial.
+
+### 3.2 Fonte de verdade por agregado dentro de `system/`
+- `identity_access`: identidade, autenticação, papéis e permissões.
+- `student_registry`: pessoa, dependentes, dados cadastrais, contato de emergência e dados sensíveis.
+- `instructor_ops`: perfil docente, agenda e alocação operacional.
+- `class_catalog`: oferta de aula, sessão, capacidade, agenda e lotação planejada.
+- `attendance_qr`: reserva válida, elegibilidade de check-in e presença confirmada.
+- `finance_contracts`: estado local da matrícula, plano, bolsa, desconto, inadimplência, pausa e contrato operacional.
+- `payments_stripe`: checkout, espelho financeiro externo, webhook, portal do cliente e reconciliação.
+- `graduation_engine`: tempo ativo, histórico técnico, elegibilidade e promoção.
+- `communications`: publicação, entrega e histórico de comunicação.
+- `documents_lgpd`: consentimento, retenção, anonimização e exclusão definitiva.
+- `reports_audit`: leitura agregada, auditoria, exportação e BI com fail-fast.
+
+Regra central:
+- o estado de negócio da academia é sempre local;
+- integrações externas confirmam eventos, mas não substituem a fonte de verdade do domínio.
 
 ---
 
@@ -128,6 +178,7 @@ Os papéis podem coexistir na mesma identidade:
 - Inadimplência bloqueia check-in e acesso esportivo conforme política da academia.
 - O bloqueio precisa aparecer na UI antes de qualquer tentativa de câmera.
 - O dashboard do aluno deve oferecer rota clara para regularização.
+- Comprovante manual enviado para pagamento não regulariza acesso automaticamente: enquanto a fatura estiver `UNDER_REVIEW`, o contrato local permanece `PENDING_FINANCIAL` até revisão administrativa explícita.
 
 ### 5.5 Trancamento / pausa de matrícula
 - O sistema deve permitir trancamento temporário de matrícula.
@@ -149,6 +200,8 @@ Os papéis podem coexistir na mesma identidade:
 - O sistema deve suportar vendas avulsas de recepção.
 - Deve existir fluxo de PDV/caixa rápido para itens como água, açaí, aluguel de kimono e materiais.
 - Fechamento de caixa diário precisa separar dinheiro físico de cobranças recorrentes digitais.
+- Todo turno encerrado precisa ficar imutável para novos lançamentos.
+- Divergência acima do limiar configurável de caixa deve marcar o turno para revisão gerencial.
 
 ### 5.8 Comunicações
 - A administração precisa conseguir publicar avisos e comunicados em massa.
@@ -162,6 +215,7 @@ Os papéis podem coexistir na mesma identidade:
 ### 5.10 Relatórios e exportações
 - Dashboards e exportações não podem inferir regra crítica a partir de dado inconsistente.
 - Geração de CSV/extração de BI depende de pré-validação obrigatória do arquivo de controle.
+- O arquivo de controle de exportação crítica deve conter a diretiva explícita `EXPORT_ALLOWED=1`.
 - Falha no controle aborta a operação antes de leitura pesada ou escrita de saída.
 
 ---
@@ -184,6 +238,16 @@ Regras:
 - processamento deve ser idempotente;
 - o sistema precisa manter estado de negócio próprio, sem depender apenas do `status` devolvido pela Stripe;
 - pausa financeira não substitui o estado local `PAUSADO` da matrícula.
+- redirecionamentos de `success_url`, `cancel_url` ou retorno de portal não podem ser usados como prova de quitação ou liberação de acesso.
+
+#### 6.1.1 Fonte de verdade: Stripe x domínio local
+- Stripe confirma eventos financeiros, cobrança recorrente, checkout e portal;
+- `system.finance_contracts` e os agregados locais definem acesso, bloqueio, pausa, retomada e efeitos esportivos;
+- uma assinatura ativa na Stripe não autoriza, sozinha, check-in, graduação ou acesso irrestrito;
+- qualquer sincronização com a Stripe deve ser auditável, idempotente e reconciliável.
+- criação bem-sucedida de Checkout Session ou retorno do usuário do checkout não muda, por si só, o estado operacional; a liberação depende de reconciliação local confiável, com webhook ou confirmação financeira equivalente.
+- cada `FinancialPlan` precisa apontar para um unico `Price` Stripe vigente por vez, com aposentadoria explicita dos mapeamentos anteriores.
+- o espelho `dj-stripe` deve ser tratado como camada auxiliar de observabilidade e reconciliacao, nunca como substituto do contrato local.
 
 ### 6.2 Câmera / WebRTC
 - A geração de QR no backend deve usar `qrcode`.
@@ -211,12 +275,22 @@ O sistema lida com:
 - restringir acesso por papel e necessidade operacional;
 - registrar auditoria de acesso a dados sensíveis;
 - proteger exclusão lógica e exclusão definitiva como fluxos distintos.
+- manter auditoria transversal dos fluxos críticos de autenticação, financeiro, pagamentos, graduação, PDV, exportação e emergência.
 
 ### 7.3 Exclusão definitiva
 Quando juridicamente cabível e respeitadas obrigações de retenção:
 - apagar ou anonimizar dados pessoais identificáveis;
 - remover selfie/biometria e dados médicos que não precisem ser preservados;
 - manter apenas o mínimo técnico/financeiro necessário para integridade histórica e contábil.
+- solicitações destrutivas de LGPD não podem ser concluídas enquanto houver contrato financeiro local em estado operacional ativo, pausado, bloqueado ou pendente, porque ainda existe obrigação de retenção operacional/contábil e vínculo transacional em aberto.
+
+### 7.4 Lacunas que precisam permanecer explícitas
+Enquanto não houver definição mais forte de produto e operação, estas lacunas precisam continuar visíveis no planejamento:
+- política formal de retenção para selfie, biometria e prontuário;
+- trilha de auditoria detalhada para acesso emergencial e dados médicos;
+- política de chargeback, contestação e exceções financeiras;
+- regras finas de comunicação transacional por canal;
+- governança mais explícita de multi-unidade, caso a operação cresça.
 
 ---
 
@@ -288,6 +362,18 @@ Uma mudança é considerada pronta quando:
 6. possui trilha de auditoria quando necessário;
 7. foi coberta por testes adequados ao risco.
 
+## 11.1 Fronteiras atuais e lacunas abertas para planejamento
+Estas lacunas devem ser tratadas como backlog arquitetural, e não como detalhe casual:
+- formalização completa da política LGPD para exclusão, anonimização e retenção;
+- evolução do motor de graduação para regras configuráveis mais finas por academia;
+- governança explícita para multi-unidade e papéis administrativos mais granulares;
+- observabilidade operacional de webhooks, retries e reconciliação financeira;
+- estratégia de comunicação operacional desacoplada por e-mail, push e WhatsApp;
+- catálogo oficial de planos, bolsas, descontos e versionamento de preços.
+- política formal de retenção e rotação para artefatos de exportação gerados em disco.
+
+Essas lacunas não invalidam a spec atual, mas precisam orientar o planejamento das próximas fases.
+
 ---
 
 ## 12. Changelog da spec
@@ -300,3 +386,15 @@ Uma mudança é considerada pronta quando:
 - **[2026-03-17]** LGPD reforçada com fluxo de solicitação de exclusão definitiva e anonimização.
 - **[2026-03-17]** Inclusão dos módulos operacionais de PDV, caixa diário, comunicações e prontuário de emergência.
 - **[2026-03-17]** Exportações críticas reforçadas com fail-fast obrigatório do arquivo de controle.
+- **[2026-03-30]** Reforçada a política de planejamento orientado a agregado, com fonte de verdade explícita por domínio.
+- **[2026-03-30]** Formalizada a separação entre eventos financeiros da Stripe e o estado local de negócio da matrícula.
+- **[2026-03-30]** Registradas lacunas arquiteturais abertas para orientar planejamento futuro sem diluir a spec atual.
+- **[2026-04-01]** Formalizado que comprovante manual em análise não regulariza acesso até revisão administrativa explícita.
+- **[2026-04-01]** Formalizado que retorno visual do checkout Stripe nunca libera acesso sem reconciliação local idempotente.
+- **[2026-04-02]** Formalizado que solicitação LGPD destrutiva fica bloqueada enquanto houver contrato financeiro local ainda ativo ou pendente de retenção operacional/contábil.
+- **[2026-04-02]** Formalizado que exportação crítica exige arquivo de controle com `EXPORT_ALLOWED=1` e que divergência relevante de caixa exige revisão gerencial.
+- **[2026-04-02]** Formalizada a auditoria transversal obrigatória para autenticação, financeiro, pagamentos, graduação, PDV, exportação e emergência.
+- **[2026-04-02]** Formalizado que o catalogo Stripe exige mapeamento deterministico por plano, com um unico `Price` vigente e aposentadoria explicita de legados.
+- **[2026-04-02]** Formalizado que o espelho `dj-stripe` e camada auxiliar de reconciliacao e nao substitui a fonte de verdade do dominio local.
+
+

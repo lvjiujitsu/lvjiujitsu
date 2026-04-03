@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Modalidade</title>
+</head>
+<body>
+    <main>
+        <h1>Editar modalidade</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Atualizar modalidade</button>
+        </form>
+    </main>
+</body>
+</html>

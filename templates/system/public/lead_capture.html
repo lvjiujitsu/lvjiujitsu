@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quero me cadastrar - LV JIU JITSU</title>
+    <link rel="stylesheet" href="{% static 'system/css/public.css' %}">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="form-hero">
+            <div>
+                <p class="eyebrow">Entrada comercial</p>
+                <h1>Quero conhecer a academia</h1>
+                <p class="hero-text">Deixe seus dados de contato e o plano de interesse. A equipe pode converter esse lead em onboarding depois.</p>
+            </div>
+            <a class="button button-ghost" href="{% url 'system:home' %}">Voltar para a landing</a>
+        </section>
+
+        {% if messages %}
+            <section class="message-stack">
+                {% for message in messages %}
+                    <p class="message message-success">{{ message }}</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <section class="panel-card form-panel">
+            <form method="post" class="public-form">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button class="button button-primary" type="submit">Enviar interesse</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

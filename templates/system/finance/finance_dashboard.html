@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Financeiro detalhado</title>
+</head>
+<body>
+    <main>
+        <h1>Financeiro detalhado</h1>
+        <p><a href="{% url 'system:payment-dashboard' %}">Abrir painel de pagamentos Stripe</a></p>
+        <p><a href="{% url 'system:pdv-dashboard' %}">Abrir PDV e caixa rapido</a></p>
+
+        <section>
+            <h2>Planos financeiros</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="plan">
+                {{ plan_form.as_p }}
+                <button type="submit">Salvar plano</button>
+            </form>
+            <ul>
+                {% for plan in plans %}
+                    <li>
+                        {{ plan.name }} - {{ plan.get_billing_cycle_display }} - {{ plan.base_price }} - {% if plan.is_active %}Ativo{% else %}Inativo{% endif %}
+                    </li>
+                {% empty %}
+                    <li>Nenhum plano cadastrado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Beneficios</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="benefit">
+                {{ benefit_form.as_p }}
+                <button type="submit">Salvar beneficio</button>
+            </form>
+            <ul>
+                {% for benefit in benefits %}
+                    <li>
+                        {{ benefit.name }} - {{ benefit.get_benefit_type_display }} - {{ benefit.value }} {{ benefit.get_value_type_display }}
+                    </li>
+                {% empty %}
+                    <li>Nenhum beneficio cadastrado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Assinaturas locais</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="subscription">
+                {{ subscription_form.as_p }}
+                <button type="submit">Criar assinatura</button>
+            </form>
+            <ul>
+                {% for subscription in subscriptions %}
+                    <li>
+                        <strong>{{ subscription.responsible_user.full_name }}</strong> - {{ subscription.plan.name }} - {{ subscription.get_status_display }}
+                        <ul>
+                            {% for link in subscription.covered_students.all %}
+                                <li>
+                                    {{ link.student.user.full_name }}
+                                    {% if link.is_primary_student %}(principal){% endif %}
+                                    {% if link.student_benefit %}- beneficio individual: {{ link.student_benefit.name }}{% endif %}
+                                </li>
+                            {% empty %}
+                                <li>Nenhum aluno vinculado.</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% empty %}
+                    <li>Nenhuma assinatura cadastrada.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Faturas</h2>
+            <form method="get">
+                <label for="invoice_status">Filtrar por status</label>
+                <select name="invoice_status" id="invoice_status">
+                    <option value="">Todos</option>
+                    <option value="OPEN" {% if invoice_status_filter == 'OPEN' %}selected{% endif %}>Aberta</option>
+                    <option value="PAID" {% if invoice_status_filter == 'PAID' %}selected{% endif %}>Paga</option>
+                    <option value="OVERDUE" {% if invoice_status_filter == 'OVERDUE' %}selected{% endif %}>Vencida</option>
+                    <option value="UNDER_REVIEW" {% if invoice_status_filter == 'UNDER_REVIEW' %}selected{% endif %}>Em analise</option>
+                </select>
+                <button type="submit">Aplicar filtro</button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="invoice">
+                {{ invoice_form.as_p }}
+                <button type="submit">Emitir fatura</button>
+            </form>
+            <ul>
+                {% for invoice in invoices %}
+                    <li>
+                        {{ invoice.subscription.responsible_user.full_name }} - {{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }} - {{ invoice.get_status_display }}
+                        <form method="post" action="{% url 'system:invoice-mark-paid' invoice.uuid %}">
+                            {% csrf_token %}
+                            <button type="submit">Marcar como paga</button>
+                        </form>
+                        <form method="post" action="{% url 'system:invoice-mark-overdue' invoice.uuid %}">
+                            {% csrf_token %}
+                            <button type="submit">Marcar como vencida</button>
+                        </form>
+                    </li>
+                {% empty %}
+                    <li>Nenhuma fatura encontrada.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Trancamentos de matricula</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="pause">
+                {{ pause_form.as_p }}
+                <button type="submit">Registrar trancamento</button>
+            </form>
+            <ul>
+                {% for pause in pauses %}
+                    <li>
+                        {{ pause.student.user.full_name }} - {{ pause.reason }} - {% if pause.is_active %}Ativa{% else %}Encerrada{% endif %}
+                        {% if pause.is_active %}
+                            <form method="post" action="{% url 'system:pause-resume' pause.uuid %}">
+                                {% csrf_token %}
+                                <button type="submit">Retomar matricula</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% empty %}
+                    <li>Nenhum trancamento registrado.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section>
+            <h2>Comprovantes manuais</h2>
+            <form method="get">
+                <label for="proof_status">Filtrar por status</label>
+                <select name="proof_status" id="proof_status">
+                    <option value="">Todos</option>
+                    <option value="UNDER_REVIEW" {% if proof_status_filter == 'UNDER_REVIEW' %}selected{% endif %}>Em analise</option>
+                    <option value="APPROVED" {% if proof_status_filter == 'APPROVED' %}selected{% endif %}>Aprovado</option>
+                    <option value="REJECTED" {% if proof_status_filter == 'REJECTED' %}selected{% endif %}>Reprovado</option>
+                </select>
+                <button type="submit">Aplicar filtro</button>
+            </form>
+            <ul>
+                {% for proof in payment_proofs %}
+                    <li>
+                        {{ proof.invoice.subscription.responsible_user.full_name }} - {{ proof.original_filename }} - {{ proof.get_status_display }}
+                        <form method="post" action="{% url 'system:payment-proof-review' proof.uuid %}">
+                            {% csrf_token %}
+                            <label>
+                                Decisao
+                                <select name="decision">
+                                    <option value="approve">Aprovar</option>
+                                    <option value="reject">Reprovar</option>
+                                </select>
+                            </label>
+                            <label>
+                                Observacoes
+                                <textarea name="review_notes"></textarea>
+                            </label>
+                            <button type="submit">Registrar revisao</button>
+                        </form>
+                    </li>
+                {% empty %}
+                    <li>Nenhum comprovante recebido.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Onboarding - Dependentes</title>
+</head>
+<body>
+    <main>
+        <h1>Cadastro de dependentes</h1>
+        <p>Etapa 2 de 3: inclua os dependentes que treinarão no mesmo grupo familiar.</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ formset.management_form }}
+            {% for form in formset %}
+                <fieldset>
+                    <legend>Dependente {{ forloop.counter }}</legend>
+                    {{ form.as_p }}
+                </fieldset>
+            {% endfor %}
+            {% if formset.non_form_errors %}
+                <div>{{ formset.non_form_errors }}</div>
+            {% endif %}
+            <button type="submit">Continuar</button>
+        </form>
+    </main>
+</body>
+</html>

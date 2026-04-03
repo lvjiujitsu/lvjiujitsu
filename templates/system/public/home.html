@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if academy_configuration %}{{ academy_configuration.academy_name }}{% else %}LV JIU JITSU{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'system/css/public.css' %}">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <p class="eyebrow">Jiu-Jitsu para iniciantes, criancas e adultos</p>
+                <h1>{% if academy_configuration %}{{ academy_configuration.hero_title }}{% else %}Jiu-Jitsu com metodo, disciplina e comunidade.{% endif %}</h1>
+                <p class="hero-text">
+                    {% if academy_configuration %}
+                        {{ academy_configuration.hero_subtitle }}
+                    {% else %}
+                        Evolua com acompanhamento tecnico, horarios claros e uma jornada de entrada simples.
+                    {% endif %}
+                </p>
+                <div class="hero-actions">
+                    <a class="button button-primary" href="{% url 'system:lead-capture' %}">Quero me cadastrar</a>
+                    <a class="button button-secondary" href="{% url 'system:trial-class-request' %}">Agendar aula experimental</a>
+                    <a class="button button-ghost" href="{% url 'system:login' %}">Entrar</a>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <h2>Contato rapido</h2>
+                <ul class="contact-list">
+                    <li><strong>WhatsApp:</strong> {{ academy_configuration.public_whatsapp|default:"A definir" }}</li>
+                    <li><strong>E-mail:</strong> {{ academy_configuration.public_email|default:"A definir" }}</li>
+                    <li><strong>Instagram:</strong> {{ academy_configuration.public_instagram|default:"A definir" }}</li>
+                    <li><strong>Endereco:</strong> {{ academy_configuration.public_address|default:"A definir" }}</li>
+                </ul>
+                {% if academy_configuration and academy_configuration.public_notice %}
+                    <p class="notice">{{ academy_configuration.public_notice }}</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="content-grid">
+            <article class="panel-card">
+                <div class="section-heading">
+                    <p class="eyebrow">Horarios</p>
+                    <h2>Treinos abertos ao publico</h2>
+                </div>
+                {% if public_class_schedules %}
+                    <div class="schedule-list">
+                        {% for schedule in public_class_schedules %}
+                            <div class="schedule-item">
+                                <div>
+                                    <p class="schedule-day">{{ schedule.get_weekday_display }}</p>
+                                    <h3>{{ schedule.class_level }}</h3>
+                                    <p>{{ schedule.instructor_name|default:"Professor a confirmar" }}</p>
+                                </div>
+                                <div class="schedule-time">
+                                    {{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="empty-state">Os horarios publicos ainda nao foram publicados.</p>
+                {% endif %}
+            </article>
+
+            <article class="panel-card">
+                <div class="section-heading">
+                    <p class="eyebrow">Planos</p>
+                    <h2>Escolha a rotina ideal para voce</h2>
+                </div>
+                {% if public_plans %}
+                    <div class="plan-grid">
+                        {% for plan in public_plans %}
+                            <div class="plan-card {% if plan.is_featured %}plan-card-featured{% endif %}">
+                                <p class="plan-cycle">{{ plan.get_billing_cycle_display }}</p>
+                                <h3>{{ plan.name }}</h3>
+                                <p class="plan-price">{{ plan.public_price }}</p>
+                                <p class="plan-summary">{{ plan.summary }}</p>
+                                <a class="button button-secondary" href="{% url 'system:lead-capture' %}?plan={{ plan.id }}">{{ plan.cta_label }}</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="empty-state">Os planos publicos ainda nao foram cadastrados.</p>
+                {% endif %}
+            </article>
+        </section>
+    </main>
+</body>
+</html>
