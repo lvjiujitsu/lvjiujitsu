@@ -1,28 +1,32 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Gestao de Professores</title>
-</head>
-<body>
-    <main>
-        <h1>Professores</h1>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">Salvar professor</button>
-        </form>
+{% extends "system/base_portal.html" %}
 
-        <ul>
-            {% for instructor in instructors %}
-                <li>
-                    {{ instructor.user.full_name }}
-                    <a href="{% url 'system:instructor-update' instructor.uuid %}">Editar</a>
-                </li>
-            {% empty %}
-                <li>Nenhum professor cadastrado.</li>
-            {% endfor %}
-        </ul>
-    </main>
-</body>
-</html>
+{% block portal_heading %}Professores{% endblock %}
+
+{% block portal_content %}
+    <section class="content-grid">
+        <article class="panel-card">
+            <p class="eyebrow">Cadastro docente</p>
+            <h2>Novo professor</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Salvar professor</button>
+            </form>
+        </article>
+
+        <article class="panel-card">
+            <p class="eyebrow">Equipe atual</p>
+            <h2>Professores cadastrados</h2>
+            <ul>
+                {% for instructor in instructors %}
+                    <li class="schedule-item">
+                        <span>{{ instructor.user.full_name }}</span>
+                        <a class="button button-outline" href="{% url 'system:instructor-update' instructor.uuid %}">Editar</a>
+                    </li>
+                {% empty %}
+                    <li>Nenhum professor cadastrado.</li>
+                {% endfor %}
+            </ul>
+        </article>
+    </section>
+{% endblock %}

@@ -1,38 +1,22 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Aula experimental - LV JIU JITSU</title>
-    <link rel="stylesheet" href="{% static 'system/css/public.css' %}">
-</head>
-<body>
-    <main class="page-shell">
-        <section class="form-hero">
-            <div>
-                <p class="eyebrow">Aula experimental</p>
-                <h1>Solicite sua primeira aula</h1>
-                <p class="hero-text">Escolha o melhor periodo, deixe seu contato e registramos tudo para o time comercial acompanhar.</p>
+{% extends "system/base_public.html" %}
+
+{% block title %}Aula experimental | LV JIU JITSU{% endblock %}
+
+{% block public_content %}
+    <section class="page-header">
+        <p class="eyebrow">Primeira experiencia</p>
+        <h2>Solicite sua aula experimental</h2>
+        <p class="page-subtitle">Escolha a data, o periodo e o melhor canal de retorno. O pedido entra pronto para acompanhamento comercial.</p>
+    </section>
+
+    <section class="panel-card">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div class="action-row">
+                <button type="submit">Solicitar aula experimental</button>
+                <a class="button button-outline" href="{% url 'system:home' %}">Voltar para a landing</a>
             </div>
-            <a class="button button-ghost" href="{% url 'system:home' %}">Voltar para a landing</a>
-        </section>
-
-        {% if messages %}
-            <section class="message-stack">
-                {% for message in messages %}
-                    <p class="message message-success">{{ message }}</p>
-                {% endfor %}
-            </section>
-        {% endif %}
-
-        <section class="panel-card form-panel">
-            <form method="post" class="public-form">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button class="button button-primary" type="submit">Solicitar aula experimental</button>
-            </form>
-        </section>
-    </main>
-</body>
-</html>
+        </form>
+    </section>
+{% endblock %}

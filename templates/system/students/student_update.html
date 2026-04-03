@@ -1,15 +1,16 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Editar aluno</title>
-</head>
-<body>
-    <main>
-        <h1>{{ student.user.full_name }}</h1>
-        <p>CPF: {{ student.user.cpf }}</p>
+{% extends "system/base_portal.html" %}
 
-        <section>
+{% block portal_heading %}Ficha do aluno{% endblock %}
+
+{% block portal_content %}
+    <section class="page-header">
+        <p class="eyebrow">Aluno</p>
+        <h1>{{ student.user.full_name }}</h1>
+        <p class="page-subtitle">CPF {{ student.user.cpf }} · {{ student.get_student_type_display }} · {{ student.get_operational_status_display }}</p>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Cadastro do aluno</h2>
             <form method="post">
                 {% csrf_token %}
@@ -17,9 +18,9 @@
                 {{ student_form.as_p }}
                 <button type="submit">Salvar aluno</button>
             </form>
-        </section>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Prontuario de emergencia</h2>
             <form method="post">
                 {% csrf_token %}
@@ -27,9 +28,11 @@
                 {{ emergency_form.as_p }}
                 <button type="submit">Salvar prontuario</button>
             </form>
-        </section>
+        </article>
+    </section>
 
-        <section>
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Historico documental</h2>
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -41,7 +44,7 @@
             <h3>Documentos anexados</h3>
             <ul>
                 {% for item in documents %}
-                    <li>{{ item.title }} - {{ item.get_document_type_display }} - {{ item.issued_at }}</li>
+                    <li>{{ item.title }} - {{ item.get_document_type_display }} - {{ item.issued_at|date:"d/m/Y H:i" }}</li>
                 {% empty %}
                     <li>Nenhum documento administrativo anexado.</li>
                 {% endfor %}
@@ -50,12 +53,15 @@
             <h3>Termos aceitos</h3>
             <ul>
                 {% for item in consent_history %}
-                    <li>{{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at }}</li>
+                    <li>{{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at|date:"d/m/Y H:i" }}</li>
                 {% empty %}
                     <li>Nenhum termo aceito.</li>
                 {% endfor %}
             </ul>
+        </article>
 
+        <article class="panel-card">
+            <h2>Financeiro e certificados</h2>
             <h3>Comprovantes financeiros</h3>
             <ul>
                 {% for item in payment_proofs %}
@@ -68,17 +74,25 @@
             <h3>Certificados</h3>
             <ul>
                 {% for item in certificates %}
-                    <li>
-                        {{ item.suggested_stage_label }} - codigo {{ item.certificate_code }}
-                        - <a href="{% url 'system:certificate-lookup' %}">consulta publica</a>
-                    </li>
+                    <li>{{ item.suggested_stage_label }} - codigo {{ item.certificate_code }}</li>
                 {% empty %}
                     <li>Nenhum certificado emitido.</li>
                 {% endfor %}
             </ul>
-        </section>
 
-        <section>
+            <h3>Solicitacoes LGPD do cadastro</h3>
+            <ul>
+                {% for item in student_lgpd_requests %}
+                    <li>{{ item.get_request_type_display }} - {{ item.get_status_display }}</li>
+                {% empty %}
+                    <li>Nenhuma solicitacao vinculada a este cadastro.</li>
+                {% endfor %}
+            </ul>
+        </article>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Responsaveis e vinculos</h2>
             <ul>
                 {% for link in guardian_links %}
@@ -102,28 +116,14 @@
                 {{ guardian_form.as_p }}
                 <button type="submit">Vincular responsavel</button>
             </form>
-        </section>
+        </article>
 
-        <section>
-            <h2>Status</h2>
+        <article class="panel-card">
+            <h2>Status operacional</h2>
             <form method="post" action="{% url 'system:student-toggle-status' student.uuid %}">
                 {% csrf_token %}
-                <button type="submit">
-                    {% if student.is_active %}Inativar{% else %}Reativar{% endif %}
-                </button>
+                <button type="submit">{% if student.is_active %}Inativar{% else %}Reativar{% endif %}</button>
             </form>
-        </section>
-
-        <section>
-            <h2>Solicitacoes LGPD do cadastro</h2>
-            <ul>
-                {% for item in student_lgpd_requests %}
-                    <li>{{ item.get_request_type_display }} - {{ item.get_status_display }}</li>
-                {% empty %}
-                    <li>Nenhuma solicitacao vinculada a este cadastro.</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
-</body>
-</html>
+        </article>
+    </section>
+{% endblock %}

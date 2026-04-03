@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Central de Comunicacoes</title>
-</head>
-<body>
-    <main>
-        <h1>Central de comunicacoes</h1>
+{% extends "system/base_portal.html" %}
 
-        <section>
+{% block portal_heading %}Central de comunicacoes{% endblock %}
+
+{% block portal_content %}
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Publicar aviso no mural</h2>
             <form method="post">
                 {% csrf_token %}
@@ -16,9 +12,9 @@
                 {{ notice_form.as_p }}
                 <button type="submit">Publicar aviso</button>
             </form>
-        </section>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Enviar comunicado em lote</h2>
             <form method="post">
                 {% csrf_token %}
@@ -26,32 +22,18 @@
                 {{ bulk_form.as_p }}
                 <button type="submit">Enfileirar comunicado</button>
             </form>
-        </section>
+        </article>
+    </section>
 
-        <section>
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Historico do mural</h2>
-            <ul>
-                {% for item in notices %}
-                    <li>{{ item.title }} - {{ item.get_audience_display }} - {{ item.starts_at }}</li>
-                {% empty %}
-                    <li>Nenhum aviso cadastrado.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for item in notices %}<li>{{ item.title }} - {{ item.get_audience_display }} - {{ item.starts_at|date:"d/m/Y H:i" }}</li>{% empty %}<li>Nenhum aviso cadastrado.</li>{% endfor %}</ul>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Historico de comunicados</h2>
-            <ul>
-                {% for item in communications %}
-                    <li>
-                        {{ item.title }} - {{ item.get_channel_display }} - {{ item.get_status_display }}
-                        - {{ item.delivery_stats }}
-                    </li>
-                {% empty %}
-                    <li>Nenhum comunicado enfileirado.</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
-</body>
-</html>
+            <ul>{% for item in communications %}<li>{{ item.title }} - {{ item.get_channel_display }} - {{ item.get_status_display }} - {{ item.delivery_stats }}</li>{% empty %}<li>Nenhum comunicado enfileirado.</li>{% endfor %}</ul>
+        </article>
+    </section>
+{% endblock %}

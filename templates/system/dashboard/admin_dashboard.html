@@ -1,48 +1,49 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard administrativo</title>
-</head>
-<body>
-    <main>
-        <h1>Dashboard administrativo</h1>
-        <p>Snapshot do dia {{ snapshot.snapshot_date|date:"d/m/Y" }} atualizado em {{ snapshot.updated_at|date:"d/m/Y H:i" }}</p>
+{% extends "system/base_portal.html" %}
 
-        <section>
+{% block portal_heading %}Dashboard administrativo{% endblock %}
+
+{% block portal_content %}
+    <section class="page-header">
+        <p class="eyebrow">Snapshot operacional</p>
+        <h1>Visao consolidada do dia {{ snapshot.snapshot_date|date:"d/m/Y" }}</h1>
+        <p class="page-subtitle">Atualizado em {{ snapshot.updated_at|date:"d/m/Y H:i" }}</p>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Filtro do dashboard</h2>
             <form method="get">
                 <label for="id_month">Competencia</label>
                 <input id="id_month" type="month" name="month" value="{{ selected_month }}">
                 <button type="submit">Aplicar</button>
             </form>
-        </section>
+        </article>
 
-        <section>
-            <h2>KPIs principais</h2>
-            <ul>
-                <li>Receita paga no mes: {{ snapshot.paid_revenue_total }}</li>
-                <li>Presencas no mes: {{ snapshot.attendances_count }}</li>
-                <li>Alunos ativos: {{ snapshot.active_students_count }}</li>
-                <li>Alunos com pendencia financeira: {{ snapshot.pending_financial_students_count }}</li>
-                <li>Inadimplencia aberta: {{ snapshot.overdue_invoices_count }}</li>
-                <li>Evasao no mes: {{ snapshot.cancelled_subscriptions_count }}</li>
-            </ul>
-        </section>
-
-        <section>
+        <article class="panel-card">
             <h2>Atalhos operacionais</h2>
-            <ul>
+            <div class="action-row">
                 {% for label, url in shortcuts %}
-                    <li><a href="{{ url }}">{{ label }}</a></li>
+                    <a class="button button-outline" href="{{ url }}">{{ label }}</a>
                 {% endfor %}
-            </ul>
-        </section>
+            </div>
+        </article>
+    </section>
 
-        <section>
-            <h2>Pendencias operacionais</h2>
+    <section class="panel-card">
+        <p class="eyebrow">KPIs principais</p>
+        <div class="stat-grid">
+        <article class="stat-card"><p class="eyebrow">Receita paga</p><h2>{{ snapshot.paid_revenue_total }}</h2></article>
+        <article class="stat-card"><p class="eyebrow">Presencas</p><h2>{{ snapshot.attendances_count }}</h2></article>
+        <article class="stat-card"><p class="eyebrow">Alunos ativos</p><h2>{{ snapshot.active_students_count }}</h2></article>
+        <article class="stat-card"><p class="eyebrow">Financeiro pendente</p><h2>{{ snapshot.pending_financial_students_count }}</h2></article>
+        <article class="stat-card"><p class="eyebrow">Inadimplencia</p><h2>{{ snapshot.overdue_invoices_count }}</h2></article>
+        <article class="stat-card"><p class="eyebrow">Evasao</p><h2>{{ snapshot.cancelled_subscriptions_count }}</h2></article>
+        </div>
+    </section>
 
-            <h3>Faturas vencidas</h3>
+    <section class="content-grid">
+        <article class="panel-card">
+            <h2>Faturas vencidas</h2>
             <ul>
                 {% for invoice in pending_items.overdue_invoices %}
                     <li>{{ invoice.subscription.responsible_user.full_name }} - {{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }}</li>
@@ -50,8 +51,10 @@
                     <li>Nenhuma fatura vencida.</li>
                 {% endfor %}
             </ul>
+        </article>
 
-            <h3>Comprovantes em analise</h3>
+        <article class="panel-card">
+            <h2>Comprovantes em analise</h2>
             <ul>
                 {% for proof in pending_items.proofs_under_review %}
                     <li>{{ proof.invoice.subscription.responsible_user.full_name }} - {{ proof.original_filename }}</li>
@@ -59,8 +62,10 @@
                     <li>Nenhum comprovante em analise.</li>
                 {% endfor %}
             </ul>
+        </article>
 
-            <h3>Matriculas pausadas</h3>
+        <article class="panel-card">
+            <h2>Matriculas pausadas</h2>
             <ul>
                 {% for pause in pending_items.active_pauses %}
                     <li>{{ pause.student.user.full_name }} - retorno previsto em {{ pause.expected_return_date|date:"d/m/Y" }}</li>
@@ -68,8 +73,10 @@
                     <li>Nenhuma pausa ativa.</li>
                 {% endfor %}
             </ul>
+        </article>
 
-            <h3>Aulas experimentais pendentes</h3>
+        <article class="panel-card">
+            <h2>Aulas experimentais pendentes</h2>
             <ul>
                 {% for trial in pending_items.requested_trials %}
                     <li>{{ trial.lead.full_name }} - {{ trial.preferred_date|date:"d/m/Y" }} - {{ trial.get_preferred_period_display }}</li>
@@ -77,16 +84,17 @@
                     <li>Nenhuma aula experimental pendente.</li>
                 {% endfor %}
             </ul>
+        </article>
+    </section>
 
-            <h3>Checkouts em andamento</h3>
-            <ul>
-                {% for checkout in pending_items.pending_checkouts %}
-                    <li>{{ checkout.local_subscription.responsible_user.full_name }} - {{ checkout.get_status_display }}</li>
-                {% empty %}
-                    <li>Nenhum checkout pendente.</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
-</body>
-</html>
+    <section class="panel-card">
+        <h2>Checkouts em andamento</h2>
+        <ul>
+            {% for checkout in pending_items.pending_checkouts %}
+                <li>{{ checkout.local_subscription.responsible_user.full_name }} - {{ checkout.get_status_display }}</li>
+            {% empty %}
+                <li>Nenhum checkout pendente.</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}

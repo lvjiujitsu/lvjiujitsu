@@ -1,29 +1,36 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Consulta de Certificado</title>
-</head>
-<body>
-    <main>
-        <h1>Consulta de certificado</h1>
+{% extends "system/base_public.html" %}
 
-        <form method="post">
-            {% csrf_token %}
-            {{ certificate_form.as_p }}
-            <button type="submit">Consultar</button>
-        </form>
+{% block title %}Consulta publica de certificado | LV JIU JITSU{% endblock %}
 
-        {% if certificate %}
-            <section>
-                <h2>Certificado localizado</h2>
-                <p>Aluno: {{ certificate.student.user.full_name }}</p>
-                <p>Exame: {{ certificate.exam.title }}</p>
-                <p>Promocao: {{ certificate.suggested_stage_label }}</p>
-                <p>Codigo: {{ certificate.certificate_code }}</p>
-                <p>Emitido em: {{ certificate.certificate_issued_at }}</p>
-            </section>
-        {% endif %}
-    </main>
-</body>
-</html>
+{% block public_content %}
+    <section class="page-header">
+        <p class="eyebrow">Consulta publica</p>
+        <h2>Validar certificado de graduacao</h2>
+        <p class="page-subtitle">Use o codigo informado no certificado para localizar o registro emitido pelo sistema.</p>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
+            <form method="post">
+                {% csrf_token %}
+                {{ certificate_form.as_p }}
+                <button type="submit">Consultar certificado</button>
+            </form>
+        </article>
+
+        <article class="panel-card">
+            {% if certificate %}
+                <p class="eyebrow">Certificado localizado</p>
+                <h2>{{ certificate.student.user.full_name }}</h2>
+                <ul class="detail-list">
+                    <li>Exame: {{ certificate.exam.title }}</li>
+                    <li>Promocao: {{ certificate.suggested_stage_label }}</li>
+                    <li>Codigo: {{ certificate.certificate_code }}</li>
+                    <li>Emitido em: {{ certificate.certificate_issued_at|date:"d/m/Y H:i" }}</li>
+                </ul>
+            {% else %}
+                <p class="empty-state">Nenhum certificado consultado ainda.</p>
+            {% endif %}
+        </article>
+    </section>
+{% endblock %}

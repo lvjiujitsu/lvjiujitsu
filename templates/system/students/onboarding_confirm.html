@@ -1,38 +1,34 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Onboarding - Confirmacao</title>
-</head>
-<body>
-    <main>
-        <h1>Confirmacao do cadastro</h1>
-        <p>Etapa 3 de 3: revise os dados e confirme os termos.</p>
+{% extends "system/base_auth.html" %}
 
-        <section>
-            <h2>Titular</h2>
-            <p>{{ holder_data.holder_full_name }} - {{ holder_data.holder_cpf }}</p>
-            <p>{{ holder_data.holder_email }}</p>
-        </section>
+{% block title %}Confirmacao do onboarding | LV JIU JITSU{% endblock %}
 
-        <section>
-            <h2>Dependentes</h2>
-            {% if dependents_data %}
-                <ul>
-                    {% for dependent in dependents_data %}
-                        <li>{{ dependent.full_name }} - {{ dependent.cpf }}</li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p>Nenhum dependente informado.</p>
-            {% endif %}
-        </section>
+{% block auth_content %}
+    <p class="eyebrow">Etapa 3 de 3</p>
+    <h1>Confirmacao do cadastro</h1>
+    <p class="page-subtitle">Revise a familia cadastrada, confirme os termos e conclua o fluxo transacional do onboarding.</p>
 
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">Concluir cadastro</button>
-        </form>
-    </main>
-</body>
-</html>
+    <section class="panel-card">
+        <p class="eyebrow">Titular</p>
+        <h2>{{ holder_data.holder_full_name }}</h2>
+        <p class="text-muted">CPF {{ holder_data.holder_cpf }}{% if holder_data.holder_email %} · {{ holder_data.holder_email }}{% endif %}</p>
+    </section>
+
+    <section class="panel-card">
+        <p class="eyebrow">Dependentes</p>
+        {% if dependents_data %}
+            <ul class="detail-list">
+                {% for dependent in dependents_data %}
+                    <li>{{ dependent.full_name }} · {{ dependent.cpf }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-state">Nenhum dependente informado.</p>
+        {% endif %}
+    </section>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Concluir cadastro</button>
+    </form>
+{% endblock %}

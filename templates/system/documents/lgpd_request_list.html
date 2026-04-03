@@ -1,24 +1,24 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Solicitacoes LGPD</title>
-</head>
-<body>
-    <main>
-        <h1>Solicitacoes LGPD</h1>
+{% extends "system/base_portal.html" %}
 
+{% block portal_heading %}Solicitacoes LGPD{% endblock %}
+
+{% block portal_content %}
+    <section class="panel-card">
+        <h2>Filtro</h2>
         <form method="get">
             <label for="status">Status</label>
             <input id="status" type="text" name="status" value="{{ status_filter }}">
             <button type="submit">Filtrar</button>
         </form>
+    </section>
 
+    <section class="panel-card">
+        <h2>Fila de solicitacoes</h2>
         <ul>
             {% for item in lgpd_requests %}
-                <li>
-                    <strong>{{ item.user.full_name }}</strong> - {{ item.get_request_type_display }} - {{ item.get_status_display }}
-                    {% if item.confirmed_at %} - confirmado em {{ item.confirmed_at }}{% endif %}
+                <li class="list-card">
+                    <strong>{{ item.user.full_name }}</strong>
+                    <p class="text-muted">{{ item.get_request_type_display }} · {{ item.get_status_display }}{% if item.confirmed_at %} · confirmado em {{ item.confirmed_at|date:"d/m/Y H:i" }}{% endif %}</p>
                     <form method="post" action="{% url 'system:lgpd-request-process' item.uuid %}">
                         {% csrf_token %}
                         {{ decision_form.as_p }}
@@ -29,6 +29,5 @@
                 <li>Nenhuma solicitacao LGPD encontrada.</li>
             {% endfor %}
         </ul>
-    </main>
-</body>
-</html>
+    </section>
+{% endblock %}

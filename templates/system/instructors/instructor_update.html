@@ -1,17 +1,15 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Editar Professor</title>
-</head>
-<body>
-    <main>
-        <h1>Editar professor</h1>
+{% extends "system/base_portal.html" %}
+
+{% block portal_heading %}Atualizacao do professor{% endblock %}
+
+{% block portal_content %}
+    <section class="panel-card">
+        <p class="eyebrow">Professor</p>
+        <h2>Atualizar cadastro docente</h2>
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
             <button type="submit">Atualizar professor</button>
         </form>
-    </main>
-</body>
-</html>
+    </section>
+{% endblock %}

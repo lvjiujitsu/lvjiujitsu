@@ -1,23 +1,19 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Mural Interno</title>
-</head>
-<body>
-    <main>
-        <h1>Mural interno</h1>
+{% extends "system/base_portal.html" %}
+
+{% block portal_heading %}Mural interno{% endblock %}
+
+{% block portal_content %}
+    <section class="panel-card">
         <ul>
             {% for item in notices %}
-                <li>
-                    <strong>{{ item.title }}</strong><br>
-                    {{ item.body }}<br>
-                    Vigencia: {{ item.starts_at }}{% if item.ends_at %} ate {{ item.ends_at }}{% endif %}
+                <li class="list-card">
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.body }}</p>
+                    <p class="text-muted">Vigencia: {{ item.starts_at|date:"d/m/Y H:i" }}{% if item.ends_at %} ate {{ item.ends_at|date:"d/m/Y H:i" }}{% endif %}</p>
                 </li>
             {% empty %}
                 <li>Nenhum aviso ativo para este perfil.</li>
             {% endfor %}
         </ul>
-    </main>
-</body>
-</html>
+    </section>
+{% endblock %}

@@ -1,14 +1,10 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Meu Perfil</title>
-</head>
-<body>
-    <main>
-        <h1>Meu perfil</h1>
+{% extends "system/base_portal.html" %}
 
-        <section>
+{% block portal_heading %}Meu perfil{% endblock %}
+
+{% block portal_content %}
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Dados da conta</h2>
             <form method="post">
                 {% csrf_token %}
@@ -16,9 +12,9 @@
                 {{ profile_form.as_p }}
                 <button type="submit">Salvar perfil</button>
             </form>
-        </section>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Alterar senha</h2>
             <form method="post">
                 {% csrf_token %}
@@ -26,9 +22,11 @@
                 {{ password_form.as_p }}
                 <button type="submit">Atualizar senha</button>
             </form>
-        </section>
+        </article>
+    </section>
 
-        <section>
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Solicitacao LGPD</h2>
             <form method="post">
                 {% csrf_token %}
@@ -36,46 +34,8 @@
                 {{ lgpd_form.as_p }}
                 <button type="submit">Registrar solicitacao</button>
             </form>
-        </section>
 
-        <section>
-            <h2>Consultar certificado</h2>
-            <form method="post" action="{% url 'system:certificate-lookup' %}">
-                {% csrf_token %}
-                {{ certificate_lookup_form.as_p }}
-                <button type="submit">Consultar certificado</button>
-            </form>
-        </section>
-
-        <section>
-            <h2>Perfis visiveis</h2>
-            <ul>
-                {% for student in visible_students %}
-                    <li>{{ student.user.full_name }} - {{ student.get_student_type_display }}</li>
-                {% empty %}
-                    <li>Nenhum perfil esportivo vinculado.</li>
-                {% endfor %}
-            </ul>
-        </section>
-
-        <section>
-            <h2>Historico de termos</h2>
-            <ul>
-                {% for item in consent_history %}
-                    <li>
-                        {{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at }}
-                        {% if item.term.attachment %}
-                            - anexo disponivel
-                        {% endif %}
-                    </li>
-                {% empty %}
-                    <li>Nenhum termo aceito ainda.</li>
-                {% endfor %}
-            </ul>
-        </section>
-
-        <section>
-            <h2>Solicitacoes LGPD</h2>
+            <h3>Solicitacoes LGPD</h3>
             <ul>
                 {% for item in lgpd_requests %}
                     <li>
@@ -88,57 +48,74 @@
                                 <button type="submit">Confirmar intencao</button>
                             </form>
                         {% elif item.confirmed_at %}
-                            - confirmado em {{ item.confirmed_at }}
+                            - confirmado em {{ item.confirmed_at|date:"d/m/Y H:i" }}
                         {% endif %}
                     </li>
                 {% empty %}
                     <li>Nenhuma solicitacao registrada.</li>
                 {% endfor %}
             </ul>
-        </section>
+        </article>
 
-        <section>
-            <h2>Documentos disponiveis</h2>
+        <article class="panel-card">
+            <h2>Consultar certificado</h2>
+            <form method="post" action="{% url 'system:certificate-lookup' %}">
+                {% csrf_token %}
+                {{ certificate_lookup_form.as_p }}
+                <button type="submit">Consultar certificado</button>
+            </form>
+
+            <h3>Perfis visiveis</h3>
+            <ul>
+                {% for student in visible_students %}
+                    <li>{{ student.user.full_name }} - {{ student.get_student_type_display }}</li>
+                {% empty %}
+                    <li>Nenhum perfil esportivo vinculado.</li>
+                {% endfor %}
+            </ul>
+        </article>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
+            <h2>Historico de termos</h2>
+            <ul>
+                {% for item in consent_history %}
+                    <li>{{ item.term.title }} v{{ item.term.version }} - {{ item.accepted_at|date:"d/m/Y H:i" }}</li>
+                {% empty %}
+                    <li>Nenhum termo aceito ainda.</li>
+                {% endfor %}
+            </ul>
+        </article>
+
+        <article class="panel-card">
+            <h2>Documentos, comprovantes e certificados</h2>
+            <h3>Documentos disponiveis</h3>
             <ul>
                 {% for item in documents %}
-                    <li>
-                        {{ item.title }} - {{ item.get_document_type_display }}
-                        {% if item.version_label %} - {{ item.version_label }}{% endif %}
-                        - {{ item.issued_at }}
-                    </li>
+                    <li>{{ item.title }} - {{ item.get_document_type_display }}{% if item.version_label %} - {{ item.version_label }}{% endif %}</li>
                 {% empty %}
                     <li>Nenhum documento compartilhado.</li>
                 {% endfor %}
             </ul>
-        </section>
 
-        <section>
-            <h2>Comprovantes financeiros</h2>
+            <h3>Comprovantes financeiros</h3>
             <ul>
                 {% for item in payment_proofs %}
-                    <li>
-                        {{ item.original_filename }} - {{ item.invoice.reference_month|date:"m/Y" }}
-                        - {{ item.get_status_display }}
-                    </li>
+                    <li>{{ item.original_filename }} - {{ item.invoice.reference_month|date:"m/Y" }} - {{ item.get_status_display }}</li>
                 {% empty %}
                     <li>Nenhum comprovante historico.</li>
                 {% endfor %}
             </ul>
-        </section>
 
-        <section>
-            <h2>Certificados emitidos</h2>
+            <h3>Certificados emitidos</h3>
             <ul>
                 {% for item in certificates %}
-                    <li>
-                        {{ item.student.user.full_name }} - {{ item.suggested_stage_label }}
-                        - codigo {{ item.certificate_code }}
-                    </li>
+                    <li>{{ item.student.user.full_name }} - {{ item.suggested_stage_label }} - codigo {{ item.certificate_code }}</li>
                 {% empty %}
                     <li>Nenhum certificado emitido.</li>
                 {% endfor %}
             </ul>
-        </section>
-    </main>
-</body>
-</html>
+        </article>
+    </section>
+{% endblock %}

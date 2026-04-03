@@ -1,0 +1,69 @@
+{% extends "system/base.html" %}
+{% load static %}
+
+{% block body_class %}theme-portal{% endblock %}
+
+{% block body %}
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="brand-stack">
+                <a class="brand-mark" href="{% url 'system:portal-dashboard' %}">
+                    <img src="{% static 'system/img/logo-lv-bjj.png' %}" alt="Logo LV JIU JITSU">
+                </a>
+                <div>
+                    <p class="eyebrow">Sistema interno</p>
+                    <h1>{{ academy_configuration.academy_name|default:"LV JIU JITSU" }}</h1>
+                </div>
+            </div>
+
+            <div class="sidebar-meta">
+                <p class="sidebar-user">{{ request.user.full_name }}</p>
+                <p class="sidebar-user-subtitle">CPF {{ request.user.cpf }}</p>
+            </div>
+
+            <nav class="sidebar-nav" aria-label="Navegacao do portal">
+                {% for section in portal_navigation_sections %}
+                    <section class="nav-section">
+                        <h2>{{ section.title }}</h2>
+                        <ul>
+                            {% for item in section.items %}
+                                <li>
+                                    <a class="{% if item.is_active %}is-active{% endif %}" href="{% url item.url_name %}">
+                                        {{ item.label }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endfor %}
+            </nav>
+
+            <div class="sidebar-actions">
+                <a class="button button-outline button-full" href="{{ brand_store_url }}" target="_blank" rel="noreferrer">Abrir loja publica</a>
+                <form method="post" action="{% url 'system:logout' %}">
+                    {% csrf_token %}
+                    <button class="button button-primary button-full" type="submit">Sair</button>
+                </form>
+            </div>
+        </aside>
+
+        <div class="portal-main">
+            <header class="portal-topbar">
+                <div>
+                    <p class="eyebrow">Operacao integrada</p>
+                    <h2>{% block portal_heading %}Painel LV JIU JITSU{% endblock %}</h2>
+                </div>
+                <div class="topbar-meta">
+                    <span class="info-chip">Kanri {{ brand_kanri_partner_code }}</span>
+                    <span class="info-chip">{{ academy_configuration.public_instagram|default:"@lvjiujitsu" }}</span>
+                </div>
+            </header>
+
+            {% include "system/partials/messages.html" %}
+
+            <main class="portal-content">
+                {% block portal_content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+{% endblock %}

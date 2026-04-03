@@ -1,58 +1,56 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard do aluno</title>
-</head>
-<body>
-    <main>
-        <h1>Dashboard do aluno e responsavel</h1>
-        <p><a href="{% url 'system:my-profile' %}">Ir para meu perfil</a></p>
+{% extends "system/base_portal.html" %}
 
-        <section>
-            <h2>Contexto esportivo</h2>
+{% block portal_heading %}Dashboard do aluno e responsavel{% endblock %}
+
+{% block portal_content %}
+    <section class="content-grid">
+        <article class="panel-card">
+            <p class="eyebrow">Contexto esportivo</p>
+            <h2>Perfis visiveis neste acesso</h2>
             <ul>
                 {% for student in visible_students %}
-                    <li>
-                        <a href="?student_uuid={{ student.uuid }}">{{ student.user.full_name }}</a>
-                        - {{ student.get_student_type_display }}
-                        - {{ student.get_operational_status_display }}
+                    <li class="schedule-item">
+                        <span>{{ student.user.full_name }} - {{ student.get_student_type_display }} - {{ student.get_operational_status_display }}</span>
+                        <a class="button button-outline" href="?student_uuid={{ student.uuid }}">Selecionar</a>
                     </li>
                 {% empty %}
                     <li>Nenhum perfil esportivo visivel neste acesso.</li>
                 {% endfor %}
             </ul>
-        </section>
+        </article>
 
-        <section>
-            <h2>Identidade marcial</h2>
+        <article class="panel-card">
+            <p class="eyebrow">Identidade marcial</p>
+            <h2>Aluno selecionado</h2>
             {% if selected_student %}
-                <p><strong>{{ selected_student.user.full_name }}</strong></p>
-                <p>Tipo: {{ selected_student.get_student_type_display }}</p>
-                <p>Status de acesso: {{ selected_student.get_operational_status_display }}</p>
-                <p>Entrada na academia: {{ selected_student.join_date|date:"d/m/Y" }}</p>
-                {% if selected_student.contact_phone %}
-                    <p>Contato esportivo: {{ selected_student.contact_phone }}</p>
-                {% endif %}
-                {% if selected_student.primary_guardian_link %}
-                    <p>Responsavel principal: {{ selected_student.primary_guardian_link.responsible_user.full_name }}</p>
-                {% endif %}
+                <ul class="detail-list">
+                    <li><strong>{{ selected_student.user.full_name }}</strong></li>
+                    <li>Tipo: {{ selected_student.get_student_type_display }}</li>
+                    <li>Status: {{ selected_student.get_operational_status_display }}</li>
+                    <li>Entrada: {{ selected_student.join_date|date:"d/m/Y" }}</li>
+                    {% if selected_student.contact_phone %}<li>Contato: {{ selected_student.contact_phone }}</li>{% endif %}
+                    {% if selected_student.primary_guardian_link %}<li>Responsavel principal: {{ selected_student.primary_guardian_link.responsible_user.full_name }}</li>{% endif %}
+                </ul>
             {% else %}
-                <p>Este acesso ainda nao possui perfil esportivo vinculado.</p>
+                <p class="empty-state">Este acesso ainda nao possui perfil esportivo vinculado.</p>
             {% endif %}
-        </section>
+        </article>
+    </section>
 
-        <section>
-            <h2>Financeiro</h2>
+    <section class="content-grid">
+        <article class="panel-card">
+            <p class="eyebrow">Financeiro</p>
+            <h2>Contratos e faturas</h2>
             {% if can_view_finance %}
                 {% if needs_regularization %}
-                    <p><strong>Existe pendencia financeira que exige regularizacao.</strong></p>
-                    <p><a href="{{ regularization_url }}">Ir para minhas faturas</a></p>
+                    <div class="message message-error">Existe pendencia financeira que exige regularizacao imediata.</div>
+                    <a class="button button-outline" href="{{ regularization_url }}">Ir para minhas faturas</a>
                 {% endif %}
                 <ul>
                     {% for subscription in responsible_subscriptions %}
-                        <li>
-                            <strong>{{ subscription.plan.name }}</strong> - {{ subscription.get_status_display }}
+                        <li class="list-card">
+                            <strong>{{ subscription.plan.name }}</strong>
+                            <p class="text-muted">{{ subscription.get_status_display }}</p>
                             <ul>
                                 {% for link in subscription.covered_students.all %}
                                     <li>{{ link.student.user.full_name }}</li>
@@ -68,26 +66,26 @@
                 <h3>Ultimas faturas</h3>
                 <ul>
                     {% for invoice in invoices %}
-                        <li>
-                            {{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }} - {{ invoice.get_status_display }}
-                        </li>
+                        <li>{{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }} - {{ invoice.get_status_display }}</li>
                     {% empty %}
                         <li>Nenhuma fatura visivel.</li>
                     {% endfor %}
                 </ul>
             {% else %}
-                <p>Este contexto nao exibe financeiro familiar. Dependentes com credencial propria veem apenas sua jornada esportiva.</p>
+                <p class="empty-state">Este contexto nao exibe financeiro familiar. Dependentes com credencial propria veem apenas sua jornada esportiva.</p>
             {% endif %}
-        </section>
+        </article>
 
-        <section>
-            <h2>Check-in e camera</h2>
+        <article class="panel-card">
+            <p class="eyebrow">Tatame</p>
+            <h2>Pre-check de camera</h2>
             {% if self_service_student %}
-                <p>As validacoes de acesso acontecem no backend antes de qualquer tentativa de abrir a camera.</p>
+                <p class="text-muted">O backend revalida acesso antes de qualquer tentativa de abrir a camera.</p>
                 <ul>
                     {% for session in self_service_sessions %}
-                        <li>
-                            {{ session.class_group.name }} - {{ session.starts_at|date:"d/m/Y H:i" }} - {{ session.get_status_display }}
+                        <li class="list-card">
+                            <strong>{{ session.class_group.name }}</strong>
+                            <p class="text-muted">{{ session.starts_at|date:"d/m/Y H:i" }} · {{ session.get_status_display }}</p>
                             <button
                                 type="button"
                                 data-precheck-url="{% url 'system:attendance-precheck' session.uuid %}"
@@ -101,26 +99,27 @@
                     {% endfor %}
                 </ul>
             {% elif selected_student %}
-                <p>Abertura de camera disponivel apenas para o proprio aluno com autoatendimento habilitado.</p>
+                <p class="empty-state">Abertura de camera disponivel apenas para o proprio aluno com autoatendimento habilitado.</p>
             {% else %}
-                <p>Nao ha perfil esportivo proprio para testar a camera.</p>
+                <p class="empty-state">Nao ha perfil esportivo proprio para testar a camera.</p>
             {% endif %}
-        </section>
+        </article>
+    </section>
 
-        <section>
-            <h2>Historico recente de presencas</h2>
-            <ul>
-                {% for attendance in recent_attendances %}
-                    <li>
-                        {{ attendance.session.class_group.name }} - {{ attendance.checked_in_at|date:"d/m/Y H:i" }} - {{ attendance.get_checkin_method_display }}
-                    </li>
-                {% empty %}
-                    <li>Nenhuma presenca recente registrada.</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
+    <section class="panel-card">
+        <p class="eyebrow">Historico</p>
+        <h2>Presencas recentes</h2>
+        <ul>
+            {% for attendance in recent_attendances %}
+                <li>{{ attendance.session.class_group.name }} - {{ attendance.checked_in_at|date:"d/m/Y H:i" }} - {{ attendance.get_checkin_method_display }}</li>
+            {% empty %}
+                <li>Nenhuma presenca recente registrada.</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}
 
+{% block extra_js %}
     <script>
         document.addEventListener("click", async function (event) {
             const button = event.target.closest("[data-precheck-url]");
@@ -151,5 +150,4 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}

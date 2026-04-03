@@ -1,86 +1,40 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Painel de pagamentos Stripe</title>
-</head>
-<body>
-    <main>
-        <h1>Painel de pagamentos Stripe</h1>
-        <p>
-            Status da integracao:
-            {% if stripe_is_configured %}
-                configurada
-            {% else %}
-                nao configurada neste ambiente
-            {% endif %}
-        </p>
-        <p><a href="{% url 'system:finance-dashboard' %}">Voltar ao financeiro</a></p>
+{% extends "system/base_portal.html" %}
 
-        <section>
-            <h2>Mapeamento de planos locais para Prices</h2>
+{% block portal_heading %}Painel de pagamentos Stripe{% endblock %}
+
+{% block portal_content %}
+    <section class="page-header">
+        <p class="eyebrow">Integracao externa</p>
+        <h1>Stripe e reconciliacao local</h1>
+        <p class="page-subtitle">Status da integracao: {% if stripe_is_configured %}configurada{% else %}nao configurada neste ambiente{% endif %}</p>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
+            <h2>Mapeamento de planos para Prices</h2>
             <form method="post">
                 {% csrf_token %}
                 {{ price_map_form.as_p }}
                 <button type="submit">Salvar mapeamento</button>
             </form>
-            <ul>
-                {% for item in price_maps %}
-                    <li>
-                        <strong>{{ item.plan.name }}</strong> - {{ item.stripe_price_id }} - {{ item.amount }} {{ item.currency|upper }}
-                        {% if item.is_current %}(vigente){% endif %}
-                        {% if item.is_legacy %}(legado){% endif %}
-                        {% if not item.is_active %}(inativo){% endif %}
-                    </li>
-                {% empty %}
-                    <li>Nenhum mapeamento Stripe cadastrado.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for item in price_maps %}<li>{{ item.plan.name }} - {{ item.stripe_price_id }} - {{ item.amount }} {{ item.currency|upper }}{% if item.is_current %} (vigente){% endif %}{% if item.is_legacy %} (legado){% endif %}</li>{% empty %}<li>Nenhum mapeamento Stripe cadastrado.</li>{% endfor %}</ul>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Checkout requests</h2>
-            <ul>
-                {% for item in checkout_requests %}
-                    <li>
-                        {{ item.local_subscription.responsible_user.full_name }} - {{ item.local_subscription.plan.name }} -
-                        {{ item.get_status_display }}
-                        {% if item.stripe_checkout_session_id %}
-                            | sessao: {{ item.stripe_checkout_session_id }}
-                        {% endif %}
-                    </li>
-                {% empty %}
-                    <li>Nenhuma solicitacao de checkout registrada.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for item in checkout_requests %}<li>{{ item.local_subscription.responsible_user.full_name }} - {{ item.local_subscription.plan.name }} - {{ item.get_status_display }}{% if item.stripe_checkout_session_id %} - {{ item.stripe_checkout_session_id }}{% endif %}</li>{% empty %}<li>Nenhuma solicitacao de checkout registrada.</li>{% endfor %}</ul>
+        </article>
+    </section>
 
-        <section>
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Assinaturas vinculadas</h2>
-            <ul>
-                {% for item in subscription_links %}
-                    <li>
-                        {{ item.local_subscription.responsible_user.full_name }} - {{ item.local_subscription.plan.name }} -
-                        {{ item.get_stripe_status_display }} - {{ item.stripe_subscription_id }}
-                    </li>
-                {% empty %}
-                    <li>Nenhum contrato com assinatura Stripe vinculada.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for item in subscription_links %}<li>{{ item.local_subscription.responsible_user.full_name }} - {{ item.local_subscription.plan.name }} - {{ item.get_stripe_status_display }} - {{ item.stripe_subscription_id }}</li>{% empty %}<li>Nenhum contrato com assinatura Stripe vinculada.</li>{% endfor %}</ul>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Webhooks processados</h2>
-            <ul>
-                {% for item in webhook_events %}
-                    <li>
-                        {{ item.event_type }} - {{ item.get_status_display }} - {{ item.stripe_event_id }}
-                    </li>
-                {% empty %}
-                    <li>Nenhum webhook recebido ainda.</li>
-                {% endfor %}
-            </ul>
-        </section>
-    </main>
-</body>
-</html>
+            <ul>{% for item in webhook_events %}<li>{{ item.event_type }} - {{ item.get_status_display }} - {{ item.stripe_event_id }}</li>{% empty %}<li>Nenhum webhook recebido ainda.</li>{% endfor %}</ul>
+        </article>
+    </section>
+{% endblock %}

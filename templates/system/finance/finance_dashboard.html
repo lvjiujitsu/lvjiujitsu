@@ -1,16 +1,19 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Financeiro detalhado</title>
-</head>
-<body>
-    <main>
-        <h1>Financeiro detalhado</h1>
-        <p><a href="{% url 'system:payment-dashboard' %}">Abrir painel de pagamentos Stripe</a></p>
-        <p><a href="{% url 'system:pdv-dashboard' %}">Abrir PDV e caixa rapido</a></p>
+{% extends "system/base_portal.html" %}
 
-        <section>
+{% block portal_heading %}Financeiro local{% endblock %}
+
+{% block portal_content %}
+    <section class="page-header">
+        <p class="eyebrow">Contratos, faturas e pausas</p>
+        <h1>Centro financeiro detalhado</h1>
+        <div class="action-row">
+            <a class="button button-outline" href="{% url 'system:payment-dashboard' %}">Pagamentos Stripe</a>
+            <a class="button button-outline" href="{% url 'system:pdv-dashboard' %}">PDV e caixa rapido</a>
+        </div>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Planos financeiros</h2>
             <form method="post">
                 {% csrf_token %}
@@ -18,18 +21,10 @@
                 {{ plan_form.as_p }}
                 <button type="submit">Salvar plano</button>
             </form>
-            <ul>
-                {% for plan in plans %}
-                    <li>
-                        {{ plan.name }} - {{ plan.get_billing_cycle_display }} - {{ plan.base_price }} - {% if plan.is_active %}Ativo{% else %}Inativo{% endif %}
-                    </li>
-                {% empty %}
-                    <li>Nenhum plano cadastrado.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for plan in plans %}<li>{{ plan.name }} - {{ plan.get_billing_cycle_display }} - {{ plan.base_price }} - {% if plan.is_active %}Ativo{% else %}Inativo{% endif %}</li>{% empty %}<li>Nenhum plano cadastrado.</li>{% endfor %}</ul>
+        </article>
 
-        <section>
+        <article class="panel-card">
             <h2>Beneficios</h2>
             <form method="post">
                 {% csrf_token %}
@@ -37,48 +32,33 @@
                 {{ benefit_form.as_p }}
                 <button type="submit">Salvar beneficio</button>
             </form>
-            <ul>
-                {% for benefit in benefits %}
-                    <li>
-                        {{ benefit.name }} - {{ benefit.get_benefit_type_display }} - {{ benefit.value }} {{ benefit.get_value_type_display }}
-                    </li>
-                {% empty %}
-                    <li>Nenhum beneficio cadastrado.</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <ul>{% for benefit in benefits %}<li>{{ benefit.name }} - {{ benefit.get_benefit_type_display }} - {{ benefit.value }} {{ benefit.get_value_type_display }}</li>{% empty %}<li>Nenhum beneficio cadastrado.</li>{% endfor %}</ul>
+        </article>
+    </section>
 
-        <section>
-            <h2>Assinaturas locais</h2>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="subscription">
-                {{ subscription_form.as_p }}
-                <button type="submit">Criar assinatura</button>
-            </form>
-            <ul>
-                {% for subscription in subscriptions %}
-                    <li>
-                        <strong>{{ subscription.responsible_user.full_name }}</strong> - {{ subscription.plan.name }} - {{ subscription.get_status_display }}
-                        <ul>
-                            {% for link in subscription.covered_students.all %}
-                                <li>
-                                    {{ link.student.user.full_name }}
-                                    {% if link.is_primary_student %}(principal){% endif %}
-                                    {% if link.student_benefit %}- beneficio individual: {{ link.student_benefit.name }}{% endif %}
-                                </li>
-                            {% empty %}
-                                <li>Nenhum aluno vinculado.</li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                {% empty %}
-                    <li>Nenhuma assinatura cadastrada.</li>
-                {% endfor %}
-            </ul>
-        </section>
+    <section class="panel-card">
+        <h2>Assinaturas locais</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="subscription">
+            {{ subscription_form.as_p }}
+            <button type="submit">Criar assinatura</button>
+        </form>
+        <ul>
+            {% for subscription in subscriptions %}
+                <li class="list-card">
+                    <strong>{{ subscription.responsible_user.full_name }}</strong>
+                    <p class="text-muted">{{ subscription.plan.name }} · {{ subscription.get_status_display }}</p>
+                    <ul>{% for link in subscription.covered_students.all %}<li>{{ link.student.user.full_name }}{% if link.is_primary_student %} (principal){% endif %}{% if link.student_benefit %} - beneficio individual: {{ link.student_benefit.name }}{% endif %}</li>{% empty %}<li>Nenhum aluno vinculado.</li>{% endfor %}</ul>
+                </li>
+            {% empty %}
+                <li>Nenhuma assinatura cadastrada.</li>
+            {% endfor %}
+        </ul>
+    </section>
 
-        <section>
+    <section class="content-grid">
+        <article class="panel-card">
             <h2>Faturas</h2>
             <form method="get">
                 <label for="invoice_status">Filtrar por status</label>
@@ -99,25 +79,22 @@
             </form>
             <ul>
                 {% for invoice in invoices %}
-                    <li>
-                        {{ invoice.subscription.responsible_user.full_name }} - {{ invoice.reference_month|date:"m/Y" }} - {{ invoice.amount_net }} - {{ invoice.get_status_display }}
-                        <form method="post" action="{% url 'system:invoice-mark-paid' invoice.uuid %}">
-                            {% csrf_token %}
-                            <button type="submit">Marcar como paga</button>
-                        </form>
-                        <form method="post" action="{% url 'system:invoice-mark-overdue' invoice.uuid %}">
-                            {% csrf_token %}
-                            <button type="submit">Marcar como vencida</button>
-                        </form>
+                    <li class="list-card">
+                        <strong>{{ invoice.subscription.responsible_user.full_name }}</strong>
+                        <p class="text-muted">{{ invoice.reference_month|date:"m/Y" }} · {{ invoice.amount_net }} · {{ invoice.get_status_display }}</p>
+                        <div class="action-row">
+                            <form method="post" action="{% url 'system:invoice-mark-paid' invoice.uuid %}">{% csrf_token %}<button type="submit">Marcar como paga</button></form>
+                            <form method="post" action="{% url 'system:invoice-mark-overdue' invoice.uuid %}">{% csrf_token %}<button type="submit">Marcar como vencida</button></form>
+                        </div>
                     </li>
                 {% empty %}
                     <li>Nenhuma fatura encontrada.</li>
                 {% endfor %}
             </ul>
-        </section>
+        </article>
 
-        <section>
-            <h2>Trancamentos de matricula</h2>
+        <article class="panel-card">
+            <h2>Trancamentos e comprovantes</h2>
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="pause">
@@ -126,23 +103,13 @@
             </form>
             <ul>
                 {% for pause in pauses %}
-                    <li>
-                        {{ pause.student.user.full_name }} - {{ pause.reason }} - {% if pause.is_active %}Ativa{% else %}Encerrada{% endif %}
-                        {% if pause.is_active %}
-                            <form method="post" action="{% url 'system:pause-resume' pause.uuid %}">
-                                {% csrf_token %}
-                                <button type="submit">Retomar matricula</button>
-                            </form>
-                        {% endif %}
-                    </li>
+                    <li>{{ pause.student.user.full_name }} - {{ pause.reason }} - {% if pause.is_active %}Ativa{% else %}Encerrada{% endif %}{% if pause.is_active %}<form method="post" action="{% url 'system:pause-resume' pause.uuid %}">{% csrf_token %}<button type="submit">Retomar matricula</button></form>{% endif %}</li>
                 {% empty %}
                     <li>Nenhum trancamento registrado.</li>
                 {% endfor %}
             </ul>
-        </section>
 
-        <section>
-            <h2>Comprovantes manuais</h2>
+            <h3>Comprovantes manuais</h3>
             <form method="get">
                 <label for="proof_status">Filtrar por status</label>
                 <select name="proof_status" id="proof_status">
@@ -155,21 +122,13 @@
             </form>
             <ul>
                 {% for proof in payment_proofs %}
-                    <li>
-                        {{ proof.invoice.subscription.responsible_user.full_name }} - {{ proof.original_filename }} - {{ proof.get_status_display }}
+                    <li class="list-card">
+                        <strong>{{ proof.invoice.subscription.responsible_user.full_name }}</strong>
+                        <p class="text-muted">{{ proof.original_filename }} · {{ proof.get_status_display }}</p>
                         <form method="post" action="{% url 'system:payment-proof-review' proof.uuid %}">
                             {% csrf_token %}
-                            <label>
-                                Decisao
-                                <select name="decision">
-                                    <option value="approve">Aprovar</option>
-                                    <option value="reject">Reprovar</option>
-                                </select>
-                            </label>
-                            <label>
-                                Observacoes
-                                <textarea name="review_notes"></textarea>
-                            </label>
+                            <label>Decisao<select name="decision"><option value="approve">Aprovar</option><option value="reject">Reprovar</option></select></label>
+                            <label>Observacoes<textarea name="review_notes"></textarea></label>
                             <button type="submit">Registrar revisao</button>
                         </form>
                     </li>
@@ -177,7 +136,6 @@
                     <li>Nenhum comprovante recebido.</li>
                 {% endfor %}
             </ul>
-        </section>
-    </main>
-</body>
-</html>
+        </article>
+    </section>
+{% endblock %}

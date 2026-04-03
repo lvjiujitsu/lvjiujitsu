@@ -1,25 +1,33 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard do Professor</title>
-</head>
-<body>
-    <main>
-        <h1>Dashboard do professor</h1>
-        <p><a href="{% url 'system:graduation-panel' %}">Ir para o painel de graduacao</a></p>
+{% extends "system/base_portal.html" %}
+
+{% block portal_heading %}Dashboard do professor{% endblock %}
+
+{% block portal_content %}
+    <section class="page-header">
+        <p class="eyebrow">Tatame</p>
+        <h1>Controle de sessoes e presenca</h1>
+        <p class="page-subtitle">Abra aula, gere QR dinamico, lance presenca manual e navegue para o painel tecnico de graduacao.</p>
+        <div class="action-row">
+            <a class="button button-outline" href="{% url 'system:graduation-panel' %}">Ir para o painel de graduacao</a>
+        </div>
+    </section>
+
+    <section class="panel-card">
         <ul>
             {% for session in sessions %}
-                <li>
-                    {{ session.class_group.name }} - {{ session.starts_at }} - {{ session.get_status_display }}
-                    <form method="post" action="{% url 'system:professor-session-open' session.uuid %}">
-                        {% csrf_token %}
-                        <button type="submit">Iniciar aula</button>
-                    </form>
-                    <form method="post" action="{% url 'system:professor-session-qr' session.uuid %}">
-                        {% csrf_token %}
-                        <button type="submit">Gerar QR</button>
-                    </form>
+                <li class="list-card">
+                    <strong>{{ session.class_group.name }}</strong>
+                    <p class="text-muted">{{ session.starts_at|date:"d/m/Y H:i" }} · {{ session.get_status_display }}</p>
+                    <div class="action-row">
+                        <form method="post" action="{% url 'system:professor-session-open' session.uuid %}">
+                            {% csrf_token %}
+                            <button type="submit">Iniciar aula</button>
+                        </form>
+                        <form method="post" action="{% url 'system:professor-session-qr' session.uuid %}">
+                            {% csrf_token %}
+                            <button type="submit">Gerar QR</button>
+                        </form>
+                    </div>
                     <form method="post" action="{% url 'system:professor-manual-attendance' session.uuid %}">
                         {% csrf_token %}
                         {{ manual_form.as_p }}
@@ -30,6 +38,5 @@
                 <li>Nenhuma sessao vinculada ao professor.</li>
             {% endfor %}
         </ul>
-    </main>
-</body>
-</html>
+    </section>
+{% endblock %}
