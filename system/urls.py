@@ -3,6 +3,7 @@ from django.urls import path
 from system.views import (
     AdminHomeView,
     AdministrativeHomeView,
+    ChromeDevtoolsProbeView,
     DashboardRedirectView,
     InstructorHomeView,
     PersonCreateView,
@@ -17,6 +18,10 @@ from system.views import (
     PersonUpdateView,
     PortalLoginView,
     PortalLogoutView,
+    PortalPasswordResetCompleteView,
+    PortalPasswordResetConfirmView,
+    PortalPasswordResetDoneView,
+    PortalPasswordResetView,
     PortalRegisterView,
     StudentHomeView,
 )
@@ -26,10 +31,15 @@ app_name = "system"
 
 
 urlpatterns = [
+    path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
     path("", PortalHomeView.as_view(), name="root"),
     path("login/", PortalLoginView.as_view(), name="login"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("info/", PortalInfoView.as_view(), name="info"),
+    path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
+    path("password-reset/done/", PortalPasswordResetDoneView.as_view(), name="password-reset-done"),
+    path("reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+    path("reset/done/", PortalPasswordResetCompleteView.as_view(), name="password-reset-complete"),
     path("templates/login/login.html", PortalHomeView.as_view(), name="legacy-home"),
     path("templates/login/login-form.html", PortalLoginView.as_view(), name="legacy-login-form"),
     path("templates/login/cadastro.html", PortalRegisterView.as_view(), name="legacy-register"),

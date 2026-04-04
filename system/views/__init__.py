@@ -1,8 +1,13 @@
 from .auth_views import (
+    ChromeDevtoolsProbeView,
     PortalHomeView,
     PortalInfoView,
     PortalLoginView,
     PortalLogoutView,
+    PortalPasswordResetCompleteView,
+    PortalPasswordResetConfirmView,
+    PortalPasswordResetDoneView,
+    PortalPasswordResetView,
     PortalRegisterView,
 )
 from .home_views import (
@@ -27,6 +32,7 @@ from .person_views import (
 __all__ = [
     "AdminHomeView",
     "AdministrativeHomeView",
+    "ChromeDevtoolsProbeView",
     "DashboardRedirectView",
     "InstructorHomeView",
     "PersonCreateView",
@@ -41,6 +47,10 @@ __all__ = [
     "PersonUpdateView",
     "PortalLoginView",
     "PortalLogoutView",
+    "PortalPasswordResetCompleteView",
+    "PortalPasswordResetConfirmView",
+    "PortalPasswordResetDoneView",
+    "PortalPasswordResetView",
     "PortalRegisterView",
     "RootRedirectView",
     "StudentHomeView",

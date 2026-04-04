@@ -5,9 +5,11 @@
 {% block content %}
 <section class="panel-grid">
     <div class="panel-card">
+        <p class="panel-eyebrow">Área administrativa</p>
         <h1>Painel administrativo</h1>
         <p>Acompanhe o cadastro de pessoas e mantenha os vínculos atualizados.</p>
     </div>
+
     <div class="shortcut-grid">
         <a class="shortcut-card" href="{% url 'system:person-list' %}">Pessoas</a>
         <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Tipos de vínculo</a>

@@ -4,6 +4,7 @@
 
 {% block content %}
 <section class="form-card">
+    <p class="form-eyebrow">Gestão de pessoas</p>
     <h1>{% if object %}Editar pessoa{% else %}Cadastrar pessoa{% endif %}</h1>
     <form method="post" class="form-stack">
         {% csrf_token %}

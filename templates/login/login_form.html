@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Login</title>
-  <link rel="stylesheet" href="{% static 'system/css/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
 </head>
 <body>
   <main class="screen-shell">
@@ -26,7 +26,7 @@
         <div>
           <p class="eyebrow">Acesso</p>
           <h1>Login</h1>
-          <p class="inner-copy">Entre com seu CPF ou usu&aacute;rio e sua senha.</p>
+          <p class="inner-copy">Entre com seu CPF ou acesso técnico e sua senha.</p>
         </div>
       </div>
 
@@ -34,6 +34,14 @@
         {% csrf_token %}
         {% if next %}
           <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        {% if messages %}
+          <div class="status-stack" role="status">
+            {% for message in messages %}
+              <div class="status-message">{{ message }}</div>
+            {% endfor %}
+          </div>
         {% endif %}
 
         {% if form.non_field_errors %}
@@ -44,22 +52,35 @@
           </div>
         {% endif %}
 
-        <label class="field" for="{{ form.username.id_for_label }}">
-          <span>{{ form.username.label }}</span>
-          {{ form.username }}
-          {% if form.username.errors %}
-            <small class="field-error">{{ form.username.errors|join:", " }}</small>
+        <label class="field" for="{{ form.identifier.id_for_label }}">
+          <span>{{ form.identifier.label }}</span>
+          {{ form.identifier }}
+          {% if form.identifier.errors %}
+            <small class="field-error">{{ form.identifier.errors|join:", " }}</small>
           {% endif %}
         </label>
 
-        <label class="field" for="{{ form.password.id_for_label }}">
+        <label class="field password-field" for="{{ form.password.id_for_label }}">
           <span>{{ form.password.label }}</span>
-          {{ form.password }}
+          <div class="password-input-wrapper">
+            {{ form.password }}
+            <button
+              class="password-visibility-button"
+              type="button"
+              data-password-toggle
+              data-target-id="{{ form.password.id_for_label }}"
+              aria-controls="{{ form.password.id_for_label }}"
+              aria-label="Mostrar senha"
+            >
+              Mostrar
+            </button>
+          </div>
           {% if form.password.errors %}
             <small class="field-error">{{ form.password.errors|join:", " }}</small>
           {% endif %}
         </label>
 
+        <a class="text-link" href="{% url 'system:password-reset' %}">Esqueci minha senha</a>
         <button class="primary-button" type="submit">Entrar</button>
       </form>
 
@@ -72,6 +93,7 @@
       </div>
     </section>
   </main>
-  <script src="{% static 'system/js/theme-toggle.js' %}"></script>
+  <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+  <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
 </body>
 </html>

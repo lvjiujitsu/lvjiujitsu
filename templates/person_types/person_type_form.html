@@ -4,6 +4,7 @@
 
 {% block content %}
 <section class="form-card">
+    <p class="form-eyebrow">Configuração de perfis</p>
     <h1>{% if object %}Editar tipo de vínculo{% else %}Cadastrar tipo de vínculo{% endif %}</h1>
     <form method="post" class="form-stack">
         {% csrf_token %}

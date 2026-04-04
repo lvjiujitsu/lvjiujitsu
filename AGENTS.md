@@ -42,6 +42,7 @@ Antes de alterar qualquer arquivo:
 6. identifique quais modulos internos do app `system` serao impactados: `public`, `identity_access`, `student_registry`, `instructor_ops`, `class_catalog`, `attendance_qr`, `finance_contracts`, `payments_stripe`, `graduation_engine`, `communications`, `documents_lgpd`, `reports_audit`, `settings_seed`;
 7. verifique se a mudanca toca alguma regra critica:
    - identidade unica por CPF;
+   - autenticacao local do portal separada do Django Admin;
    - multi-papel no mesmo usuario;
    - onboarding transacional;
    - check-in com QR/WebRTC;
@@ -62,21 +63,25 @@ Antes de alterar qualquer arquivo:
 ### Fase 2 - Implementacao limpa e aderente ao dominio
 Ao implementar:
 1. mantenha views finas e delegue regras complexas para `services.py`, `selectors.py`, `managers.py` ou metodos de dominio;
-2. use `transaction.atomic()` em fluxos compostos, especialmente:
+2. trate o portal e o Django Admin como superfícies independentes:
+   - fluxos do produto não podem depender de `django.contrib.auth.User`;
+   - autenticação do portal, reset de senha, sessão e permissão funcional devem viver no domínio local;
+   - o Django Admin só pode ser usado como administração técnica;
+3. use `transaction.atomic()` em fluxos compostos, especialmente:
    - onboarding de titular + dependentes;
    - criacao de aluno + vinculo financeiro + perfis;
    - confirmacao de pagamento + desbloqueio de acesso;
    - reserva de vaga + consumo de capacidade;
-3. nao use hardcode para:
+4. nao use hardcode para:
    - chaves e segredos;
    - URLs base;
    - TTL do QR Code;
    - idade minima/configuravel para dependente com credencial;
    - regras de pausa, carencia, tolerancia e limites operacionais;
-4. trate integracoes externas como faliveis e auditaveis;
-5. garanta que o backend sempre revalide regras criticas, mesmo que a UI ja tenha bloqueado a acao.
-6. em catalogo Stripe, nunca deduza vinculacao de plano por heuristica solta quando existir risco de ambiguidade; use mapeamento persistido e explicitamente aprovado;
-7. quando um novo `Price` Stripe passar a ser o vigente de um plano, aposente o mapeamento vigente anterior de forma deterministica, sem manter dois candidatos correntes.
+5. trate integracoes externas como faliveis e auditaveis;
+6. garanta que o backend sempre revalide regras criticas, mesmo que a UI ja tenha bloqueado a acao.
+7. em catalogo Stripe, nunca deduza vinculacao de plano por heuristica solta quando existir risco de ambiguidade; use mapeamento persistido e explicitamente aprovado;
+8. quando um novo `Price` Stripe passar a ser o vigente de um plano, aposente o mapeamento vigente anterior de forma deterministica, sem manter dois candidatos correntes.
 
 ### Fase 2.5 - Validação visual obrigatória
 Quando a tarefa envolver templates, paginas ou fluxos de interface:
@@ -126,6 +131,10 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 - O mesmo usuario pode acumular papeis e perfis de negocio.
 - `PROFESSOR`, `ALUNO`, `RESPONSAVEL_FINANCEIRO` e perfis administrativos podem coexistir na mesma identidade.
 - Dependente com credencial propria continua vinculado ao responsavel, mas acessa apenas o escopo permitido.
+- Dependente com credencial propria, mesmo quando for o unico papel autenticavel da conta, deve conseguir entrar no portal e cair no escopo operacional de aluno.
+- A conta de acesso do portal pertence ao dominio local e nao deve ser substituida por `django.contrib.auth.User`.
+- O Django Admin nao e a fonte de verdade de autenticacao do produto.
+- Login no Django Admin nao pode conceder acesso funcional ao portal.
 
 ### 3.2 Presenca, reserva e tatame
 - O sistema deve validar **antes de abrir a camera** se o aluno pode tentar o check-in.
@@ -164,6 +173,11 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 - Fluxos criticos de autenticacao, financeiro, pagamentos, graduacao, emergencia, PDV e exportacao devem registrar trilha de auditoria propria.
 - Log tecnico nao substitui `AuditLog`; ambos podem coexistir quando um atende operacao e o outro atende rastreabilidade de negocio.
 - Auditoria nao pode armazenar payload excessivo nem vazar dado sensivel desnecessario.
+
+### 3.8 Fronteira portal x administracao tecnica
+- CRUDs, dashboards e jornadas do produto devem usar permissao local do portal, nao `request.user.is_staff`.
+- O agente nao deve introduzir `LoginRequiredMixin`, `AuthenticationForm`, `PasswordResetView` ou outros fluxos padrao do Django como base do portal, salvo se o usuario pedir explicitamente uma integracao tecnica especifica.
+- Se o portal precisar de conta, senha, token de reset, sessao ou trilha de acesso, isso deve ser modelado no dominio do app `system`.
 
 ---
 
@@ -210,7 +224,9 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 
 Toda mudanca relevante deve, no minimo, considerar testes para:
 - identidade unica por CPF;
+- independencia entre autenticacao do portal e login do Django Admin;
 - multi-papel no mesmo usuario;
+- perfil `dependent` isolado conseguindo autenticar e navegar no escopo permitido;
 - onboarding transacional;
 - inadimplencia bloqueando check-in antes da camera;
 - reserva previa e consumo de vagas;
@@ -234,11 +250,19 @@ Para fluxos centrais de dominio, prefira abordagem test-first:
 2. implemente a menor mudanca estrutural correta;
 3. valide regressao nos fluxos adjacentes.
 
+### 5.1 Seeds de validacao manual
+- `inicial_seed` deve cadastrar apenas catalogos base e configuracoes minimas.
+- `inicial_seed_test` deve gerar dados navegaveis para validacao manual ampla do portal.
+- quando o objetivo for cobrir perfis e roteamentos do produto, `inicial_seed_test` deve priorizar matriz N:N completa dos `PersonType` autenticaveis, em vez de poucos cenarios isolados.
+- combinacoes com `dependent` devem permanecer semanticamente validas no banco, com relacionamento de responsabilidade consistente para inspeção manual e teste de permissao.
+
 ---
 
 ## 6. O que o agente deve evitar
 
 - criar dois usuarios para a mesma pessoa;
+- acoplar o portal do produto ao `django.contrib.auth.User`;
+- usar autenticacao do Django Admin como atalho para rotas do produto;
 - criar migracoes manuais ou manter migracoes antigas quando o usuario estiver no fluxo oficial de limpeza e recriacao com `clear_migrations.py` + `makemigrations`;
 - misturar regra financeira com renderizacao de template;
 - confiar apenas em bloqueio visual de frontend;

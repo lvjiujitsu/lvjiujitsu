@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'system/css/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}">
 </head>
 <body>
     <div class="page-shell">
@@ -14,14 +14,19 @@
                 <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
                 <span>LV JIU JITSU</span>
             </a>
-            {% if request.user.is_authenticated %}
+            {% if request.portal_account or request.portal_is_technical_admin %}
                 <nav class="topbar-nav">
-                    <a href="{% url 'system:dashboard-redirect' %}">In&iacute;cio</a>
-                    {% if request.user.is_staff or request.user.is_superuser %}
-                        <a href="{% url 'system:person-list' %}">Pessoas</a>
-                        <a href="{% url 'system:person-type-list' %}">Tipos</a>
-                        <a href="/django-admin/">Django Admin</a>
+                    <a class="nav-link" href="{% url 'system:dashboard-redirect' %}">Início</a>
+                    {% if request.portal_is_administrative or request.portal_is_technical_admin %}
+                        <a class="nav-link" href="{% url 'system:person-list' %}">Pessoas</a>
+                        <a class="nav-link" href="{% url 'system:person-type-list' %}">Tipos</a>
+                        <a class="nav-link" href="/django-admin/">Django Admin</a>
                     {% endif %}
+                    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+                        <span class="theme-toggle-track">
+                            <span class="theme-toggle-knob"></span>
+                        </span>
+                    </button>
                     <form method="post" action="{% url 'system:logout' %}">
                         {% csrf_token %}
                         <button type="submit" class="ghost-button">Sair</button>
@@ -33,5 +38,6 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+    <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
 </body>
 </html>

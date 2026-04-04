@@ -34,7 +34,8 @@ O **LV JIU JITSU** é um monólito Django com app único `system` e modularizaç
 
 Arquitetura alvo:
 - **backend:** Django;
-- **autenticação:** `django-allauth`;
+- **autenticação do portal:** conta local do domínio, persistida no app `system`, com sessão própria;
+- **admin técnico:** `django.contrib.admin` + `django.contrib.auth`, restritos à operação técnica e manutenção do projeto;
 - **banco principal:** PostgreSQL;
 - **dev/local:** SQLite opcional, com limitações conhecidas para concorrência;
 - **ambiente Python:** `.venv` local obrigatória e isolada do Python global;
@@ -50,17 +51,18 @@ Arquitetura alvo:
 
 1. **App único `system` primeiro.** Não fragmentar o domínio físico cedo demais; modularizar internamente com disciplina.
 2. **Identidade centralizada.** Pessoa é uma só; perfis de negócio se acumulam.
-3. **Regras do domínio no backend.** Frontend melhora UX, mas não decide o que é permitido.
-4. **Fluxos críticos são auditáveis.** Pagamento, presença, exclusão de dados, prontuário e exportação precisam de rastreabilidade.
-5. **Configuração é externa ou persistida.** Nada importante deve ficar hardcoded.
-6. **Segurança por camadas.** UI, permissão, validação de negócio e auditoria trabalham juntas.
-7. **Planejamento orientado a agregado.** Toda mudança deve deixar claro qual domínio é fonte de verdade e qual domínio apenas reflete ou consome estado.
-8. **Política de idioma dual.** Código, identificadores técnicos, arquivos e rotas em inglês; texto visível ao usuário final em pt-BR.
-9. **Qualidade linguística de interface é regra de produto.** Título, label, placeholder, CTA, ajuda contextual, estado vazio e mensagem exibidos ao usuário final devem estar em português correto, com acentuação adequada e revisão final antes da entrega.
-10. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
-11. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
-12. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
-13. **Validação visual automatizada é obrigatória em interface.** Mudanças em rotas, templates, CSS e jornadas visuais só podem ser dadas como prontas após conferência por navegador automatizado, preferencialmente via Playwright MCP no Codex CLI.
+3. **Autenticação do produto é do domínio.** O portal da academia não deve depender do modelo `User` do Django para operar.
+4. **Regras do domínio no backend.** Frontend melhora UX, mas não decide o que é permitido.
+5. **Fluxos críticos são auditáveis.** Pagamento, presença, exclusão de dados, prontuário e exportação precisam de rastreabilidade.
+6. **Configuração é externa ou persistida.** Nada importante deve ficar hardcoded.
+7. **Segurança por camadas.** UI, permissão, validação de negócio e auditoria trabalham juntas.
+8. **Planejamento orientado a agregado.** Toda mudança deve deixar claro qual domínio é fonte de verdade e qual domínio apenas reflete ou consome estado.
+9. **Política de idioma dual.** Código, identificadores técnicos, arquivos e rotas em inglês; texto visível ao usuário final em pt-BR.
+10. **Qualidade linguística de interface é regra de produto.** Título, label, placeholder, CTA, ajuda contextual, estado vazio e mensagem exibidos ao usuário final devem estar em português correto, com acentuação adequada e revisão final antes da entrega.
+11. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
+12. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
+13. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
+14. **Validação visual automatizada é obrigatória em interface.** Mudanças em rotas, templates, CSS e jornadas visuais só podem ser dadas como prontas após conferência por navegador automatizado, preferencialmente via Playwright MCP no Codex CLI.
 
 ### 2.1 Regra operacional de ambiente
 - O projeto deve possuir e usar uma `.venv` local.
@@ -119,6 +121,12 @@ Estrutura-alvo:
 - `reports_audit` — dashboards, relatórios, exportações e evidências operacionais.
 - `settings_seed` — parâmetros operacionais, catálogos internos e carga inicial.
 
+### 3.1.1 Seeds operacionais
+- `inicial_seed` deve carregar apenas catálogos base e configurações mínimas do sistema.
+- `inicial_seed_test` deve ser tratada como carga navegável de validação manual do portal.
+- Para cobrir autenticação, roteamento e combinação de papéis, `inicial_seed_test` deve priorizar matriz N:N completa dos `PersonType` autenticáveis ativos.
+- Combinações com `dependent` continuam exigindo consistência de relacionamento no banco, mesmo quando a conta de portal for usada apenas para inspeção manual.
+
 ### 3.2 Fonte de verdade por agregado dentro de `system/`
 - `identity_access`: identidade, autenticação, papéis e permissões.
 - `student_registry`: pessoa, dependentes, dados cadastrais, contato de emergência e dados sensíveis.
@@ -136,6 +144,15 @@ Regra central:
 - o estado de negócio da academia é sempre local;
 - integrações externas confirmam eventos, mas não substituem a fonte de verdade do domínio.
 
+### 3.3 Fronteira entre portal e Django Admin
+- O portal da academia e o Django Admin são superfícies distintas.
+- O **portal** usa identidade local do domínio, modelada em `system`, com conta de acesso, sessão própria e permissões baseadas em `Person` + `PersonType`.
+- O **Django Admin** existe apenas para administração técnica, suporte operacional restrito e manutenção de dados por equipe autorizada.
+- É proibido usar `django.contrib.auth.User` como identidade primária do aluno, responsável, professor ou auxiliar administrativo do produto.
+- É proibido depender de `request.user`, `LoginRequiredMixin`, `AuthenticationForm` ou `PasswordResetView` do Django como base do portal do produto.
+- O fato de alguém existir no Django Admin não concede acesso ao portal.
+- O fato de alguém possuir acesso ao portal não exige criação de `User` do Django.
+
 ---
 
 ## 4. Identidade, autenticação e modelo de acesso
@@ -145,6 +162,14 @@ Regra central:
 - **CPF é o identificador único de autenticação**.
 - O banco pode usar um identificador técnico interno como PK física; o CPF deve ser tratado como chave natural única de login e negócio.
 - É proibido duplicar cadastro para a mesma pessoa só porque ela exerce mais de um papel.
+
+### 4.1.1 Regra de autenticação do portal
+- A autenticação do portal é local ao domínio e deve ser modelada dentro de `system.identity_access`.
+- A conta autenticável do portal deve referenciar exatamente uma `Person`.
+- Hash de senha, tentativas de login, reset de senha, sessão e flags operacionais do acesso devem ficar em modelos do próprio domínio.
+- O CPF é o identificador único de login do portal.
+- Reset de senha do portal deve operar sobre token local do domínio e não sobre o fluxo padrão de `django.contrib.auth`.
+- Sessão do portal deve ser independente da sessão usada pelo Django Admin.
 
 ### 4.2 Papéis de negócio
 Os papéis podem coexistir na mesma identidade:
@@ -159,11 +184,18 @@ Os papéis podem coexistir na mesma identidade:
 - Dependentes podem existir vinculados ao responsável financeiro.
 - Acima de uma idade configurável e cumpridos os requisitos de cadastro, um dependente pode possuir credencial própria.
 - O dependente com credencial acessa apenas o necessário para sua jornada esportiva.
+- Quando `dependent` for o único papel autenticável da conta local do portal, o roteamento pós-login deve continuar levando ao escopo de aluno, sem exigir a presença simultânea de `student` ou `guardian` para navegação básica.
 - Dados financeiros do titular não podem ser exibidos para o dependente.
 
 ### 4.4 Professor que também é aluno
 - Um professor pode treinar como aluno sem duplicar CPF.
 - O mesmo usuário pode possuir perfil docente e vínculo com plano financeiro, bolsa ou desconto.
+
+### 4.5 Superfície administrativa técnica
+- `django.contrib.admin` deve permanecer disponível apenas em `/django-admin/`.
+- O superusuário técnico existe para administração do projeto, inspeção e suporte de manutenção.
+- CRUDs do produto, permissões do portal e jornadas operacionais não devem exigir login no Django Admin.
+- O sistema pode ter pessoas com papel administrativo no portal sem qualquer vínculo com `User` do Django.
 
 ---
 
@@ -173,6 +205,8 @@ Os papéis podem coexistir na mesma identidade:
 - O cadastro do titular e de seus dependentes deve ser transacional.
 - Não pode existir onboarding parcialmente concluído com identidade quebrada.
 - O onboarding coleta dados pessoais, contatos, documentos e, quando aplicável, dados de emergência e saúde.
+- Sempre que o cadastro criar alguém com direito de acesso ao portal, a conta local do domínio deve nascer junto com a pessoa, com senha definida no próprio onboarding.
+- O onboarding não deve criar `User` do Django para titular, dependente, responsável ou professor do produto.
 
 ### 5.2 Presença e check-in
 - O QR Code deve ser dinâmico e de curta duração.
@@ -292,6 +326,7 @@ O sistema lida com:
 - registrar auditoria de acesso a dados sensíveis;
 - proteger exclusão lógica e exclusão definitiva como fluxos distintos.
 - manter auditoria transversal dos fluxos críticos de autenticação, financeiro, pagamentos, graduação, PDV, exportação e emergência.
+- separar claramente autenticação técnica do Django Admin da autenticação funcional do portal.
 
 ### 7.3 Exclusão definitiva
 Quando juridicamente cabível e respeitadas obrigações de retenção:
@@ -350,12 +385,16 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 8. exclusão definitiva sob LGPD;
 9. consulta emergencial de prontuário;
 10. exportação de BI com arquivo de controle inválido.
+11. separação correta entre login do portal e login do Django Admin;
+12. reset de senha do portal sem tocar em `User` do Django.
 
 ---
 
 ## 10. Armadilhas conhecidas
 
 - usar CPF como duplicador de papel em vez de identidade única;
+- acoplar acesso do portal a `django.contrib.auth.User`;
+- liberar rota do portal porque o usuário está autenticado no Django Admin;
 - confiar só no frontend para bloquear acesso;
 - misturar `status` local da matrícula com `status` financeiro externo;
 - consumir capacidade da turma apenas na porta;
@@ -412,5 +451,7 @@ Essas lacunas não invalidam a spec atual, mas precisam orientar o planejamento 
 - **[2026-04-02]** Formalizada a auditoria transversal obrigatória para autenticação, financeiro, pagamentos, graduação, PDV, exportação e emergência.
 - **[2026-04-02]** Formalizado que o catalogo Stripe exige mapeamento deterministico por plano, com um unico `Price` vigente e aposentadoria explicita de legados.
 - **[2026-04-02]** Formalizado que o espelho `dj-stripe` e camada auxiliar de reconciliacao e nao substitui a fonte de verdade do dominio local.
+- **[2026-04-03]** Formalizado que a autenticação do portal é local ao domínio, independente do Django Admin, com sessão própria e reset de senha próprio.
+- **[2026-04-04]** Formalizado que `dependent` isolado continua navegável no escopo de aluno do portal e que `inicial_seed_test` deve priorizar matriz N:N completa de `PersonType` para validação manual.
 
 

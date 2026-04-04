@@ -1,6 +1,7 @@
 from django import forms
 
-from system.models import Person, PersonType
+from system.models import BloodType, Person, PersonType
+from system.utils import ensure_formatted_cpf
 
 
 class PersonTypeForm(forms.ModelForm):
@@ -34,8 +35,11 @@ class PersonForm(forms.ModelForm):
             "email",
             "phone",
             "birth_date",
+            "blood_type",
+            "allergies",
+            "previous_injuries",
+            "emergency_contact",
             "is_active",
-            "user",
             "person_types",
         )
         labels = {
@@ -44,19 +48,32 @@ class PersonForm(forms.ModelForm):
             "email": "E-mail",
             "phone": "Telefone",
             "birth_date": "Data de nascimento",
+            "blood_type": "Tipo sanguíneo",
+            "allergies": "Alergias",
+            "previous_injuries": "Lesões prévias",
+            "emergency_contact": "Contato de emergência",
             "is_active": "Cadastro ativo",
-            "user": "Usuário autenticável",
         }
         widgets = {
             "birth_date": forms.DateInput(attrs={"type": "date"}),
+            "blood_type": forms.Select(
+                choices=[("", "Selecione")] + list(BloodType.choices),
+            ),
+            "allergies": forms.Textarea(attrs={"rows": 3}),
+            "previous_injuries": forms.Textarea(attrs={"rows": 3}),
+            "emergency_contact": forms.TextInput(
+                attrs={"placeholder": "Nome e telefone do contato"}
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["user"].required = False
         self.fields["person_types"].queryset = PersonType.objects.order_by("display_name")
         if self.instance.pk:
             self.fields["person_types"].initial = self.instance.person_types.all()
+
+    def clean_cpf(self):
+        return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
 
     def save(self, commit=True):
         person = super().save(commit=commit)
@@ -64,9 +81,9 @@ class PersonForm(forms.ModelForm):
 
         if commit:
             person.person_types.set(person_types)
-        else:
-            self._pending_person_types = person_types
+            return person
 
+        self._pending_person_types = person_types
         return person
 
     def save_m2m(self):

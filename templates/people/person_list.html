@@ -5,6 +5,7 @@
 {% block content %}
 <section class="crud-header">
     <div>
+        <p class="panel-eyebrow">Cadastro central</p>
         <h1>Pessoas</h1>
         <p>Cadastre e mantenha os vínculos de aluno, responsável, professor e apoio administrativo.</p>
     </div>
@@ -18,7 +19,7 @@
                 <th>Nome</th>
                 <th>CPF</th>
                 <th>Vínculos</th>
-                <th>Usuário</th>
+                <th>Acesso</th>
                 <th>Status</th>
                 <th></th>
             </tr>
@@ -35,7 +36,7 @@
                             <span class="muted-text">Sem vínculo</span>
                         {% endfor %}
                     </td>
-                    <td>{{ person.user|default:"-" }}</td>
+                    <td>{{ person.has_portal_access|yesno:"Ativo,Sem acesso" }}</td>
                     <td>{{ person.is_active|yesno:"Ativo,Inativo" }}</td>
                     <td class="table-actions">
                         <a href="{% url 'system:person-update' person.pk %}">Editar</a>

@@ -4,8 +4,9 @@
 
 {% block content %}
 <section class="form-card">
+    <p class="form-eyebrow">Configuração de perfis</p>
     <h1>Excluir tipo de vínculo</h1>
-    <p>Confirme a exclusão de <strong>{{ object.display_name }}</strong>.</p>
+    <p class="danger-copy">Confirme a exclusão de <strong>{{ object.display_name }}</strong>.</p>
     <form method="post" class="button-row">
         {% csrf_token %}
         <a class="ghost-link" href="{% url 'system:person-type-list' %}">Cancelar</a>
