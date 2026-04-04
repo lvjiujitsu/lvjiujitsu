@@ -1,37 +1,38 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>LV JIU JITSU | Informações</title>
-  <link rel="stylesheet" href="../../static/system/css/login.css">
+  <title>LV JIU JITSU | Informa&ccedil;&otilde;es</title>
+  <link rel="stylesheet" href="{% static 'system/css/login.css' %}">
 </head>
 <body>
   <main class="screen-shell">
-    <section class="screen-card screen-card-inner" aria-label="Informações da academia">
+    <section class="screen-card screen-card-inner" aria-label="Informa&ccedil;&otilde;es da academia">
       <div class="screen-tools">
-        <a class="back-link" href="./login.html">Voltar</a>
+        <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
       </div>
 
       <div class="inner-header">
         <div class="logo-frame logo-frame-small">
           <img
             class="brand-logo brand-logo-small"
-            src="../../static/system/img/logo-lv-bjj-vetorizada.png"
+            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
             alt="Logo LV JIU JITSU"
           >
         </div>
 
         <div>
-          <h1>Informações</h1>
-          <p class="inner-copy">Os dados desta área serão carregados dinamicamente a partir do cadastro de turmas e horários.</p>
+          <h1>Informa&ccedil;&otilde;es</h1>
+          <p class="inner-copy">Os dados desta &aacute;rea ser&atilde;o carregados dinamicamente a partir do cadastro de turmas e hor&aacute;rios.</p>
         </div>
       </div>
 
       <div class="info-stack">
         <article class="info-card">
-          <h2>Conteúdo dinâmico</h2>
-          <p>Esta tela ficará vinculada ao cadastro de turmas e horários da academia.</p>
+          <h2>Conte&uacute;do din&acirc;mico</h2>
+          <p>Esta tela ficar&aacute; vinculada ao cadastro de turmas e hor&aacute;rios da academia.</p>
         </article>
       </div>
 
@@ -44,6 +45,6 @@
       </div>
     </section>
   </main>
-  <script src="../../static/system/js/theme-toggle.js"></script>
+  <script src="{% static 'system/js/theme-toggle.js' %}"></script>
 </body>
 </html>

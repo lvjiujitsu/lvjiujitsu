@@ -1,10 +1,11 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU</title>
-  <link rel="stylesheet" href="../../static/system/css/login.css">
+  <link rel="stylesheet" href="{% static 'system/css/login.css' %}">
 </head>
 <body>
   <main class="screen-shell">
@@ -13,25 +14,25 @@
         <div class="logo-frame logo-frame-home">
           <img
             class="brand-logo brand-logo-home"
-            src="../../static/system/img/logo-lv-bjj-vetorizada.png"
+            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
             alt="Logo LV JIU JITSU"
           >
         </div>
       </div>
 
-      <nav class="action-list" aria-label="Ações principais">
-        <a class="action-card" href="./login-form.html">
+      <nav class="action-list" aria-label="A&ccedil;&otilde;es principais">
+        <a class="action-card" href="{% url 'system:legacy-login-form' %}">
           <span class="action-title">Login</span>
           <span class="action-arrow" aria-hidden="true">&rsaquo;</span>
         </a>
 
-        <a class="action-card" href="./cadastro.html">
+        <a class="action-card" href="{% url 'system:legacy-register' %}">
           <span class="action-title">Cadastro</span>
           <span class="action-arrow" aria-hidden="true">&rsaquo;</span>
         </a>
 
-        <a class="action-card" href="./informacoes.html">
-          <span class="action-title">Informações</span>
+        <a class="action-card" href="{% url 'system:legacy-info' %}">
+          <span class="action-title">Informa&ccedil;&otilde;es</span>
           <span class="action-arrow" aria-hidden="true">&rsaquo;</span>
         </a>
       </nav>
@@ -55,6 +56,6 @@
       </div>
     </section>
   </main>
-  <script src="../../static/system/js/theme-toggle.js"></script>
+  <script src="{% static 'system/js/theme-toggle.js' %}"></script>
 </body>
 </html>

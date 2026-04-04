@@ -1,23 +1,24 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
-  <link rel="stylesheet" href="../../static/system/css/login.css">
+  <link rel="stylesheet" href="{% static 'system/css/login.css' %}">
 </head>
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-inner" aria-label="Tela de cadastro">
       <div class="screen-tools">
-        <a class="back-link" href="./login.html">Voltar</a>
+        <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
       </div>
 
       <div class="inner-header">
         <div class="logo-frame logo-frame-small">
           <img
             class="brand-logo brand-logo-small"
-            src="../../static/system/img/logo-lv-bjj-vetorizada.png"
+            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
             alt="Logo LV JIU JITSU"
           >
         </div>
@@ -272,7 +273,7 @@
       </div>
     </section>
   </main>
-  <script src="../../static/system/js/theme-toggle.js"></script>
-  <script src="../../static/system/js/cadastro-flow.js"></script>
+  <script src="{% static 'system/js/theme-toggle.js' %}"></script>
+  <script src="{% static 'system/js/registration-flow.js' %}"></script>
 </body>
 </html>

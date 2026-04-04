@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Painel administrativo | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="panel-card">
+        <h1>Painel administrativo</h1>
+        <p>Acompanhe o cadastro de pessoas e mantenha os vínculos atualizados.</p>
+    </div>
+    <div class="shortcut-grid">
+        <a class="shortcut-card" href="{% url 'system:person-list' %}">Pessoas</a>
+        <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Tipos de vínculo</a>
+    </div>
+</section>
+{% endblock %}

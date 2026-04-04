@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Painel master | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="panel-card">
+        <h1>Painel master</h1>
+        <p>Gerencie pessoas, tipos de vínculo e acesso administrativo do sistema.</p>
+    </div>
+    <div class="shortcut-grid">
+        <a class="shortcut-card" href="{% url 'system:person-list' %}">Gerenciar pessoas</a>
+        <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Gerenciar tipos</a>
+        <a class="shortcut-card" href="/django-admin/">Abrir Django Admin</a>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>LV JIU JITSU | Login</title>
+  <link rel="stylesheet" href="{% static 'system/css/login.css' %}">
+</head>
+<body>
+  <main class="screen-shell">
+    <section class="screen-card screen-card-inner" aria-label="Tela de login">
+      <div class="screen-tools">
+        <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
+      </div>
+
+      <div class="inner-header">
+        <div class="logo-frame logo-frame-small">
+          <img
+            class="brand-logo brand-logo-small"
+            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
+            alt="Logo LV JIU JITSU"
+          >
+        </div>
+
+        <div>
+          <p class="eyebrow">Acesso</p>
+          <h1>Login</h1>
+          <p class="inner-copy">Entre com seu CPF ou usu&aacute;rio e sua senha.</p>
+        </div>
+      </div>
+
+      <form class="form-stack" method="post" novalidate>
+        {% csrf_token %}
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        {% if form.non_field_errors %}
+          <div class="form-errors" role="alert">
+            {% for error in form.non_field_errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <label class="field" for="{{ form.username.id_for_label }}">
+          <span>{{ form.username.label }}</span>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <small class="field-error">{{ form.username.errors|join:", " }}</small>
+          {% endif %}
+        </label>
+
+        <label class="field" for="{{ form.password.id_for_label }}">
+          <span>{{ form.password.label }}</span>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <small class="field-error">{{ form.password.errors|join:", " }}</small>
+          {% endif %}
+        </label>
+
+        <button class="primary-button" type="submit">Entrar</button>
+      </form>
+
+      <div class="screen-tools-floating" aria-hidden="false">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+    </section>
+  </main>
+  <script src="{% static 'system/js/theme-toggle.js' %}"></script>
+</body>
+</html>

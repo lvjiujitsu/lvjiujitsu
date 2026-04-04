@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir tipo de vínculo | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="form-card">
+    <h1>Excluir tipo de vínculo</h1>
+    <p>Confirme a exclusão de <strong>{{ object.display_name }}</strong>.</p>
+    <form method="post" class="button-row">
+        {% csrf_token %}
+        <a class="ghost-link" href="{% url 'system:person-type-list' %}">Cancelar</a>
+        <button type="submit" class="danger-button">Excluir</button>
+    </form>
+</section>
+{% endblock %}

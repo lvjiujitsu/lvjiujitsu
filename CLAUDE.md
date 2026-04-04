@@ -60,6 +60,7 @@ Arquitetura alvo:
 10. **Qualidade visual faz parte do produto.** Interface, hierarquia de informação, estados vazios e responsividade não são acabamento opcional.
 11. **Ambiente isolado é regra estrutural.** Toda execução Python, instalação de dependência, teste e comando Django deve ocorrer apenas dentro da `.venv` do repositório.
 12. **Artefatos temporários ficam no workspace.** Testes, exports temporários e arquivos auxiliares não devem depender implicitamente de diretórios globais do sistema quando isso criar risco de permissão ou poluição operacional.
+13. **Validação visual automatizada é obrigatória em interface.** Mudanças em rotas, templates, CSS e jornadas visuais só podem ser dadas como prontas após conferência por navegador automatizado, preferencialmente via Playwright MCP no Codex CLI.
 
 ### 2.1 Regra operacional de ambiente
 - O projeto deve possuir e usar uma `.venv` local.
@@ -67,6 +68,20 @@ Arquitetura alvo:
 - `manage.py`, testes e scripts operacionais devem ser executados com o interpretador da `.venv`.
 - Se a `.venv` existir, comandos fora dela devem ser tratados como erro operacional.
 - Artefatos temporários de teste devem ser gerados preferencialmente dentro do workspace do projeto.
+- O script oficial de reset do ambiente local e `clear_migrations.py`.
+- Esse script deve remover banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da recriacao do ambiente.
+- No fluxo de reset local, o ambiente deve ser reconstruido nesta ordem:
+  - `.\.venv\Scripts\python.exe clear_migrations.py`
+  - `.\.venv\Scripts\python.exe manage.py makemigrations`
+  - `.\.venv\Scripts\python.exe manage.py test`
+  - `.\.venv\Scripts\python.exe manage.py migrate`
+  - `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
+- Nesse fluxo, criar ou preservar migrations intermediarias antes da limpeza e improdutivo e deve ser evitado.
+- A validacao do reset deve considerar o log real do terminal ate antes do `runserver`, incluindo limpeza, geracao de migrations, testes, migrate e criacao do superusuario.
+- Para validacao visual de interface no Codex CLI, a configuracao preferencial e Playwright MCP:
+  - `codex mcp add playwright npx "@playwright/mcp@latest"`
+- Quando o Playwright MCP nao estiver disponivel, o fallback aceitavel e navegador headless local com captura real das rotas afetadas.
+- Sem essa etapa, a interface nao deve ser considerada visualmente validada.
 
 ---
 

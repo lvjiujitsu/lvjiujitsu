@@ -86,6 +86,12 @@ Quando a tarefa envolver templates, paginas ou fluxos de interface:
 4. nao deixe ajuste visual, hierarquia de informacao ou estados vazios para depois;
 5. trate consistencia visual e UX como parte da definicao de pronto, nao como acabamento opcional;
 6. revise títulos, rótulos, placeholders, mensagens, CTAs e textos de apoio em pt-BR antes de encerrar a tarefa.
+7. antes de qualquer entrega que altere rota, template, CSS ou fluxo visual, valide **todas as rotas afetadas** em navegador automatizado.
+8. ferramenta preferencial: **Playwright MCP no Codex CLI**.
+   - configuracao oficial recomendada: `codex mcp add playwright npx "@playwright/mcp@latest"`
+9. fallback permitido quando o MCP Playwright nao estiver disponivel: navegador headless local com captura real da pagina.
+10. se a validacao visual automatizada nao puder ser executada de verdade, a resposta final deve declarar explicitamente que a interface **nao foi validada visualmente por navegador automatizado**.
+11. status HTTP 200 sozinho, teste unitario sozinho ou leitura de HTML sozinho **nao substituem** validacao visual automatizada da rota.
 
 ### Fase 3 - Validação estrita
 Antes de considerar a entrega pronta:
@@ -93,6 +99,13 @@ Antes de considerar a entrega pronta:
 2. verifique risco de N+1 em dashboards, listagens e relatorios;
 3. confirme que webhooks e callbacks sao idempotentes e auditaveis;
 4. cubra a mudanca com testes de unidade e, quando fizer sentido, testes de integracao.
+5. quando o usuario estiver no ciclo de reset do ambiente, use obrigatoriamente o fluxo operacional abaixo antes de concluir a tarefa:
+   - `.\.venv\Scripts\python.exe clear_migrations.py`
+   - `.\.venv\Scripts\python.exe manage.py makemigrations`
+   - `.\.venv\Scripts\python.exe manage.py test`
+   - `.\.venv\Scripts\python.exe manage.py migrate`
+   - `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
+6. nesse fluxo de reset, a validacao deve ser baseada no log real do terminal ate antes do `runserver`; nao basta assumir que a limpeza funcionou.
 
 ### Fase 4 - Evolucao da spec
 Ao terminar:
@@ -189,6 +202,7 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 - Nada sensivel ou operacionalmente variavel deve ficar hardcoded em view, template ou JavaScript de pagina.
 - A `.venv` do repositorio e obrigatoria; o agente nao pode usar nem poluir o Python global para instalar, executar testes ou rodar comandos Django.
 - Artefatos temporarios de teste devem ficar dentro do workspace do projeto, nunca depender de pasta temporaria global do sistema quando isso puder gerar ruido operacional ou problema de permissao.
+- O script oficial de limpeza do ambiente e `clear_migrations.py`; ele deve limpar banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da regeneracao do ambiente.
 
 ---
 
@@ -225,7 +239,7 @@ Para fluxos centrais de dominio, prefira abordagem test-first:
 ## 6. O que o agente deve evitar
 
 - criar dois usuarios para a mesma pessoa;
-- criar migracoes manuais em vez de usar `makemigrations`;
+- criar migracoes manuais ou manter migracoes antigas quando o usuario estiver no fluxo oficial de limpeza e recriacao com `clear_migrations.py` + `makemigrations`;
 - misturar regra financeira com renderizacao de template;
 - confiar apenas em bloqueio visual de frontend;
 - acoplar logica da Stripe diretamente em view gigante;

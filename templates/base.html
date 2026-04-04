@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}LV JIU JITSU{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'system/css/portal.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="{% url 'system:root' %}">
+                <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
+                <span>LV JIU JITSU</span>
+            </a>
+            {% if request.user.is_authenticated %}
+                <nav class="topbar-nav">
+                    <a href="{% url 'system:dashboard-redirect' %}">In&iacute;cio</a>
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                        <a href="{% url 'system:person-list' %}">Pessoas</a>
+                        <a href="{% url 'system:person-type-list' %}">Tipos</a>
+                        <a href="/django-admin/">Django Admin</a>
+                    {% endif %}
+                    <form method="post" action="{% url 'system:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ghost-button">Sair</button>
+                    </form>
+                </nav>
+            {% endif %}
+        </header>
+        <main class="content-shell">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

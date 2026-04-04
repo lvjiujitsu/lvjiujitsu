@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Pessoas | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <h1>Pessoas</h1>
+        <p>Cadastre e mantenha os vínculos de aluno, responsável, professor e apoio administrativo.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
+</section>
+
+<section class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Vínculos</th>
+                <th>Usuário</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for person in people %}
+                <tr>
+                    <td>{{ person.full_name }}</td>
+                    <td>{{ person.cpf }}</td>
+                    <td>
+                        {% for person_type in person.person_types.all %}
+                            <span class="tag">{{ person_type.display_name }}</span>
+                        {% empty %}
+                            <span class="muted-text">Sem vínculo</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ person.user|default:"-" }}</td>
+                    <td>{{ person.is_active|yesno:"Ativo,Inativo" }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'system:person-update' person.pk %}">Editar</a>
+                        <a href="{% url 'system:person-delete' person.pk %}">Excluir</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-row">Nenhuma pessoa cadastrada.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
