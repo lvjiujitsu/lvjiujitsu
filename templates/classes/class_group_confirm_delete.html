@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir turma | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="form-card">
+    <p class="form-eyebrow">Gestão de turmas</p>
+    <h1>Excluir turma</h1>
+    <p class="danger-copy">Confirme a exclusão de <strong>{{ object.display_name }}</strong>.</p>
+    <form method="post" class="button-row">
+        {% csrf_token %}
+        <a class="ghost-link" href="{% url 'system:class-group-list' %}">Cancelar</a>
+        <button type="submit" class="danger-button">Excluir</button>
+    </form>
+</section>
+{% endblock %}

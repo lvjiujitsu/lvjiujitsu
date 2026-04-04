@@ -10,6 +10,22 @@ from .auth_views import (
     PortalPasswordResetView,
     PortalRegisterView,
 )
+from .category_views import (
+    ClassCategoryCreateView,
+    ClassCategoryDeleteView,
+    ClassCategoryListView,
+    ClassCategoryUpdateView,
+)
+from .class_views import (
+    ClassGroupCreateView,
+    ClassGroupDeleteView,
+    ClassGroupListView,
+    ClassGroupUpdateView,
+    ClassScheduleCreateView,
+    ClassScheduleDeleteView,
+    ClassScheduleListView,
+    ClassScheduleUpdateView,
+)
 from .home_views import (
     AdminHomeView,
     AdministrativeHomeView,
@@ -32,6 +48,18 @@ from .person_views import (
 __all__ = [
     "AdminHomeView",
     "AdministrativeHomeView",
+    "ClassCategoryCreateView",
+    "ClassCategoryDeleteView",
+    "ClassCategoryListView",
+    "ClassCategoryUpdateView",
+    "ClassGroupCreateView",
+    "ClassGroupDeleteView",
+    "ClassGroupListView",
+    "ClassGroupUpdateView",
+    "ClassScheduleCreateView",
+    "ClassScheduleDeleteView",
+    "ClassScheduleListView",
+    "ClassScheduleUpdateView",
     "ChromeDevtoolsProbeView",
     "DashboardRedirectView",
     "InstructorHomeView",

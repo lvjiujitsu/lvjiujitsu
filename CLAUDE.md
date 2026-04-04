@@ -49,6 +49,7 @@ Arquitetura alvo:
 
 ## 2. Princípios arquiteturais
 
+0. **Fase MVP de teste.** O sistema está em estágio inicial. Dados locais são descartáveis. O fluxo padrão de trabalho assume destruição e recriação completa do banco a cada ciclo via `clear_migrations.py`. Não há preocupação com integridade de dados existentes.
 1. **App único `system` primeiro.** Não fragmentar o domínio físico cedo demais; modularizar internamente com disciplina.
 2. **Identidade centralizada.** Pessoa é uma só; perfis de negócio se acumulam.
 3. **Autenticação do produto é do domínio.** O portal da academia não deve depender do modelo `User` do Django para operar.
@@ -70,16 +71,22 @@ Arquitetura alvo:
 - `manage.py`, testes e scripts operacionais devem ser executados com o interpretador da `.venv`.
 - Se a `.venv` existir, comandos fora dela devem ser tratados como erro operacional.
 - Artefatos temporários de teste devem ser gerados preferencialmente dentro do workspace do projeto.
-- O script oficial de reset do ambiente local e `clear_migrations.py`.
-- Esse script deve remover banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da recriacao do ambiente.
-- No fluxo de reset local, o ambiente deve ser reconstruido nesta ordem:
-  - `.\.venv\Scripts\python.exe clear_migrations.py`
-  - `.\.venv\Scripts\python.exe manage.py makemigrations`
-  - `.\.venv\Scripts\python.exe manage.py test`
-  - `.\.venv\Scripts\python.exe manage.py migrate`
-  - `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
-- Nesse fluxo, criar ou preservar migrations intermediarias antes da limpeza e improdutivo e deve ser evitado.
-- A validacao do reset deve considerar o log real do terminal ate antes do `runserver`, incluindo limpeza, geracao de migrations, testes, migrate e criacao do superusuario.
+
+### 2.2 Fluxo obrigatório de reset — critério principal de trabalho
+- O projeto está em **fase MVP de teste**. Dados locais são descartáveis e não há preocupação com integridade de dados existentes.
+- O script oficial de reset do ambiente local é `clear_migrations.py`.
+- Esse script deve remover banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da recriação do ambiente.
+- **Toda correção ou implementação deve começar com `clear_migrations.py`**, destruindo o banco antes de qualquer alteração de código.
+- Após implementar as mudanças, o ambiente deve ser reconstruído nesta ordem:
+  1. `.\.venv\Scripts\python.exe clear_migrations.py` (já executado antes de codificar)
+  2. `.\.venv\Scripts\python.exe manage.py makemigrations`
+  3. `.\.venv\Scripts\python.exe manage.py test`
+  4. `.\.venv\Scripts\python.exe manage.py migrate`
+  5. `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
+- **Nunca** tentar migrar incrementalmente sobre banco existente. O banco sempre nasce do zero.
+- **Nunca** preservar migrations intermediárias, dados ou estado do banco entre ciclos de trabalho.
+- Se qualquer etapa falhar após a implementação, corrigir o código e recomeçar do `clear_migrations.py`.
+- A validação do reset deve considerar o log real do terminal até antes do `runserver`, incluindo limpeza, geração de migrations, testes, migrate e criação do superusuário.
 - Para validacao visual de interface no Codex CLI, a configuracao preferencial e Playwright MCP:
   - `codex mcp add playwright npx "@playwright/mcp@latest"`
 - Quando o Playwright MCP nao estiver disponivel, o fallback aceitavel e navegador headless local com captura real das rotas afetadas.

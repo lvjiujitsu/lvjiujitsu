@@ -1,9 +1,12 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
 from system.forms import PortalRegistrationForm
 from system.models import (
+    ClassGroup,
     Person,
     PersonRelationship,
     PersonRelationshipKind,
@@ -11,7 +14,7 @@ from system.models import (
     PortalAccount,
     PortalPasswordResetToken,
 )
-from system.services.seeding import seed_person_matrix
+from system.services.seeding import seed_class_catalog, seed_person_matrix
 
 
 User = get_user_model()
@@ -66,6 +69,7 @@ class PersonModelTestCase(TestCase):
                 "dependent_birthdate": "02/02/2015",
                 "dependent_password": "SenhaForte@456",
                 "dependent_password_confirm": "SenhaForte@456",
+                "dependent_kinship_type": "father",
             }
         )
 
@@ -107,6 +111,7 @@ class PersonModelTestCase(TestCase):
                 "student_birthdate": "03/03/2012",
                 "student_password": "SenhaForte@987",
                 "student_password_confirm": "SenhaForte@987",
+                "student_kinship_type": "mother",
             }
         )
 
@@ -151,6 +156,82 @@ class PersonModelTestCase(TestCase):
 
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
+
+    def test_registration_derives_class_category_from_selected_group(self):
+        seed_class_catalog()
+        class_group = ClassGroup.objects.get(code="adult-lauro")
+        class_schedule = class_group.schedules.order_by("display_order").first()
+
+        form = PortalRegistrationForm(
+            data={
+                "registration_profile": "holder",
+                "holder_name": "Aluno com Turma",
+                "holder_cpf": "22345678901",
+                "holder_birthdate": "01/01/1995",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "holder_class_group": class_group.pk,
+                "holder_class_schedule": class_schedule.pk,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        created = form.save()
+        holder = created["holder"]
+
+        self.assertEqual(holder.class_group, class_group)
+        self.assertEqual(holder.class_schedule, class_schedule)
+        self.assertEqual(holder.class_category, class_group.class_category)
+
+    def test_guardian_registration_accepts_multiple_dependents(self):
+        form = PortalRegistrationForm(
+            data={
+                "registration_profile": "guardian",
+                "guardian_name": "Responsável Multi",
+                "guardian_cpf": "32345678901",
+                "guardian_password": "123456",
+                "guardian_password_confirm": "123456",
+                "student_name": "Dependente Principal",
+                "student_cpf": "32345678902",
+                "student_birthdate": "01/02/2014",
+                "student_password": "123456",
+                "student_password_confirm": "123456",
+                "student_kinship_type": "mother",
+                "extra_dependents_payload": json.dumps(
+                    [
+                        {
+                            "full_name": "Dependente Extra 1",
+                            "cpf": "32345678903",
+                            "birth_date": "01/03/2015",
+                            "password": "123456",
+                            "password_confirm": "123456",
+                            "kinship_type": "mother",
+                        },
+                        {
+                            "full_name": "Dependente Extra 2",
+                            "cpf": "32345678904",
+                            "birth_date": "01/04/2016",
+                            "password": "123456",
+                            "password_confirm": "123456",
+                            "kinship_type": "other",
+                            "kinship_other_label": "Tutor legal",
+                        },
+                    ]
+                ),
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        created = form.save()
+
+        self.assertEqual(len(created["dependents"]), 3)
+        self.assertEqual(
+            PersonRelationship.objects.filter(
+                source_person=created["guardian"],
+                relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+            ).count(),
+            3,
+        )
 
     def test_seed_person_matrix_creates_all_non_empty_type_combinations(self):
         result = seed_person_matrix()

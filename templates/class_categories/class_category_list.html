@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Categorias | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Catálogo operacional</p>
+        <h1>Categorias</h1>
+        <p>Gerencie as categorias locais vinculadas às pessoas e às turmas.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:class-category-create' %}">Nova categoria</a>
+</section>
+
+<section class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Categoria</th>
+                <th>Público</th>
+                <th>Ordem</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for class_category in class_categories %}
+                <tr>
+                    <td>
+                        <strong>{{ class_category.display_name }}</strong><br>
+                        <span class="muted-text">{{ class_category.code }}</span>
+                    </td>
+                    <td>{{ class_category.get_audience_display }}</td>
+                    <td>{{ class_category.display_order }}</td>
+                    <td>{{ class_category.is_active|yesno:"Ativa,Inativa" }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'system:class-category-update' class_category.pk %}">Editar</a>
+                        <a href="{% url 'system:class-category-delete' class_category.pk %}">Excluir</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-row">Nenhuma categoria cadastrada.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

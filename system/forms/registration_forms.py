@@ -1,7 +1,15 @@
 from django import forms
 
-from system.models import BloodType, Person, PersonType
-from system.services.registration import create_portal_registration
+from system.models import BloodType, ClassCategory, ClassGroup, ClassSchedule, Person, PersonType
+from system.services.registration import (
+    create_portal_registration,
+    derive_class_category,
+    get_kinship_choices,
+    parse_extra_dependents_payload,
+    resolve_class_category,
+    resolve_class_group,
+    resolve_class_schedule,
+)
 from system.utils import ensure_formatted_cpf
 
 
@@ -18,6 +26,7 @@ class PortalRegistrationForm(forms.Form):
     )
     include_dependent = forms.BooleanField(required=False)
     other_type_codes = forms.MultipleChoiceField(required=False)
+    extra_dependents_payload = forms.CharField(required=False, widget=forms.HiddenInput)
 
     holder_name = forms.CharField(required=False, max_length=255)
     holder_cpf = forms.CharField(required=False, max_length=14)
@@ -26,6 +35,9 @@ class PortalRegistrationForm(forms.Form):
     holder_email = forms.EmailField(required=False)
     holder_password = forms.CharField(required=False, strip=False)
     holder_password_confirm = forms.CharField(required=False, strip=False)
+    holder_class_category = forms.ChoiceField(required=False)
+    holder_class_group = forms.ChoiceField(required=False)
+    holder_class_schedule = forms.ChoiceField(required=False)
     holder_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -37,8 +49,18 @@ class PortalRegistrationForm(forms.Form):
     dependent_name = forms.CharField(required=False, max_length=255)
     dependent_cpf = forms.CharField(required=False, max_length=14)
     dependent_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    dependent_email = forms.EmailField(required=False)
+    dependent_phone = forms.CharField(required=False, max_length=20)
     dependent_password = forms.CharField(required=False, strip=False)
     dependent_password_confirm = forms.CharField(required=False, strip=False)
+    dependent_kinship_type = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(get_kinship_choices()),
+    )
+    dependent_kinship_other_label = forms.CharField(required=False, max_length=80)
+    dependent_class_category = forms.ChoiceField(required=False)
+    dependent_class_group = forms.ChoiceField(required=False)
+    dependent_class_schedule = forms.ChoiceField(required=False)
     dependent_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -57,8 +79,18 @@ class PortalRegistrationForm(forms.Form):
     student_name = forms.CharField(required=False, max_length=255)
     student_cpf = forms.CharField(required=False, max_length=14)
     student_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    student_email = forms.EmailField(required=False)
+    student_phone = forms.CharField(required=False, max_length=20)
     student_password = forms.CharField(required=False, strip=False)
     student_password_confirm = forms.CharField(required=False, strip=False)
+    student_kinship_type = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(get_kinship_choices()),
+    )
+    student_kinship_other_label = forms.CharField(required=False, max_length=80)
+    student_class_category = forms.ChoiceField(required=False)
+    student_class_group = forms.ChoiceField(required=False)
+    student_class_schedule = forms.ChoiceField(required=False)
     student_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -74,20 +106,31 @@ class PortalRegistrationForm(forms.Form):
     other_email = forms.EmailField(required=False)
     other_password = forms.CharField(required=False, strip=False)
     other_password_confirm = forms.CharField(required=False, strip=False)
+    other_class_category = forms.ChoiceField(required=False)
+    other_class_group = forms.ChoiceField(required=False)
+    other_class_schedule = forms.ChoiceField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.catalog_is_available = (
+            ClassGroup.objects.filter(is_active=True).exists()
+            and ClassSchedule.objects.filter(is_active=True).exists()
+        )
         self._configure_other_type_choices()
+        self._configure_class_choices()
 
     def clean(self):
         cleaned_data = super().clean()
         profile = cleaned_data.get("registration_profile") or "holder"
         include_dependent = cleaned_data.get("include_dependent", False)
 
+        cleaned_data["extra_dependents"] = self._clean_extra_dependents_payload()
         self._clean_required_fields(profile, include_dependent)
-        self._clean_cpfs()
+        self._clean_cpfs(cleaned_data["extra_dependents"])
         self._clean_other_type_codes(profile)
-        self._clean_passwords(profile, include_dependent)
+        self._clean_passwords(profile, include_dependent, cleaned_data["extra_dependents"])
+        self._clean_class_links(profile, include_dependent, cleaned_data["extra_dependents"])
+        self._clean_kinship(profile, include_dependent, cleaned_data["extra_dependents"])
         return cleaned_data
 
     def save(self):
@@ -107,6 +150,7 @@ class PortalRegistrationForm(forms.Form):
             "dependent_birthdate",
             "dependent_password",
             "dependent_password_confirm",
+            "dependent_kinship_type",
         )
         guardian_fields = (
             "guardian_name",
@@ -120,6 +164,7 @@ class PortalRegistrationForm(forms.Form):
             "student_birthdate",
             "student_password",
             "student_password_confirm",
+            "student_kinship_type",
         )
         other_fields = (
             "other_name",
@@ -148,7 +193,7 @@ class PortalRegistrationForm(forms.Form):
             if value in (None, ""):
                 self.add_error(field_name, "Campo obrigatório.")
 
-    def _clean_cpfs(self):
+    def _clean_cpfs(self, extra_dependents):
         cpf_fields = (
             "holder_cpf",
             "dependent_cpf",
@@ -162,23 +207,35 @@ class PortalRegistrationForm(forms.Form):
             value = self.cleaned_data.get(field_name)
             if not value:
                 continue
+            self.cleaned_data[field_name] = self._validate_single_cpf(value, field_name, seen_cpfs)
 
-            try:
-                formatted_cpf = ensure_formatted_cpf(value)
-            except ValueError as error:
+        for index, dependent in enumerate(extra_dependents):
+            value = dependent.get("cpf")
+            if not value:
+                continue
+            formatted = self._validate_single_cpf(value, None, seen_cpfs)
+            dependent["cpf"] = formatted
+
+    def _validate_single_cpf(self, value, field_name, seen_cpfs):
+        try:
+            formatted_cpf = ensure_formatted_cpf(value)
+        except ValueError as error:
+            if field_name:
                 self.add_error(field_name, str(error))
-                continue
+            return value
 
-            if formatted_cpf in seen_cpfs:
+        if formatted_cpf in seen_cpfs:
+            if field_name:
                 self.add_error(field_name, "CPF duplicado no cadastro.")
-                continue
+            return value
 
-            if Person.objects.filter(cpf=formatted_cpf).exists():
+        if Person.objects.filter(cpf=formatted_cpf).exists():
+            if field_name:
                 self.add_error(field_name, "CPF já cadastrado no sistema.")
-                continue
+            return value
 
-            seen_cpfs[formatted_cpf] = field_name
-            self.cleaned_data[field_name] = formatted_cpf
+        seen_cpfs[formatted_cpf] = field_name or formatted_cpf
+        return formatted_cpf
 
     def _clean_other_type_codes(self, profile):
         selected_codes = self.cleaned_data.get("other_type_codes") or []
@@ -196,7 +253,7 @@ class PortalRegistrationForm(forms.Form):
         if available_codes and not selected_codes:
             self.add_error("other_type_codes", "Selecione ao menos um tipo de cadastro.")
 
-    def _clean_passwords(self, profile, include_dependent):
+    def _clean_passwords(self, profile, include_dependent, extra_dependents):
         password_groups = []
 
         if profile == "holder":
@@ -210,16 +267,177 @@ class PortalRegistrationForm(forms.Form):
             password_groups.append(("student_password", "student_password_confirm", "aluno"))
 
         for password_field, confirm_field, label in password_groups:
-            password = self.cleaned_data.get(password_field) or ""
-            confirm_password = self.cleaned_data.get(confirm_field) or ""
+            self._validate_password_pair(
+                self.cleaned_data.get(password_field),
+                self.cleaned_data.get(confirm_field),
+                confirm_field,
+                label,
+            )
 
-            if not password or not confirm_password:
+        for index, dependent in enumerate(extra_dependents, start=1):
+            self._validate_password_pair(
+                dependent.get("password"),
+                dependent.get("password_confirm"),
+                None,
+                f"dependente adicional {index}",
+            )
+
+    def _validate_password_pair(self, password, confirm_password, error_field, label):
+        password = password or ""
+        confirm_password = confirm_password or ""
+        if not password or not confirm_password:
+            return
+        if password != confirm_password:
+            message = f"As senhas de {label} não coincidem."
+            if error_field:
+                self.add_error(error_field, message)
+            else:
+                self.add_error(None, message)
+
+    def _clean_class_links(self, profile, include_dependent, extra_dependents):
+        student_link_prefixes = []
+        if profile == "holder":
+            student_link_prefixes.append("holder")
+            if include_dependent:
+                student_link_prefixes.append("dependent")
+        elif profile == "guardian":
+            student_link_prefixes.append("student")
+
+        for prefix in student_link_prefixes:
+            self._resolve_class_triplet(prefix, required=True)
+
+        if profile == "other":
+            self._resolve_class_triplet("other", required=False)
+
+        for index, dependent in enumerate(extra_dependents, start=1):
+            category = resolve_class_category(dependent.get("class_category"))
+            group = resolve_class_group(dependent.get("class_group"))
+            schedule = resolve_class_schedule(dependent.get("class_schedule"))
+
+            if not self.catalog_is_available and not any([category, group, schedule]):
+                dependent["class_category"] = None
+                dependent["class_group"] = None
+                dependent["class_schedule"] = None
                 continue
 
-            if password != confirm_password:
-                self.add_error(confirm_field, f"As senhas de {label} não coincidem.")
+            if not group or not schedule:
+                self.add_error(
+                    None,
+                    f"Dependente adicional {index} precisa informar turma e horário.",
+                )
                 continue
 
+            if schedule.class_group_id != group.id:
+                self.add_error(
+                    None,
+                    f"Dependente adicional {index} possui horário incompatível com a turma.",
+                )
+                continue
+
+            dependent["class_category"] = derive_class_category(
+                class_group=group,
+                explicit_category=category,
+            )
+            dependent["class_group"] = group
+            dependent["class_schedule"] = schedule
+
+    def _resolve_class_triplet(self, prefix, required):
+        category_field = f"{prefix}_class_category"
+        group_field = f"{prefix}_class_group"
+        schedule_field = f"{prefix}_class_schedule"
+
+        raw_category = self.cleaned_data.get(category_field)
+        raw_group = self.cleaned_data.get(group_field)
+        raw_schedule = self.cleaned_data.get(schedule_field)
+
+        if not any([raw_category, raw_group, raw_schedule]) and not required:
+            self.cleaned_data[category_field] = None
+            self.cleaned_data[group_field] = None
+            self.cleaned_data[schedule_field] = None
+            return
+
+        if required and not self.catalog_is_available:
+            self.cleaned_data[category_field] = None
+            self.cleaned_data[group_field] = None
+            self.cleaned_data[schedule_field] = None
+            return
+
+        category = resolve_class_category(raw_category)
+        group = resolve_class_group(raw_group)
+        schedule = resolve_class_schedule(raw_schedule)
+
+        if required and not group:
+            self.add_error(group_field, "Selecione a turma.")
+        if required and not schedule:
+            self.add_error(schedule_field, "Selecione o horário.")
+        if schedule and group and schedule.class_group_id != group.id:
+            self.add_error(schedule_field, "O horário não pertence à turma escolhida.")
+
+        self.cleaned_data[category_field] = derive_class_category(
+            class_group=group,
+            explicit_category=category,
+        )
+        self.cleaned_data[group_field] = group
+        self.cleaned_data[schedule_field] = schedule
+
+    def _clean_kinship(self, profile, include_dependent, extra_dependents):
+        prefixes = []
+        if profile == "holder" and include_dependent:
+            prefixes.append("dependent")
+        if profile == "guardian":
+            prefixes.append("student")
+
+        for prefix in prefixes:
+            kinship_type = self.cleaned_data.get(f"{prefix}_kinship_type") or ""
+            other_label = (self.cleaned_data.get(f"{prefix}_kinship_other_label") or "").strip()
+            if kinship_type == "other" and not other_label:
+                self.add_error(
+                    f"{prefix}_kinship_other_label",
+                    "Informe o grau de parentesco.",
+                )
+
+        for dependent in extra_dependents:
+            if dependent.get("kinship_type") == "other" and not (
+                dependent.get("kinship_other_label") or ""
+            ).strip():
+                self.add_error(None, "Dependente adicional com parentesco 'Outro' precisa detalhar o vínculo.")
+
+    def _clean_extra_dependents_payload(self):
+        payload = parse_extra_dependents_payload(
+            self.cleaned_data.get("extra_dependents_payload", "")
+        )
+        normalized = []
+        for dependent in payload:
+            normalized.append(
+                {
+                    "full_name": dependent.get("full_name", "").strip(),
+                    "cpf": dependent.get("cpf", "").strip(),
+                    "birth_date": self._parse_payload_date(dependent.get("birth_date", "")),
+                    "email": dependent.get("email", "").strip(),
+                    "phone": dependent.get("phone", "").strip(),
+                    "password": dependent.get("password", ""),
+                    "password_confirm": dependent.get("password_confirm", ""),
+                    "kinship_type": dependent.get("kinship_type", ""),
+                    "kinship_other_label": dependent.get("kinship_other_label", "").strip(),
+                    "class_category": dependent.get("class_category"),
+                    "class_group": dependent.get("class_group"),
+                    "class_schedule": dependent.get("class_schedule"),
+                    "blood_type": dependent.get("blood_type", ""),
+                    "allergies": dependent.get("allergies", "").strip(),
+                    "previous_injuries": dependent.get("injuries", "").strip(),
+                    "emergency_contact": dependent.get("emergency_contact", "").strip(),
+                }
+            )
+        return normalized
+
+    def _parse_payload_date(self, raw_value):
+        if not raw_value:
+            return None
+        field = forms.DateField(input_formats=["%d/%m/%Y"])
+        try:
+            return field.clean(raw_value)
+        except forms.ValidationError:
+            return None
 
     def _configure_other_type_choices(self):
         other_type_queryset = PersonType.objects.filter(is_active=True).exclude(
@@ -229,3 +447,59 @@ class PortalRegistrationForm(forms.Form):
             (person_type.code, person_type.display_name)
             for person_type in other_type_queryset
         ]
+
+    def _configure_class_choices(self):
+        category_choices = [("", "Selecione")] + [
+            (str(category.pk), category.display_name)
+            for category in ClassCategory.objects.filter(is_active=True).order_by(
+                "display_order",
+                "display_name",
+            )
+        ]
+        group_choices = [("", "Selecione")] + [
+            (
+                str(class_group.pk),
+                f"{class_group.display_name} · {class_group.get_audience_display()}",
+            )
+            for class_group in ClassGroup.objects.filter(is_active=True).select_related(
+                "class_category",
+                "main_teacher",
+            ).order_by("audience", "code")
+        ]
+        schedule_choices = [("", "Selecione")] + [
+            (
+                str(schedule.pk),
+                (
+                    f"{schedule.class_group.display_name} · "
+                    f"{schedule.get_weekday_display()} · "
+                    f"{schedule.start_time.strftime('%H:%M')}"
+                ),
+            )
+            for schedule in ClassSchedule.objects.filter(is_active=True).select_related(
+                "class_group"
+            ).order_by("class_group__code", "display_order", "start_time")
+        ]
+
+        for field_name in (
+            "holder_class_category",
+            "dependent_class_category",
+            "student_class_category",
+            "other_class_category",
+        ):
+            self.fields[field_name].choices = category_choices
+
+        for field_name in (
+            "holder_class_group",
+            "dependent_class_group",
+            "student_class_group",
+            "other_class_group",
+        ):
+            self.fields[field_name].choices = group_choices
+
+        for field_name in (
+            "holder_class_schedule",
+            "dependent_class_schedule",
+            "student_class_schedule",
+            "other_class_schedule",
+        ):
+            self.fields[field_name].choices = schedule_choices

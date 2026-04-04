@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>LV JIU JITSU | Informa&ccedil;&otilde;es</title>
+  <title>LV JIU JITSU | Informações</title>
   <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
 </head>
 <body>
   <main class="screen-shell">
-    <section class="screen-card screen-card-inner" aria-label="Informa&ccedil;&otilde;es da academia">
+    <section class="screen-card screen-card-inner" aria-label="Informações da academia">
       <div class="screen-tools">
         <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
       </div>
@@ -24,16 +24,42 @@
         </div>
 
         <div>
-          <h1>Informa&ccedil;&otilde;es</h1>
-          <p class="inner-copy">Os dados desta &aacute;rea ser&atilde;o carregados dinamicamente a partir do cadastro de turmas e hor&aacute;rios.</p>
+          <h1>Informações</h1>
+          <p class="inner-copy">Resumo público de turma, professor e horários ativos.</p>
         </div>
       </div>
 
       <div class="info-stack">
-        <article class="info-card">
-          <h2>Conte&uacute;do din&acirc;mico</h2>
-          <p>Esta tela ficar&aacute; vinculada ao cadastro de turmas e hor&aacute;rios da academia.</p>
-        </article>
+        {% for class_group in class_groups %}
+          <article class="info-card">
+            <h2>{{ class_group.public_label }}</h2>
+            <div class="info-summary-grid">
+              <div class="info-summary-block">
+                <span class="info-summary-label">Turma</span>
+                <p class="info-summary-value">{{ class_group.public_label }}</p>
+              </div>
+              <div class="info-summary-block">
+                <span class="info-summary-label">Professor</span>
+                <p class="info-summary-value">{{ class_group.main_teacher.full_name|default:"Não definido" }}</p>
+              </div>
+              <div class="info-summary-block">
+                <span class="info-summary-label">Horários</span>
+                <ul class="schedule-list schedule-list-compact">
+                  {% for schedule in class_group.schedules.all %}
+                    <li>{{ schedule.get_weekday_display }} · {{ schedule.start_time|time:"H:i" }}</li>
+                  {% empty %}
+                    <li>Nenhum horário ativo cadastrado.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </article>
+        {% empty %}
+          <article class="info-card">
+            <h2>Sem informações disponíveis</h2>
+            <p>Nenhuma turma pública está ativa no momento.</p>
+          </article>
+        {% endfor %}
       </div>
 
       <div class="screen-tools-floating" aria-hidden="false">

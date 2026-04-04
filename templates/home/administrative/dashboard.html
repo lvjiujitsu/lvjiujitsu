@@ -7,12 +7,15 @@
     <div class="panel-card">
         <p class="panel-eyebrow">Área administrativa</p>
         <h1>Painel administrativo</h1>
-        <p>Acompanhe o cadastro de pessoas e mantenha os vínculos atualizados.</p>
+        <p>Acompanhe pessoas, turmas e horários para auditoria operacional do portal.</p>
     </div>
 
     <div class="shortcut-grid">
         <a class="shortcut-card" href="{% url 'system:person-list' %}">Pessoas</a>
         <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Tipos de vínculo</a>
+        <a class="shortcut-card" href="{% url 'system:class-category-list' %}">Categorias</a>
+        <a class="shortcut-card" href="{% url 'system:class-group-list' %}">Turmas</a>
+        <a class="shortcut-card" href="{% url 'system:class-schedule-list' %}">Horários</a>
     </div>
 </section>
 {% endblock %}

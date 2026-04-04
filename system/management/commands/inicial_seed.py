@@ -7,4 +7,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         call_command("seed_person_type", stdout=self.stdout)
+        call_command("seed_class_catalog", stdout=self.stdout)
         self.stdout.write(self.style.SUCCESS("Seed inicial concluida com sucesso."))

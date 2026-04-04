@@ -2,7 +2,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from system.forms import PersonForm, PersonTypeForm
-from system.models import Person, PersonType
+from system.models import IbjjfAgeCategory, Person, PersonType
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -16,7 +16,35 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
     context_object_name = "people"
 
     def get_queryset(self):
-        return Person.objects.prefetch_related("person_types").select_related("access_account")
+        return (
+            Person.objects.prefetch_related("person_types")
+            .select_related(
+                "access_account",
+                "class_category",
+                "class_group",
+                "class_schedule",
+            )
+            .order_by("full_name")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        active_ibjjf_categories = list(
+            IbjjfAgeCategory.objects.filter(is_active=True).order_by(
+                "display_order",
+                "minimum_age",
+            )
+        )
+        for person in context["people"]:
+            person.resolved_ibjjf_category = next(
+                (
+                    category
+                    for category in active_ibjjf_categories
+                    if person.get_age() is not None and category.matches_age(person.get_age())
+                ),
+                None,
+            )
+        return context
 
 
 class PersonCreateView(AdministrativeRequiredMixin, CreateView):

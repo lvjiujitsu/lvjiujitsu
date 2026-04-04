@@ -11,6 +11,11 @@ from system.forms import (
     PortalRegistrationForm,
     PortalSetPasswordForm,
 )
+from system.services.class_catalog import (
+    get_ibjjf_age_category_payload,
+    get_public_class_group_queryset,
+    get_registration_catalog_payload,
+)
 from system.services import (
     authenticate_portal_identity,
     create_password_reset_token,
@@ -37,6 +42,8 @@ class PortalRegisterView(FormView):
         context["selected_other_type_codes"] = list(
             form["other_type_codes"].value() or []
         )
+        context["registration_catalog"] = get_registration_catalog_payload()
+        context["ibjjf_age_categories"] = get_ibjjf_age_category_payload()
         return context
 
     def form_valid(self, form):
@@ -66,6 +73,17 @@ class PortalRegisterView(FormView):
             "student_injuries",
             "student_emergency_contact",
         }
+        class_fields = {
+            "holder_class_group",
+            "holder_class_schedule",
+            "dependent_class_group",
+            "dependent_class_schedule",
+            "student_class_group",
+            "student_class_schedule",
+            "other_class_group",
+            "other_class_schedule",
+            "extra_dependents_payload",
+        }
         registration_fields = {
             "registration_profile",
             "include_dependent",
@@ -74,6 +92,8 @@ class PortalRegisterView(FormView):
 
         error_fields = set(form.errors.keys())
         if error_fields & medical_fields:
+            return 4
+        if error_fields & class_fields:
             return 3
         if error_fields - registration_fields:
             return 2
@@ -82,6 +102,11 @@ class PortalRegisterView(FormView):
 
 class PortalInfoView(TemplateView):
     template_name = "login/info.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["class_groups"] = get_public_class_group_queryset()
+        return context
 
 
 class PortalLoginView(FormView):

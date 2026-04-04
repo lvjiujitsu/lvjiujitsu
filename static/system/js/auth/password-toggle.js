@@ -1,22 +1,28 @@
-(function () {
-  const toggles = document.querySelectorAll("[data-password-toggle]");
-
-  toggles.forEach((toggle) => {
+﻿(function () {
+  function resolveTargetInput(toggle) {
     const targetId = toggle.getAttribute("data-target-id");
-    const input = targetId ? document.getElementById(targetId) : null;
+    if (targetId) {
+      return document.getElementById(targetId);
+    }
 
+    const wrapper = toggle.closest(".password-input-wrapper");
+    return wrapper ? wrapper.querySelector('input[type="password"], input[type="text"]') : null;
+  }
+
+  document.addEventListener("click", function (event) {
+    const toggle = event.target.closest("[data-password-toggle]");
+    if (!toggle) {
+      return;
+    }
+
+    const input = resolveTargetInput(toggle);
     if (!input) {
       return;
     }
 
-    toggle.addEventListener("click", () => {
-      const shouldShowPassword = input.type === "password";
-      input.type = shouldShowPassword ? "text" : "password";
-      toggle.textContent = shouldShowPassword ? "Ocultar" : "Mostrar";
-      toggle.setAttribute(
-        "aria-label",
-        shouldShowPassword ? "Ocultar senha" : "Mostrar senha",
-      );
-    });
+    const shouldShowPassword = input.type === "password";
+    input.type = shouldShowPassword ? "text" : "password";
+    toggle.textContent = shouldShowPassword ? "Ocultar" : "Mostrar";
+    toggle.setAttribute("aria-label", shouldShowPassword ? "Ocultar senha" : "Mostrar senha");
   });
 })();

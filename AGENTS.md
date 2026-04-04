@@ -24,7 +24,12 @@ Sua missao e entregar mudancas que:
 4. mantenham o projeto evolutivo, sem puxadinhos nem debito tecnico escondido.
 
 A prioridade de decisao e sempre:
-**seguranca do dominio > integridade dos dados > clareza da arquitetura > velocidade de implementacao**.
+**seguranca do dominio > clareza da arquitetura > velocidade de implementacao**.
+
+> **Fase atual: MVP de teste.**
+> O sistema esta em estagio inicial de desenvolvimento. Dados locais sao descartaveis.
+> O agente **nao deve se preocupar com integridade de dados existentes** no banco.
+> O fluxo padrao de trabalho assume destruicao e recriacao completa do banco a cada ciclo.
 
 ---
 
@@ -59,6 +64,16 @@ Antes de alterar qualquer arquivo:
    - agregado ou fluxo principal afetado;
    - invariantes que nao podem ser quebradas;
 - estratégia de validação ao final.
+
+### Fase 1.5 - Reset obrigatório do ambiente antes de implementar
+Antes de iniciar qualquer correção ou implementação de código:
+1. execute `.\.venv\Scripts\python.exe clear_migrations.py` para destruir o banco, migrations existentes, `__pycache__` e artefatos locais;
+2. somente após a limpeza completa, inicie as alterações de código;
+3. **nunca** tente preservar dados, migrations intermediárias ou estado do banco entre ciclos de trabalho;
+4. o banco será recriado do zero após a implementação, via `makemigrations` + `migrate` + seeds;
+5. se qualquer etapa falhar, recomece do `clear_migrations.py`.
+
+> Este fluxo é inegociável. O projeto está em fase MVP de teste e dados locais são sempre descartáveis.
 
 ### Fase 2 - Implementacao limpa e aderente ao dominio
 Ao implementar:
@@ -98,19 +113,21 @@ Quando a tarefa envolver templates, paginas ou fluxos de interface:
 10. se a validacao visual automatizada nao puder ser executada de verdade, a resposta final deve declarar explicitamente que a interface **nao foi validada visualmente por navegador automatizado**.
 11. status HTTP 200 sozinho, teste unitario sozinho ou leitura de HTML sozinho **nao substituem** validacao visual automatizada da rota.
 
-### Fase 3 - Validação estrita
+### Fase 3 - Validação estrita com reset completo
 Antes de considerar a entrega pronta:
 1. valide impacto de modelagem, migracao e permissoes;
 2. verifique risco de N+1 em dashboards, listagens e relatorios;
 3. confirme que webhooks e callbacks sao idempotentes e auditaveis;
 4. cubra a mudanca com testes de unidade e, quando fizer sentido, testes de integracao.
-5. quando o usuario estiver no ciclo de reset do ambiente, use obrigatoriamente o fluxo operacional abaixo antes de concluir a tarefa:
+5. **sempre** execute o fluxo completo de recriação do ambiente ao final de qualquer tarefa que altere models, views, forms, services ou migrations:
    - `.\.venv\Scripts\python.exe clear_migrations.py`
    - `.\.venv\Scripts\python.exe manage.py makemigrations`
    - `.\.venv\Scripts\python.exe manage.py test`
    - `.\.venv\Scripts\python.exe manage.py migrate`
    - `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
-6. nesse fluxo de reset, a validacao deve ser baseada no log real do terminal ate antes do `runserver`; nao basta assumir que a limpeza funcionou.
+6. nesse fluxo, a validacao deve ser baseada no log real do terminal ate antes do `runserver`; nao basta assumir que a limpeza funcionou.
+7. **nao existe cenario em que o agente deve tentar migrar incrementalmente sobre um banco existente.** O banco sempre nasce do zero.
+8. se os testes falharem apos o reset, corrija o codigo e recomece do `clear_migrations.py` novamente.
 
 ### Fase 4 - Evolucao da spec
 Ao terminar:
@@ -263,7 +280,8 @@ Para fluxos centrais de dominio, prefira abordagem test-first:
 - criar dois usuarios para a mesma pessoa;
 - acoplar o portal do produto ao `django.contrib.auth.User`;
 - usar autenticacao do Django Admin como atalho para rotas do produto;
-- criar migracoes manuais ou manter migracoes antigas quando o usuario estiver no fluxo oficial de limpeza e recriacao com `clear_migrations.py` + `makemigrations`;
+- criar migracoes manuais ou manter migracoes antigas — o fluxo padrao e sempre `clear_migrations.py` + `makemigrations` do zero;
+- tentar migrar incrementalmente sobre banco existente ou preservar dados entre ciclos de trabalho;
 - misturar regra financeira com renderizacao de template;
 - confiar apenas em bloqueio visual de frontend;
 - acoplar logica da Stripe diretamente em view gigante;

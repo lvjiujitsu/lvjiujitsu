@@ -8,4 +8,5 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         call_command("inicial_seed", stdout=self.stdout)
         call_command("seed_person_matrix", stdout=self.stdout)
+        call_command("seed_class_matrix", stdout=self.stdout)
         self.stdout.write(self.style.SUCCESS("Seed inicial de teste concluida com sucesso."))

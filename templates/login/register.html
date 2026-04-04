@@ -1,11 +1,11 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260404-3">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260404-5">
 </head>
 <body>
   <main class="screen-shell">
@@ -16,27 +16,17 @@
 
       <div class="inner-header">
         <div class="logo-frame logo-frame-small">
-          <img
-            class="brand-logo brand-logo-small"
-            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
-            alt="Logo LV JIU JITSU"
-          >
+          <img class="brand-logo brand-logo-small" src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
         </div>
-
         <div>
           <h1>Formulário de Cadastro</h1>
-          <p class="inner-copy">Preencha o cadastro em etapas curtas para concluir com mais clareza.</p>
+          <p class="inner-copy">Preencha o cadastro em etapas curtas e finalize com turma, horário e prontuário.</p>
         </div>
       </div>
 
-      <form
-        class="form-stack form-wizard"
-        id="client-registration-form"
-        method="post"
-        novalidate
-        data-initial-step="{{ registration_initial_step }}"
-      >
+      <form class="form-stack form-wizard" id="client-registration-form" method="post" novalidate data-initial-step="{{ registration_initial_step }}">
         {% csrf_token %}
+        <input type="hidden" id="extra-dependents-payload" name="extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default_if_none:'' }}">
 
         {% if messages %}
           <div class="status-stack" role="status">
@@ -56,34 +46,20 @@
           </div>
         {% endif %}
 
-        <div class="stepper" aria-label="Etapas do cadastro">
-          <button class="stepper-item" type="button" data-step-trigger="1">
-            <span class="stepper-badge">1</span>
-            <span class="stepper-copy">
-              <strong>Tipo</strong>
-              <small>Defina a estrutura</small>
-            </span>
-          </button>
-          <button class="stepper-item" type="button" data-step-trigger="2">
-            <span class="stepper-badge">2</span>
-            <span class="stepper-copy">
-              <strong>Dados</strong>
-              <small>Cadastre os acessos</small>
-            </span>
-          </button>
-          <button class="stepper-item" type="button" data-step-trigger="3">
-            <span class="stepper-badge">3</span>
-            <span class="stepper-copy">
-              <strong>Saúde</strong>
-              <small>Revise os dados médicos</small>
-            </span>
-          </button>
+        <div class="wizard-progress" aria-label="Etapas do cadastro">
+          <div class="wizard-progress-bar"><span class="wizard-progress-fill" data-progress-fill></span></div>
+          <div class="wizard-progress-steps">
+            <button class="wizard-progress-step" type="button" data-step-trigger="1"><span class="wizard-progress-index">1</span><small>Tipo</small></button>
+            <button class="wizard-progress-step" type="button" data-step-trigger="2"><span class="wizard-progress-index">2</span><small>Dados</small></button>
+            <button class="wizard-progress-step" type="button" data-step-trigger="3"><span class="wizard-progress-index">3</span><small>Turma</small></button>
+            <button class="wizard-progress-step" type="button" data-step-trigger="4"><span class="wizard-progress-index">4</span><small>Prontuário</small></button>
+          </div>
         </div>
 
         <section class="wizard-step" data-step-panel="1">
           <section class="form-section">
             <div class="section-heading">
-              <span class="section-step-label">Etapa 1 de 3</span>
+              <span class="section-step-label">Etapa 1 de 4</span>
               <h2 class="section-title">Tipo de cadastro</h2>
             </div>
 
@@ -93,13 +69,11 @@
                 <span class="choice-card-marker" aria-hidden="true"></span>
                 <span class="choice-card-label">Aluno titular</span>
               </label>
-
               <label class="choice-card choice-card-selectable{% if form.registration_profile.value == 'guardian' %} is-selected{% endif %}" data-choice-card>
                 <input type="radio" name="registration_profile" value="guardian"{% if form.registration_profile.value == 'guardian' %} checked{% endif %}>
                 <span class="choice-card-marker" aria-hidden="true"></span>
                 <span class="choice-card-label">Responsável</span>
               </label>
-
               <label class="choice-card choice-card-selectable{% if form.registration_profile.value == 'other' %} is-selected{% endif %}" data-choice-card>
                 <input type="radio" name="registration_profile" value="other"{% if form.registration_profile.value == 'other' %} checked{% endif %}>
                 <span class="choice-card-marker" aria-hidden="true"></span>
@@ -110,15 +84,14 @@
             <label class="switch-card{% if form.include_dependent.value %} is-active{% endif %}" id="dependent-toggle-card">
               <input type="checkbox" id="include-dependent" name="include_dependent"{% if form.include_dependent.value %} checked{% endif %}>
               <span class="switch-card-marker" aria-hidden="true"></span>
-              <span>Incluir dependente</span>
+              <span>Adicionar dependente</span>
             </label>
 
             <section class="sub-choice-panel{% if form.registration_profile.value != 'other' %} is-hidden{% endif %}" data-other-type-panel{% if form.registration_profile.value != 'other' %} hidden{% endif %}>
               <div class="section-heading">
-                <span class="section-step-label">Perfis adicionais</span>
-                <h3 class="section-title">Escolha os acessos deste cadastro</h3>
+                <span class="section-step-label">Perfis extras</span>
+                <h3 class="section-title">Escolha os tipos adicionais</h3>
               </div>
-
               {% if form.other_type_codes.field.choices %}
                 <div class="sub-choice-grid">
                   {% for choice_value, choice_label in form.other_type_codes.field.choices %}
@@ -130,372 +103,245 @@
                 </div>
               {% else %}
                 <div class="empty-state-box empty-state-box-compact">
-                  <strong>Nenhum perfil extra está disponível.</strong>
-                  <p>Você pode avançar mesmo assim e concluir o cadastro.</p>
+                  <strong>Nenhum tipo adicional está disponível.</strong>
+                  <p>Você pode avançar mesmo sem selecionar outro perfil.</p>
                 </div>
               {% endif %}
             </section>
           </section>
         </section>
-
         <section class="wizard-step is-hidden" data-step-panel="2" hidden>
-          <section class="form-section" data-flow-section="holder">
-            <div class="section-heading">
-              <span class="section-step-label">Etapa 2 de 3</span>
-              <h2 class="section-title">Dados do aluno titular</h2>
-            </div>
-
+          <section class="form-section" data-flow-section="holder-data">
+            <div class="section-heading"><span class="section-step-label">Etapa 2 de 4</span><h2 class="section-title">Dados do aluno titular</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="holder-name">
-                <span>Nome completo</span>
-                <input id="holder-name" name="holder_name" type="text" placeholder="Digite o nome completo" value="{{ form.holder_name.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="holder-cpf">
-                <span>CPF</span>
-                <input id="holder-cpf" name="holder_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.holder_cpf.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field field-full" for="holder-birthdate">
-                <span>Data de nascimento</span>
-                <input id="holder-birthdate" name="holder_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday" data-date-mask value="{{ form.holder_birthdate.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="holder-phone">
-                <span>Telefone</span>
-                <input id="holder-phone" name="holder_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.holder_phone.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="holder-email">
-                <span>E-mail</span>
-                <input id="holder-email" name="holder_email" type="email" placeholder="voce@exemplo.com" value="{{ form.holder_email.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="holder-password">
-                <span>Senha de acesso</span>
-                <div class="password-input-wrapper">
-                  <input id="holder-password" name="holder_password" type="password" placeholder="Defina a senha do titular" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="holder-password" aria-controls="holder-password" aria-label="Mostrar senha do titular">Mostrar</button>
-                </div>
-              </label>
-
-              <label class="field" for="holder-password-confirm">
-                <span>Confirmar senha</span>
-                <div class="password-input-wrapper">
-                  <input id="holder-password-confirm" name="holder_password_confirm" type="password" placeholder="Repita a senha do titular" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="holder-password-confirm" aria-controls="holder-password-confirm" aria-label="Mostrar confirmação da senha do titular">Mostrar</button>
-                </div>
-              </label>
+              <label class="field field-full" for="holder-name"><span>Nome completo</span><input id="holder-name" name="holder_name" type="text" placeholder="Digite o nome completo" value="{{ form.holder_name.value|default_if_none:'' }}"></label>
+              <label class="field" for="holder-cpf"><span>CPF</span><input id="holder-cpf" name="holder_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.holder_cpf.value|default_if_none:'' }}"></label>
+              <label class="field" for="holder-birthdate"><span>Data de nascimento</span><input id="holder-birthdate" name="holder_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask data-birth-input="holder" value="{{ form.holder_birthdate.value|default_if_none:'' }}"></label>
+              <label class="field" for="holder-phone"><span>Telefone</span><input id="holder-phone" name="holder_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.holder_phone.value|default_if_none:'' }}"></label>
+              <label class="field" for="holder-email"><span>E-mail</span><input id="holder-email" name="holder_email" type="email" placeholder="voce@exemplo.com" value="{{ form.holder_email.value|default_if_none:'' }}"></label>
+              <label class="field" for="holder-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="holder-password" name="holder_password" type="password" placeholder="Defina a senha do titular" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="holder-password" aria-controls="holder-password">Mostrar</button></div></label>
+              <label class="field" for="holder-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="holder-password-confirm" name="holder_password_confirm" type="password" placeholder="Repita a senha do titular" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="holder-password-confirm" aria-controls="holder-password-confirm">Mostrar</button></div></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="holder-dependent" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Dependente</span>
-              <h2 class="section-title">Dados do dependente</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="holder-primary-dependent-data" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Dados do dependente</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="dependent-name">
-                <span>Nome completo do dependente</span>
-                <input id="dependent-name" name="dependent_name" type="text" placeholder="Digite o nome do dependente" value="{{ form.dependent_name.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="dependent-cpf">
-                <span>CPF do dependente</span>
-                <input id="dependent-cpf" name="dependent_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.dependent_cpf.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field field-full" for="dependent-birthdate">
-                <span>Data de nascimento do dependente</span>
-                <input id="dependent-birthdate" name="dependent_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask value="{{ form.dependent_birthdate.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="dependent-password">
-                <span>Senha de acesso do dependente</span>
-                <div class="password-input-wrapper">
-                  <input id="dependent-password" name="dependent_password" type="password" placeholder="Defina a senha do dependente" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password" aria-controls="dependent-password" aria-label="Mostrar senha do dependente">Mostrar</button>
-                </div>
-              </label>
-
-              <label class="field" for="dependent-password-confirm">
-                <span>Confirmar senha do dependente</span>
-                <div class="password-input-wrapper">
-                  <input id="dependent-password-confirm" name="dependent_password_confirm" type="password" placeholder="Repita a senha do dependente" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password-confirm" aria-controls="dependent-password-confirm" aria-label="Mostrar confirmação da senha do dependente">Mostrar</button>
-                </div>
-              </label>
+              <label class="field field-full" for="dependent-name"><span>Nome completo</span><input id="dependent-name" name="dependent_name" type="text" placeholder="Digite o nome do dependente" value="{{ form.dependent_name.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-cpf"><span>CPF</span><input id="dependent-cpf" name="dependent_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.dependent_cpf.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-birthdate"><span>Data de nascimento</span><input id="dependent-birthdate" name="dependent_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask data-birth-input="dependent" value="{{ form.dependent_birthdate.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-phone"><span>Telefone</span><input id="dependent-phone" name="dependent_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.dependent_phone.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-email"><span>E-mail</span><input id="dependent-email" name="dependent_email" type="email" placeholder="dependente@exemplo.com" value="{{ form.dependent_email.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-kinship-type"><span>Grau de parentesco</span><select id="dependent-kinship-type" name="dependent_kinship_type" data-kinship-select data-other-target="dependent-kinship-other">{% for choice_value, choice_label in form.dependent_kinship_type.field.choices %}<option value="{{ choice_value }}"{% if form.dependent_kinship_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field{% if form.dependent_kinship_type.value != 'other' %} is-hidden{% endif %}" id="dependent-kinship-other" {% if form.dependent_kinship_type.value != 'other' %}hidden{% endif %}><span>Informe o parentesco</span><input name="dependent_kinship_other_label" type="text" placeholder="Descreva o parentesco" value="{{ form.dependent_kinship_other_label.value|default_if_none:'' }}"></label>
+              <label class="field" for="dependent-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="dependent-password" name="dependent_password" type="password" placeholder="Defina a senha do dependente" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password" aria-controls="dependent-password">Mostrar</button></div></label>
+              <label class="field" for="dependent-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="dependent-password-confirm" name="dependent_password_confirm" type="password" placeholder="Repita a senha do dependente" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password-confirm" aria-controls="dependent-password-confirm">Mostrar</button></div></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="guardian" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Etapa 2 de 3</span>
-              <h2 class="section-title">Dados do responsável</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="guardian-data" hidden>
+            <div class="section-heading"><span class="section-step-label">Etapa 2 de 4</span><h2 class="section-title">Dados do responsável</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="guardian-name">
-                <span>Nome completo do responsável</span>
-                <input id="guardian-name" name="guardian_name" type="text" placeholder="Digite o nome do responsável" value="{{ form.guardian_name.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="guardian-cpf">
-                <span>CPF do responsável</span>
-                <input id="guardian-cpf" name="guardian_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.guardian_cpf.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="guardian-phone">
-                <span>Telefone do responsável</span>
-                <input id="guardian-phone" name="guardian_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.guardian_phone.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="guardian-email">
-                <span>E-mail do responsável</span>
-                <input id="guardian-email" name="guardian_email" type="email" placeholder="voce@exemplo.com" value="{{ form.guardian_email.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="guardian-password">
-                <span>Senha de acesso do responsável</span>
-                <div class="password-input-wrapper">
-                  <input id="guardian-password" name="guardian_password" type="password" placeholder="Defina a senha do responsável" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password" aria-controls="guardian-password" aria-label="Mostrar senha do responsável">Mostrar</button>
-                </div>
-              </label>
-
-              <label class="field" for="guardian-password-confirm">
-                <span>Confirmar senha do responsável</span>
-                <div class="password-input-wrapper">
-                  <input id="guardian-password-confirm" name="guardian_password_confirm" type="password" placeholder="Repita a senha do responsável" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password-confirm" aria-controls="guardian-password-confirm" aria-label="Mostrar confirmação da senha do responsável">Mostrar</button>
-                </div>
-              </label>
+              <label class="field field-full" for="guardian-name"><span>Nome completo</span><input id="guardian-name" name="guardian_name" type="text" placeholder="Digite o nome do responsável" value="{{ form.guardian_name.value|default_if_none:'' }}"></label>
+              <label class="field" for="guardian-cpf"><span>CPF</span><input id="guardian-cpf" name="guardian_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.guardian_cpf.value|default_if_none:'' }}"></label>
+              <label class="field" for="guardian-phone"><span>Telefone</span><input id="guardian-phone" name="guardian_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.guardian_phone.value|default_if_none:'' }}"></label>
+              <label class="field" for="guardian-email"><span>E-mail</span><input id="guardian-email" name="guardian_email" type="email" placeholder="responsavel@exemplo.com" value="{{ form.guardian_email.value|default_if_none:'' }}"></label>
+              <label class="field" for="guardian-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="guardian-password" name="guardian_password" type="password" placeholder="Defina a senha do responsável" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password" aria-controls="guardian-password">Mostrar</button></div></label>
+              <label class="field" for="guardian-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="guardian-password-confirm" name="guardian_password_confirm" type="password" placeholder="Repita a senha do responsável" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password-confirm" aria-controls="guardian-password-confirm">Mostrar</button></div></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="guardian" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Aluno vinculado</span>
-              <h2 class="section-title">Dados do aluno</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="guardian-primary-dependent-data" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Dados do aluno</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="student-name">
-                <span>Nome completo do aluno</span>
-                <input id="student-name" name="student_name" type="text" placeholder="Digite o nome do aluno" value="{{ form.student_name.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="student-cpf">
-                <span>CPF do aluno</span>
-                <input id="student-cpf" name="student_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.student_cpf.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field field-full" for="student-birthdate">
-                <span>Data de nascimento do aluno</span>
-                <input id="student-birthdate" name="student_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask value="{{ form.student_birthdate.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="student-password">
-                <span>Senha de acesso do aluno</span>
-                <div class="password-input-wrapper">
-                  <input id="student-password" name="student_password" type="password" placeholder="Defina a senha do aluno" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password" aria-controls="student-password" aria-label="Mostrar senha do aluno">Mostrar</button>
-                </div>
-              </label>
-
-              <label class="field" for="student-password-confirm">
-                <span>Confirmar senha do aluno</span>
-                <div class="password-input-wrapper">
-                  <input id="student-password-confirm" name="student_password_confirm" type="password" placeholder="Repita a senha do aluno" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password-confirm" aria-controls="student-password-confirm" aria-label="Mostrar confirmação da senha do aluno">Mostrar</button>
-                </div>
-              </label>
+              <label class="field field-full" for="student-name"><span>Nome completo</span><input id="student-name" name="student_name" type="text" placeholder="Digite o nome do aluno" value="{{ form.student_name.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-cpf"><span>CPF</span><input id="student-cpf" name="student_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.student_cpf.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-birthdate"><span>Data de nascimento</span><input id="student-birthdate" name="student_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask data-birth-input="student" value="{{ form.student_birthdate.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-phone"><span>Telefone</span><input id="student-phone" name="student_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.student_phone.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-email"><span>E-mail</span><input id="student-email" name="student_email" type="email" placeholder="aluno@exemplo.com" value="{{ form.student_email.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-kinship-type"><span>Grau de parentesco</span><select id="student-kinship-type" name="student_kinship_type" data-kinship-select data-other-target="student-kinship-other">{% for choice_value, choice_label in form.student_kinship_type.field.choices %}<option value="{{ choice_value }}"{% if form.student_kinship_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field{% if form.student_kinship_type.value != 'other' %} is-hidden{% endif %}" id="student-kinship-other" {% if form.student_kinship_type.value != 'other' %}hidden{% endif %}><span>Informe o parentesco</span><input name="student_kinship_other_label" type="text" placeholder="Descreva o parentesco" value="{{ form.student_kinship_other_label.value|default_if_none:'' }}"></label>
+              <label class="field" for="student-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="student-password" name="student_password" type="password" placeholder="Defina a senha do aluno" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password" aria-controls="student-password">Mostrar</button></div></label>
+              <label class="field" for="student-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="student-password-confirm" name="student_password_confirm" type="password" placeholder="Repita a senha do aluno" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password-confirm" aria-controls="student-password-confirm">Mostrar</button></div></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="other" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Etapa 2 de 3</span>
-              <h2 class="section-title">Dados do cadastro</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="other-data" hidden>
+            <div class="section-heading"><span class="section-step-label">Etapa 2 de 4</span><h2 class="section-title">Dados do cadastro</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="other-name">
-                <span>Nome completo</span>
-                <input id="other-name" name="other_name" type="text" placeholder="Digite o nome completo" value="{{ form.other_name.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="other-cpf">
-                <span>CPF</span>
-                <input id="other-cpf" name="other_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.other_cpf.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field field-full" for="other-birthdate">
-                <span>Data de nascimento</span>
-                <input id="other-birthdate" name="other_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday" data-date-mask value="{{ form.other_birthdate.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="other-phone">
-                <span>Telefone</span>
-                <input id="other-phone" name="other_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.other_phone.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="other-email">
-                <span>E-mail</span>
-                <input id="other-email" name="other_email" type="email" placeholder="voce@exemplo.com" value="{{ form.other_email.value|default_if_none:'' }}">
-              </label>
-
-              <label class="field" for="other-password">
-                <span>Senha de acesso</span>
-                <div class="password-input-wrapper">
-                  <input id="other-password" name="other_password" type="password" placeholder="Defina a senha" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="other-password" aria-controls="other-password" aria-label="Mostrar senha deste cadastro">Mostrar</button>
-                </div>
-              </label>
-
-              <label class="field" for="other-password-confirm">
-                <span>Confirmar senha</span>
-                <div class="password-input-wrapper">
-                  <input id="other-password-confirm" name="other_password_confirm" type="password" placeholder="Repita a senha" autocomplete="new-password">
-                  <button class="password-visibility-button" type="button" data-password-toggle data-target-id="other-password-confirm" aria-controls="other-password-confirm" aria-label="Mostrar confirmação da senha deste cadastro">Mostrar</button>
-                </div>
-              </label>
+              <label class="field field-full" for="other-name"><span>Nome completo</span><input id="other-name" name="other_name" type="text" placeholder="Digite o nome completo" value="{{ form.other_name.value|default_if_none:'' }}"></label>
+              <label class="field" for="other-cpf"><span>CPF</span><input id="other-cpf" name="other_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.other_cpf.value|default_if_none:'' }}"></label>
+              <label class="field" for="other-birthdate"><span>Data de nascimento</span><input id="other-birthdate" name="other_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask data-birth-input="other" value="{{ form.other_birthdate.value|default_if_none:'' }}"></label>
+              <label class="field" for="other-phone"><span>Telefone</span><input id="other-phone" name="other_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.other_phone.value|default_if_none:'' }}"></label>
+              <label class="field" for="other-email"><span>E-mail</span><input id="other-email" name="other_email" type="email" placeholder="voce@exemplo.com" value="{{ form.other_email.value|default_if_none:'' }}"></label>
+              <label class="field" for="other-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="other-password" name="other_password" type="password" placeholder="Defina a senha" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="other-password" aria-controls="other-password">Mostrar</button></div></label>
+              <label class="field" for="other-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="other-password-confirm" name="other_password_confirm" type="password" placeholder="Repita a senha" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="other-password-confirm" aria-controls="other-password-confirm">Mostrar</button></div></label>
             </div>
+          </section>
+
+          <section class="form-section is-hidden" data-flow-section="extra-dependents-data" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Adicione outros dependentes</h2></div>
+            <div class="dynamic-card-stack" data-extra-dependent-identity-list></div>
+            <div class="button-row"><button type="button" class="secondary-button secondary-button-wide" data-add-dependent>Adicionar dependente</button></div>
           </section>
         </section>
-
         <section class="wizard-step is-hidden" data-step-panel="3" hidden>
-          <section class="form-section" data-flow-section="medical-holder">
-            <div class="section-heading">
-              <span class="section-step-label">Etapa 3 de 3</span>
-              <h2 class="section-title">Prontuário principal</h2>
-            </div>
+          {% if registration_catalog %}
+            <section class="form-section" data-flow-section="holder-assignment">
+              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">Turma e horário do aluno titular</h2></div>
+              <input type="hidden" name="holder_class_category" value="{{ form.holder_class_category.value|default_if_none:'' }}" data-category-input="holder">
+              <div class="field-grid">
+                <label class="field" for="holder-class-group"><span>Turma</span><select id="holder-class-group" name="holder_class_group" data-group-select data-entity-key="holder"><option value="">Selecione</option>{% for choice_value, choice_label in form.holder_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="holder-class-schedule"><span>Horário</span><select id="holder-class-schedule" name="holder_class_schedule" data-schedule-select data-entity-key="holder" data-selected-value="{{ form.holder_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.holder_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+              </div>
+              <div class="assignment-summary" data-assignment-summary="holder"></div>
+              <div class="suggestion-box" data-suggestion-box="holder"></div>
+            </section>
 
+            <section class="form-section is-hidden" data-flow-section="holder-primary-dependent-assignment" hidden>
+              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e horário do dependente</h2></div>
+              <input type="hidden" name="dependent_class_category" value="{{ form.dependent_class_category.value|default_if_none:'' }}" data-category-input="dependent">
+              <div class="field-grid">
+                <label class="field" for="dependent-class-group"><span>Turma</span><select id="dependent-class-group" name="dependent_class_group" data-group-select data-entity-key="dependent"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="dependent-class-schedule"><span>Horário</span><select id="dependent-class-schedule" name="dependent_class_schedule" data-schedule-select data-entity-key="dependent" data-selected-value="{{ form.dependent_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+              </div>
+              <div class="assignment-summary" data-assignment-summary="dependent"></div>
+              <div class="suggestion-box" data-suggestion-box="dependent"></div>
+            </section>
+
+            <section class="form-section is-hidden" data-flow-section="guardian-primary-dependent-assignment" hidden>
+              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e horário do aluno</h2></div>
+              <input type="hidden" name="student_class_category" value="{{ form.student_class_category.value|default_if_none:'' }}" data-category-input="student">
+              <div class="field-grid">
+                <label class="field" for="student-class-group"><span>Turma</span><select id="student-class-group" name="student_class_group" data-group-select data-entity-key="student"><option value="">Selecione</option>{% for choice_value, choice_label in form.student_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.student_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="student-class-schedule"><span>Horário</span><select id="student-class-schedule" name="student_class_schedule" data-schedule-select data-entity-key="student" data-selected-value="{{ form.student_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.student_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.student_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+              </div>
+              <div class="assignment-summary" data-assignment-summary="student"></div>
+              <div class="suggestion-box" data-suggestion-box="student"></div>
+            </section>
+
+            <section class="form-section is-hidden" data-flow-section="other-assignment" hidden>
+              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">Vínculo com turma e horário</h2></div>
+              <input type="hidden" name="other_class_category" value="{{ form.other_class_category.value|default_if_none:'' }}" data-category-input="other">
+              <div class="field-grid">
+                <label class="field" for="other-class-group"><span>Turma</span><select id="other-class-group" name="other_class_group" data-group-select data-entity-key="other"><option value="">Selecione</option>{% for choice_value, choice_label in form.other_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.other_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="other-class-schedule"><span>Horário</span><select id="other-class-schedule" name="other_class_schedule" data-schedule-select data-entity-key="other" data-selected-value="{{ form.other_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.other_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.other_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+              </div>
+              <div class="assignment-summary" data-assignment-summary="other"></div>
+              <div class="suggestion-box" data-suggestion-box="other"></div>
+            </section>
+
+            <section class="form-section is-hidden" data-flow-section="extra-dependents-assignment" hidden>
+              <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Turma e horário dos dependentes</h2></div>
+              <div class="dynamic-card-stack" data-extra-dependent-assignment-list></div>
+            </section>
+          {% else %}
+            <section class="form-section">
+              <div class="empty-state-box">
+                <strong>Nenhuma turma ou horário está disponível no momento.</strong>
+                <p>Você pode avançar e concluir o cadastro. A definição de turma ficará pendente para ajuste interno.</p>
+              </div>
+            </section>
+          {% endif %}
+        </section>
+
+        <section class="wizard-step is-hidden" data-step-panel="4" hidden>
+          <section class="form-section" data-flow-section="holder-medical">
+            <div class="section-heading"><span class="section-step-label">Etapa 4 de 4</span><h2 class="section-title">Prontuário do aluno titular</h2></div>
             <div class="field-grid">
-              <label class="field" for="holder-blood-type">
-                <span>Tipo sanguíneo</span>
-                <select id="holder-blood-type" name="holder_blood_type">
-                  {% for choice_value, choice_label in form.holder_blood_type.field.choices %}
-                    <option value="{{ choice_value }}"{% if form.holder_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-
-              <label class="field field-full" for="holder-allergies">
-                <span>Alergias</span>
-                <textarea id="holder-allergies" name="holder_allergies" rows="3" placeholder="Informe alergias importantes">{{ form.holder_allergies.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="holder-injuries">
-                <span>Lesões prévias</span>
-                <textarea id="holder-injuries" name="holder_injuries" rows="3" placeholder="Informe lesões ou restrições relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="holder-emergency-contact">
-                <span>Contato de emergência</span>
-                <input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato de emergência" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}">
-              </label>
+              <label class="field" for="holder-blood-type"><span>Tipo sanguíneo</span><select id="holder-blood-type" name="holder_blood_type">{% for choice_value, choice_label in form.holder_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.holder_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field field-full" for="holder-allergies"><span>Alergias</span><textarea id="holder-allergies" name="holder_allergies" placeholder="Informe alergias importantes">{{ form.holder_allergies.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="holder-injuries"><span>Lesões prévias</span><textarea id="holder-injuries" name="holder_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="holder-emergency-contact"><span>Contato de emergência</span><input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="medical-dependent" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Dependente</span>
-              <h2 class="section-title">Prontuário do dependente</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="holder-primary-dependent-medical" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontuário do dependente</h2></div>
             <div class="field-grid">
-              <label class="field" for="dependent-blood-type">
-                <span>Tipo sanguíneo</span>
-                <select id="dependent-blood-type" name="dependent_blood_type">
-                  {% for choice_value, choice_label in form.dependent_blood_type.field.choices %}
-                    <option value="{{ choice_value }}"{% if form.dependent_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-
-              <label class="field field-full" for="dependent-allergies">
-                <span>Alergias</span>
-                <textarea id="dependent-allergies" name="dependent_allergies" rows="3" placeholder="Informe alergias importantes">{{ form.dependent_allergies.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="dependent-injuries">
-                <span>Lesões prévias</span>
-                <textarea id="dependent-injuries" name="dependent_injuries" rows="3" placeholder="Informe lesões ou restrições relevantes">{{ form.dependent_injuries.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="dependent-emergency-contact">
-                <span>Contato de emergência</span>
-                <input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato de emergência" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}">
-              </label>
+              <label class="field" for="dependent-blood-type"><span>Tipo sanguíneo</span><select id="dependent-blood-type" name="dependent_blood_type">{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.dependent_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field field-full" for="dependent-allergies"><span>Alergias</span><textarea id="dependent-allergies" name="dependent_allergies" placeholder="Informe alergias importantes">{{ form.dependent_allergies.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="dependent-injuries"><span>Lesões prévias</span><textarea id="dependent-injuries" name="dependent_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.dependent_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="dependent-emergency-contact"><span>Contato de emergência</span><input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="medical-guardian" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Aluno vinculado</span>
-              <h2 class="section-title">Prontuário do aluno</h2>
-            </div>
-
+          <section class="form-section is-hidden" data-flow-section="guardian-primary-dependent-medical" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontuário do aluno</h2></div>
             <div class="field-grid">
-              <label class="field" for="student-blood-type">
-                <span>Tipo sanguíneo</span>
-                <select id="student-blood-type" name="student_blood_type">
-                  {% for choice_value, choice_label in form.student_blood_type.field.choices %}
-                    <option value="{{ choice_value }}"{% if form.student_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-
-              <label class="field field-full" for="student-allergies">
-                <span>Alergias</span>
-                <textarea id="student-allergies" name="student_allergies" rows="3" placeholder="Informe alergias importantes">{{ form.student_allergies.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="student-injuries">
-                <span>Lesões prévias</span>
-                <textarea id="student-injuries" name="student_injuries" rows="3" placeholder="Informe lesões ou restrições relevantes">{{ form.student_injuries.value|default_if_none:'' }}</textarea>
-              </label>
-
-              <label class="field field-full" for="student-emergency-contact">
-                <span>Contato de emergência</span>
-                <input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato de emergência" value="{{ form.student_emergency_contact.value|default_if_none:'' }}">
-              </label>
+              <label class="field" for="student-blood-type"><span>Tipo sanguíneo</span><select id="student-blood-type" name="student_blood_type">{% for choice_value, choice_label in form.student_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.student_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field field-full" for="student-allergies"><span>Alergias</span><textarea id="student-allergies" name="student_allergies" placeholder="Informe alergias importantes">{{ form.student_allergies.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="student-injuries"><span>Lesões prévias</span><textarea id="student-injuries" name="student_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.student_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="student-emergency-contact"><span>Contato de emergência</span><input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
-          <section class="form-section is-hidden" data-flow-section="medical-other" hidden>
-            <div class="section-heading">
-              <span class="section-step-label">Etapa 3 de 3</span>
-              <h2 class="section-title">Prontuário</h2>
-            </div>
-
-            <div class="empty-state-box empty-state-box-compact">
-              <strong>Sem prontuário inicial obrigatório.</strong>
-              <p>Cadastros administrativos, docentes e perfis similares podem ser concluídos nesta etapa.</p>
-            </div>
+          <section class="form-section is-hidden" data-flow-section="extra-dependents-medical" hidden>
+            <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Prontuário dos dependentes</h2></div>
+            <div class="dynamic-card-stack" data-extra-dependent-medical-list></div>
           </section>
         </section>
 
         <div class="wizard-actions">
-          <button class="secondary-button is-hidden" type="button" data-step-back hidden>Voltar etapa</button>
+          <button class="secondary-button is-hidden" type="button" data-step-back>Voltar etapa</button>
           <button class="primary-button" type="button" data-step-next>Avançar</button>
-          <button class="primary-button primary-button-submit is-hidden" type="submit" data-step-submit hidden>Concluir cadastro</button>
+          <button class="primary-button is-hidden" type="submit" data-step-submit>Concluir cadastro</button>
         </div>
       </form>
-
       <div class="screen-tools-floating" aria-hidden="false">
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-          <span class="theme-toggle-track">
-            <span class="theme-toggle-knob"></span>
-          </span>
+          <span class="theme-toggle-track"><span class="theme-toggle-knob"></span></span>
         </button>
       </div>
     </section>
   </main>
+
+  {{ registration_catalog|json_script:"registration-catalog" }}
+  {{ ibjjf_age_categories|json_script:"ibjjf-age-categories" }}
+
+  <template id="extra-dependent-identity-template">
+    <article class="dynamic-card" data-dependent-card>
+      <div class="dynamic-card-header"><strong>Dependente adicional <span data-dependent-number></span></strong><button type="button" class="text-link text-button" data-remove-dependent>Remover</button></div>
+      <div class="field-grid">
+        <label class="field field-full"><span>Nome completo</span><input type="text" data-dependent-field="full_name" placeholder="Digite o nome do dependente"></label>
+        <label class="field"><span>CPF</span><input type="text" inputmode="numeric" data-dependent-field="cpf" placeholder="000.000.000-00"></label>
+        <label class="field"><span>Data de nascimento</span><input type="text" inputmode="numeric" maxlength="10" data-date-mask data-dependent-field="birth_date" data-dependent-birth placeholder="dd/mm/aaaa"></label>
+        <label class="field"><span>Telefone</span><input type="text" inputmode="tel" data-dependent-field="phone" placeholder="(00) 00000-0000"></label>
+        <label class="field"><span>E-mail</span><input type="email" data-dependent-field="email" placeholder="dependente@exemplo.com"></label>
+        <label class="field"><span>Grau de parentesco</span><select data-dependent-field="kinship_type" data-kinship-select-dynamic><option value="">Selecione</option><option value="father">Pai</option><option value="mother">Mãe</option><option value="uncle">Tio</option><option value="stepchild">Enteado</option><option value="other">Outro</option></select></label>
+        <label class="field is-hidden" data-dependent-kinship-other hidden><span>Informe o parentesco</span><input type="text" data-dependent-field="kinship_other_label" placeholder="Descreva o parentesco"></label>
+        <label class="field"><span>Senha de acesso</span><div class="password-input-wrapper"><input type="password" data-dependent-field="password" placeholder="Defina a senha"><button class="password-visibility-button" type="button" data-password-toggle>Mostrar</button></div></label>
+        <label class="field"><span>Confirmar senha</span><div class="password-input-wrapper"><input type="password" data-dependent-field="password_confirm" placeholder="Repita a senha"><button class="password-visibility-button" type="button" data-password-toggle>Mostrar</button></div></label>
+      </div>
+    </article>
+  </template>
+
+  <template id="extra-dependent-assignment-template">
+    <article class="dynamic-card" data-dependent-card>
+      <div class="dynamic-card-header"><strong>Dependente adicional <span data-dependent-number></span></strong></div>
+      <div class="field-grid">
+        <label class="field"><span>Turma</span><select data-dependent-field="class_group" data-group-select-dynamic><option value="">Selecione</option></select></label>
+        <label class="field"><span>Horário</span><select data-dependent-field="class_schedule" data-schedule-select-dynamic><option value="">Selecione</option></select></label>
+      </div>
+      <div class="assignment-summary" data-dependent-summary></div>
+      <div class="suggestion-box" data-dependent-suggestions></div>
+    </article>
+  </template>
+
+  <template id="extra-dependent-medical-template">
+    <article class="dynamic-card" data-dependent-card>
+      <div class="dynamic-card-header"><strong>Dependente adicional <span data-dependent-number></span></strong></div>
+      <div class="field-grid">
+        <label class="field"><span>Tipo sanguíneo</span><select data-dependent-field="blood_type"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}{% if choice_value %}<option value="{{ choice_value }}">{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+        <label class="field field-full"><span>Alergias</span><textarea data-dependent-field="allergies" placeholder="Informe alergias importantes"></textarea></label>
+        <label class="field field-full"><span>Lesões prévias</span><textarea data-dependent-field="injuries" placeholder="Informe lesões ou restrições relevantes"></textarea></label>
+        <label class="field field-full"><span>Contato de emergência</span><input type="text" data-dependent-field="emergency_contact" placeholder="Nome e telefone do contato"></label>
+      </div>
+    </article>
+  </template>
+
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard.js' %}?v=20260404-3"></script>
-  <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
+  <script src="{% static 'system/js/auth/password-toggle.js' %}?v=20260404-5"></script>
+  <script src="{% static 'system/js/auth/registration-wizard.js' %}?v=20260404-5"></script>
 </body>
 </html>
