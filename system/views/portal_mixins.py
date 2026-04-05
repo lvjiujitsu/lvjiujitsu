@@ -19,6 +19,10 @@ class PortalRoleRequiredMixin(PortalLoginRequiredMixin):
     allowed_codes: tuple[str, ...] = ()
 
     def dispatch(self, request, *args, **kwargs):
+        if not getattr(request, "portal_account", None) and not getattr(
+            request, "portal_is_technical_admin", False
+        ):
+            return super().dispatch(request, *args, **kwargs)
         if not self.has_allowed_role():
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
@@ -27,6 +31,6 @@ class PortalRoleRequiredMixin(PortalLoginRequiredMixin):
         if getattr(self.request, "portal_is_technical_admin", False):
             return True
         person = getattr(self.request, "portal_person", None)
-        if person is None:
+        if person is None or not person.person_type_id:
             return False
-        return person.person_types.filter(code__in=self.allowed_codes).exists()
+        return person.person_type.code in self.allowed_codes

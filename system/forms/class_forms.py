@@ -22,23 +22,19 @@ class ClassGroupForm(forms.ModelForm):
         fields = (
             "code",
             "display_name",
-            "audience",
             "class_category",
             "main_teacher",
             "description",
             "default_capacity",
-            "is_public",
             "is_active",
         )
         labels = {
             "code": "Código técnico",
             "display_name": "Nome base da turma",
-            "audience": "Público",
             "class_category": "Categoria da turma",
             "main_teacher": "Professor principal",
             "description": "Descrição",
             "default_capacity": "Capacidade padrão",
-            "is_public": "Exibir em Informações",
             "is_active": "Turma ativa",
         }
         widgets = {
@@ -54,13 +50,13 @@ class ClassGroupForm(forms.ModelForm):
             is_active=True
         ).order_by("display_order", "display_name")
         self.fields["main_teacher"].queryset = Person.objects.filter(
-            person_types__code="instructor",
+            person_type__code="instructor",
             is_active=True,
-        ).distinct().order_by("full_name")
+        ).order_by("full_name")
         self.fields["assistant_staff"].queryset = Person.objects.filter(
-            person_types__code__in=("administrative-assistant", "instructor"),
+            person_type__code__in=("administrative-assistant", "instructor"),
             is_active=True,
-        ).distinct().order_by("full_name")
+        ).order_by("full_name")
         if not self.instance.pk and not self.initial.get("display_name"):
             self.initial["display_name"] = "Jiu Jitsu"
         if self.instance.pk:
@@ -143,4 +139,8 @@ class ClassScheduleForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["class_group"].queryset = ClassGroup.objects.filter(
             is_active=True
-        ).select_related("class_category", "main_teacher").order_by("audience", "code")
+        ).select_related("class_category", "main_teacher").order_by(
+            "class_category__display_order",
+            "class_category__display_name",
+            "code",
+        )

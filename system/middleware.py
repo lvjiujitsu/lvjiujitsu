@@ -33,13 +33,16 @@ class PortalSessionMiddleware:
         if access_account is not None:
             request.portal_account = access_account
             request.portal_person = access_account.person
-            request.portal_type_codes = set(
-                access_account.person.person_types.values_list("code", flat=True)
+            person_type_code = (
+                access_account.person.person_type.code
+                if access_account.person.person_type_id
+                else ""
             )
+            request.portal_type_codes = {person_type_code} if person_type_code else set()
             request.portal_is_administrative = "administrative-assistant" in request.portal_type_codes
             request.portal_is_instructor = "instructor" in request.portal_type_codes
             request.portal_is_student = bool(
-                {"student", "guardian"} & request.portal_type_codes
+                {"student", "guardian", "dependent"} & request.portal_type_codes
             )
 
         return self.get_response(request)

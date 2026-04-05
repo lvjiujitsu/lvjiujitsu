@@ -17,7 +17,7 @@ class ClassCategoryForm(forms.ModelForm):
         labels = {
             "code": "Código técnico",
             "display_name": "Nome exibido",
-            "audience": "Público",
+            "audience": "Base da categoria",
             "description": "Descrição",
             "display_order": "Ordem de exibição",
             "is_active": "Categoria ativa",

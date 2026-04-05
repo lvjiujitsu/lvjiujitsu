@@ -1,13 +1,6 @@
 from django import forms
 
-from system.models import (
-    BloodType,
-    ClassCategory,
-    ClassGroup,
-    ClassSchedule,
-    Person,
-    PersonType,
-)
+from system.models import BloodType, ClassCategory, ClassGroup, ClassSchedule, Person, PersonType
 from system.utils import ensure_formatted_cpf
 
 
@@ -27,11 +20,10 @@ class PersonTypeForm(forms.ModelForm):
 
 
 class PersonForm(forms.ModelForm):
-    person_types = forms.ModelMultipleChoiceField(
-        queryset=PersonType.objects.all(),
-        required=False,
-        label="Tipos de vínculo",
-        widget=forms.CheckboxSelectMultiple,
+    person_type = forms.ModelChoiceField(
+        queryset=PersonType.objects.none(),
+        required=True,
+        label="Tipo de vínculo",
     )
     class_category = forms.ModelChoiceField(
         queryset=ClassCategory.objects.none(),
@@ -61,11 +53,11 @@ class PersonForm(forms.ModelForm):
             "allergies",
             "previous_injuries",
             "emergency_contact",
+            "person_type",
             "class_category",
             "class_group",
             "class_schedule",
             "is_active",
-            "person_types",
         )
         labels = {
             "full_name": "Nome completo",
@@ -93,13 +85,19 @@ class PersonForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["person_types"].queryset = PersonType.objects.order_by("display_name")
+        self.fields["person_type"].queryset = PersonType.objects.filter(
+            is_active=True
+        ).order_by("display_name")
         self.fields["class_category"].queryset = ClassCategory.objects.filter(
             is_active=True
         ).order_by("display_order", "display_name")
         self.fields["class_group"].queryset = ClassGroup.objects.filter(
             is_active=True
-        ).select_related("class_category", "main_teacher").order_by("audience", "code")
+        ).select_related("class_category", "main_teacher").order_by(
+            "class_category__display_order",
+            "class_category__display_name",
+            "code",
+        )
         self.fields["class_schedule"].queryset = ClassSchedule.objects.filter(
             is_active=True
         ).select_related("class_group").order_by(
@@ -107,8 +105,6 @@ class PersonForm(forms.ModelForm):
             "display_order",
             "start_time",
         )
-        if self.instance.pk:
-            self.fields["person_types"].initial = self.instance.person_types.all()
 
     def clean_cpf(self):
         return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
@@ -124,10 +120,7 @@ class PersonForm(forms.ModelForm):
             class_category = class_group.class_category
 
         if class_category and class_group and class_group.class_category_id != class_category.id:
-            self.add_error(
-                "class_group",
-                "A turma precisa pertencer à categoria selecionada.",
-            )
+            self.add_error("class_group", "A turma precisa pertencer à categoria selecionada.")
 
         if class_schedule and class_group and class_schedule.class_group_id != class_group.id:
             self.add_error(
@@ -136,19 +129,3 @@ class PersonForm(forms.ModelForm):
             )
 
         return cleaned_data
-
-    def save(self, commit=True):
-        person = super().save(commit=commit)
-        person_types = self.cleaned_data.get("person_types")
-
-        if commit:
-            person.person_types.set(person_types)
-            return person
-
-        self._pending_person_types = person_types
-        return person
-
-    def save_m2m(self):
-        super().save_m2m()
-        if hasattr(self, "_pending_person_types"):
-            self.instance.person_types.set(self._pending_person_types)

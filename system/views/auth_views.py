@@ -13,7 +13,7 @@ from system.forms import (
 )
 from system.services.class_catalog import (
     get_ibjjf_age_category_payload,
-    get_public_class_group_queryset,
+    get_info_class_group_queryset,
     get_registration_catalog_payload,
 )
 from system.services import (
@@ -39,19 +39,23 @@ class PortalRegisterView(FormView):
         context = super().get_context_data(**kwargs)
         form = context["form"]
         context["registration_initial_step"] = self._get_initial_step(form)
-        context["selected_other_type_codes"] = list(
-            form["other_type_codes"].value() or []
-        )
+        context["selected_other_type_code"] = form["other_type_code"].value() or ""
         context["registration_catalog"] = get_registration_catalog_payload()
         context["ibjjf_age_categories"] = get_ibjjf_age_category_payload()
         return context
 
     def form_valid(self, form):
         created_people = form.save()
-        created_labels = ", ".join(person.full_name for person in created_people.values())
+        created_labels = []
+        for value in created_people.values():
+            if isinstance(value, list):
+                created_labels.extend(person.full_name for person in value)
+            else:
+                created_labels.append(value.full_name)
+        unique_labels = list(dict.fromkeys(created_labels))
         messages.success(
             self.request,
-            f"Cadastro registrado com sucesso para: {created_labels}.",
+            f"Cadastro registrado com sucesso para: {', '.join(unique_labels)}.",
         )
         return super().form_valid(form)
 
@@ -87,7 +91,7 @@ class PortalRegisterView(FormView):
         registration_fields = {
             "registration_profile",
             "include_dependent",
-            "other_type_codes",
+            "other_type_code",
         }
 
         error_fields = set(form.errors.keys())
@@ -105,7 +109,7 @@ class PortalInfoView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["class_groups"] = get_public_class_group_queryset()
+        context["class_groups"] = get_info_class_group_queryset()
         return context
 
 

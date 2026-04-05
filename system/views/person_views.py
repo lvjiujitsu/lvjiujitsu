@@ -17,9 +17,9 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
 
     def get_queryset(self):
         return (
-            Person.objects.prefetch_related("person_types")
-            .select_related(
+            Person.objects.select_related(
                 "access_account",
+                "person_type",
                 "class_category",
                 "class_group",
                 "class_schedule",

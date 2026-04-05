@@ -14,27 +14,35 @@ def get_admin_class_group_queryset():
             assistant_count=Count("instructor_assignments", distinct=True),
             enrollment_count=Count("enrollments", distinct=True),
         )
-        .order_by("audience", "code")
+        .order_by(
+            "class_category__display_order",
+            "class_category__display_name",
+            "code",
+        )
     )
 
 
 def get_admin_class_schedule_queryset():
-    return ClassSchedule.objects.select_related("class_group").order_by(
-        "class_group__audience",
+    return ClassSchedule.objects.select_related(
+        "class_group",
+        "class_group__class_category",
+    ).order_by(
+        "class_group__class_category__display_order",
+        "class_group__class_category__display_name",
         "class_group__code",
         "display_order",
         "start_time",
     )
 
 
-def get_public_class_group_queryset():
+def get_info_class_group_queryset():
     active_schedule_queryset = ClassSchedule.objects.filter(is_active=True).order_by(
         "display_order",
         "start_time",
     )
 
     return (
-        ClassGroup.objects.filter(is_public=True, is_active=True)
+        ClassGroup.objects.filter(is_active=True)
         .select_related("class_category", "main_teacher")
         .prefetch_related(
             Prefetch("schedules", queryset=active_schedule_queryset),
@@ -50,7 +58,7 @@ def get_public_class_group_queryset():
 
 def get_registration_catalog_payload():
     class_groups = (
-        ClassGroup.objects.filter(is_active=True, is_public=True)
+        ClassGroup.objects.filter(is_active=True)
         .select_related("class_category", "main_teacher")
         .prefetch_related(
             Prefetch(
@@ -73,8 +81,6 @@ def get_registration_catalog_payload():
                 "display_name": class_group.display_name,
                 "category_id": class_group.class_category_id,
                 "category_name": getattr(class_group.class_category, "display_name", ""),
-                "audience": class_group.audience,
-                "audience_display": class_group.get_audience_display(),
                 "teacher_name": getattr(class_group.main_teacher, "full_name", ""),
                 "schedules": [
                     {

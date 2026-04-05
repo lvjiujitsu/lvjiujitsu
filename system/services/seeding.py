@@ -1,15 +1,11 @@
 from datetime import date, time
-from itertools import combinations
 
 from django.db import transaction
 
 from system.models import (
     CategoryAudience,
-    ClassAudience,
     ClassCategory,
-    ClassEnrollment,
     ClassGroup,
-    ClassInstructorAssignment,
     ClassSchedule,
     IbjjfAgeCategory,
     Person,
@@ -24,15 +20,6 @@ from system.utils import ensure_formatted_cpf
 
 
 DEFAULT_TEST_PORTAL_PASSWORD = "123456"
-TEST_MATRIX_TYPE_CODE_ORDER = (
-    "student",
-    "guardian",
-    "dependent",
-    "instructor",
-    "administrative-assistant",
-)
-DEPENDENT_SUPPORT_GUARDIAN_CPF = "90999999999"
-MATRIX_PERSON_CPF_PREFIX = "910."
 OFFICIAL_INSTRUCTOR_PASSWORD = DEFAULT_TEST_PORTAL_PASSWORD
 
 CLASS_CATEGORY_DEFINITIONS = (
@@ -95,7 +82,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "adult-layon",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.ADULT,
         "class_category": "adult",
         "description": "Turma adulta com o professor Layon Quirino.",
         "teacher": {
@@ -115,7 +101,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "adult-vinicius",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.ADULT,
         "class_category": "adult",
         "description": "Turma adulta com o professor Vinicius Antonio.",
         "teacher": {
@@ -133,7 +118,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "adult-lauro",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.ADULT,
         "class_category": "adult",
         "description": "Turma adulta com o professor Lauro Viana.",
         "teacher": {
@@ -153,7 +137,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "kids-andre",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.KIDS,
         "class_category": "kids",
         "description": "Turma kids com o professor Andre Oliveira.",
         "teacher": {
@@ -170,7 +153,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "juvenile-layon",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.JUVENILE,
         "class_category": "juvenile",
         "description": "Turma juvenil com o professor Layon Quirino.",
         "teacher": {
@@ -188,7 +170,6 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
     {
         "code": "women-vannessa",
         "display_name": "Jiu Jitsu",
-        "audience": ClassAudience.WOMEN,
         "class_category": "women",
         "description": "Turma feminina com a professora Vannessa Ferro.",
         "teacher": {
@@ -223,9 +204,7 @@ def seed_class_categories():
 @transaction.atomic
 def seed_ibjjf_age_categories():
     categories = {}
-    for code, display_name, audience, minimum_age, maximum_age, display_order in (
-        IBJJF_AGE_CATEGORY_DEFINITIONS
-    ):
+    for code, display_name, audience, minimum_age, maximum_age, display_order in IBJJF_AGE_CATEGORY_DEFINITIONS:
         category, _ = IbjjfAgeCategory.objects.update_or_create(
             code=code,
             defaults={
@@ -243,7 +222,7 @@ def seed_ibjjf_age_categories():
 
 @transaction.atomic
 def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
-    seed_person_types()
+    person_types = seed_person_types()
     class_categories = seed_class_categories()
     seed_ibjjf_age_categories()
     class_groups = {}
@@ -259,9 +238,9 @@ def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
             blood_type="O+",
             allergies="",
             previous_injuries="",
-            emergency_contact="Operacao LV - (62) 98888-0000",
+            emergency_contact="Operação LV - (62) 98888-0000",
             password=password,
-            type_codes=("instructor",),
+            person_type=person_types["instructor"],
             class_category=class_categories[definition["class_category"]],
         )
         class_group = _upsert_class_group(
@@ -290,6 +269,7 @@ def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
 
 @transaction.atomic
 def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+    person_types = seed_person_types()
     categories = seed_class_categories()
     catalog = seed_class_catalog(password=password)
     student = _upsert_person_with_account(
@@ -301,19 +281,23 @@ def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         blood_type="O+",
         allergies="",
         previous_injuries="",
-        emergency_contact="Mae - (62) 99999-1001",
+        emergency_contact="Mãe - (62) 99999-1001",
         password=password,
-        type_codes=("student",),
+        person_type=person_types["student"],
         class_category=categories["adult"],
         class_group=catalog["class_groups"]["adult-lauro"],
+        class_schedule=catalog["class_groups"]["adult-lauro"].schedules.order_by("display_order").first(),
     )
     return {"student": student}
 
 
 @transaction.atomic
 def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+    person_types = seed_person_types()
     categories = seed_class_categories()
     catalog = seed_class_catalog(password=password)
+    holder_group = catalog["class_groups"]["adult-vinicius"]
+    dependent_group = catalog["class_groups"]["kids-andre"]
     holder = _upsert_person_with_account(
         full_name="Aluno Titular com Dependente",
         cpf="90000000002",
@@ -322,12 +306,13 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         birth_date=date(1992, 4, 5),
         blood_type="A+",
         allergies="",
-        previous_injuries="Lesao antiga no joelho esquerdo.",
-        emergency_contact="Irmao - (62) 99999-1002",
+        previous_injuries="Lesão antiga no joelho esquerdo.",
+        emergency_contact="Irmão - (62) 99999-1002",
         password=password,
-        type_codes=("student", "guardian"),
+        person_type=person_types["student"],
         class_category=categories["adult"],
-        class_group=catalog["class_groups"]["adult-vinicius"],
+        class_group=holder_group,
+        class_schedule=holder_group.schedules.order_by("display_order").first(),
     )
     dependent = _upsert_person_with_account(
         full_name="Dependente do Aluno Titular",
@@ -340,14 +325,15 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         previous_injuries="",
         emergency_contact="Pai - (62) 99999-1003",
         password=password,
-        type_codes=("student", "dependent"),
+        person_type=person_types["dependent"],
         class_category=categories["kids"],
-        class_group=catalog["class_groups"]["kids-andre"],
+        class_group=dependent_group,
+        class_schedule=dependent_group.schedules.order_by("display_order").first(),
     )
     _upsert_relationship(
         holder,
         dependent,
-        "Titular responsavel pelo dependente.",
+        "Titular responsável pelo dependente.",
         kinship_type="father",
     )
     return {"holder": holder, "dependent": dependent}
@@ -355,9 +341,10 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
 
 @transaction.atomic
 def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+    person_types = seed_person_types()
     categories = seed_class_categories()
     guardian = _upsert_person_with_account(
-        full_name="Responsavel Teste Individual",
+        full_name="Responsável Teste Individual",
         cpf="90000000004",
         email="responsavel.individual@example.com",
         phone="(62) 99999-0004",
@@ -365,9 +352,9 @@ def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         blood_type="B+",
         allergies="",
         previous_injuries="",
-        emergency_contact="Conjuge - (62) 99999-1004",
+        emergency_contact="Cônjuge - (62) 99999-1004",
         password=password,
-        type_codes=("guardian",),
+        person_type=person_types["guardian"],
         class_category=categories["adult"],
     )
     return {"guardian": guardian}
@@ -375,10 +362,12 @@ def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
 
 @transaction.atomic
 def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+    person_types = seed_person_types()
     categories = seed_class_categories()
     catalog = seed_class_catalog(password=password)
+    dependent_group = catalog["class_groups"]["kids-andre"]
     guardian = _upsert_person_with_account(
-        full_name="Responsavel com Dependente",
+        full_name="Responsável com Dependente",
         cpf="90000000005",
         email="responsavel.dependente@example.com",
         phone="(62) 99999-0005",
@@ -386,13 +375,13 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         blood_type="AB+",
         allergies="",
         previous_injuries="",
-        emergency_contact="Avo - (62) 99999-1005",
+        emergency_contact="Avó - (62) 99999-1005",
         password=password,
-        type_codes=("guardian",),
+        person_type=person_types["guardian"],
         class_category=categories["kids"],
     )
     dependent = _upsert_person_with_account(
-        full_name="Aluno Dependente do Responsavel",
+        full_name="Aluno Dependente do Responsável",
         cpf="90000000006",
         email="aluno.dependente@example.com",
         phone="(62) 99999-0006",
@@ -400,124 +389,41 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         blood_type="A-",
         allergies="Lactose.",
         previous_injuries="",
-        emergency_contact="Responsavel - (62) 99999-1006",
+        emergency_contact="Responsável - (62) 99999-1006",
         password=password,
-        type_codes=("student", "dependent"),
+        person_type=person_types["dependent"],
         class_category=categories["kids"],
-        class_group=catalog["class_groups"]["kids-andre"],
+        class_group=dependent_group,
+        class_schedule=dependent_group.schedules.order_by("display_order").first(),
     )
     _upsert_relationship(
         guardian,
         dependent,
-        "Responsavel financeiro do dependente.",
+        "Responsável financeiro do dependente.",
         kinship_type="mother",
     )
     return {"guardian": guardian, "dependent": dependent}
 
 
 @transaction.atomic
-def seed_person_matrix(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+def seed_person_administrative(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
     person_types = seed_person_types()
-    class_categories = seed_class_categories()
-    seed_ibjjf_age_categories()
-    dependent_support_guardian = _upsert_person_without_account(
-        full_name="Responsavel Tecnico Seed",
-        cpf=DEPENDENT_SUPPORT_GUARDIAN_CPF,
-        email="responsavel.seed@example.com",
-        phone="(62) 99999-9999",
-        birth_date=date(1980, 1, 1),
-        blood_type="O+",
+    categories = seed_class_categories()
+    administrative = _upsert_person_with_account(
+        full_name="Administrativo Teste",
+        cpf="90000000007",
+        email="administrativo@example.com",
+        phone="(62) 99999-0007",
+        birth_date=date(1991, 8, 15),
+        blood_type="O-",
         allergies="",
         previous_injuries="",
-        emergency_contact="Operacao Seed - (62) 99999-9998",
-        type_codes=("guardian",),
-        class_category=class_categories["adult"],
+        emergency_contact="Operação - (62) 99999-1007",
+        password=password,
+        person_type=person_types["administrative-assistant"],
+        class_category=categories["adult"],
     )
-
-    class_category_cycle = (
-        class_categories["adult"],
-        class_categories["juvenile"],
-        class_categories["kids"],
-        class_categories["women"],
-    )
-
-    matrix_people = []
-    for index, type_codes in enumerate(_build_type_code_combinations(), start=1):
-        class_category = class_category_cycle[(index - 1) % len(class_category_cycle)]
-        person = _upsert_person_with_account(
-            full_name=_build_matrix_full_name(index, type_codes, person_types),
-            cpf=_build_matrix_cpf(index),
-            email=f"seed.matrix.{index:02d}@example.com",
-            phone=f"(62) 99999-{index:04d}",
-            birth_date=_build_matrix_birth_date(type_codes, index),
-            blood_type="O+" if "dependent" in type_codes else "A+",
-            allergies="",
-            previous_injuries="",
-            emergency_contact=f"Contato Seed {index:02d} - (62) 99988-{index:04d}",
-            password=password,
-            type_codes=type_codes,
-            class_category=class_category,
-        )
-        if "dependent" in type_codes:
-            _upsert_relationship(
-                dependent_support_guardian,
-                person,
-                f"Relacionamento tecnico de seed para combinacao {', '.join(type_codes)}.",
-                kinship_type="other",
-                kinship_other_label="Seed tecnica",
-            )
-        matrix_people.append({"index": index, "type_codes": type_codes, "person": person})
-
-    return {
-        "dependent_support_guardian": dependent_support_guardian,
-        "matrix_people": matrix_people,
-    }
-
-
-@transaction.atomic
-def seed_class_matrix(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
-    catalog = seed_class_catalog(password=password)
-    matrix_result = seed_person_matrix(password=password)
-    class_groups = tuple(catalog["class_groups"].values())
-    matrix_people = tuple(entry["person"] for entry in matrix_result["matrix_people"])
-
-    instructor_assignments = []
-    enrollments = []
-
-    administrative_people = [
-        person
-        for person in matrix_people
-        if person.has_type_code("administrative-assistant")
-    ]
-    student_people = [
-        person
-        for person in matrix_people
-        if person.has_type_code("student", "dependent")
-    ]
-
-    for class_group in class_groups:
-        for person in administrative_people:
-            assignment = _upsert_class_instructor_assignment(
-                class_group=class_group,
-                person=person,
-                is_primary=False,
-                notes="Vinculo N:N de auxiliares administrativos para cobertura manual.",
-            )
-            instructor_assignments.append(assignment)
-        for person in student_people:
-            enrollment = _upsert_class_enrollment(
-                class_group=class_group,
-                person=person,
-                notes="Matricula N:N de seed para cobertura manual e automatizada.",
-            )
-            enrollments.append(enrollment)
-
-    return {
-        "catalog": catalog,
-        "matrix_people": matrix_people,
-        "instructor_assignments": instructor_assignments,
-        "enrollments": enrollments,
-    }
+    return {"administrative": administrative}
 
 
 def _upsert_person_with_account(
@@ -532,7 +438,7 @@ def _upsert_person_with_account(
     previous_injuries: str = "",
     emergency_contact: str = "",
     password: str,
-    type_codes: tuple[str, ...],
+    person_type,
     class_category=None,
     class_group=None,
     class_schedule=None,
@@ -547,47 +453,15 @@ def _upsert_person_with_account(
         allergies=allergies,
         previous_injuries=previous_injuries,
         emergency_contact=emergency_contact,
-        type_codes=type_codes,
+        person_type=person_type,
         class_category=class_category,
         class_group=class_group,
         class_schedule=class_schedule,
     )
-    _upsert_portal_account(person, password)
-    return person
-
-
-def _upsert_person_without_account(
-    *,
-    full_name: str,
-    cpf: str,
-    email: str = "",
-    phone: str = "",
-    birth_date=None,
-    blood_type: str = "",
-    allergies: str = "",
-    previous_injuries: str = "",
-    emergency_contact: str = "",
-    type_codes: tuple[str, ...],
-    class_category=None,
-    class_group=None,
-    class_schedule=None,
-):
-    person = _upsert_person_record(
-        full_name=full_name,
-        cpf=cpf,
-        email=email,
-        phone=phone,
-        birth_date=birth_date,
-        blood_type=blood_type,
-        allergies=allergies,
-        previous_injuries=previous_injuries,
-        emergency_contact=emergency_contact,
-        type_codes=type_codes,
-        class_category=class_category,
-        class_group=class_group,
-        class_schedule=class_schedule,
-    )
-    PortalAccount.objects.filter(person=person).delete()
+    portal_account, _ = PortalAccount.objects.get_or_create(person=person)
+    portal_account.is_active = True
+    portal_account.set_password(password)
+    portal_account.save()
     return person
 
 
@@ -602,7 +476,7 @@ def _upsert_person_record(
     allergies: str,
     previous_injuries: str,
     emergency_contact: str,
-    type_codes: tuple[str, ...],
+    person_type,
     class_category=None,
     class_group=None,
     class_schedule=None,
@@ -619,27 +493,14 @@ def _upsert_person_record(
             "allergies": allergies,
             "previous_injuries": previous_injuries,
             "emergency_contact": emergency_contact,
+            "person_type": person_type,
             "class_category": class_category,
             "class_group": class_group,
             "class_schedule": class_schedule,
             "is_active": True,
         },
     )
-    _assign_person_types(person, type_codes)
     return person
-
-
-def _assign_person_types(person: Person, type_codes: tuple[str, ...]):
-    person_types = seed_person_types()
-    person.person_types.set([person_types[code] for code in type_codes])
-
-
-def _upsert_portal_account(person: Person, password: str):
-    portal_account, _ = PortalAccount.objects.get_or_create(person=person)
-    portal_account.is_active = True
-    portal_account.set_password(password)
-    portal_account.save()
-    return portal_account
 
 
 def _upsert_relationship(
@@ -666,11 +527,9 @@ def _upsert_class_group(*, definition, class_category, teacher):
         code=definition["code"],
         defaults={
             "display_name": definition["display_name"],
-            "audience": definition["audience"],
             "class_category": class_category,
             "main_teacher": teacher,
             "description": definition["description"],
-            "is_public": True,
             "is_active": True,
             "default_capacity": 0,
         },
@@ -698,66 +557,3 @@ def _upsert_class_schedule(
         },
     )
     return schedule
-
-
-def _upsert_class_instructor_assignment(
-    *,
-    class_group: ClassGroup,
-    person: Person,
-    is_primary: bool,
-    notes: str,
-):
-    assignment, _ = ClassInstructorAssignment.objects.update_or_create(
-        class_group=class_group,
-        person=person,
-        defaults={
-            "is_primary": is_primary,
-            "notes": notes,
-        },
-    )
-    return assignment
-
-
-def _upsert_class_enrollment(
-    *,
-    class_group: ClassGroup,
-    person: Person,
-    notes: str,
-):
-    schedule = class_group.schedules.filter(is_active=True).order_by("display_order", "start_time").first()
-    if person.class_group_id != class_group.id or person.class_schedule_id != getattr(schedule, "id", None):
-        person.class_group = class_group
-        person.class_schedule = schedule
-        person.save(update_fields=("class_group", "class_schedule", "updated_at"))
-
-    enrollment, _ = ClassEnrollment.objects.update_or_create(
-        class_group=class_group,
-        person=person,
-        defaults={
-            "status": "active",
-            "notes": notes,
-        },
-    )
-    return enrollment
-
-
-def _build_type_code_combinations():
-    combinations_list = []
-    for size in range(1, len(TEST_MATRIX_TYPE_CODE_ORDER) + 1):
-        combinations_list.extend(combinations(TEST_MATRIX_TYPE_CODE_ORDER, size))
-    return combinations_list
-
-
-def _build_matrix_cpf(index: int):
-    return f"{MATRIX_PERSON_CPF_PREFIX.replace('.', '')}{index:08d}"
-
-
-def _build_matrix_full_name(index: int, type_codes: tuple[str, ...], person_types):
-    type_labels = [person_types[code].display_name for code in type_codes]
-    return f"Seed Matriz {index:02d} - {' / '.join(type_labels)}"
-
-
-def _build_matrix_birth_date(type_codes: tuple[str, ...], index: int):
-    if "dependent" in type_codes:
-        return date(2011, (index % 12) + 1, (index % 27) + 1)
-    return date(1990, (index % 12) + 1, (index % 27) + 1)

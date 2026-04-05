@@ -12,7 +12,7 @@
   const groupMap = new Map(registrationCatalog.map((item) => [String(item.id), item]));
 
   const profileInputs = Array.from(form.querySelectorAll('input[name="registration_profile"]'));
-  const otherTypeInputs = Array.from(form.querySelectorAll('input[name="other_type_codes"]'));
+  const otherTypeSelect = form.querySelector('select[name="other_type_code"]');
   const dependentToggle = document.getElementById("include-dependent");
   const dependentToggleCard = document.getElementById("dependent-toggle-card");
   const otherTypePanel = form.querySelector("[data-other-type-panel]");
@@ -142,10 +142,6 @@
 
   function syncChoiceStates() {
     form.querySelectorAll("[data-choice-card]").forEach((card) => {
-      const input = card.querySelector("input");
-      card.classList.toggle("is-selected", Boolean(input && input.checked));
-    });
-    form.querySelectorAll("[data-pill-choice]").forEach((card) => {
       const input = card.querySelector("input");
       card.classList.toggle("is-selected", Boolean(input && input.checked));
     });
@@ -286,13 +282,13 @@
 
     summaryNode.innerHTML = `
       <div class="assignment-summary-grid">
-        <div><span class="info-summary-label">Turma</span><p class="info-summary-value">${group.category_name || group.audience_display}</p></div>
+        <div><span class="info-summary-label">Turma</span><p class="info-summary-value">${group.display_name} · ${group.category_name || "Sem categoria"}</p></div>
         <div><span class="info-summary-label">Professor</span><p class="info-summary-value">${group.teacher_name || 'Não definido'}</p></div>
         <div><span class="info-summary-label">Horário</span><p class="info-summary-value">${schedule ? `${schedule.weekday_display} · ${schedule.start_time}` : 'Selecione o horário'}</p></div>
         <div><span class="info-summary-label">Categoria IBJJF</span><p class="info-summary-value">${resolveAgeCategory(birthDateValue)}</p></div>
       </div>`;
 
-    const suggestedGroups = registrationCatalog.filter((item) => item.id !== group.id && (item.category_id === group.category_id || item.audience === group.audience)).slice(0, 3);
+    const suggestedGroups = registrationCatalog.filter((item) => item.id !== group.id && item.category_id === group.category_id).slice(0, 3);
     if (!suggestedGroups.length) {
       suggestionNode.innerHTML = "";
       return;
@@ -303,7 +299,7 @@
       <ul class="suggestion-list">${suggestedGroups.map((item) => {
         const firstSchedule = item.schedules[0];
         const scheduleLabel = firstSchedule ? `${firstSchedule.weekday_display} · ${firstSchedule.start_time}` : "Sem horário ativo";
-        return `<li>${item.category_name || item.audience_display} · ${scheduleLabel}</li>`;
+        return `<li>${item.display_name} · ${item.category_name || "Sem categoria"} · ${scheduleLabel}</li>`;
       }).join("")}</ul>`;
   }
 
@@ -419,7 +415,7 @@
       registrationCatalog.forEach((group) => {
         const option = document.createElement("option");
         option.value = String(group.id);
-        option.textContent = `${group.category_name || group.audience_display} · ${group.display_name}`;
+        option.textContent = `${group.display_name} · ${group.category_name || "Sem categoria"}`;
         if (String(group.id) === String(dependent.class_group || "")) {
           option.selected = true;
         }
@@ -473,10 +469,10 @@
   }
 
   function validateStepOne() {
-    if (getCurrentProfile() !== "other" || otherTypeInputs.length === 0) {
+    if (getCurrentProfile() !== "other" || !otherTypeSelect) {
       return true;
     }
-    const hasChoice = otherTypeInputs.some((input) => input.checked);
+    const hasChoice = Boolean(otherTypeSelect.value);
     if (!hasChoice) {
       otherTypePanel.setAttribute("data-invalid", "true");
       return false;
@@ -570,7 +566,11 @@
   }
 
   profileInputs.forEach((input) => input.addEventListener("change", updateWizard));
-  otherTypeInputs.forEach((input) => input.addEventListener("change", syncChoiceStates));
+  if (otherTypeSelect) {
+    otherTypeSelect.addEventListener("change", () => {
+      otherTypePanel.removeAttribute("data-invalid");
+    });
+  }
   if (dependentToggle) {
     dependentToggle.addEventListener("change", updateWizard);
   }

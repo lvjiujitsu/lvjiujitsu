@@ -24,6 +24,7 @@ Esta spec deve ser atualizada sempre que surgir:
 
 O **LV JIU JITSU** é um monólito Django com app único `system` e modularização interna forte, com foco em:
 - identidade única por pessoa;
+- tipo de pessoa único por cadastro na fase atual;
 - gestão de planos, pagamentos e inadimplência;
 - presença antifraude por QR dinâmico;
 - controle de reserva de vagas em turmas;
@@ -51,7 +52,7 @@ Arquitetura alvo:
 
 0. **Fase MVP de teste.** O sistema está em estágio inicial. Dados locais são descartáveis. O fluxo padrão de trabalho assume destruição e recriação completa do banco a cada ciclo via `clear_migrations.py`. Não há preocupação com integridade de dados existentes.
 1. **App único `system` primeiro.** Não fragmentar o domínio físico cedo demais; modularizar internamente com disciplina.
-2. **Identidade centralizada.** Pessoa é uma só; perfis de negócio se acumulam.
+2. **Identidade centralizada.** Pessoa é uma só; na fase atual, cada cadastro opera com um único `PersonType`.
 3. **Autenticação do produto é do domínio.** O portal da academia não deve depender do modelo `User` do Django para operar.
 4. **Regras do domínio no backend.** Frontend melhora UX, mas não decide o que é permitido.
 5. **Fluxos críticos são auditáveis.** Pagamento, presença, exclusão de dados, prontuário e exportação precisam de rastreabilidade.
@@ -70,6 +71,8 @@ Arquitetura alvo:
 - É proibido instalar dependências no Python global para atender este repositório.
 - `manage.py`, testes e scripts operacionais devem ser executados com o interpretador da `.venv`.
 - Se a `.venv` existir, comandos fora dela devem ser tratados como erro operacional.
+- Durante a fase atual de desenvolvimento, o banco local e as migrations do app `system` devem ser tratados como descartáveis em qualquer refatoração estrutural de modelagem.
+- Se houver incoerência de relacionamento, mudança de cardinalidade, ou refatoração de identidade/cadastro, a ação correta é executar `clear_migrations.py` e reconstruir o ambiente, sem tentar preservar SQLite inconsistente.
 - Artefatos temporários de teste devem ser gerados preferencialmente dentro do workspace do projeto.
 
 ### 2.2 Fluxo obrigatório de reset — critério principal de trabalho
@@ -131,8 +134,8 @@ Estrutura-alvo:
 ### 3.1.1 Seeds operacionais
 - `inicial_seed` deve carregar apenas catálogos base e configurações mínimas do sistema.
 - `inicial_seed_test` deve ser tratada como carga navegável de validação manual do portal.
-- Para cobrir autenticação, roteamento e combinação de papéis, `inicial_seed_test` deve priorizar matriz N:N completa dos `PersonType` autenticáveis ativos.
-- Combinações com `dependent` continuam exigindo consistência de relacionamento no banco, mesmo quando a conta de portal for usada apenas para inspeção manual.
+- `inicial_seed_test` deve gerar cenários determinísticos simples, sem matriz N:N de tipos por pessoa.
+- As seeds de teste devem cobrir apenas cadastros coerentes com um único `PersonType` por identidade, mantendo relacionamentos de responsável e dependente quando aplicáveis.
 
 ### 3.2 Fonte de verdade por agregado dentro de `system/`
 - `identity_access`: identidade, autenticação, papéis e permissões.
@@ -166,6 +169,7 @@ Regra central:
 
 ### 4.1 Regra central de identidade
 - Cada pessoa física deve ter **uma única identidade** no sistema.
+- Cada identidade do portal deve possuir **um único `PersonType` ativo** na fase atual.
 - **CPF é o identificador único de autenticação**.
 - O banco pode usar um identificador técnico interno como PK física; o CPF deve ser tratado como chave natural única de login e negócio.
 - É proibido duplicar cadastro para a mesma pessoa só porque ela exerce mais de um papel.
@@ -179,13 +183,17 @@ Regra central:
 - Sessão do portal deve ser independente da sessão usada pelo Django Admin.
 
 ### 4.2 Papéis de negócio
-Os papéis podem coexistir na mesma identidade:
+Os tipos de pessoa disponíveis são:
 - `ADMIN_MASTER`
 - `ADMIN_UNIDADE` / `RECEPCAO`
 - `PROFESSOR`
 - `ALUNO_TITULAR`
 - `ALUNO_DEPENDENTE_COM_CREDENCIAL`
 - `RESPONSAVEL_FINANCEIRO`
+
+Regra da fase atual:
+- uma pessoa possui apenas um tipo de pessoa por cadastro;
+- multi-papel e matriz N:N de tipos por identidade não devem ser implementados enquanto essa fase de modelagem estiver ativa.
 
 ### 4.3 Dependentes
 - Dependentes podem existir vinculados ao responsável financeiro.
@@ -194,9 +202,9 @@ Os papéis podem coexistir na mesma identidade:
 - Quando `dependent` for o único papel autenticável da conta local do portal, o roteamento pós-login deve continuar levando ao escopo de aluno, sem exigir a presença simultânea de `student` ou `guardian` para navegação básica.
 - Dados financeiros do titular não podem ser exibidos para o dependente.
 
-### 4.4 Professor que também é aluno
-- Um professor pode treinar como aluno sem duplicar CPF.
-- O mesmo usuário pode possuir perfil docente e vínculo com plano financeiro, bolsa ou desconto.
+### 4.4 Professor e aluno na fase atual
+- A fase atual não suporta multi-papel no mesmo cadastro.
+- Se houver necessidade de reintroduzir professor que também é aluno, isso deve ser tratado como nova decisão estrutural de modelagem antes de qualquer implementação.
 
 ### 4.5 Superfície administrativa técnica
 - `django.contrib.admin` deve permanecer disponível apenas em `/django-admin/`.
@@ -230,6 +238,12 @@ Os papéis podem coexistir na mesma identidade:
 - Capacidade máxima é consumida na reserva de vaga, não no momento do escaneamento na porta.
 - O QR serve para confirmar presença física do aluno que já garantiu a vaga.
 - Regras de no-show, tolerância e reaproveitamento de vaga devem ser configuráveis.
+
+### 5.3.1 Turma, categoria e horário
+- `ClassGroup` não deve possuir eixo separado de `público` ou flag de publicação.
+- A classificação operacional da turma deve vir exclusivamente de `ClassCategory`.
+- `ClassSchedule` representa o horário da turma e não deve ser colapsado no nome da turma.
+- A superfície administrativa e a tela de informações não devem exibir `Público` como coluna ou atributo redundante da turma.
 
 ### 5.4 Inadimplência
 - Inadimplência bloqueia check-in e acesso esportivo conforme política da academia.
@@ -440,7 +454,7 @@ Essas lacunas não invalidam a spec atual, mas precisam orientar o planejamento 
 
 ## 12. Changelog da spec
 
-- **[2026-03-17]** Consolidação da identidade única por CPF com papéis acumuláveis.
+- **[2026-03-17]** Consolidação da identidade única por CPF como base do domínio.
 - **[2026-03-17]** Formalização de dependente com credencial própria e escopo restrito.
 - **[2026-03-17]** Reserva prévia como mecanismo oficial de consumo de lotação.
 - **[2026-03-17]** Hard stop antes da câmera para inadimplência, pausa e ausência de reserva.
@@ -459,6 +473,9 @@ Essas lacunas não invalidam a spec atual, mas precisam orientar o planejamento 
 - **[2026-04-02]** Formalizado que o catalogo Stripe exige mapeamento deterministico por plano, com um unico `Price` vigente e aposentadoria explicita de legados.
 - **[2026-04-02]** Formalizado que o espelho `dj-stripe` e camada auxiliar de reconciliacao e nao substitui a fonte de verdade do dominio local.
 - **[2026-04-03]** Formalizado que a autenticação do portal é local ao domínio, independente do Django Admin, com sessão própria e reset de senha próprio.
-- **[2026-04-04]** Formalizado que `dependent` isolado continua navegável no escopo de aluno do portal e que `inicial_seed_test` deve priorizar matriz N:N completa de `PersonType` para validação manual.
+- **[2026-04-04]** Formalizado que `dependent` isolado continua navegável no escopo de aluno do portal, sem reintroduzir multi-papel por identidade.
+- **[2026-04-04]** Formalizado que a fase atual usa um único `PersonType` por pessoa e que `inicial_seed_test` deve gerar apenas cenários simples e determinísticos.
+- **[2026-04-04]** Formalizado que, em refatorações estruturais da modelagem durante o desenvolvimento, o banco local deve ser descartado e recriado com `clear_migrations.py`.
+- **[2026-04-05]** Formalizado que `ClassGroup` não possui eixo separado de `público`; a classificação da turma vem exclusivamente de `ClassCategory`, e a UI não deve exibir coluna redundante de `Público` em turmas.
 
 

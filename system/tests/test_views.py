@@ -28,14 +28,18 @@ class PortalViewTestCase(TestCase):
             code="dependent",
             display_name="Dependente",
         )
+        self.instructor_type = PersonType.objects.create(
+            code="instructor",
+            display_name="Professor",
+        )
 
-    def _create_portal_account(self, *, full_name, cpf, password, person_types):
+    def _create_portal_account(self, *, full_name, cpf, password, person_type):
         person = Person.objects.create(
             full_name=full_name,
             cpf=cpf,
             email=f"{cpf.replace('.', '').replace('-', '')}@example.com",
+            person_type=person_type,
         )
-        person.person_types.add(*person_types)
         access_account = PortalAccount(person=person)
         access_account.set_password(password)
         access_account.save()
@@ -80,8 +84,8 @@ class PortalViewTestCase(TestCase):
                 "holder_birthdate": "01/04/1995",
                 "holder_phone": "(62) 99999-1212",
                 "holder_email": "aluno@example.com",
-                "holder_password": "SenhaForte@123",
-                "holder_password_confirm": "SenhaForte@123",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
             },
             follow=True,
         )
@@ -89,30 +93,23 @@ class PortalViewTestCase(TestCase):
         self.assertRedirects(response, reverse("system:legacy-login-form"))
         person = Person.objects.get(cpf="123.456.789-03")
         self.assertTrue(hasattr(person, "access_account"))
+        self.assertEqual(person.person_type.code, "student")
         self.assertEqual(User.objects.count(), 1)
         self.assertContains(response, "Cadastro registrado com sucesso")
 
-    def test_register_other_profile_creates_selected_person_types(self):
-        PersonType.objects.create(
-            code="instructor",
-            display_name="Professor",
-        )
-
+    def test_register_other_profile_creates_single_selected_person_type(self):
         response = self.client.post(
             reverse("system:register"),
             {
                 "registration_profile": "other",
-                "other_type_codes": [
-                    "administrative-assistant",
-                    "instructor",
-                ],
+                "other_type_code": "instructor",
                 "other_name": "Equipe Tecnica LV",
                 "other_cpf": "12345678904",
                 "other_birthdate": "02/04/1990",
                 "other_phone": "(62) 98888-0000",
                 "other_email": "equipe@example.com",
-                "other_password": "SenhaForte@123",
-                "other_password_confirm": "SenhaForte@123",
+                "other_password": "123456",
+                "other_password_confirm": "123456",
             },
             follow=True,
         )
@@ -120,10 +117,7 @@ class PortalViewTestCase(TestCase):
         self.assertRedirects(response, reverse("system:legacy-login-form"))
         person = Person.objects.get(cpf="123.456.789-04")
         self.assertTrue(hasattr(person, "access_account"))
-        self.assertCountEqual(
-            person.person_types.values_list("code", flat=True),
-            ["administrative-assistant", "instructor"],
-        )
+        self.assertEqual(person.person_type.code, "instructor")
 
     def test_registered_holder_can_log_in_with_local_account(self):
         self.client.post(
@@ -135,14 +129,14 @@ class PortalViewTestCase(TestCase):
                 "holder_birthdate": "01/04/1995",
                 "holder_phone": "(62) 99999-1212",
                 "holder_email": "aluno@example.com",
-                "holder_password": "SenhaForte@123",
-                "holder_password_confirm": "SenhaForte@123",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
             },
         )
 
         response = self.client.post(
             reverse("system:login"),
-            {"identifier": "12345678903", "password": "SenhaForte@123"},
+            {"identifier": "12345678903", "password": "123456"},
             follow=True,
         )
 
@@ -169,14 +163,17 @@ class PortalViewTestCase(TestCase):
 
         response = self.client.get(reverse("system:person-list"))
 
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(
+            response,
+            f'{reverse("system:login")}?next={reverse("system:person-list")}',
+        )
 
     def test_administrative_portal_account_can_access_person_crud(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao LV",
             cpf="321.654.987-00",
-            password="SenhaForte@321",
-            person_types=[self.administrative_type],
+            password="123456",
+            person_type=self.administrative_type,
         )
         self._login_portal_account(administrative_account)
 
@@ -185,28 +182,82 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pessoas")
 
+    def test_administrative_portal_account_can_open_person_edit_form(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao LV",
+            cpf="321.654.987-00",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        target_person = Person.objects.create(
+            full_name="Pessoa Alvo",
+            cpf="321.654.987-99",
+            person_type=self.student_type,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(
+            reverse("system:person-update", kwargs={"pk": target_person.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Editar pessoa")
+
+    def test_anonymous_user_is_redirected_to_login_when_opening_person_edit_form(self):
+        target_person = Person.objects.create(
+            full_name="Pessoa Alvo",
+            cpf="321.654.987-98",
+            person_type=self.student_type,
+        )
+
+        response = self.client.get(
+            reverse("system:person-update", kwargs={"pk": target_person.pk})
+        )
+
+        self.assertRedirects(
+            response,
+            f'{reverse("system:login")}?next='
+            f'{reverse("system:person-update", kwargs={"pk": target_person.pk})}',
+        )
+
     def test_dependent_only_portal_account_can_access_student_home(self):
         self._create_portal_account(
             full_name="Dependente LV",
             cpf="321.654.987-02",
-            password="SenhaForte@321",
-            person_types=[self.dependent_type],
+            password="123456",
+            person_type=self.dependent_type,
         )
 
         response = self.client.post(
             reverse("system:login"),
-            {"identifier": "32165498702", "password": "SenhaForte@321"},
+            {"identifier": "32165498702", "password": "123456"},
             follow=True,
         )
 
         self.assertRedirects(response, reverse("system:student-home"))
 
+    def test_instructor_portal_account_can_access_instructor_home(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor LV",
+            cpf="321.654.987-03",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "32165498703", "password": "123456"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:instructor-home"))
+
     def test_portal_logout_clears_local_and_technical_sessions(self):
         student_account = self._create_portal_account(
             full_name="Aluno LV",
             cpf="321.654.987-01",
-            password="SenhaForte@321",
-            person_types=[self.student_type],
+            password="123456",
+            person_type=self.student_type,
         )
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = student_account.pk

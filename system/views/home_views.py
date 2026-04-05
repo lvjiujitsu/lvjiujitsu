@@ -16,9 +16,10 @@ class DashboardRedirectView(PortalLoginRequiredMixin, RedirectView):
             return reverse("system:admin-home")
         if self.request.portal_person is None:
             return reverse("system:login")
-        if "administrative-assistant" in self.request.portal_type_codes:
+        person_type_code = next(iter(self.request.portal_type_codes), "")
+        if person_type_code == "administrative-assistant":
             return reverse("system:administrative-home")
-        if "instructor" in self.request.portal_type_codes:
+        if person_type_code == "instructor":
             return reverse("system:instructor-home")
         return reverse("system:student-home")
 

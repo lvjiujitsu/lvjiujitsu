@@ -17,7 +17,6 @@
         <thead>
             <tr>
                 <th>Modalidade</th>
-                <th>Público</th>
                 <th>Categoria</th>
                 <th>Professor principal</th>
                 <th>Auxiliares</th>
@@ -34,7 +33,6 @@
                         <strong>{{ class_group.display_name }}</strong><br>
                         <span class="muted-text">{{ class_group.code }}</span>
                     </td>
-                    <td>{{ class_group.get_audience_display }}</td>
                     <td>{{ class_group.class_category.display_name|default:"Sem categoria" }}</td>
                     <td>{{ class_group.main_teacher.full_name|default:"Sem professor" }}</td>
                     <td>{{ class_group.assistant_count }}</td>
@@ -42,7 +40,6 @@
                     <td>{{ class_group.default_capacity }}</td>
                     <td>
                         <span class="tag">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
-                        <span class="tag">{{ class_group.is_public|yesno:"Pública,Interna" }}</span>
                     </td>
                     <td class="table-actions">
                         <a href="{% url 'system:class-group-update' class_group.pk %}">Editar</a>
@@ -51,7 +48,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="9" class="empty-row">Nenhuma turma cadastrada.</td>
+                    <td colspan="8" class="empty-row">Nenhuma turma cadastrada.</td>
                 </tr>
             {% endfor %}
         </tbody>

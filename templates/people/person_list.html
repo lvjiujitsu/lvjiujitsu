@@ -7,7 +7,7 @@
     <div>
         <p class="panel-eyebrow">Cadastro central</p>
         <h1>Pessoas</h1>
-        <p>Cadastre e mantenha vínculos, turma, horário e categoria operacional da pessoa.</p>
+        <p>Cadastre e mantenha tipo, turma, horário e categoria operacional da pessoa.</p>
     </div>
     <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
 </section>
@@ -18,7 +18,7 @@
             <tr>
                 <th>Nome</th>
                 <th>CPF</th>
-                <th>Vínculos</th>
+                <th>Tipo</th>
                 <th>Turma</th>
                 <th>Categoria</th>
                 <th>IBJJF</th>
@@ -33,11 +33,11 @@
                     <td>{{ person.full_name }}</td>
                     <td>{{ person.cpf }}</td>
                     <td>
-                        {% for person_type in person.person_types.all %}
-                            <span class="tag">{{ person_type.display_name }}</span>
-                        {% empty %}
-                            <span class="muted-text">Sem vínculo</span>
-                        {% endfor %}
+                        {% if person.person_type %}
+                            <span class="tag">{{ person.person_type.display_name }}</span>
+                        {% else %}
+                            <span class="muted-text">Sem tipo</span>
+                        {% endif %}
                     </td>
                     <td>{{ person.class_group|default:"Sem turma" }}</td>
                     <td>{{ person.class_category|default:"Sem categoria" }}</td>

@@ -1,11 +1,11 @@
-Ôªø{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260404-5">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260405-1">
 </head>
 <body>
   <main class="screen-shell">
@@ -19,8 +19,8 @@
           <img class="brand-logo brand-logo-small" src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
         </div>
         <div>
-          <h1>Formul√°rio de Cadastro</h1>
-          <p class="inner-copy">Preencha o cadastro em etapas curtas e finalize com turma, hor√°rio e prontu√°rio.</p>
+          <h1>Formul·rio de Cadastro</h1>
+          <p class="inner-copy">Preencha o cadastro em etapas curtas e finalize com turma, hor·rio e prontu·rio.</p>
         </div>
       </div>
 
@@ -52,7 +52,7 @@
             <button class="wizard-progress-step" type="button" data-step-trigger="1"><span class="wizard-progress-index">1</span><small>Tipo</small></button>
             <button class="wizard-progress-step" type="button" data-step-trigger="2"><span class="wizard-progress-index">2</span><small>Dados</small></button>
             <button class="wizard-progress-step" type="button" data-step-trigger="3"><span class="wizard-progress-index">3</span><small>Turma</small></button>
-            <button class="wizard-progress-step" type="button" data-step-trigger="4"><span class="wizard-progress-index">4</span><small>Prontu√°rio</small></button>
+            <button class="wizard-progress-step" type="button" data-step-trigger="4"><span class="wizard-progress-index">4</span><small>Prontu·rio</small></button>
           </div>
         </div>
 
@@ -72,7 +72,7 @@
               <label class="choice-card choice-card-selectable{% if form.registration_profile.value == 'guardian' %} is-selected{% endif %}" data-choice-card>
                 <input type="radio" name="registration_profile" value="guardian"{% if form.registration_profile.value == 'guardian' %} checked{% endif %}>
                 <span class="choice-card-marker" aria-hidden="true"></span>
-                <span class="choice-card-label">Respons√°vel</span>
+                <span class="choice-card-label">Respons·vel</span>
               </label>
               <label class="choice-card choice-card-selectable{% if form.registration_profile.value == 'other' %} is-selected{% endif %}" data-choice-card>
                 <input type="radio" name="registration_profile" value="other"{% if form.registration_profile.value == 'other' %} checked{% endif %}>
@@ -89,22 +89,22 @@
 
             <section class="sub-choice-panel{% if form.registration_profile.value != 'other' %} is-hidden{% endif %}" data-other-type-panel{% if form.registration_profile.value != 'other' %} hidden{% endif %}>
               <div class="section-heading">
-                <span class="section-step-label">Perfis extras</span>
-                <h3 class="section-title">Escolha os tipos adicionais</h3>
+                <span class="section-step-label">Tipo adicional</span>
+                <h3 class="section-title">Escolha um tipo de cadastro</h3>
               </div>
-              {% if form.other_type_codes.field.choices %}
-                <div class="sub-choice-grid">
-                  {% for choice_value, choice_label in form.other_type_codes.field.choices %}
-                    <label class="pill-choice{% if choice_value in selected_other_type_codes %} is-selected{% endif %}" data-pill-choice>
-                      <input type="checkbox" name="other_type_codes" value="{{ choice_value }}"{% if choice_value in selected_other_type_codes %} checked{% endif %}>
-                      <span>{{ choice_label }}</span>
-                    </label>
-                  {% endfor %}
-                </div>
+              {% if form.other_type_code.field.choices|length > 1 %}
+                <label class="field field-full" for="other-type-code">
+                  <span>Tipo</span>
+                  <select id="other-type-code" name="other_type_code">
+                    {% for choice_value, choice_label in form.other_type_code.field.choices %}
+                      <option value="{{ choice_value }}"{% if selected_other_type_code == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
               {% else %}
                 <div class="empty-state-box empty-state-box-compact">
-                  <strong>Nenhum tipo adicional est√° dispon√≠vel.</strong>
-                  <p>Voc√™ pode avan√ßar mesmo sem selecionar outro perfil.</p>
+                  <strong>Nenhum tipo adicional est· disponÌvel.</strong>
+                  <p>Cadastre primeiro um tipo de pessoa ativo para usar a opÁ„o Outro.</p>
                 </div>
               {% endif %}
             </section>
@@ -140,14 +140,14 @@
           </section>
 
           <section class="form-section is-hidden" data-flow-section="guardian-data" hidden>
-            <div class="section-heading"><span class="section-step-label">Etapa 2 de 4</span><h2 class="section-title">Dados do respons√°vel</h2></div>
+            <div class="section-heading"><span class="section-step-label">Etapa 2 de 4</span><h2 class="section-title">Dados do respons·vel</h2></div>
             <div class="field-grid">
-              <label class="field field-full" for="guardian-name"><span>Nome completo</span><input id="guardian-name" name="guardian_name" type="text" placeholder="Digite o nome do respons√°vel" value="{{ form.guardian_name.value|default_if_none:'' }}"></label>
+              <label class="field field-full" for="guardian-name"><span>Nome completo</span><input id="guardian-name" name="guardian_name" type="text" placeholder="Digite o nome do respons·vel" value="{{ form.guardian_name.value|default_if_none:'' }}"></label>
               <label class="field" for="guardian-cpf"><span>CPF</span><input id="guardian-cpf" name="guardian_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.guardian_cpf.value|default_if_none:'' }}"></label>
               <label class="field" for="guardian-phone"><span>Telefone</span><input id="guardian-phone" name="guardian_phone" type="text" inputmode="tel" placeholder="(00) 00000-0000" value="{{ form.guardian_phone.value|default_if_none:'' }}"></label>
               <label class="field" for="guardian-email"><span>E-mail</span><input id="guardian-email" name="guardian_email" type="email" placeholder="responsavel@exemplo.com" value="{{ form.guardian_email.value|default_if_none:'' }}"></label>
-              <label class="field" for="guardian-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="guardian-password" name="guardian_password" type="password" placeholder="Defina a senha do respons√°vel" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password" aria-controls="guardian-password">Mostrar</button></div></label>
-              <label class="field" for="guardian-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="guardian-password-confirm" name="guardian_password_confirm" type="password" placeholder="Repita a senha do respons√°vel" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password-confirm" aria-controls="guardian-password-confirm">Mostrar</button></div></label>
+              <label class="field" for="guardian-password"><span>Senha de acesso</span><div class="password-input-wrapper"><input id="guardian-password" name="guardian_password" type="password" placeholder="Defina a senha do respons·vel" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password" aria-controls="guardian-password">Mostrar</button></div></label>
+              <label class="field" for="guardian-password-confirm"><span>Confirmar senha</span><div class="password-input-wrapper"><input id="guardian-password-confirm" name="guardian_password_confirm" type="password" placeholder="Repita a senha do respons·vel" autocomplete="new-password"><button class="password-visibility-button" type="button" data-password-toggle data-target-id="guardian-password-confirm" aria-controls="guardian-password-confirm">Mostrar</button></div></label>
             </div>
           </section>
 
@@ -188,58 +188,58 @@
         <section class="wizard-step is-hidden" data-step-panel="3" hidden>
           {% if registration_catalog %}
             <section class="form-section" data-flow-section="holder-assignment">
-              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">Turma e hor√°rio do aluno titular</h2></div>
+              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">Turma e hor·rio do aluno titular</h2></div>
               <input type="hidden" name="holder_class_category" value="{{ form.holder_class_category.value|default_if_none:'' }}" data-category-input="holder">
               <div class="field-grid">
                 <label class="field" for="holder-class-group"><span>Turma</span><select id="holder-class-group" name="holder_class_group" data-group-select data-entity-key="holder"><option value="">Selecione</option>{% for choice_value, choice_label in form.holder_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
-                <label class="field" for="holder-class-schedule"><span>Hor√°rio</span><select id="holder-class-schedule" name="holder_class_schedule" data-schedule-select data-entity-key="holder" data-selected-value="{{ form.holder_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.holder_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="holder-class-schedule"><span>Hor·rio</span><select id="holder-class-schedule" name="holder_class_schedule" data-schedule-select data-entity-key="holder" data-selected-value="{{ form.holder_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.holder_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
               </div>
               <div class="assignment-summary" data-assignment-summary="holder"></div>
               <div class="suggestion-box" data-suggestion-box="holder"></div>
             </section>
 
             <section class="form-section is-hidden" data-flow-section="holder-primary-dependent-assignment" hidden>
-              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e hor√°rio do dependente</h2></div>
+              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e hor·rio do dependente</h2></div>
               <input type="hidden" name="dependent_class_category" value="{{ form.dependent_class_category.value|default_if_none:'' }}" data-category-input="dependent">
               <div class="field-grid">
                 <label class="field" for="dependent-class-group"><span>Turma</span><select id="dependent-class-group" name="dependent_class_group" data-group-select data-entity-key="dependent"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
-                <label class="field" for="dependent-class-schedule"><span>Hor√°rio</span><select id="dependent-class-schedule" name="dependent_class_schedule" data-schedule-select data-entity-key="dependent" data-selected-value="{{ form.dependent_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="dependent-class-schedule"><span>Hor·rio</span><select id="dependent-class-schedule" name="dependent_class_schedule" data-schedule-select data-entity-key="dependent" data-selected-value="{{ form.dependent_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
               </div>
               <div class="assignment-summary" data-assignment-summary="dependent"></div>
               <div class="suggestion-box" data-suggestion-box="dependent"></div>
             </section>
 
             <section class="form-section is-hidden" data-flow-section="guardian-primary-dependent-assignment" hidden>
-              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e hor√°rio do aluno</h2></div>
+              <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Turma e hor·rio do aluno</h2></div>
               <input type="hidden" name="student_class_category" value="{{ form.student_class_category.value|default_if_none:'' }}" data-category-input="student">
               <div class="field-grid">
                 <label class="field" for="student-class-group"><span>Turma</span><select id="student-class-group" name="student_class_group" data-group-select data-entity-key="student"><option value="">Selecione</option>{% for choice_value, choice_label in form.student_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.student_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
-                <label class="field" for="student-class-schedule"><span>Hor√°rio</span><select id="student-class-schedule" name="student_class_schedule" data-schedule-select data-entity-key="student" data-selected-value="{{ form.student_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.student_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.student_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="student-class-schedule"><span>Hor·rio</span><select id="student-class-schedule" name="student_class_schedule" data-schedule-select data-entity-key="student" data-selected-value="{{ form.student_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.student_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.student_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
               </div>
               <div class="assignment-summary" data-assignment-summary="student"></div>
               <div class="suggestion-box" data-suggestion-box="student"></div>
             </section>
 
             <section class="form-section is-hidden" data-flow-section="other-assignment" hidden>
-              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">V√≠nculo com turma e hor√°rio</h2></div>
+              <div class="section-heading"><span class="section-step-label">Etapa 3 de 4</span><h2 class="section-title">VÌnculo com turma e hor·rio</h2></div>
               <input type="hidden" name="other_class_category" value="{{ form.other_class_category.value|default_if_none:'' }}" data-category-input="other">
               <div class="field-grid">
                 <label class="field" for="other-class-group"><span>Turma</span><select id="other-class-group" name="other_class_group" data-group-select data-entity-key="other"><option value="">Selecione</option>{% for choice_value, choice_label in form.other_class_group.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.other_class_group.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
-                <label class="field" for="other-class-schedule"><span>Hor√°rio</span><select id="other-class-schedule" name="other_class_schedule" data-schedule-select data-entity-key="other" data-selected-value="{{ form.other_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.other_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.other_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+                <label class="field" for="other-class-schedule"><span>Hor·rio</span><select id="other-class-schedule" name="other_class_schedule" data-schedule-select data-entity-key="other" data-selected-value="{{ form.other_class_schedule.value|default_if_none:'' }}"><option value="">Selecione</option>{% for choice_value, choice_label in form.other_class_schedule.field.choices %}{% if choice_value %}<option value="{{ choice_value }}"{% if form.other_class_schedule.value|stringformat:'s' == choice_value|stringformat:'s' %} selected{% endif %}>{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
               </div>
               <div class="assignment-summary" data-assignment-summary="other"></div>
               <div class="suggestion-box" data-suggestion-box="other"></div>
             </section>
 
             <section class="form-section is-hidden" data-flow-section="extra-dependents-assignment" hidden>
-              <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Turma e hor√°rio dos dependentes</h2></div>
+              <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Turma e hor·rio dos dependentes</h2></div>
               <div class="dynamic-card-stack" data-extra-dependent-assignment-list></div>
             </section>
           {% else %}
             <section class="form-section">
               <div class="empty-state-box">
-                <strong>Nenhuma turma ou hor√°rio est√° dispon√≠vel no momento.</strong>
-                <p>Voc√™ pode avan√ßar e concluir o cadastro. A defini√ß√£o de turma ficar√° pendente para ajuste interno.</p>
+                <strong>Nenhuma turma ou hor·rio est· disponÌvel no momento.</strong>
+                <p>VocÍ pode avanÁar e concluir o cadastro. A definiÁ„o de turma ficar· pendente para ajuste interno.</p>
               </div>
             </section>
           {% endif %}
@@ -247,44 +247,44 @@
 
         <section class="wizard-step is-hidden" data-step-panel="4" hidden>
           <section class="form-section" data-flow-section="holder-medical">
-            <div class="section-heading"><span class="section-step-label">Etapa 4 de 4</span><h2 class="section-title">Prontu√°rio do aluno titular</h2></div>
+            <div class="section-heading"><span class="section-step-label">Etapa 4 de 4</span><h2 class="section-title">Prontu·rio do aluno titular</h2></div>
             <div class="field-grid">
-              <label class="field" for="holder-blood-type"><span>Tipo sangu√≠neo</span><select id="holder-blood-type" name="holder_blood_type">{% for choice_value, choice_label in form.holder_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.holder_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field" for="holder-blood-type"><span>Tipo sanguÌneo</span><select id="holder-blood-type" name="holder_blood_type">{% for choice_value, choice_label in form.holder_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.holder_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
               <label class="field field-full" for="holder-allergies"><span>Alergias</span><textarea id="holder-allergies" name="holder_allergies" placeholder="Informe alergias importantes">{{ form.holder_allergies.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="holder-injuries"><span>Les√µes pr√©vias</span><textarea id="holder-injuries" name="holder_injuries" placeholder="Informe les√µes ou restri√ß√µes relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="holder-emergency-contact"><span>Contato de emerg√™ncia</span><input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}"></label>
+              <label class="field field-full" for="holder-injuries"><span>Lesıes prÈvias</span><textarea id="holder-injuries" name="holder_injuries" placeholder="Informe lesıes ou restriÁıes relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="holder-emergency-contact"><span>Contato de emergÍncia</span><input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
           <section class="form-section is-hidden" data-flow-section="holder-primary-dependent-medical" hidden>
-            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontu√°rio do dependente</h2></div>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontu·rio do dependente</h2></div>
             <div class="field-grid">
-              <label class="field" for="dependent-blood-type"><span>Tipo sangu√≠neo</span><select id="dependent-blood-type" name="dependent_blood_type">{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.dependent_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field" for="dependent-blood-type"><span>Tipo sanguÌneo</span><select id="dependent-blood-type" name="dependent_blood_type">{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.dependent_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
               <label class="field field-full" for="dependent-allergies"><span>Alergias</span><textarea id="dependent-allergies" name="dependent_allergies" placeholder="Informe alergias importantes">{{ form.dependent_allergies.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="dependent-injuries"><span>Les√µes pr√©vias</span><textarea id="dependent-injuries" name="dependent_injuries" placeholder="Informe les√µes ou restri√ß√µes relevantes">{{ form.dependent_injuries.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="dependent-emergency-contact"><span>Contato de emerg√™ncia</span><input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}"></label>
+              <label class="field field-full" for="dependent-injuries"><span>Lesıes prÈvias</span><textarea id="dependent-injuries" name="dependent_injuries" placeholder="Informe lesıes ou restriÁıes relevantes">{{ form.dependent_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="dependent-emergency-contact"><span>Contato de emergÍncia</span><input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
           <section class="form-section is-hidden" data-flow-section="guardian-primary-dependent-medical" hidden>
-            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontu√°rio do aluno</h2></div>
+            <div class="section-heading"><span class="section-step-label">Dependente principal</span><h2 class="section-title">Prontu·rio do aluno</h2></div>
             <div class="field-grid">
-              <label class="field" for="student-blood-type"><span>Tipo sangu√≠neo</span><select id="student-blood-type" name="student_blood_type">{% for choice_value, choice_label in form.student_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.student_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
+              <label class="field" for="student-blood-type"><span>Tipo sanguÌneo</span><select id="student-blood-type" name="student_blood_type">{% for choice_value, choice_label in form.student_blood_type.field.choices %}<option value="{{ choice_value }}"{% if form.student_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endfor %}</select></label>
               <label class="field field-full" for="student-allergies"><span>Alergias</span><textarea id="student-allergies" name="student_allergies" placeholder="Informe alergias importantes">{{ form.student_allergies.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="student-injuries"><span>Les√µes pr√©vias</span><textarea id="student-injuries" name="student_injuries" placeholder="Informe les√µes ou restri√ß√µes relevantes">{{ form.student_injuries.value|default_if_none:'' }}</textarea></label>
-              <label class="field field-full" for="student-emergency-contact"><span>Contato de emerg√™ncia</span><input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}"></label>
+              <label class="field field-full" for="student-injuries"><span>Lesıes prÈvias</span><textarea id="student-injuries" name="student_injuries" placeholder="Informe lesıes ou restriÁıes relevantes">{{ form.student_injuries.value|default_if_none:'' }}</textarea></label>
+              <label class="field field-full" for="student-emergency-contact"><span>Contato de emergÍncia</span><input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}"></label>
             </div>
           </section>
 
           <section class="form-section is-hidden" data-flow-section="extra-dependents-medical" hidden>
-            <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Prontu√°rio dos dependentes</h2></div>
+            <div class="section-heading"><span class="section-step-label">Dependentes adicionais</span><h2 class="section-title">Prontu·rio dos dependentes</h2></div>
             <div class="dynamic-card-stack" data-extra-dependent-medical-list></div>
           </section>
         </section>
 
         <div class="wizard-actions">
           <button class="secondary-button is-hidden" type="button" data-step-back>Voltar etapa</button>
-          <button class="primary-button" type="button" data-step-next>Avan√ßar</button>
+          <button class="primary-button" type="button" data-step-next>AvanÁar</button>
           <button class="primary-button is-hidden" type="submit" data-step-submit>Concluir cadastro</button>
         </div>
       </form>
@@ -308,7 +308,7 @@
         <label class="field"><span>Data de nascimento</span><input type="text" inputmode="numeric" maxlength="10" data-date-mask data-dependent-field="birth_date" data-dependent-birth placeholder="dd/mm/aaaa"></label>
         <label class="field"><span>Telefone</span><input type="text" inputmode="tel" data-dependent-field="phone" placeholder="(00) 00000-0000"></label>
         <label class="field"><span>E-mail</span><input type="email" data-dependent-field="email" placeholder="dependente@exemplo.com"></label>
-        <label class="field"><span>Grau de parentesco</span><select data-dependent-field="kinship_type" data-kinship-select-dynamic><option value="">Selecione</option><option value="father">Pai</option><option value="mother">M√£e</option><option value="uncle">Tio</option><option value="stepchild">Enteado</option><option value="other">Outro</option></select></label>
+        <label class="field"><span>Grau de parentesco</span><select data-dependent-field="kinship_type" data-kinship-select-dynamic><option value="">Selecione</option><option value="father">Pai</option><option value="mother">M„e</option><option value="uncle">Tio</option><option value="stepchild">Enteado</option><option value="other">Outro</option></select></label>
         <label class="field is-hidden" data-dependent-kinship-other hidden><span>Informe o parentesco</span><input type="text" data-dependent-field="kinship_other_label" placeholder="Descreva o parentesco"></label>
         <label class="field"><span>Senha de acesso</span><div class="password-input-wrapper"><input type="password" data-dependent-field="password" placeholder="Defina a senha"><button class="password-visibility-button" type="button" data-password-toggle>Mostrar</button></div></label>
         <label class="field"><span>Confirmar senha</span><div class="password-input-wrapper"><input type="password" data-dependent-field="password_confirm" placeholder="Repita a senha"><button class="password-visibility-button" type="button" data-password-toggle>Mostrar</button></div></label>
@@ -321,7 +321,7 @@
       <div class="dynamic-card-header"><strong>Dependente adicional <span data-dependent-number></span></strong></div>
       <div class="field-grid">
         <label class="field"><span>Turma</span><select data-dependent-field="class_group" data-group-select-dynamic><option value="">Selecione</option></select></label>
-        <label class="field"><span>Hor√°rio</span><select data-dependent-field="class_schedule" data-schedule-select-dynamic><option value="">Selecione</option></select></label>
+        <label class="field"><span>Hor·rio</span><select data-dependent-field="class_schedule" data-schedule-select-dynamic><option value="">Selecione</option></select></label>
       </div>
       <div class="assignment-summary" data-dependent-summary></div>
       <div class="suggestion-box" data-dependent-suggestions></div>
@@ -332,16 +332,16 @@
     <article class="dynamic-card" data-dependent-card>
       <div class="dynamic-card-header"><strong>Dependente adicional <span data-dependent-number></span></strong></div>
       <div class="field-grid">
-        <label class="field"><span>Tipo sangu√≠neo</span><select data-dependent-field="blood_type"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}{% if choice_value %}<option value="{{ choice_value }}">{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
+        <label class="field"><span>Tipo sanguÌneo</span><select data-dependent-field="blood_type"><option value="">Selecione</option>{% for choice_value, choice_label in form.dependent_blood_type.field.choices %}{% if choice_value %}<option value="{{ choice_value }}">{{ choice_label }}</option>{% endif %}{% endfor %}</select></label>
         <label class="field field-full"><span>Alergias</span><textarea data-dependent-field="allergies" placeholder="Informe alergias importantes"></textarea></label>
-        <label class="field field-full"><span>Les√µes pr√©vias</span><textarea data-dependent-field="injuries" placeholder="Informe les√µes ou restri√ß√µes relevantes"></textarea></label>
-        <label class="field field-full"><span>Contato de emerg√™ncia</span><input type="text" data-dependent-field="emergency_contact" placeholder="Nome e telefone do contato"></label>
+        <label class="field field-full"><span>Lesıes prÈvias</span><textarea data-dependent-field="injuries" placeholder="Informe lesıes ou restriÁıes relevantes"></textarea></label>
+        <label class="field field-full"><span>Contato de emergÍncia</span><input type="text" data-dependent-field="emergency_contact" placeholder="Nome e telefone do contato"></label>
       </div>
     </article>
   </template>
 
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/password-toggle.js' %}?v=20260404-5"></script>
-  <script src="{% static 'system/js/auth/registration-wizard.js' %}?v=20260404-5"></script>
+  <script src="{% static 'system/js/auth/password-toggle.js' %}?v=20260405-1"></script>
+  <script src="{% static 'system/js/auth/registration-wizard.js' %}?v=20260405-1"></script>
 </body>
 </html>

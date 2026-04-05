@@ -4,15 +4,9 @@ from system.models import (
     Person,
     PersonRelationship,
     PersonType,
-    PersonTypeAssignment,
     PortalAccount,
     PortalPasswordResetToken,
 )
-
-
-class PersonTypeAssignmentInline(admin.TabularInline):
-    model = PersonTypeAssignment
-    extra = 0
 
 
 class OutgoingRelationshipInline(admin.TabularInline):
@@ -31,10 +25,10 @@ class PersonTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "cpf", "email", "phone", "blood_type", "is_active")
-    list_filter = ("is_active", "person_types", "blood_type")
+    list_display = ("full_name", "cpf", "person_type", "email", "phone", "blood_type", "is_active")
+    list_filter = ("is_active", "person_type", "blood_type")
     search_fields = ("full_name", "cpf", "email")
-    inlines = [PersonTypeAssignmentInline, OutgoingRelationshipInline]
+    inlines = [OutgoingRelationshipInline]
 
 
 @admin.register(PortalAccount)
@@ -43,12 +37,6 @@ class PortalAccountAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("person__full_name", "person__cpf", "person__email")
     autocomplete_fields = ("person",)
-
-
-@admin.register(PersonTypeAssignment)
-class PersonTypeAssignmentAdmin(admin.ModelAdmin):
-    list_display = ("person", "person_type", "created_at")
-    search_fields = ("person__full_name", "person_type__display_name")
 
 
 @admin.register(PersonRelationship)

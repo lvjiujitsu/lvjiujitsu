@@ -25,18 +25,18 @@
 
         <div>
           <h1>Informações</h1>
-          <p class="inner-copy">Resumo público de turma, professor e horários ativos.</p>
+          <p class="inner-copy">Resumo de turma, professor e horários ativos.</p>
         </div>
       </div>
 
       <div class="info-stack">
         {% for class_group in class_groups %}
           <article class="info-card">
-            <h2>{{ class_group.public_label }}</h2>
+            <h2>{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</h2>
             <div class="info-summary-grid">
               <div class="info-summary-block">
                 <span class="info-summary-label">Turma</span>
-                <p class="info-summary-value">{{ class_group.public_label }}</p>
+                <p class="info-summary-value">{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</p>
               </div>
               <div class="info-summary-block">
                 <span class="info-summary-label">Professor</span>
@@ -57,7 +57,7 @@
         {% empty %}
           <article class="info-card">
             <h2>Sem informações disponíveis</h2>
-            <p>Nenhuma turma pública está ativa no momento.</p>
+            <p>Nenhuma turma ativa está cadastrada no momento.</p>
           </article>
         {% endfor %}
       </div>

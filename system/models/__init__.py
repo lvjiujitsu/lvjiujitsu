@@ -1,5 +1,5 @@
 from .category import CategoryAudience, ClassCategory, IbjjfAgeCategory
-from .class_group import ClassAudience, ClassGroup
+from .class_group import ClassGroup
 from .class_membership import (
     ClassEnrollment,
     ClassInstructorAssignment,
@@ -15,12 +15,10 @@ from .person import (
     PersonRelationship,
     PersonRelationshipKind,
     PersonType,
-    PersonTypeAssignment,
 )
 
 __all__ = [
     "CategoryAudience",
-    "ClassAudience",
     "ClassCategory",
     "ClassEnrollment",
     "ClassGroup",
@@ -35,7 +33,6 @@ __all__ = [
     "PersonRelationship",
     "PersonRelationshipKind",
     "PersonType",
-    "PersonTypeAssignment",
     "TimeStampedModel",
     "TrainingStyle",
     "WeekdayCode",

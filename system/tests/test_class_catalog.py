@@ -15,8 +15,8 @@ from system.models import (
 from system.services.seeding import (
     seed_class_catalog,
     seed_class_categories,
-    seed_class_matrix,
     seed_ibjjf_age_categories,
+    seed_person_administrative,
     seed_person_types,
 )
 
@@ -28,16 +28,18 @@ class ClassCatalogModelTestCase(TestCase):
         seed_ibjjf_age_categories()
 
     def test_class_instructor_assignment_requires_administrative_or_instructor_type(self):
+        adult_category = ClassCategory.objects.get(code="adult")
         class_group = ClassGroup.objects.create(
             code="test-class",
             display_name="Jiu Jitsu",
+            class_category=adult_category,
         )
         student_type = PersonType.objects.get(code="student")
         student = Person.objects.create(
             full_name="Aluno Sem Permissao",
             cpf="100.000.000-01",
+            person_type=student_type,
         )
-        student.person_types.add(student_type)
 
         assignment = ClassInstructorAssignment(
             class_group=class_group,
@@ -48,16 +50,18 @@ class ClassCatalogModelTestCase(TestCase):
             assignment.full_clean()
 
     def test_class_enrollment_requires_student_or_dependent_type(self):
+        adult_category = ClassCategory.objects.get(code="adult")
         class_group = ClassGroup.objects.create(
             code="test-class-2",
             display_name="Jiu Jitsu",
+            class_category=adult_category,
         )
         guardian_type = PersonType.objects.get(code="guardian")
         guardian = Person.objects.create(
-            full_name="Responsavel Sem Matricula",
+            full_name="Responsável Sem Matrícula",
             cpf="100.000.000-02",
+            person_type=guardian_type,
         )
-        guardian.person_types.add(guardian_type)
 
         enrollment = ClassEnrollment(
             class_group=class_group,
@@ -67,31 +71,18 @@ class ClassCatalogModelTestCase(TestCase):
         with self.assertRaises(ValidationError):
             enrollment.full_clean()
 
-    def test_class_group_requires_category_with_matching_audience(self):
-        adult_category = ClassCategory.objects.get(code="adult")
-        class_group = ClassGroup(
-            code="kids-mismatch",
-            display_name="Jiu Jitsu",
-            audience="kids",
-            class_category=adult_category,
-        )
-
-        with self.assertRaises(ValidationError):
-            class_group.full_clean()
-
     def test_class_group_requires_instructor_as_main_teacher(self):
         adult_category = ClassCategory.objects.get(code="adult")
         guardian_type = PersonType.objects.get(code="guardian")
         guardian = Person.objects.create(
             full_name="Responsável Sem Permissão",
             cpf="100.000.000-03",
+            person_type=guardian_type,
         )
-        guardian.person_types.add(guardian_type)
 
         class_group = ClassGroup(
             code="adult-invalid-teacher",
             display_name="Jiu Jitsu",
-            audience="adult",
             class_category=adult_category,
             main_teacher=guardian,
         )
@@ -109,6 +100,7 @@ class ClassCatalogModelTestCase(TestCase):
         adult_layon_group = ClassGroup.objects.get(code="adult-layon")
         self.assertEqual(adult_layon_group.display_name, "Jiu Jitsu")
         self.assertEqual(adult_layon_group.main_teacher.full_name, "Layon Quirino")
+        self.assertEqual(adult_layon_group.main_teacher.person_type.code, "instructor")
         self.assertEqual(adult_layon_group.class_category.code, "adult")
         self.assertEqual(adult_layon_group.schedules.count(), 5)
         self.assertTrue(
@@ -118,34 +110,11 @@ class ClassCatalogModelTestCase(TestCase):
             ).exists()
         )
 
-    def test_seed_class_matrix_creates_cross_product_for_admin_assistants_and_students(self):
-        result = seed_class_matrix()
+    def test_seed_person_administrative_creates_single_type_account(self):
+        result = seed_person_administrative()
 
-        class_count = len(result["catalog"]["class_groups"])
-        matrix_people = result["matrix_people"]
-        assistant_people = [
-            person
-            for person in matrix_people
-            if person.has_type_code("administrative-assistant")
-        ]
-        student_people = [
-            person
-            for person in matrix_people
-            if person.has_type_code("student", "dependent")
-        ]
-
-        self.assertEqual(class_count, 6)
-        self.assertEqual(
-            len(result["instructor_assignments"]),
-            len(assistant_people) * class_count,
-        )
-        self.assertEqual(len(result["enrollments"]), len(student_people) * class_count)
-
-        for person in assistant_people:
-            self.assertEqual(person.class_instructor_assignments.count(), class_count)
-
-        for person in student_people:
-            self.assertEqual(person.class_enrollments.count(), class_count)
+        self.assertEqual(result["administrative"].person_type.code, "administrative-assistant")
+        self.assertTrue(result["administrative"].has_portal_access)
 
     def test_person_computes_ibjjf_category_from_birth_date(self):
         seed_ibjjf_age_categories()

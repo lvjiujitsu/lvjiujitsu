@@ -48,7 +48,8 @@ Antes de alterar qualquer arquivo:
 7. verifique se a mudanca toca alguma regra critica:
    - identidade unica por CPF;
    - autenticacao local do portal separada do Django Admin;
-   - multi-papel no mesmo usuario;
+   - tipo unico de pessoa por cadastro na fase atual;
+   - categoria como unica fonte de classificacao da turma;
    - onboarding transacional;
    - check-in com QR/WebRTC;
    - reserva previa de vaga;
@@ -128,6 +129,7 @@ Antes de considerar a entrega pronta:
 6. nesse fluxo, a validacao deve ser baseada no log real do terminal ate antes do `runserver`; nao basta assumir que a limpeza funcionou.
 7. **nao existe cenario em que o agente deve tentar migrar incrementalmente sobre um banco existente.** O banco sempre nasce do zero.
 8. se os testes falharem apos o reset, corrija o codigo e recomece do `clear_migrations.py` novamente.
+9. durante a fase atual, refatoracoes de identidade, cadastro, relacionamento e cardinalidade devem sempre assumir banco descartavel; nao preserve SQLite incoerente.
 
 ### Fase 4 - Evolucao da spec
 Ao terminar:
@@ -145,8 +147,8 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 ### 3.1 Identidade e papeis
 - Uma pessoa nao pode ser duplicada no sistema para resolver problema de negocio.
 - O login usa **CPF como identificador unico de autenticacao**.
-- O mesmo usuario pode acumular papeis e perfis de negocio.
-- `PROFESSOR`, `ALUNO`, `RESPONSAVEL_FINANCEIRO` e perfis administrativos podem coexistir na mesma identidade.
+- Cada pessoa deve possuir apenas um `PersonType` na fase atual.
+- Multi-papel e matriz N:N de tipos por pessoa nao devem ser implementados.
 - Dependente com credencial propria continua vinculado ao responsavel, mas acessa apenas o escopo permitido.
 - Dependente com credencial propria, mesmo quando for o unico papel autenticavel da conta, deve conseguir entrar no portal e cair no escopo operacional de aluno.
 - A conta de acesso do portal pertence ao dominio local e nao deve ser substituida por `django.contrib.auth.User`.
@@ -159,6 +161,12 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 - O backend deve revalidar tudo no momento de gravar a presenca.
 - Em turmas com capacidade, a vaga e consumida na **reserva previa**, nao na porta.
 - O QR valida presenca fisica de quem ja tinha direito a entrar.
+
+### 3.2.1 Turmas, categorias e horarios
+- `ClassGroup` nao deve possuir eixo separado de `publico` nem flag de publicacao.
+- A classificacao da turma deve vir exclusivamente de `ClassCategory`.
+- `ClassSchedule` representa o horario da turma e nao deve ser embutido no nome da turma.
+- CRUD, listagens e telas informativas nao devem exibir coluna ou atributo redundante de `Publico` em `Turmas`.
 
 ### 3.3 Financeiro e trancamento
 - Matricula pausada e um estado de negocio local do sistema, mesmo quando a Stripe mantem a assinatura ativa com cobranca pausada.
@@ -242,7 +250,7 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 Toda mudanca relevante deve, no minimo, considerar testes para:
 - identidade unica por CPF;
 - independencia entre autenticacao do portal e login do Django Admin;
-- multi-papel no mesmo usuario;
+- tipo unico por pessoa;
 - perfil `dependent` isolado conseguindo autenticar e navegar no escopo permitido;
 - onboarding transacional;
 - inadimplencia bloqueando check-in antes da camera;
@@ -270,8 +278,8 @@ Para fluxos centrais de dominio, prefira abordagem test-first:
 ### 5.1 Seeds de validacao manual
 - `inicial_seed` deve cadastrar apenas catalogos base e configuracoes minimas.
 - `inicial_seed_test` deve gerar dados navegaveis para validacao manual ampla do portal.
-- quando o objetivo for cobrir perfis e roteamentos do produto, `inicial_seed_test` deve priorizar matriz N:N completa dos `PersonType` autenticaveis, em vez de poucos cenarios isolados.
-- combinacoes com `dependent` devem permanecer semanticamente validas no banco, com relacionamento de responsabilidade consistente para inspeção manual e teste de permissao.
+- `inicial_seed_test` nao deve criar matriz N:N de tipos por pessoa.
+- `inicial_seed_test` deve priorizar cenarios simples, deterministicos e auditaveis: aluno, dependente, responsavel, professor e administrativo, sempre com um unico tipo por identidade.
 
 ---
 

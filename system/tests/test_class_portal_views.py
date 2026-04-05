@@ -2,8 +2,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from system.models import ClassGroup, ClassSchedule
-from system.services.seeding import seed_class_catalog, seed_class_matrix
+from system.models import ClassCategory, ClassGroup, ClassSchedule
+from system.services.seeding import seed_class_catalog
 
 
 User = get_user_model()
@@ -49,20 +49,25 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(class_group_list_response, "Turmas")
         self.assertContains(class_schedule_list_response, "Horários")
         self.assertContains(class_category_list_response, "Categorias")
+        self.assertNotContains(class_group_list_response, "Público")
+        self.assertNotContains(class_group_list_response, "Pública")
 
     def test_technical_admin_can_create_class_group_and_schedule(self):
         self._login_as_technical_admin()
+        adult_category = ClassCategory.objects.create(
+            code="adult",
+            display_name="Adulto",
+            audience="adult",
+        )
 
         class_group_response = self.client.post(
             reverse("system:class-group-create"),
             {
                 "code": "audit-test-class",
                 "display_name": "Jiu Jitsu",
-                "audience": "adult",
-                "class_category": "",
+                "class_category": adult_category.pk,
                 "description": "Turma criada durante teste de CRUD.",
                 "default_capacity": 30,
-                "is_public": "on",
                 "is_active": "on",
             },
             follow=True,
@@ -95,14 +100,14 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:info"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Resumo público de turma, professor e horários ativos.")
+        self.assertContains(response, "Resumo de turma, professor e horários ativos.")
         self.assertContains(response, "Turma")
         self.assertContains(response, "Adulto")
         self.assertContains(response, "Layon Quirino")
         self.assertContains(response, "Segunda-feira")
 
     def test_public_info_page_exposes_only_summary_fields_and_primary_instructor(self):
-        seed_class_matrix()
+        seed_class_catalog()
 
         response = self.client.get(reverse("system:info"))
 
@@ -112,5 +117,6 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Horários")
         self.assertContains(response, "Feminino")
         self.assertContains(response, "Vannessa Ferro")
-        self.assertNotContains(response, "Seed Matriz 04 - Professor")
         self.assertNotContains(response, "Kimono")
+        self.assertNotContains(response, "Resumo público")
+        self.assertNotContains(response, "Nenhuma turma pública")
