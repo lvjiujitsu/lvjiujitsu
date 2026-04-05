@@ -81,6 +81,7 @@ def get_registration_catalog_payload():
                 "display_name": class_group.display_name,
                 "category_id": class_group.class_category_id,
                 "category_name": getattr(class_group.class_category, "display_name", ""),
+                "category_audience": getattr(class_group.class_category, "audience", ""),
                 "teacher_name": getattr(class_group.main_teacher, "full_name", ""),
                 "schedules": [
                     {

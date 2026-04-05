@@ -7,12 +7,12 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Horários</h1>
-        <p>Gerencie os horários separados das turmas, mantendo o cadastro operacional auditável.</p>
+        <p>Gerencie os horários separados das turmas, mantendo o cadastro operacional auditável. O vínculo do aluno acontece na turma; os horários ativos dessa turma ficam liberados automaticamente.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-schedule-create' %}">Novo horário</a>
 </section>
 
-<section class="table-card">
+<section class="table-card data-table-wrap">
     <table class="data-table">
         <thead>
             <tr>
@@ -48,5 +48,37 @@
             {% endfor %}
         </tbody>
     </table>
+</section>
+
+<section class="card-list">
+    {% for class_schedule in class_schedules %}
+        <div class="record-card">
+            <div class="record-card-title">{{ class_schedule.class_group.display_name }}</div>
+            <div class="record-card-rows">
+                <div class="record-card-row">
+                    <span class="record-card-label">Dia</span>
+                    <span class="record-card-value">{{ class_schedule.get_weekday_display }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Hora</span>
+                    <span class="record-card-value">{{ class_schedule.start_time|time:"H:i" }} &middot; {{ class_schedule.duration_minutes }} min</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Estilo</span>
+                    <span class="record-card-value">{{ class_schedule.get_training_style_display }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Status</span>
+                    <span class="record-card-value">{{ class_schedule.is_active|yesno:"Ativo,Inativo" }}</span>
+                </div>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:class-schedule-update' class_schedule.pk %}">Editar</a>
+                <a href="{% url 'system:class-schedule-delete' class_schedule.pk %}">Excluir</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty-state">Nenhum horário cadastrado.</div>
+    {% endfor %}
 </section>
 {% endblock %}

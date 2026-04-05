@@ -3,9 +3,9 @@ import json
 from django.db import transaction
 
 from system.models import (
-    ClassCategory,
+    ClassEnrollment,
     ClassGroup,
-    ClassSchedule,
+    EnrollmentStatus,
     Person,
     PersonRelationship,
     PersonRelationshipKind,
@@ -75,30 +75,39 @@ def parse_extra_dependents_payload(raw_payload):
     return payload if isinstance(payload, list) else []
 
 
-def resolve_class_category(category_id):
-    if not category_id:
-        return None
-    return ClassCategory.objects.filter(pk=category_id, is_active=True).first()
+def resolve_class_groups(group_ids):
+    if not group_ids:
+        return []
+    normalized_ids = [str(group_id) for group_id in group_ids if str(group_id)]
+    group_map = {
+        str(group.pk): group
+        for group in ClassGroup.objects.filter(pk__in=normalized_ids, is_active=True).select_related(
+            "class_category"
+        )
+    }
+    ordered_groups = []
+    for group_id in normalized_ids:
+        group = group_map.get(group_id)
+        if group and group not in ordered_groups:
+            ordered_groups.append(group)
+    return ordered_groups
 
 
-def resolve_class_group(group_id):
-    if not group_id:
-        return None
-    return ClassGroup.objects.filter(pk=group_id, is_active=True).first()
-
-
-def resolve_class_schedule(schedule_id):
-    if not schedule_id:
-        return None
-    return ClassSchedule.objects.filter(pk=schedule_id, is_active=True).first()
-
-
-def derive_class_category(*, class_group=None, explicit_category=None):
-    if explicit_category is not None:
-        return explicit_category
-    if class_group is not None:
-        return class_group.class_category
-    return None
+def sync_person_class_enrollments(person, class_groups):
+    selected_groups = class_groups or []
+    if not selected_groups:
+        ClassEnrollment.objects.filter(person=person).delete()
+        return
+    selected_group_ids = [group.pk for group in selected_groups]
+    ClassEnrollment.objects.filter(person=person).exclude(
+        class_group_id__in=selected_group_ids
+    ).delete()
+    for class_group in selected_groups:
+        ClassEnrollment.objects.update_or_create(
+            person=person,
+            class_group=class_group,
+            defaults={"status": EnrollmentStatus.ACTIVE, "notes": ""},
+        )
 
 
 def _get_or_create_person_type(code):
@@ -114,15 +123,14 @@ def _create_holder_registration(cleaned_data, person_types):
         email=cleaned_data.get("holder_email", ""),
         phone=cleaned_data.get("holder_phone", ""),
         birth_date=cleaned_data.get("holder_birthdate"),
+        biological_sex=cleaned_data.get("holder_biological_sex", ""),
         password=cleaned_data["holder_password"],
         person_type=person_types["student"],
         blood_type=cleaned_data.get("holder_blood_type", ""),
         allergies=cleaned_data.get("holder_allergies", ""),
         previous_injuries=cleaned_data.get("holder_injuries", ""),
         emergency_contact=cleaned_data.get("holder_emergency_contact", ""),
-        class_category=cleaned_data.get("holder_class_category"),
-        class_group=cleaned_data.get("holder_class_group"),
-        class_schedule=cleaned_data.get("holder_class_schedule"),
+        class_groups=cleaned_data.get("holder_class_groups", []),
     )
     created_people = {"holder": holder}
 
@@ -140,15 +148,14 @@ def _create_holder_registration(cleaned_data, person_types):
             email=dependent_payload.get("email", ""),
             phone=dependent_payload.get("phone", ""),
             birth_date=dependent_payload.get("birth_date"),
+            biological_sex=dependent_payload.get("biological_sex", ""),
             password=dependent_payload["password"],
             person_type=person_types["dependent"],
             blood_type=dependent_payload.get("blood_type", ""),
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),
             emergency_contact=dependent_payload.get("emergency_contact", ""),
-            class_category=dependent_payload.get("class_category"),
-            class_group=dependent_payload.get("class_group"),
-            class_schedule=dependent_payload.get("class_schedule"),
+            class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
             source_person=holder,
@@ -170,6 +177,7 @@ def _create_guardian_registration(cleaned_data, person_types):
         cpf=cleaned_data["guardian_cpf"],
         email=cleaned_data.get("guardian_email", ""),
         phone=cleaned_data.get("guardian_phone", ""),
+        biological_sex=cleaned_data.get("guardian_biological_sex", ""),
         password=cleaned_data["guardian_password"],
         person_type=person_types["guardian"],
     )
@@ -186,15 +194,14 @@ def _create_guardian_registration(cleaned_data, person_types):
             email=dependent_payload.get("email", ""),
             phone=dependent_payload.get("phone", ""),
             birth_date=dependent_payload.get("birth_date"),
+            biological_sex=dependent_payload.get("biological_sex", ""),
             password=dependent_payload["password"],
             person_type=person_types["dependent"],
             blood_type=dependent_payload.get("blood_type", ""),
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),
             emergency_contact=dependent_payload.get("emergency_contact", ""),
-            class_category=dependent_payload.get("class_category"),
-            class_group=dependent_payload.get("class_group"),
-            class_schedule=dependent_payload.get("class_schedule"),
+            class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
             source_person=guardian,
@@ -221,11 +228,9 @@ def _create_other_registration(cleaned_data, person_types):
         email=cleaned_data.get("other_email", ""),
         phone=cleaned_data.get("other_phone", ""),
         birth_date=cleaned_data.get("other_birthdate"),
+        biological_sex=cleaned_data.get("other_biological_sex", ""),
         password=cleaned_data["other_password"],
         person_type=person_types[other_type_code],
-        class_category=cleaned_data.get("other_class_category"),
-        class_group=cleaned_data.get("other_class_group"),
-        class_schedule=cleaned_data.get("other_class_schedule"),
     )
     return {"other": other_person}
 
@@ -239,36 +244,42 @@ def _create_person_with_account(
     email="",
     phone="",
     birth_date=None,
+    biological_sex="",
     blood_type="",
     allergies="",
     previous_injuries="",
     emergency_contact="",
     class_category=None,
-    class_group=None,
-    class_schedule=None,
+    class_groups=None,
 ):
+    primary_group = _get_primary_class_group(class_groups)
     person = Person.objects.create(
         full_name=full_name,
         cpf=cpf,
         email=email,
         phone=phone,
         birth_date=birth_date,
+        biological_sex=biological_sex,
         blood_type=blood_type,
         allergies=allergies,
         previous_injuries=previous_injuries,
         emergency_contact=emergency_contact,
         person_type=person_type,
-        class_category=derive_class_category(
-            class_group=class_group,
-            explicit_category=class_category,
-        ),
-        class_group=class_group,
-        class_schedule=class_schedule,
+        class_category=primary_group.class_category if primary_group else class_category,
+        class_group=primary_group,
+        class_schedule=None,
     )
+    sync_person_class_enrollments(person, class_groups)
     access_account = PortalAccount(person=person)
     access_account.set_password(password)
     access_account.save()
     return person
+
+
+def _get_primary_class_group(class_groups):
+    if not class_groups:
+        return None
+    return class_groups[0]
 
 
 def _build_primary_dependent_payload(cleaned_data, prefix):
@@ -284,13 +295,12 @@ def _build_primary_dependent_payload(cleaned_data, prefix):
             "password": cleaned_data.get(f"{prefix}_password"),
             "email": cleaned_data.get(f"{prefix}_email", ""),
             "phone": cleaned_data.get(f"{prefix}_phone", ""),
+            "biological_sex": cleaned_data.get(f"{prefix}_biological_sex", ""),
             "blood_type": cleaned_data.get(f"{prefix}_blood_type", ""),
             "allergies": cleaned_data.get(f"{prefix}_allergies", ""),
             "previous_injuries": cleaned_data.get(f"{prefix}_injuries", ""),
             "emergency_contact": cleaned_data.get(f"{prefix}_emergency_contact", ""),
-            "class_category": cleaned_data.get(f"{prefix}_class_category"),
-            "class_group": cleaned_data.get(f"{prefix}_class_group"),
-            "class_schedule": cleaned_data.get(f"{prefix}_class_schedule"),
+            "class_groups": cleaned_data.get(f"{prefix}_class_groups", []),
             "kinship_type": cleaned_data.get(f"{prefix}_kinship_type", ""),
             "kinship_other_label": cleaned_data.get(f"{prefix}_kinship_other_label", ""),
         }

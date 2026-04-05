@@ -1,6 +1,8 @@
 from django import forms
 
-from system.models import BloodType, ClassCategory, ClassGroup, ClassSchedule, Person, PersonType
+from system.models import BiologicalSex, BloodType, ClassGroup, Person, PersonType
+from system.models.class_membership import get_class_group_eligibility_error
+from system.services.registration import sync_person_class_enrollments
 from system.utils import ensure_formatted_cpf
 
 
@@ -25,20 +27,12 @@ class PersonForm(forms.ModelForm):
         required=True,
         label="Tipo de vínculo",
     )
-    class_category = forms.ModelChoiceField(
-        queryset=ClassCategory.objects.none(),
-        required=False,
-        label="Categoria da pessoa",
-    )
-    class_group = forms.ModelChoiceField(
+    class_groups = forms.ModelMultipleChoiceField(
         queryset=ClassGroup.objects.none(),
         required=False,
-        label="Turma vinculada",
-    )
-    class_schedule = forms.ModelChoiceField(
-        queryset=ClassSchedule.objects.none(),
-        required=False,
-        label="Horário vinculado",
+        label="Turmas liberadas",
+        help_text="Selecione as turmas que a pessoa pode frequentar. Os horários ativos dessas turmas ficam liberados automaticamente.",
+        widget=forms.CheckboxSelectMultiple,
     )
 
     class Meta:
@@ -49,14 +43,12 @@ class PersonForm(forms.ModelForm):
             "email",
             "phone",
             "birth_date",
+            "biological_sex",
             "blood_type",
             "allergies",
             "previous_injuries",
             "emergency_contact",
             "person_type",
-            "class_category",
-            "class_group",
-            "class_schedule",
             "is_active",
         )
         labels = {
@@ -65,6 +57,7 @@ class PersonForm(forms.ModelForm):
             "email": "E-mail",
             "phone": "Telefone",
             "birth_date": "Data de nascimento",
+            "biological_sex": "Sexo biológico",
             "blood_type": "Tipo sanguíneo",
             "allergies": "Alergias",
             "previous_injuries": "Lesões prévias",
@@ -73,6 +66,9 @@ class PersonForm(forms.ModelForm):
         }
         widgets = {
             "birth_date": forms.DateInput(attrs={"type": "date"}),
+            "biological_sex": forms.Select(
+                choices=[("", "Selecione")] + list(BiologicalSex.choices),
+            ),
             "blood_type": forms.Select(
                 choices=[("", "Selecione")] + list(BloodType.choices),
             ),
@@ -88,22 +84,35 @@ class PersonForm(forms.ModelForm):
         self.fields["person_type"].queryset = PersonType.objects.filter(
             is_active=True
         ).order_by("display_name")
-        self.fields["class_category"].queryset = ClassCategory.objects.filter(
-            is_active=True
-        ).order_by("display_order", "display_name")
-        self.fields["class_group"].queryset = ClassGroup.objects.filter(
+        self.fields["class_groups"].queryset = ClassGroup.objects.filter(
             is_active=True
         ).select_related("class_category", "main_teacher").order_by(
             "class_category__display_order",
             "class_category__display_name",
             "code",
         )
-        self.fields["class_schedule"].queryset = ClassSchedule.objects.filter(
-            is_active=True
-        ).select_related("class_group").order_by(
-            "class_group__display_name",
-            "display_order",
-            "start_time",
+        if self.instance.pk:
+            self.fields["class_groups"].initial = list(
+                self.instance.class_enrollments.select_related("class_group")
+                .filter(status="active")
+                .values_list("class_group_id", flat=True)
+            )
+        self.order_fields(
+            [
+                "full_name",
+                "cpf",
+                "email",
+                "phone",
+                "birth_date",
+                "biological_sex",
+                "blood_type",
+                "allergies",
+                "previous_injuries",
+                "emergency_contact",
+                "person_type",
+                "class_groups",
+                "is_active",
+            ]
         )
 
     def clean_cpf(self):
@@ -111,21 +120,34 @@ class PersonForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        class_category = cleaned_data.get("class_category")
-        class_group = cleaned_data.get("class_group")
-        class_schedule = cleaned_data.get("class_schedule")
-
-        if class_group:
-            cleaned_data["class_category"] = class_group.class_category
-            class_category = class_group.class_category
-
-        if class_category and class_group and class_group.class_category_id != class_category.id:
-            self.add_error("class_group", "A turma precisa pertencer à categoria selecionada.")
-
-        if class_schedule and class_group and class_schedule.class_group_id != class_group.id:
+        class_groups = cleaned_data.get("class_groups") or []
+        person_type = cleaned_data.get("person_type")
+        if class_groups and not (person_type and person_type.code in ("student", "dependent")):
             self.add_error(
-                "class_schedule",
-                "O horário selecionado não pertence à turma escolhida.",
+                "class_groups",
+                "Apenas aluno titular ou dependente pode receber turmas liberadas.",
             )
-
+        for class_group in class_groups:
+            error = get_class_group_eligibility_error(
+                birth_date=cleaned_data.get("birth_date"),
+                biological_sex=cleaned_data.get("biological_sex", ""),
+                class_group=class_group,
+            )
+            if error:
+                self.add_error(
+                    "class_groups",
+                    f"{class_group.class_category.display_name} · {class_group.display_name}: {error}",
+                )
         return cleaned_data
+
+    def save(self, commit=True):
+        person = super().save(commit=False)
+        class_groups = list(self.cleaned_data.get("class_groups") or [])
+        primary_group = class_groups[0] if class_groups else None
+        person.class_group = primary_group
+        person.class_category = primary_group.class_category if primary_group else None
+        person.class_schedule = None
+        if commit:
+            person.save()
+            sync_person_class_enrollments(person, class_groups)
+        return person

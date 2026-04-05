@@ -5,42 +5,132 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260405-frontfix-5">
 </head>
 <body>
     <div class="page-shell">
         <header class="topbar">
-            <a class="brand" href="{% url 'system:root' %}">
-                <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
-                <span>LV JIU JITSU</span>
-            </a>
-            {% if request.portal_account or request.portal_is_technical_admin %}
-                <nav class="topbar-nav">
-                    <a class="nav-link" href="{% url 'system:dashboard-redirect' %}">Início</a>
-                    {% if request.portal_is_administrative or request.portal_is_technical_admin %}
-                        <a class="nav-link" href="{% url 'system:person-list' %}">Pessoas</a>
-                        <a class="nav-link" href="{% url 'system:person-type-list' %}">Tipos</a>
-                        <a class="nav-link" href="{% url 'system:class-category-list' %}">Categorias</a>
-                        <a class="nav-link" href="{% url 'system:class-group-list' %}">Turmas</a>
-                        <a class="nav-link" href="{% url 'system:class-schedule-list' %}">Horários</a>
-                        <a class="nav-link" href="/django-admin/">Django Admin</a>
-                    {% endif %}
+            <div class="topbar-leading">
+                {% if request.portal_account or request.portal_is_technical_admin %}
+                    <button class="portal-menu-trigger" type="button" aria-label="Abrir menu" aria-controls="portal-navigation-drawer" aria-expanded="false" data-portal-menu-trigger>
+                        <span class="portal-menu-trigger-bar"></span>
+                        <span class="portal-menu-trigger-bar"></span>
+                        <span class="portal-menu-trigger-bar"></span>
+                    </button>
+                {% endif %}
+
+                <a class="brand" href="{% url 'system:root' %}">
+                    <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
+                    <span class="brand-label">LV JIU JITSU</span>
+                </a>
+            </div>
+
+            {% if not request.portal_account and not request.portal_is_technical_admin %}
+                <div class="topbar-actions">
                     <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
                         <span class="theme-toggle-track">
                             <span class="theme-toggle-knob"></span>
                         </span>
                     </button>
-                    <form method="post" action="{% url 'system:logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="ghost-button">Sair</button>
-                    </form>
-                </nav>
+                </div>
             {% endif %}
         </header>
+
+        {% if request.portal_account or request.portal_is_technical_admin %}
+            <div class="portal-drawer-backdrop" data-portal-drawer-backdrop aria-hidden="true"></div>
+            <nav class="portal-drawer" id="portal-navigation-drawer" data-portal-drawer aria-label="Menu principal" aria-hidden="true">
+                <div class="portal-drawer-header">
+                    <span class="portal-drawer-title">Menu</span>
+                    <button class="portal-drawer-close" type="button" aria-label="Fechar menu" data-portal-drawer-close>&#x2715;</button>
+                </div>
+                <div class="portal-drawer-body">
+                    {% with current_url_name=request.resolver_match.url_name %}
+                        <a class="portal-drawer-link{% if current_url_name == 'dashboard-redirect' or current_url_name == 'admin-home' or current_url_name == 'administrative-home' or current_url_name == 'student-home' or current_url_name == 'instructor-home' %} is-active{% endif %}" href="{% url 'system:dashboard-redirect' %}"{% if current_url_name == 'dashboard-redirect' or current_url_name == 'admin-home' or current_url_name == 'administrative-home' or current_url_name == 'student-home' or current_url_name == 'instructor-home' %} aria-current="page"{% endif %}>
+                            <span class="portal-drawer-link-icon" aria-hidden="true">IN</span>
+                            <span class="portal-drawer-link-copy">
+                                <span class="portal-drawer-link-title">Início</span>
+                                <span class="portal-drawer-link-description">Visão geral do portal</span>
+                            </span>
+                        </a>
+                        {% if request.portal_is_administrative or request.portal_is_technical_admin %}
+                            <span class="portal-drawer-section-label">Gestão</span>
+                            <a class="portal-drawer-link{% if current_url_name == 'person-list' or current_url_name == 'person-create' or current_url_name == 'person-update' or current_url_name == 'person-delete' %} is-active{% endif %}" href="{% url 'system:person-list' %}"{% if current_url_name == 'person-list' or current_url_name == 'person-create' or current_url_name == 'person-update' or current_url_name == 'person-delete' %} aria-current="page"{% endif %}>
+                                <span class="portal-drawer-link-icon" aria-hidden="true">PS</span>
+                                <span class="portal-drawer-link-copy">
+                                    <span class="portal-drawer-link-title">Pessoas</span>
+                                    <span class="portal-drawer-link-description">Cadastro, CPF e acesso ao portal</span>
+                                </span>
+                            </a>
+                            <a class="portal-drawer-link{% if current_url_name == 'person-type-list' or current_url_name == 'person-type-create' or current_url_name == 'person-type-update' or current_url_name == 'person-type-delete' %} is-active{% endif %}" href="{% url 'system:person-type-list' %}"{% if current_url_name == 'person-type-list' or current_url_name == 'person-type-create' or current_url_name == 'person-type-update' or current_url_name == 'person-type-delete' %} aria-current="page"{% endif %}>
+                                <span class="portal-drawer-link-icon" aria-hidden="true">TP</span>
+                                <span class="portal-drawer-link-copy">
+                                    <span class="portal-drawer-link-title">Tipos</span>
+                                    <span class="portal-drawer-link-description">Perfis e vínculos operacionais</span>
+                                </span>
+                            </a>
+                            <a class="portal-drawer-link{% if current_url_name == 'class-category-list' or current_url_name == 'class-category-create' or current_url_name == 'class-category-update' or current_url_name == 'class-category-delete' %} is-active{% endif %}" href="{% url 'system:class-category-list' %}"{% if current_url_name == 'class-category-list' or current_url_name == 'class-category-create' or current_url_name == 'class-category-update' or current_url_name == 'class-category-delete' %} aria-current="page"{% endif %}>
+                                <span class="portal-drawer-link-icon" aria-hidden="true">CT</span>
+                                <span class="portal-drawer-link-copy">
+                                    <span class="portal-drawer-link-title">Categorias</span>
+                                    <span class="portal-drawer-link-description">Classificação oficial das turmas</span>
+                                </span>
+                            </a>
+                            <a class="portal-drawer-link{% if current_url_name == 'class-group-list' or current_url_name == 'class-group-create' or current_url_name == 'class-group-update' or current_url_name == 'class-group-delete' %} is-active{% endif %}" href="{% url 'system:class-group-list' %}"{% if current_url_name == 'class-group-list' or current_url_name == 'class-group-create' or current_url_name == 'class-group-update' or current_url_name == 'class-group-delete' %} aria-current="page"{% endif %}>
+                                <span class="portal-drawer-link-icon" aria-hidden="true">TM</span>
+                                <span class="portal-drawer-link-copy">
+                                    <span class="portal-drawer-link-title">Turmas</span>
+                                    <span class="portal-drawer-link-description">Grade e capacidade operacional</span>
+                                </span>
+                            </a>
+                            <a class="portal-drawer-link{% if current_url_name == 'class-schedule-list' or current_url_name == 'class-schedule-create' or current_url_name == 'class-schedule-update' or current_url_name == 'class-schedule-delete' %} is-active{% endif %}" href="{% url 'system:class-schedule-list' %}"{% if current_url_name == 'class-schedule-list' or current_url_name == 'class-schedule-create' or current_url_name == 'class-schedule-update' or current_url_name == 'class-schedule-delete' %} aria-current="page"{% endif %}>
+                                <span class="portal-drawer-link-icon" aria-hidden="true">HR</span>
+                                <span class="portal-drawer-link-copy">
+                                    <span class="portal-drawer-link-title">Horários</span>
+                                    <span class="portal-drawer-link-description">Sessões e agenda da grade</span>
+                                </span>
+                            </a>
+                            {% if request.portal_is_technical_admin %}
+                                <span class="portal-drawer-section-label">Técnico</span>
+                                <a class="portal-drawer-link" href="/django-admin/">
+                                    <span class="portal-drawer-link-icon" aria-hidden="true">DJ</span>
+                                    <span class="portal-drawer-link-copy">
+                                        <span class="portal-drawer-link-title">Django Admin</span>
+                                        <span class="portal-drawer-link-description">Manutenção técnica isolada do portal</span>
+                                    </span>
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                <div class="portal-drawer-footer">
+                    <div class="portal-drawer-settings">
+                        <span class="portal-drawer-section-label portal-drawer-section-label--footer">Aparência</span>
+                        <div class="portal-drawer-settings-row">
+                            <div class="portal-drawer-settings-copy">
+                                <span class="portal-drawer-settings-title">Tema</span>
+                                <span class="portal-drawer-settings-description">Ajuste a cor do portal para leitura confortável.</span>
+                            </div>
+                            <button class="theme-toggle portal-drawer-theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+                                <span class="theme-toggle-track">
+                                    <span class="theme-toggle-knob"></span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="post" action="{% url 'system:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="portal-drawer-logout">Sair</button>
+                    </form>
+                </div>
+            </nav>
+        {% endif %}
+
         <main class="content-shell">
             {% block content %}{% endblock %}
         </main>
     </div>
-    <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+    <script src="{% static 'system/js/shared/theme-toggle.js' %}?v=20260405-frontfix-5"></script>
+    <script src="{% static 'system/js/shared/drawer-menu.js' %}?v=20260405-frontfix-5"></script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

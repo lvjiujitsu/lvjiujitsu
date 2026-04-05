@@ -8,6 +8,7 @@ from .class_membership import (
 from .class_schedule import ClassSchedule, TrainingStyle, WeekdayCode
 from .common import TimeStampedModel
 from .person import (
+    BiologicalSex,
     BloodType,
     Person,
     PortalAccount,
@@ -25,6 +26,7 @@ __all__ = [
     "ClassInstructorAssignment",
     "ClassSchedule",
     "BloodType",
+    "BiologicalSex",
     "EnrollmentStatus",
     "IbjjfAgeCategory",
     "Person",

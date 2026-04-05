@@ -398,6 +398,14 @@ h1 {
   gap: 8px;
 }
 
+.wizard-progress-step[data-step-trigger-optional] {
+  display: none;
+}
+
+.wizard-progress-step[data-step-trigger-optional].is-visible {
+  display: grid;
+}
+
 .wizard-progress-step {
   display: grid;
   justify-items: center;
@@ -703,6 +711,37 @@ h1 {
   color: var(--text);
 }
 
+.draft-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+
+.draft-note.is-restored {
+  border-style: solid;
+  background: var(--panel-strong);
+}
+
+.draft-note-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.draft-note-copy strong,
+.draft-note-copy p {
+  margin: 0;
+}
+
+.draft-note-copy p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .form-errors p {
   border: 1px solid rgba(180, 35, 24, 0.16);
   background: rgba(180, 35, 24, 0.08);
@@ -728,6 +767,14 @@ h1 {
 
 .text-button {
   text-decoration: none;
+}
+
+.text-button-danger {
+  color: #dc2626;
+}
+
+.text-button-danger:hover {
+  color: #b91c1c;
 }
 
 .choice-grid {
@@ -795,6 +842,126 @@ h1 {
   line-height: 1.2;
   flex: 1 1 auto;
   padding-right: 4px;
+}
+
+.class-selection-note {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+
+.class-selection-note strong,
+.class-selection-note p {
+  margin: 0;
+}
+
+.class-selection-note p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.class-selection-note-compact {
+  margin-bottom: 14px;
+}
+
+.class-option-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.class-option-grid[data-invalid="true"] {
+  padding: 12px;
+  border: 1px solid rgba(180, 35, 24, 0.35);
+  border-radius: 20px;
+  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.12);
+}
+
+.class-option-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.class-option-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--silver-strong);
+}
+
+.class-option-card.is-selected {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--panel-strong);
+}
+
+.class-option-card input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.class-option-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.class-option-eyebrow {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.class-option-title {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.class-option-description,
+.class-option-detail {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.class-option-description {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.class-option-detail {
+  font-size: 0.86rem;
+}
+
+.class-option-card.is-selected .class-option-eyebrow,
+.class-option-card.is-selected .class-option-description,
+.class-option-card.is-selected .class-option-detail {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.class-option-check {
+  width: 22px;
+  height: 22px;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  opacity: 0.75;
+  align-self: center;
+}
+
+.class-option-card.is-selected .class-option-check {
+  box-shadow: inset 0 0 0 5px currentColor;
 }
 
 .switch-card {
@@ -909,6 +1076,13 @@ h1 {
 .assignment-summary-grid {
   display: grid;
   gap: 12px;
+}
+
+.info-summary-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .suggestion-box {
@@ -1262,6 +1436,18 @@ h1 {
     gap: 12px;
   }
 
+  .draft-note {
+    flex-direction: column;
+  }
+
+  .class-option-card {
+    grid-template-columns: 1fr;
+  }
+
+  .class-option-check {
+    display: none;
+  }
+
   .choice-card {
     min-height: 54px;
     padding: 0 14px;
@@ -1329,6 +1515,11 @@ h1 {
     border-radius: 18px;
   }
 
+  .class-selection-note,
+  .class-option-card {
+    border-radius: 18px;
+  }
+
   .seed-type-card strong {
     font-size: 0.84rem;
   }
@@ -1349,5 +1540,11 @@ h1 {
     padding: 0 16px;
     border-radius: 18px;
     font-size: 0.95rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .class-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

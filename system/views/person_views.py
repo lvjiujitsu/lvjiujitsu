@@ -1,8 +1,9 @@
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.db.models import Prefetch
 
 from system.forms import PersonForm, PersonTypeForm
-from system.models import IbjjfAgeCategory, Person, PersonType
+from system.models import ClassEnrollment, IbjjfAgeCategory, Person, PersonType
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -20,9 +21,15 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
             Person.objects.select_related(
                 "access_account",
                 "person_type",
-                "class_category",
-                "class_group",
-                "class_schedule",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "class_enrollments",
+                    queryset=ClassEnrollment.objects.select_related(
+                        "class_group",
+                        "class_group__class_category",
+                    ).filter(status="active"),
+                )
             )
             .order_by("full_name")
         )
@@ -36,6 +43,11 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
             )
         )
         for person in context["people"]:
+            active_enrollments = list(person.class_enrollments.all())
+            person.active_group_labels = [
+                f"{enrollment.class_group.class_category.display_name} · {enrollment.class_group.display_name}"
+                for enrollment in active_enrollments
+            ]
             person.resolved_ibjjf_category = next(
                 (
                     category

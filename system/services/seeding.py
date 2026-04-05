@@ -3,6 +3,7 @@ from datetime import date, time
 from django.db import transaction
 
 from system.models import (
+    BiologicalSex,
     CategoryAudience,
     ClassCategory,
     ClassGroup,
@@ -15,7 +16,7 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
-from system.services.registration import ensure_default_person_types
+from system.services.registration import ensure_default_person_types, sync_person_class_enrollments
 from system.utils import ensure_formatted_cpf
 
 
@@ -278,6 +279,7 @@ def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         email="aluno.individual@example.com",
         phone="(62) 99999-0001",
         birth_date=date(1998, 1, 10),
+        biological_sex=BiologicalSex.MALE,
         blood_type="O+",
         allergies="",
         previous_injuries="",
@@ -285,8 +287,7 @@ def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         password=password,
         person_type=person_types["student"],
         class_category=categories["adult"],
-        class_group=catalog["class_groups"]["adult-lauro"],
-        class_schedule=catalog["class_groups"]["adult-lauro"].schedules.order_by("display_order").first(),
+        class_groups=[catalog["class_groups"]["adult-lauro"]],
     )
     return {"student": student}
 
@@ -304,6 +305,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         email="titular.dependente@example.com",
         phone="(62) 99999-0002",
         birth_date=date(1992, 4, 5),
+        biological_sex=BiologicalSex.MALE,
         blood_type="A+",
         allergies="",
         previous_injuries="Lesão antiga no joelho esquerdo.",
@@ -311,8 +313,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         password=password,
         person_type=person_types["student"],
         class_category=categories["adult"],
-        class_group=holder_group,
-        class_schedule=holder_group.schedules.order_by("display_order").first(),
+        class_groups=[holder_group],
     )
     dependent = _upsert_person_with_account(
         full_name="Dependente do Aluno Titular",
@@ -320,6 +321,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         email="dependente.titular@example.com",
         phone="(62) 99999-0003",
         birth_date=date(2014, 9, 18),
+        biological_sex=BiologicalSex.MALE,
         blood_type="O+",
         allergies="",
         previous_injuries="",
@@ -327,8 +329,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         password=password,
         person_type=person_types["dependent"],
         class_category=categories["kids"],
-        class_group=dependent_group,
-        class_schedule=dependent_group.schedules.order_by("display_order").first(),
+        class_groups=[dependent_group],
     )
     _upsert_relationship(
         holder,
@@ -349,6 +350,7 @@ def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         email="responsavel.individual@example.com",
         phone="(62) 99999-0004",
         birth_date=date(1987, 7, 20),
+        biological_sex=BiologicalSex.FEMALE,
         blood_type="B+",
         allergies="",
         previous_injuries="",
@@ -372,6 +374,7 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         email="responsavel.dependente@example.com",
         phone="(62) 99999-0005",
         birth_date=date(1985, 12, 12),
+        biological_sex=BiologicalSex.FEMALE,
         blood_type="AB+",
         allergies="",
         previous_injuries="",
@@ -386,6 +389,7 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         email="aluno.dependente@example.com",
         phone="(62) 99999-0006",
         birth_date=date(2012, 6, 1),
+        biological_sex=BiologicalSex.FEMALE,
         blood_type="A-",
         allergies="Lactose.",
         previous_injuries="",
@@ -393,8 +397,7 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         password=password,
         person_type=person_types["dependent"],
         class_category=categories["kids"],
-        class_group=dependent_group,
-        class_schedule=dependent_group.schedules.order_by("display_order").first(),
+        class_groups=[dependent_group],
     )
     _upsert_relationship(
         guardian,
@@ -415,6 +418,7 @@ def seed_person_administrative(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         email="administrativo@example.com",
         phone="(62) 99999-0007",
         birth_date=date(1991, 8, 15),
+        biological_sex=BiologicalSex.MALE,
         blood_type="O-",
         allergies="",
         previous_injuries="",
@@ -433,6 +437,7 @@ def _upsert_person_with_account(
     email: str = "",
     phone: str = "",
     birth_date=None,
+    biological_sex: str = "",
     blood_type: str = "",
     allergies: str = "",
     previous_injuries: str = "",
@@ -440,24 +445,28 @@ def _upsert_person_with_account(
     password: str,
     person_type,
     class_category=None,
+    class_groups=None,
     class_group=None,
     class_schedule=None,
 ):
+    primary_group = class_group or ((class_groups or [None])[0])
     person = _upsert_person_record(
         full_name=full_name,
         cpf=cpf,
         email=email,
         phone=phone,
         birth_date=birth_date,
+        biological_sex=biological_sex,
         blood_type=blood_type,
         allergies=allergies,
         previous_injuries=previous_injuries,
         emergency_contact=emergency_contact,
         person_type=person_type,
-        class_category=class_category,
-        class_group=class_group,
-        class_schedule=class_schedule,
+        class_category=primary_group.class_category if primary_group else class_category,
+        class_group=primary_group,
+        class_schedule=class_schedule if class_group else None,
     )
+    sync_person_class_enrollments(person, class_groups or ([class_group] if class_group else []))
     portal_account, _ = PortalAccount.objects.get_or_create(person=person)
     portal_account.is_active = True
     portal_account.set_password(password)
@@ -472,6 +481,7 @@ def _upsert_person_record(
     email: str,
     phone: str,
     birth_date,
+    biological_sex: str,
     blood_type: str,
     allergies: str,
     previous_injuries: str,
@@ -489,6 +499,7 @@ def _upsert_person_record(
             "email": email,
             "phone": phone,
             "birth_date": birth_date,
+            "biological_sex": biological_sex,
             "blood_type": blood_type,
             "allergies": allergies,
             "previous_injuries": previous_injuries,

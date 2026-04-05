@@ -78,14 +78,9 @@ class PortalRegisterView(FormView):
             "student_emergency_contact",
         }
         class_fields = {
-            "holder_class_group",
-            "holder_class_schedule",
-            "dependent_class_group",
-            "dependent_class_schedule",
-            "student_class_group",
-            "student_class_schedule",
-            "other_class_group",
-            "other_class_schedule",
+            "holder_class_groups",
+            "dependent_class_groups",
+            "student_class_groups",
             "extra_dependents_payload",
         }
         registration_fields = {

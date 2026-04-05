@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Painel master | LV JIU JITSU{% endblock %}
 
@@ -7,16 +8,58 @@
     <div class="panel-card">
         <p class="panel-eyebrow">Portal administrativo</p>
         <h1>Painel master</h1>
-        <p>Gerencie pessoas, tipos, turmas e horários em superfícies auditáveis do portal.</p>
+        <p>Gerencie pessoas, tipos, turmas e horários em superfícies auditáveis do portal. Em telas pequenas, pessoas, turmas e horários aparecem primeiro.</p>
     </div>
 
-    <div class="shortcut-grid">
-        <a class="shortcut-card" href="{% url 'system:person-list' %}">Gerenciar pessoas</a>
-        <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Gerenciar tipos</a>
-        <a class="shortcut-card" href="{% url 'system:class-category-list' %}">Gerenciar categorias</a>
-        <a class="shortcut-card" href="{% url 'system:class-group-list' %}">Gerenciar turmas</a>
-        <a class="shortcut-card" href="{% url 'system:class-schedule-list' %}">Gerenciar horários</a>
-        <a class="shortcut-card" href="/django-admin/">Abrir Django Admin</a>
-    </div>
+    <section class="panel-card dashboard-shortcuts">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Ações principais</p>
+                <h2>O que fazer agora</h2>
+                <p>Em telas compactas, mostramos primeiro os atalhos operacionais mais úteis para recepção e gestão da grade.</p>
+            </div>
+            <button class="ghost-button dashboard-actions-toggle" type="button" data-dashboard-actions-toggle aria-controls="admin-secondary-actions" aria-expanded="false" hidden>Mostrar mais atalhos</button>
+        </div>
+
+        <div class="dashboard-actions-grid">
+            <a class="dashboard-action-card" href="{% url 'system:person-list' %}">
+                <span class="dashboard-action-meta">Cadastro</span>
+                <span class="dashboard-action-title">Pessoas</span>
+                <span class="dashboard-action-description">Revise CPF, acesso ao portal e status do cadastro.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-group-list' %}">
+                <span class="dashboard-action-meta">Tatame</span>
+                <span class="dashboard-action-title">Turmas</span>
+                <span class="dashboard-action-description">Organize a grade operacional e a capacidade das aulas.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-schedule-list' %}">
+                <span class="dashboard-action-meta">Agenda</span>
+                <span class="dashboard-action-title">Horários</span>
+                <span class="dashboard-action-description">Mantenha a agenda da semana coerente com a grade.</span>
+            </a>
+        </div>
+
+        <div class="dashboard-actions-grid dashboard-actions-grid-secondary" id="admin-secondary-actions" data-dashboard-actions-secondary aria-hidden="false">
+            <a class="dashboard-action-card" href="{% url 'system:person-type-list' %}">
+                <span class="dashboard-action-meta">Permissões</span>
+                <span class="dashboard-action-title">Tipos</span>
+                <span class="dashboard-action-description">Ajuste os vínculos usados nas jornadas do portal.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-category-list' %}">
+                <span class="dashboard-action-meta">Catálogo</span>
+                <span class="dashboard-action-title">Categorias</span>
+                <span class="dashboard-action-description">Revise a classificação que organiza cada turma.</span>
+            </a>
+            <a class="dashboard-action-card dashboard-action-card--technical" href="/django-admin/">
+                <span class="dashboard-action-meta">Superfície técnica</span>
+                <span class="dashboard-action-title">Django Admin</span>
+                <span class="dashboard-action-description">Acesso isolado para manutenção técnica e suporte do projeto.</span>
+            </a>
+        </div>
+    </section>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'system/js/home/admin-dashboard.js' %}?v=20260405-frontfix-5"></script>
 {% endblock %}

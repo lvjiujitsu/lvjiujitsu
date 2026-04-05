@@ -7,12 +7,12 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Turmas</h1>
-        <p>Gerencie modalidade, categoria, professor principal, auxiliares e capacidade padrão.</p>
+        <p>Gerencie modalidade, categoria, professor principal, auxiliares e capacidade padrão. O aluno é liberado por turma e passa a acessar todos os horários ativos compatíveis dessa turma.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-group-create' %}">Nova turma</a>
 </section>
 
-<section class="table-card">
+<section class="table-card data-table-wrap">
     <table class="data-table">
         <thead>
             <tr>
@@ -53,5 +53,39 @@
             {% endfor %}
         </tbody>
     </table>
+</section>
+
+<section class="card-list">
+    {% for class_group in class_groups %}
+        <div class="record-card">
+            <div class="record-card-title">{{ class_group.display_name }}</div>
+            <div class="record-card-rows">
+                <div class="record-card-row">
+                    <span class="record-card-label">Categ.</span>
+                    <span class="record-card-value">{{ class_group.class_category.display_name|default:"Sem categoria" }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Prof.</span>
+                    <span class="record-card-value">{{ class_group.main_teacher.full_name|default:"Sem professor" }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Cap.</span>
+                    <span class="record-card-value">{{ class_group.default_capacity }} vagas &middot; {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Status</span>
+                    <span class="record-card-value">
+                        <span class="tag">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
+                    </span>
+                </div>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:class-group-update' class_group.pk %}">Editar</a>
+                <a href="{% url 'system:class-group-delete' class_group.pk %}">Excluir</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty-state">Nenhuma turma cadastrada.</div>
+    {% endfor %}
 </section>
 {% endblock %}

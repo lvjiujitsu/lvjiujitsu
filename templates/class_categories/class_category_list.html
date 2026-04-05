@@ -12,7 +12,7 @@
     <a class="primary-button" href="{% url 'system:class-category-create' %}">Nova categoria</a>
 </section>
 
-<section class="table-card">
+<section class="table-card data-table-wrap">
     <table class="data-table">
         <thead>
             <tr>
@@ -45,5 +45,37 @@
             {% endfor %}
         </tbody>
     </table>
+</section>
+
+<section class="card-list">
+    {% for class_category in class_categories %}
+        <div class="record-card">
+            <div class="record-card-title">{{ class_category.display_name }}</div>
+            <div class="record-card-rows">
+                <div class="record-card-row">
+                    <span class="record-card-label">Código</span>
+                    <span class="record-card-value">{{ class_category.code }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Base</span>
+                    <span class="record-card-value">{{ class_category.get_audience_display }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Ordem</span>
+                    <span class="record-card-value">{{ class_category.display_order }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Status</span>
+                    <span class="record-card-value">{{ class_category.is_active|yesno:"Ativa,Inativa" }}</span>
+                </div>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:class-category-update' class_category.pk %}">Editar</a>
+                <a href="{% url 'system:class-category-delete' class_category.pk %}">Excluir</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty-state">Nenhuma categoria cadastrada.</div>
+    {% endfor %}
 </section>
 {% endblock %}

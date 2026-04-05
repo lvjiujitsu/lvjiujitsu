@@ -40,6 +40,9 @@
           <div class="status-stack" role="status">
             {% for message in messages %}
               <div class="status-message">{{ message }}</div>
+              {% if 'success' in message.tags %}
+                <span data-clear-registration-draft hidden></span>
+              {% endif %}
             {% endfor %}
           </div>
         {% endif %}
@@ -95,5 +98,17 @@
   </main>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
+  <script>
+    (function () {
+      if (!document.querySelector('[data-clear-registration-draft]')) {
+        return;
+      }
+      try {
+        window.localStorage.removeItem('lv-register-draft-v1');
+      } catch (_error) {
+        return;
+      }
+    })();
+  </script>
 </body>
 </html>

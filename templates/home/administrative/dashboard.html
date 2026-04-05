@@ -10,12 +10,42 @@
         <p>Acompanhe pessoas, turmas e horários para auditoria operacional do portal.</p>
     </div>
 
-    <div class="shortcut-grid">
-        <a class="shortcut-card" href="{% url 'system:person-list' %}">Pessoas</a>
-        <a class="shortcut-card" href="{% url 'system:person-type-list' %}">Tipos de vínculo</a>
-        <a class="shortcut-card" href="{% url 'system:class-category-list' %}">Categorias</a>
-        <a class="shortcut-card" href="{% url 'system:class-group-list' %}">Turmas</a>
-        <a class="shortcut-card" href="{% url 'system:class-schedule-list' %}">Horários</a>
-    </div>
+    <section class="panel-card dashboard-shortcuts">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Atalhos do portal</p>
+                <h2>Rotinas mais usadas</h2>
+                <p>Cadastros e grade operacional ficam organizados em cards mais claros para navegação rápida.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-actions-grid">
+            <a class="dashboard-action-card" href="{% url 'system:person-list' %}">
+                <span class="dashboard-action-meta">Cadastro</span>
+                <span class="dashboard-action-title">Pessoas</span>
+                <span class="dashboard-action-description">Consulte identidades, CPF e acesso ao portal.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-group-list' %}">
+                <span class="dashboard-action-meta">Tatame</span>
+                <span class="dashboard-action-title">Turmas</span>
+                <span class="dashboard-action-description">Revise a estrutura principal da grade operacional.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-schedule-list' %}">
+                <span class="dashboard-action-meta">Agenda</span>
+                <span class="dashboard-action-title">Horários</span>
+                <span class="dashboard-action-description">Acompanhe sessões e horários ativos da academia.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:person-type-list' %}">
+                <span class="dashboard-action-meta">Permissões</span>
+                <span class="dashboard-action-title">Tipos de vínculo</span>
+                <span class="dashboard-action-description">Confira os perfis disponíveis para cada jornada.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:class-category-list' %}">
+                <span class="dashboard-action-meta">Catálogo</span>
+                <span class="dashboard-action-title">Categorias</span>
+                <span class="dashboard-action-description">Mantenha a classificação oficial das turmas atualizada.</span>
+            </a>
+        </div>
+    </section>
 </section>
 {% endblock %}

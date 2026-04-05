@@ -33,12 +33,22 @@ class BloodType(models.TextChoices):
     O_NEGATIVE = "O-", "O-"
 
 
+class BiologicalSex(models.TextChoices):
+    MALE = "male", "Masculino"
+    FEMALE = "female", "Feminino"
+
+
 class Person(TimeStampedModel):
     full_name = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14, unique=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=20, blank=True)
     birth_date = models.DateField(null=True, blank=True)
+    biological_sex = models.CharField(
+        max_length=16,
+        choices=BiologicalSex.choices,
+        blank=True,
+    )
     blood_type = models.CharField(max_length=3, choices=BloodType.choices, blank=True)
     allergies = models.TextField(blank=True)
     previous_injuries = models.TextField(blank=True)

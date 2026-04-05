@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from system.models import (
+    BiologicalSex,
     ClassCategory,
     ClassEnrollment,
     ClassGroup,
@@ -67,6 +68,48 @@ class ClassCatalogModelTestCase(TestCase):
             class_group=class_group,
             person=guardian,
         )
+
+        with self.assertRaises(ValidationError):
+            enrollment.full_clean()
+
+    def test_class_enrollment_blocks_male_student_from_women_group(self):
+        women_category = ClassCategory.objects.get(code="women")
+        class_group = ClassGroup.objects.create(
+            code="women-class",
+            display_name="Jiu Jitsu",
+            class_category=women_category,
+        )
+        student_type = PersonType.objects.get(code="student")
+        student = Person.objects.create(
+            full_name="Aluno Masculino",
+            cpf="100.000.000-04",
+            birth_date=date(1995, 4, 4),
+            biological_sex=BiologicalSex.MALE,
+            person_type=student_type,
+        )
+
+        enrollment = ClassEnrollment(class_group=class_group, person=student)
+
+        with self.assertRaises(ValidationError):
+            enrollment.full_clean()
+
+    def test_class_enrollment_blocks_adult_student_from_kids_group(self):
+        kids_category = ClassCategory.objects.get(code="kids")
+        class_group = ClassGroup.objects.create(
+            code="kids-class",
+            display_name="Jiu Jitsu",
+            class_category=kids_category,
+        )
+        student_type = PersonType.objects.get(code="student")
+        student = Person.objects.create(
+            full_name="Aluno Adulto",
+            cpf="100.000.000-05",
+            birth_date=date(1990, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+            person_type=student_type,
+        )
+
+        enrollment = ClassEnrollment(class_group=class_group, person=student)
 
         with self.assertRaises(ValidationError):
             enrollment.full_clean()

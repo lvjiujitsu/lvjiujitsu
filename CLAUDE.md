@@ -220,8 +220,11 @@ Regra da fase atual:
 - O cadastro do titular e de seus dependentes deve ser transacional.
 - Não pode existir onboarding parcialmente concluído com identidade quebrada.
 - O onboarding coleta dados pessoais, contatos, documentos e, quando aplicável, dados de emergência e saúde.
+- Para aluno titular e dependente com jornada esportiva, o onboarding deve coletar também o **sexo biológico** quando isso for necessário para validar elegibilidade de turma.
 - Sempre que o cadastro criar alguém com direito de acesso ao portal, a conta local do domínio deve nascer junto com a pessoa, com senha definida no próprio onboarding.
 - O onboarding não deve criar `User` do Django para titular, dependente, responsável ou professor do produto.
+- Na etapa esportiva do onboarding, aluno titular e dependente selecionam **turmas liberadas**, não um único horário fixo.
+- Horários ativos de treino são derivados automaticamente das turmas liberadas ao aluno; o onboarding não deve exigir seleção manual de dia da semana ou horário único para matrícula esportiva recorrente.
 
 ### 5.2 Presença e check-in
 - O QR Code deve ser dinâmico e de curta duração.
@@ -244,6 +247,10 @@ Regra da fase atual:
 - A classificação operacional da turma deve vir exclusivamente de `ClassCategory`.
 - `ClassSchedule` representa o horário da turma e não deve ser colapsado no nome da turma.
 - A superfície administrativa e a tela de informações não devem exibir `Público` como coluna ou atributo redundante da turma.
+- A liberação esportiva do aluno deve acontecer por `ClassGroup`; `ClassSchedule` é agenda operacional da turma, não vínculo principal de matrícula do aluno.
+- Ao liberar uma turma para um aluno elegível, todos os `ClassSchedule` ativos daquela turma ficam disponíveis automaticamente, sem distinção manual por dia da semana no onboarding.
+- A elegibilidade da turma deve ser revalidada no backend com base na faixa etária calculada da pessoa.
+- Turma feminina exige pessoa com **sexo biológico feminino** e faixa etária compatível com a categoria adulta.
 
 ### 5.4 Inadimplência
 - Inadimplência bloqueia check-in e acesso esportivo conforme política da academia.

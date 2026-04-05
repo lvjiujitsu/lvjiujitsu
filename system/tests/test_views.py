@@ -65,6 +65,14 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Esqueci minha senha")
         self.assertContains(response, "Mostrar")
 
+    def test_register_route_renders_class_group_selection_copy(self):
+        response = self.client.get(reverse("system:legacy-register"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sexo biológico")
+        self.assertContains(response, "Nenhuma turma está disponível no momento.")
+        self.assertContains(response, "Rascunho automático")
+
     def test_login_with_invalid_numeric_identifier_returns_form_error(self):
         response = self.client.post(
             reverse("system:legacy-login-form"),
@@ -82,6 +90,7 @@ class PortalViewTestCase(TestCase):
                 "holder_name": "Aluno Teste",
                 "holder_cpf": "12345678903",
                 "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
                 "holder_phone": "(62) 99999-1212",
                 "holder_email": "aluno@example.com",
                 "holder_password": "123456",
@@ -127,6 +136,7 @@ class PortalViewTestCase(TestCase):
                 "holder_name": "Aluno Teste",
                 "holder_cpf": "12345678903",
                 "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
                 "holder_phone": "(62) 99999-1212",
                 "holder_email": "aluno@example.com",
                 "holder_password": "123456",
@@ -151,6 +161,7 @@ class PortalViewTestCase(TestCase):
 
         self.assertRedirects(response, reverse("system:admin-home"))
         self.assertContains(response, "Painel master")
+        self.assertContains(response, "Superfície técnica")
         session = self.client.session
         self.assertIn(TECHNICAL_ADMIN_SESSION_KEY, session)
 
@@ -181,6 +192,21 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pessoas")
+
+    def test_administrative_portal_account_dashboard_exposes_shortcuts(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao LV",
+            cpf="321.654.987-00",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(reverse("system:administrative-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Rotinas mais usadas")
+        self.assertContains(response, "Tipos de vínculo")
 
     def test_administrative_portal_account_can_open_person_edit_form(self):
         administrative_account = self._create_portal_account(

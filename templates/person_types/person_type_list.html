@@ -12,7 +12,7 @@
     <a class="primary-button" href="{% url 'system:person-type-create' %}">Novo tipo</a>
 </section>
 
-<section class="table-card">
+<section class="table-card data-table-wrap">
     <table class="data-table">
         <thead>
             <tr>
@@ -40,5 +40,29 @@
             {% endfor %}
         </tbody>
     </table>
+</section>
+
+<section class="card-list">
+    {% for person_type in person_types %}
+        <div class="record-card">
+            <div class="record-card-title">{{ person_type.display_name }}</div>
+            <div class="record-card-rows">
+                <div class="record-card-row">
+                    <span class="record-card-label">Código</span>
+                    <span class="record-card-value">{{ person_type.code }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Status</span>
+                    <span class="record-card-value">{{ person_type.is_active|yesno:"Ativo,Inativo" }}</span>
+                </div>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:person-type-update' person_type.pk %}">Editar</a>
+                <a href="{% url 'system:person-type-delete' person_type.pk %}">Excluir</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty-state">Nenhum tipo cadastrado.</div>
+    {% endfor %}
 </section>
 {% endblock %}

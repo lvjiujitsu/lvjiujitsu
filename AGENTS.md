@@ -50,6 +50,7 @@ Antes de alterar qualquer arquivo:
    - autenticacao local do portal separada do Django Admin;
    - tipo unico de pessoa por cadastro na fase atual;
    - categoria como unica fonte de classificacao da turma;
+   - matricula esportiva por turma liberada, com horarios ativos herdados da turma;
    - onboarding transacional;
    - check-in com QR/WebRTC;
    - reserva previa de vaga;
@@ -167,6 +168,10 @@ Frase de encerramento obrigatoria quando houver nova descoberta relevante:
 - A classificacao da turma deve vir exclusivamente de `ClassCategory`.
 - `ClassSchedule` representa o horario da turma e nao deve ser embutido no nome da turma.
 - CRUD, listagens e telas informativas nao devem exibir coluna ou atributo redundante de `Publico` em `Turmas`.
+- A liberacao esportiva do aluno deve acontecer por `ClassGroup`, e nao por um `ClassSchedule` unico.
+- Ao liberar uma turma para o aluno, todos os horarios ativos dessa turma ficam disponiveis automaticamente, respeitando as regras de elegibilidade.
+- Onboarding de aluno ou dependente nao deve forcar escolha manual de um unico dia da semana ou horario fixo quando o plano permitir livre frequencia na turma.
+- Compatibilidade de turma deve ser revalidada no backend por faixa etaria; turma feminina exige sexo biologico feminino e perfil etario compativel com a categoria adulta.
 
 ### 3.3 Financeiro e trancamento
 - Matricula pausada e um estado de negocio local do sistema, mesmo quando a Stripe mantem a assinatura ativa com cobranca pausada.
@@ -253,6 +258,9 @@ Toda mudanca relevante deve, no minimo, considerar testes para:
 - tipo unico por pessoa;
 - perfil `dependent` isolado conseguindo autenticar e navegar no escopo permitido;
 - onboarding transacional;
+- onboarding com selecao de multiplas turmas liberadas sem horario unico;
+- bloqueio de turma infantil para adulto e de turma adulta para crianca;
+- bloqueio de turma feminina para sexo biologico masculino;
 - inadimplencia bloqueando check-in antes da camera;
 - reserva previa e consumo de vagas;
 - trancamento de matricula com congelamento de graduacao;

@@ -6,6 +6,8 @@ from django.utils import timezone
 
 from system.forms import PortalRegistrationForm
 from system.models import (
+    BiologicalSex,
+    ClassEnrollment,
     ClassGroup,
     Person,
     PersonRelationship,
@@ -56,6 +58,7 @@ class PersonModelTestCase(TestCase):
                 "holder_name": "Carlos Titular",
                 "holder_cpf": "12345678901",
                 "holder_birthdate": "01/01/1990",
+                "holder_biological_sex": BiologicalSex.MALE,
                 "holder_phone": "(62) 99999-1111",
                 "holder_email": "carlos@example.com",
                 "holder_password": "123456",
@@ -63,6 +66,7 @@ class PersonModelTestCase(TestCase):
                 "dependent_name": "João Dependente",
                 "dependent_cpf": "12345678902",
                 "dependent_birthdate": "02/02/2015",
+                "dependent_biological_sex": BiologicalSex.MALE,
                 "dependent_password": "123456",
                 "dependent_password_confirm": "123456",
                 "dependent_kinship_type": "father",
@@ -103,6 +107,7 @@ class PersonModelTestCase(TestCase):
                 "student_name": "Pedro Aluno",
                 "student_cpf": "98765432101",
                 "student_birthdate": "03/03/2012",
+                "student_biological_sex": BiologicalSex.MALE,
                 "student_password": "123456",
                 "student_password_confirm": "123456",
                 "student_kinship_type": "mother",
@@ -127,6 +132,7 @@ class PersonModelTestCase(TestCase):
                 "holder_name": "Carlos Titular",
                 "holder_cpf": "12345678901",
                 "holder_birthdate": "01/01/1990",
+                "holder_biological_sex": BiologicalSex.MALE,
                 "holder_password": "123456",
                 "holder_password_confirm": "654321",
             }
@@ -150,10 +156,10 @@ class PersonModelTestCase(TestCase):
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
 
-    def test_registration_derives_class_category_from_selected_group(self):
+    def test_registration_creates_multiple_class_enrollments_from_selected_groups(self):
         seed_class_catalog()
-        class_group = ClassGroup.objects.get(code="adult-lauro")
-        class_schedule = class_group.schedules.order_by("display_order").first()
+        primary_group = ClassGroup.objects.get(code="adult-lauro")
+        secondary_group = ClassGroup.objects.get(code="adult-layon")
 
         form = PortalRegistrationForm(
             data={
@@ -161,10 +167,10 @@ class PersonModelTestCase(TestCase):
                 "holder_name": "Aluno com Turma",
                 "holder_cpf": "22345678901",
                 "holder_birthdate": "01/01/1995",
+                "holder_biological_sex": BiologicalSex.MALE,
                 "holder_password": "123456",
                 "holder_password_confirm": "123456",
-                "holder_class_group": class_group.pk,
-                "holder_class_schedule": class_schedule.pk,
+                "holder_class_groups": [primary_group.pk, secondary_group.pk],
             }
         )
 
@@ -172,9 +178,10 @@ class PersonModelTestCase(TestCase):
         created = form.save()
         holder = created["holder"]
 
-        self.assertEqual(holder.class_group, class_group)
-        self.assertEqual(holder.class_schedule, class_schedule)
-        self.assertEqual(holder.class_category, class_group.class_category)
+        self.assertEqual(holder.class_group, primary_group)
+        self.assertIsNone(holder.class_schedule)
+        self.assertEqual(holder.class_category, primary_group.class_category)
+        self.assertEqual(ClassEnrollment.objects.filter(person=holder).count(), 2)
 
     def test_guardian_registration_accepts_multiple_dependents(self):
         form = PortalRegistrationForm(
@@ -187,6 +194,7 @@ class PersonModelTestCase(TestCase):
                 "student_name": "Dependente Principal",
                 "student_cpf": "32345678902",
                 "student_birthdate": "01/02/2014",
+                "student_biological_sex": BiologicalSex.FEMALE,
                 "student_password": "123456",
                 "student_password_confirm": "123456",
                 "student_kinship_type": "mother",
@@ -196,6 +204,7 @@ class PersonModelTestCase(TestCase):
                             "full_name": "Dependente Extra 1",
                             "cpf": "32345678903",
                             "birth_date": "01/03/2015",
+                            "biological_sex": BiologicalSex.FEMALE,
                             "password": "123456",
                             "password_confirm": "123456",
                             "kinship_type": "mother",
@@ -204,6 +213,7 @@ class PersonModelTestCase(TestCase):
                             "full_name": "Dependente Extra 2",
                             "cpf": "32345678904",
                             "birth_date": "01/04/2016",
+                            "biological_sex": BiologicalSex.MALE,
                             "password": "123456",
                             "password_confirm": "123456",
                             "kinship_type": "other",

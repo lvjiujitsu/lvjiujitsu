@@ -31,9 +31,10 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:admin-home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Gerenciar turmas")
-        self.assertContains(response, "Gerenciar horários")
-        self.assertContains(response, "Gerenciar categorias")
+        self.assertContains(response, "Turmas")
+        self.assertContains(response, "Horários")
+        self.assertContains(response, "Categorias")
+        self.assertContains(response, "O que fazer agora")
 
     def test_technical_admin_can_access_class_crud_routes(self):
         seed_class_catalog()

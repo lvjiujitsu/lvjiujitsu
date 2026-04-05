@@ -2,15 +2,13 @@ from datetime import datetime
 
 from django import forms
 
-from system.models import BloodType, ClassGroup, ClassSchedule, Person, PersonType
+from system.models import BiologicalSex, BloodType, ClassGroup, Person, PersonType
+from system.models.class_membership import get_class_group_eligibility_error
 from system.services.registration import (
     create_portal_registration,
-    derive_class_category,
     get_kinship_choices,
     parse_extra_dependents_payload,
-    resolve_class_category,
-    resolve_class_group,
-    resolve_class_schedule,
+    resolve_class_groups,
 )
 from system.utils import ensure_formatted_cpf
 
@@ -31,13 +29,15 @@ class PortalRegistrationForm(forms.Form):
     holder_name = forms.CharField(required=False, max_length=255)
     holder_cpf = forms.CharField(required=False, max_length=14)
     holder_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    holder_biological_sex = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BiologicalSex.choices),
+    )
     holder_phone = forms.CharField(required=False, max_length=20)
     holder_email = forms.EmailField(required=False)
     holder_password = forms.CharField(required=False, strip=False)
     holder_password_confirm = forms.CharField(required=False, strip=False)
-    holder_class_category = forms.ChoiceField(required=False)
-    holder_class_group = forms.ChoiceField(required=False)
-    holder_class_schedule = forms.ChoiceField(required=False)
+    holder_class_groups = forms.MultipleChoiceField(required=False)
     holder_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -49,6 +49,10 @@ class PortalRegistrationForm(forms.Form):
     dependent_name = forms.CharField(required=False, max_length=255)
     dependent_cpf = forms.CharField(required=False, max_length=14)
     dependent_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    dependent_biological_sex = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BiologicalSex.choices),
+    )
     dependent_email = forms.EmailField(required=False)
     dependent_phone = forms.CharField(required=False, max_length=20)
     dependent_password = forms.CharField(required=False, strip=False)
@@ -58,9 +62,7 @@ class PortalRegistrationForm(forms.Form):
         choices=[("", "Selecione")] + list(get_kinship_choices()),
     )
     dependent_kinship_other_label = forms.CharField(required=False, max_length=80)
-    dependent_class_category = forms.ChoiceField(required=False)
-    dependent_class_group = forms.ChoiceField(required=False)
-    dependent_class_schedule = forms.ChoiceField(required=False)
+    dependent_class_groups = forms.MultipleChoiceField(required=False)
     dependent_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -71,6 +73,10 @@ class PortalRegistrationForm(forms.Form):
 
     guardian_name = forms.CharField(required=False, max_length=255)
     guardian_cpf = forms.CharField(required=False, max_length=14)
+    guardian_biological_sex = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BiologicalSex.choices),
+    )
     guardian_phone = forms.CharField(required=False, max_length=20)
     guardian_email = forms.EmailField(required=False)
     guardian_password = forms.CharField(required=False, strip=False)
@@ -79,6 +85,10 @@ class PortalRegistrationForm(forms.Form):
     student_name = forms.CharField(required=False, max_length=255)
     student_cpf = forms.CharField(required=False, max_length=14)
     student_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    student_biological_sex = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BiologicalSex.choices),
+    )
     student_email = forms.EmailField(required=False)
     student_phone = forms.CharField(required=False, max_length=20)
     student_password = forms.CharField(required=False, strip=False)
@@ -88,9 +98,7 @@ class PortalRegistrationForm(forms.Form):
         choices=[("", "Selecione")] + list(get_kinship_choices()),
     )
     student_kinship_other_label = forms.CharField(required=False, max_length=80)
-    student_class_category = forms.ChoiceField(required=False)
-    student_class_group = forms.ChoiceField(required=False)
-    student_class_schedule = forms.ChoiceField(required=False)
+    student_class_groups = forms.MultipleChoiceField(required=False)
     student_blood_type = forms.ChoiceField(
         required=False,
         choices=[("", "Selecione")] + list(BloodType.choices),
@@ -102,20 +110,18 @@ class PortalRegistrationForm(forms.Form):
     other_name = forms.CharField(required=False, max_length=255)
     other_cpf = forms.CharField(required=False, max_length=14)
     other_birthdate = forms.DateField(required=False, input_formats=["%d/%m/%Y"])
+    other_biological_sex = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BiologicalSex.choices),
+    )
     other_phone = forms.CharField(required=False, max_length=20)
     other_email = forms.EmailField(required=False)
     other_password = forms.CharField(required=False, strip=False)
     other_password_confirm = forms.CharField(required=False, strip=False)
-    other_class_category = forms.ChoiceField(required=False)
-    other_class_group = forms.ChoiceField(required=False)
-    other_class_schedule = forms.ChoiceField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.catalog_is_available = (
-            ClassGroup.objects.filter(is_active=True).exists()
-            and ClassSchedule.objects.filter(is_active=True).exists()
-        )
+        self.catalog_is_available = ClassGroup.objects.filter(is_active=True).exists()
         self._configure_other_type_choices()
         self._configure_class_choices()
 
@@ -153,23 +159,12 @@ class PortalRegistrationForm(forms.Form):
             .select_related("class_category")
             .order_by("class_category__display_order", "code")
         )
-        schedules = (
-            ClassSchedule.objects.filter(is_active=True)
-            .select_related("class_group")
-            .order_by("class_group__display_name", "display_order", "start_time")
-        )
         group_choices = [("", "Selecione")] + [
             (group.pk, f"{group.class_category.display_name} · {group.display_name}")
             for group in groups
         ]
-        schedule_choices = [("", "Selecione")] + [
-            (schedule.pk, f"{schedule.get_weekday_display()} · {schedule.start_time.strftime('%H:%M')}")
-            for schedule in schedules
-        ]
-        for prefix in ("holder", "dependent", "student", "other"):
-            self.fields[f"{prefix}_class_group"].choices = group_choices
-            self.fields[f"{prefix}_class_schedule"].choices = schedule_choices
-            self.fields[f"{prefix}_class_category"].choices = [("", "Selecione")]
+        for prefix in ("holder", "dependent", "student"):
+            self.fields[f"{prefix}_class_groups"].choices = group_choices
 
     def _clean_required_fields(self, profile, include_dependent):
         if profile == "holder":
@@ -177,6 +172,7 @@ class PortalRegistrationForm(forms.Form):
                 "holder_name",
                 "holder_cpf",
                 "holder_birthdate",
+                "holder_biological_sex",
                 "holder_password",
                 "holder_password_confirm",
             )
@@ -185,6 +181,7 @@ class PortalRegistrationForm(forms.Form):
                     "dependent_name",
                     "dependent_cpf",
                     "dependent_birthdate",
+                    "dependent_biological_sex",
                     "dependent_password",
                     "dependent_password_confirm",
                     "dependent_kinship_type",
@@ -200,6 +197,7 @@ class PortalRegistrationForm(forms.Form):
                 "student_name",
                 "student_cpf",
                 "student_birthdate",
+                "student_biological_sex",
                 "student_password",
                 "student_password_confirm",
                 "student_kinship_type",
@@ -326,77 +324,88 @@ class PortalRegistrationForm(forms.Form):
 
     def _clean_class_links(self, profile, include_dependent, extra_dependents):
         if profile == "holder":
-            self._resolve_class_triplet("holder", required=self.catalog_is_available)
+            self._resolve_class_group_collection("holder", required=self.catalog_is_available)
             if include_dependent:
-                self._resolve_class_triplet("dependent", required=self.catalog_is_available)
+                self._resolve_class_group_collection(
+                    "dependent",
+                    required=self.catalog_is_available,
+                )
         elif profile == "guardian":
-            self._resolve_class_triplet("student", required=self.catalog_is_available)
-        else:
-            self._resolve_class_triplet("other", required=False)
+            self._resolve_class_group_collection("student", required=self.catalog_is_available)
 
         for index, dependent in enumerate(extra_dependents, start=1):
-            category = resolve_class_category(dependent.get("class_category"))
-            group = resolve_class_group(dependent.get("class_group"))
-            schedule = resolve_class_schedule(dependent.get("class_schedule"))
-            if not self.catalog_is_available and not any([category, group, schedule]):
-                dependent["class_category"] = None
-                dependent["class_group"] = None
-                dependent["class_schedule"] = None
+            if not dependent.get("biological_sex"):
+                self.add_error(None, f"Dependente adicional {index}: informe o sexo biológico.")
+            raw_group_ids = dependent.get("class_groups") or []
+            if not self.catalog_is_available and not raw_group_ids:
+                dependent["class_groups"] = []
                 continue
-            if not group or not schedule:
-                self.add_error(None, f"Dependente adicional {index} precisa informar turma e horário.")
+            groups = resolve_class_groups(raw_group_ids)
+            if self.catalog_is_available and not groups:
+                self.add_error(None, f"Dependente adicional {index}: selecione ao menos uma turma.")
                 continue
-            if schedule.class_group_id != group.id:
+            if len(groups) != len({str(group_id) for group_id in raw_group_ids if str(group_id)}):
                 self.add_error(
                     None,
-                    f"Dependente adicional {index} possui horário incompatível com a turma.",
+                    f"Dependente adicional {index}: selecione apenas turmas válidas.",
                 )
-                continue
-            dependent["class_category"] = derive_class_category(
-                class_group=group,
-                explicit_category=category,
+            self._add_class_group_eligibility_errors(
+                None,
+                groups,
+                dependent.get("birth_date"),
+                dependent.get("biological_sex", ""),
+                f"Dependente adicional {index}",
             )
-            dependent["class_group"] = group
-            dependent["class_schedule"] = schedule
+            dependent["class_groups"] = groups
 
-    def _resolve_class_triplet(self, prefix, required):
-        category_field = f"{prefix}_class_category"
-        group_field = f"{prefix}_class_group"
-        schedule_field = f"{prefix}_class_schedule"
+    def _resolve_class_group_collection(self, prefix, required):
+        field_name = f"{prefix}_class_groups"
+        raw_group_ids = self.cleaned_data.get(field_name) or []
 
-        raw_category = self.cleaned_data.get(category_field)
-        raw_group = self.cleaned_data.get(group_field)
-        raw_schedule = self.cleaned_data.get(schedule_field)
-
-        if not any([raw_category, raw_group, raw_schedule]) and not required:
-            self.cleaned_data[category_field] = None
-            self.cleaned_data[group_field] = None
-            self.cleaned_data[schedule_field] = None
+        if not raw_group_ids and not required:
+            self.cleaned_data[field_name] = []
             return
 
         if required and not self.catalog_is_available:
-            self.cleaned_data[category_field] = None
-            self.cleaned_data[group_field] = None
-            self.cleaned_data[schedule_field] = None
+            self.cleaned_data[field_name] = []
             return
 
-        category = resolve_class_category(raw_category)
-        group = resolve_class_group(raw_group)
-        schedule = resolve_class_schedule(raw_schedule)
+        groups = resolve_class_groups(raw_group_ids)
 
-        if required and not group:
-            self.add_error(group_field, "Selecione a turma.")
-        if required and not schedule:
-            self.add_error(schedule_field, "Selecione o horário.")
-        if group and schedule and schedule.class_group_id != group.id:
-            self.add_error(schedule_field, "O horário não pertence à turma escolhida.")
+        if required and not groups:
+            self.add_error(field_name, "Selecione ao menos uma turma.")
+        if len(groups) != len({str(group_id) for group_id in raw_group_ids if str(group_id)}):
+            self.add_error(field_name, "Selecione apenas turmas válidas.")
 
-        self.cleaned_data[category_field] = derive_class_category(
-            class_group=group,
-            explicit_category=category,
+        self._add_class_group_eligibility_errors(
+            field_name,
+            groups,
+            self.cleaned_data.get(f"{prefix}_birthdate"),
+            self.cleaned_data.get(f"{prefix}_biological_sex", ""),
         )
-        self.cleaned_data[group_field] = group
-        self.cleaned_data[schedule_field] = schedule
+        self.cleaned_data[field_name] = groups
+
+    def _add_class_group_eligibility_errors(
+        self,
+        field_name,
+        class_groups,
+        birth_date,
+        biological_sex,
+        label_prefix=None,
+    ):
+        for class_group in class_groups:
+            error = get_class_group_eligibility_error(
+                birth_date=birth_date,
+                biological_sex=biological_sex,
+                class_group=class_group,
+            )
+            if not error:
+                continue
+            message = f"{class_group.class_category.display_name} · {class_group.display_name}: {error}"
+            if label_prefix:
+                self.add_error(None, f"{label_prefix}: {message}")
+            else:
+                self.add_error(field_name, message)
 
     def _clean_kinship(self, profile, include_dependent, extra_dependents):
         prefixes = []
@@ -437,15 +446,14 @@ class PortalRegistrationForm(forms.Form):
                     "full_name": (dependent.get("full_name") or "").strip(),
                     "cpf": (dependent.get("cpf") or "").strip(),
                     "birth_date": birth_date,
+                    "biological_sex": dependent.get("biological_sex") or "",
                     "email": (dependent.get("email") or "").strip(),
                     "phone": (dependent.get("phone") or "").strip(),
                     "password": dependent.get("password") or "",
                     "password_confirm": dependent.get("password_confirm") or "",
                     "kinship_type": dependent.get("kinship_type") or "",
                     "kinship_other_label": (dependent.get("kinship_other_label") or "").strip(),
-                    "class_category": dependent.get("class_category") or "",
-                    "class_group": dependent.get("class_group") or "",
-                    "class_schedule": dependent.get("class_schedule") or "",
+                    "class_groups": dependent.get("class_groups") or [],
                     "blood_type": dependent.get("blood_type") or "",
                     "allergies": dependent.get("allergies") or "",
                     "previous_injuries": dependent.get("injuries") or dependent.get("previous_injuries") or "",

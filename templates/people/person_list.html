@@ -7,24 +7,24 @@
     <div>
         <p class="panel-eyebrow">Cadastro central</p>
         <h1>Pessoas</h1>
-        <p>Cadastre e mantenha tipo, turma, horário e categoria operacional da pessoa.</p>
+        <p>Cadastre e mantenha tipo, sexo biológico e turmas liberadas da pessoa. Os horários ativos vêm automaticamente das turmas escolhidas.</p>
     </div>
     <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
 </section>
 
-<section class="table-card">
+<section class="table-card data-table-wrap">
     <table class="data-table">
         <thead>
-            <tr>
-                <th>Nome</th>
-                <th>CPF</th>
-                <th>Tipo</th>
-                <th>Turma</th>
-                <th>Categoria</th>
-                <th>IBJJF</th>
-                <th>Acesso</th>
-                <th>Status</th>
-                <th></th>
+                <tr>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>Tipo</th>
+                    <th>Sexo</th>
+                    <th>Turmas liberadas</th>
+                    <th>IBJJF</th>
+                    <th>Acesso</th>
+                    <th>Status</th>
+                    <th></th>
             </tr>
         </thead>
         <tbody>
@@ -39,8 +39,8 @@
                             <span class="muted-text">Sem tipo</span>
                         {% endif %}
                     </td>
-                    <td>{{ person.class_group|default:"Sem turma" }}</td>
-                    <td>{{ person.class_category|default:"Sem categoria" }}</td>
+                    <td>{{ person.get_biological_sex_display|default:"Não informado" }}</td>
+                    <td>{% if person.active_group_labels %}{{ person.active_group_labels|join:", " }}{% else %}Sem turma liberada{% endif %}</td>
                     <td>{% if person.resolved_ibjjf_category %}{{ person.resolved_ibjjf_category.display_name }}{% else %}Não calculada{% endif %}</td>
                     <td>{{ person.has_portal_access|yesno:"Ativo,Sem acesso" }}</td>
                     <td>{{ person.is_active|yesno:"Ativo,Inativo" }}</td>
@@ -56,5 +56,47 @@
             {% endfor %}
         </tbody>
     </table>
+</section>
+
+<section class="card-list">
+    {% for person in people %}
+        <div class="record-card">
+            <div class="record-card-title">{{ person.full_name }}</div>
+            <div class="record-card-rows">
+                <div class="record-card-row">
+                    <span class="record-card-label">CPF</span>
+                    <span class="record-card-value">{{ person.cpf }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Tipo</span>
+                    <span class="record-card-value">
+                        {% if person.person_type %}
+                            <span class="tag">{{ person.person_type.display_name }}</span>
+                        {% else %}
+                            Sem tipo
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Sexo</span>
+                    <span class="record-card-value">{{ person.get_biological_sex_display|default:"Não informado" }}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Turmas</span>
+                    <span class="record-card-value">{% if person.active_group_labels %}{{ person.active_group_labels|join:", " }}{% else %}Sem turma liberada{% endif %}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-label">Status</span>
+                    <span class="record-card-value">{{ person.is_active|yesno:"Ativo,Inativo" }} &middot; {{ person.has_portal_access|yesno:"Com acesso,Sem acesso" }}</span>
+                </div>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:person-update' person.pk %}">Editar</a>
+                <a href="{% url 'system:person-delete' person.pk %}">Excluir</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty-state">Nenhuma pessoa cadastrada.</div>
+    {% endfor %}
 </section>
 {% endblock %}
