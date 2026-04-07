@@ -29,15 +29,12 @@
   var extraMedicalList = form.querySelector("[data-extra-dependent-medical-list]");
   var dateInputs = Array.from(form.querySelectorAll("[data-date-mask]"));
   var kinshipSelects = Array.from(form.querySelectorAll("[data-kinship-select]"));
-  var draftMessage = form.querySelector("[data-registration-draft-message]");
-  var draftClearButton = form.querySelector("[data-registration-draft-clear]");
+  var draftNote = document.querySelector("[data-registration-draft-note]");
+  var draftLabel = document.querySelector("[data-registration-draft-label]");
   var draftKey = "lv-register-draft-v1";
   var draftTtlMs = 30 * 60 * 1000;
   var canRestoreDraft = form.dataset.canRestoreDraft === "true";
   var draftSaveTimeout = null;
-  var defaultDraftMessage = "Se a internet oscilar ou a tela recarregar, este dispositivo mantém um rascunho curto do cadastro. Senhas e dados médicos não são armazenados.";
-  var restoredDraftMessage = "Recuperamos um rascunho recente neste dispositivo. Confira os dados antes de continuar. Senhas e dados médicos não são armazenados.";
-  var clearedDraftMessage = "O rascunho local foi removido deste dispositivo. Os dados visíveis na tela continuam abertos até você sair.";
 
   var staticSelections = {
     holder: buildStaticSelectionConfig("holder", "holder-birthdate"),
@@ -135,21 +132,39 @@
   }
 
   function setDraftMessage(message, isRestored) {
-    if (!draftMessage) {
+    if (!draftLabel) {
       return;
     }
-    draftMessage.textContent = message;
-    var note = draftMessage.closest("[data-registration-draft-note]");
-    if (note) {
-      note.classList.toggle("is-restored", Boolean(isRestored));
+    draftLabel.textContent = message;
+    if (draftNote) {
+      draftNote.classList.toggle("is-restored", Boolean(isRestored));
     }
   }
 
-  function syncDraftButtonVisibility() {
-    if (!draftClearButton) {
-      return;
+  function hasAnyFieldFilled() {
+    var fields = form.querySelectorAll("input[name], select[name], textarea[name]");
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      if (isSensitiveDraftField(field.name)) continue;
+      if (field.name === "registration_profile" || field.name === "other_type_code") continue;
+      if (field.type === "radio" && !field.checked) continue;
+      if (field.type === "checkbox" && !field.checked) continue;
+      if (field.value && field.value.trim() !== "") return true;
     }
-    draftClearButton.hidden = !Boolean(readStoredDraft());
+    return false;
+  }
+
+  function syncDraftNoteVisibility() {
+    if (!draftNote) return;
+    var hasDraft = Boolean(readStoredDraft());
+    var hasData = hasAnyFieldFilled();
+    var shouldShow = hasDraft || hasData;
+    draftNote.classList.toggle("is-hidden", !shouldShow);
+    if (hasDraft) {
+      setDraftMessage("Rascunho recuperado", true);
+    } else if (hasData) {
+      setDraftMessage("Rascunho salvo", false);
+    }
   }
 
   function readStoredDraft() {
@@ -242,7 +257,7 @@
         fields: collectDraftFields(),
         extraDependents: collectDraftDependents(),
       }));
-      syncDraftButtonVisibility();
+      syncDraftNoteVisibility();
     } catch (_error) {
       return;
     }
@@ -431,7 +446,7 @@
 
     setHiddenState(backButton, currentStep === 1);
     setHiddenState(nextButton, currentStep === maxStep);
-    setHiddenState(submitButton, currentStep === maxStep);
+    setHiddenState(submitButton, currentStep !== maxStep);
   }
 
   function getSubtitleText() {
@@ -888,6 +903,7 @@
     var valid = Boolean(field.value && field.value.trim());
     if (!valid) {
       field.setAttribute("aria-invalid", "true");
+      field.focus();
     } else {
       field.removeAttribute("aria-invalid");
     }
@@ -1002,11 +1018,19 @@
 
   stepTriggers.forEach(function (trigger) {
     trigger.addEventListener("click", function () {
-      var step = Number(trigger.dataset.stepTrigger);
-      if (step > currentStep && !validateCurrentStep()) {
-        return;
+      var targetStep = Number(trigger.dataset.stepTrigger);
+      if (targetStep > currentStep) {
+        for (var step = currentStep; step < targetStep; step++) {
+          var tempStep = currentStep;
+          currentStep = step;
+          if (!validateCurrentStep()) {
+            currentStep = tempStep;
+            return;
+          }
+          currentStep = tempStep;
+        }
       }
-      goToStep(step);
+      goToStep(targetStep);
     });
   });
 
@@ -1064,14 +1088,6 @@
     });
   });
 
-  if (draftClearButton) {
-    draftClearButton.addEventListener("click", function () {
-      clearStoredDraft();
-      syncDraftButtonVisibility();
-      setDraftMessage(clearedDraftMessage, false);
-    });
-  }
-
   var discardButton = form.querySelector("[data-registration-discard]");
   if (discardButton) {
     discardButton.addEventListener("click", function () {
@@ -1086,14 +1102,16 @@
   }
 
   if (canRestoreDraft && restoreStoredDraft()) {
-    setDraftMessage(restoredDraftMessage, true);
-  } else {
-    setDraftMessage(defaultDraftMessage, false);
+    setDraftMessage("Rascunho recuperado", true);
   }
 
   renderExtraDependents();
   updateWizard();
-  syncDraftButtonVisibility();
+  syncDraftNoteVisibility();
+
+  form.addEventListener("input", function () {
+    syncDraftNoteVisibility();
+  });
 
   window.addEventListener("beforeunload", function () {
     saveDraft();

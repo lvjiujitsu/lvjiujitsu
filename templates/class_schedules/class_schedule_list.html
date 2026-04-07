@@ -7,69 +7,30 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Horários</h1>
-        <p>Gerencie os horários separados das turmas, mantendo o cadastro operacional auditável. O vínculo do aluno acontece na turma; os horários ativos dessa turma ficam liberados automaticamente.</p>
+        <p>Gerencie os horários das turmas. O vínculo do aluno acontece na turma.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-schedule-create' %}">Novo horário</a>
 </section>
 
-<section class="table-card data-table-wrap">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Modalidade</th>
-                <th>Categoria</th>
-                <th>Dia</th>
-                <th>Início</th>
-                <th>Estilo</th>
-                <th>Duração</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for class_schedule in class_schedules %}
-                <tr>
-                    <td>{{ class_schedule.class_group.display_name }}</td>
-                    <td>{{ class_schedule.class_group.class_category.display_name|default:"Sem categoria" }}</td>
-                    <td>{{ class_schedule.get_weekday_display }}</td>
-                    <td>{{ class_schedule.start_time|time:"H:i" }}</td>
-                    <td>{{ class_schedule.get_training_style_display }}</td>
-                    <td>{{ class_schedule.duration_minutes }} min</td>
-                    <td>{{ class_schedule.is_active|yesno:"Ativo,Inativo" }}</td>
-                    <td class="table-actions">
-                        <a href="{% url 'system:class-schedule-update' class_schedule.pk %}">Editar</a>
-                        <a href="{% url 'system:class-schedule-delete' class_schedule.pk %}">Excluir</a>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="8" class="empty-row">Nenhum horário cadastrado.</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-
-<section class="card-list">
+<div class="record-list">
     {% for class_schedule in class_schedules %}
         <div class="record-card">
-            <div class="record-card-title">{{ class_schedule.class_group.display_name }}</div>
-            <div class="record-card-rows">
+            <div class="record-card-head">
+                <span class="record-card-name">{{ class_schedule.class_group.display_name }}</span>
+                <span class="record-card-badge">{{ class_schedule.is_active|yesno:"Ativo,Inativo" }}</span>
+            </div>
+            <div class="record-card-info">
                 <div class="record-card-row">
-                    <span class="record-card-label">Dia</span>
-                    <span class="record-card-value">{{ class_schedule.get_weekday_display }}</span>
+                    <span class="record-card-lbl">Dia</span>
+                    <span class="record-card-val">{{ class_schedule.get_weekday_display }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Hora</span>
-                    <span class="record-card-value">{{ class_schedule.start_time|time:"H:i" }} &middot; {{ class_schedule.duration_minutes }} min</span>
+                    <span class="record-card-lbl">Hora</span>
+                    <span class="record-card-val">{{ class_schedule.start_time|time:"H:i" }} · {{ class_schedule.duration_minutes }} min</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Estilo</span>
-                    <span class="record-card-value">{{ class_schedule.get_training_style_display }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-label">Status</span>
-                    <span class="record-card-value">{{ class_schedule.is_active|yesno:"Ativo,Inativo" }}</span>
+                    <span class="record-card-lbl">Estilo</span>
+                    <span class="record-card-val">{{ class_schedule.get_training_style_display }}</span>
                 </div>
             </div>
             <div class="record-card-actions">
@@ -80,5 +41,5 @@
     {% empty %}
         <div class="empty-state">Nenhum horário cadastrado.</div>
     {% endfor %}
-</section>
+</div>
 {% endblock %}

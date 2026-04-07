@@ -1,334 +1,252 @@
-﻿# AGENTS.md - Protocolo Operacional do Agente para o projeto LV JIU JITSU
+﻿# AGENTS.md — Protocolo operacional do agente (LV JIU JITSU)
 
-**Idioma obrigatório:** responda sempre em português brasileiro (pt-BR).
-**Política de idioma dual:**
-- backend, nomes tecnicos, arquivos, URLs, classes CSS, IDs e identificadores de codigo em ingles tecnico consistente;
-- texto visível ao usuário final em pt-BR;
-- respostas do agente ao desenvolvedor sempre em pt-BR.
-**Qualidade linguística de interface:** texto exibido ao usuário final deve sair com português correto, acentuação adequada, concordância revisada e microcopy compatível com produto em produção.
-**Codigo:** nomes de variaveis, funcoes, classes, models, serializers, managers e servicos em ingles tecnico consistente.
-**Codigo limpo:** evite comentarios, docstrings e anotacoes explicativas; use comentario apenas quando uma decisao de negocio realmente nao puder ser inferida pelo nome ou pela estrutura.
-**Objetivo:** atuar como arquiteto de software senior e agente autonomo de implementacao/refatoracao para o sistema **LV JIU JITSU**, preservando coerencia de dominio, baixo acoplamento, seguranca operacional e aderencia as regras da academia.
-
-Este arquivo define **como o agente deve trabalhar**.
-As regras de arquitetura, dominio, integracoes e invariantes do produto ficam no `CLAUDE.md`.
+> Instruções de **como** o agente trabalha. Contexto de domínio e arquitetura do produto ficam em `CLAUDE.md`.
 
 ---
 
-## 1. Missao do agente
+## Princípios
 
-Sua missao e entregar mudancas que:
-1. respeitem a regra de negocio da academia;
-2. nao criem duplicidade de identidade, cobranca ou presenca;
-3. protejam dados sensiveis de alunos, dependentes e menores de idade;
-4. mantenham o projeto evolutivo, sem puxadinhos nem debito tecnico escondido.
+- **SDD**: nenhuma implementação sem spec (**PRD** em `docs/prd/` no formato definido em `CLAUDE.md`). Para ajustes triviais (typo, label), registro mínimo no fechamento pode substituir PRD completo; para feature, correção de fluxo ou mudança de modelo, PRD obrigatório. O código segue a especificação.
+- **TDD**: testes fazem parte da entrega. Cobertura de models, views, services, forms e fluxos de erro, conforme risco.
+- **MTV** (Django): lógica de negócio em `services.py` / domínio; **nunca** em views ou templates como regra central.
+- **Design patterns**: só quando simplificarem. KISS, DRY, YAGNI. Composição sobre herança.
+- **Destruição > remendo** (MVP): código ruim pode ser reescrito; corrigir causa, não sintoma.
 
-A prioridade de decisao e sempre:
-**seguranca do dominio > clareza da arquitetura > velocidade de implementacao**.
+**Objetivo:** atuar como arquiteto sênior no **LV JIU JITSU**, preservando coerência de domínio, segurança operacional e regras da academia.
 
-> **Fase atual: MVP de teste.**
-> O sistema esta em estagio inicial de desenvolvimento. Dados locais sao descartaveis.
-> O agente **nao deve se preocupar com integridade de dados existentes** no banco.
-> O fluxo padrao de trabalho assume destruicao e recriacao completa do banco a cada ciclo.
+**Fase atual:** MVP de teste; dados locais descartáveis; fluxo padrão assume recriação completa do banco por ciclo quando aplicável (ver `CLAUDE.md` e política VMP abaixo).
 
 ---
 
-## 2. Protocolo obrigatório de execução
+## Política de idioma (regra inviolável)
 
-Para qualquer solicitacao, opere nesta ordem.
+- **Backend 100% inglês:** models, fields, variáveis, funções, classes, services, views, forms, URLs, nomes de arquivos e diretórios.
+- **Texto visível ao usuário em pt-BR:** labels, placeholders, mensagens, títulos, botões, tooltips, textos de ajuda.
+- **Código frontend em inglês:** variáveis JS, classes CSS, IDs. Apenas conteúdo textual renderizado em pt-BR.
+- **Respostas do agente ao desenvolvedor:** sempre em pt-BR.
+- **Código limpo:** evitar comentários e docstrings; usar apenas quando uma decisão de negócio não puder ser inferida pela estrutura.
 
-### Fase 1 - Leitura de contexto, intencao e impacto
-Antes de alterar qualquer arquivo:
-1. nao execute comandos `git` sem solicitacao explicita do usuario na tarefa atual;
-2. confirme sempre que qualquer comando Python, `pip`, `pytest`, `manage.py` ou script operacional esta usando **exclusivamente** `.\.venv\Scripts\python.exe`;
-3. e proibido instalar dependencias no Python global; toda instalacao deve acontecer apenas dentro da `.venv` do repositorio;
-4. leia o `CLAUDE.md`, os documentos de dominio relacionados e a area do codigo afetada;
-5. identifique a natureza da tarefa: descoberta, planejamento, refatoracao, feature, correcao, integracao ou saneamento estrutural;
-6. identifique quais modulos internos do app `system` serao impactados: `public`, `identity_access`, `student_registry`, `instructor_ops`, `class_catalog`, `attendance_qr`, `finance_contracts`, `payments_stripe`, `graduation_engine`, `communications`, `documents_lgpd`, `reports_audit`, `settings_seed`;
-7. verifique se a mudanca toca alguma regra critica:
-   - identidade unica por CPF;
-   - autenticacao local do portal separada do Django Admin;
-   - tipo unico de pessoa por cadastro na fase atual;
-   - categoria como unica fonte de classificacao da turma;
-   - matricula esportiva por turma liberada, com horarios ativos herdados da turma;
-   - onboarding transacional;
-   - check-in com QR/WebRTC;
-   - reserva previa de vaga;
-   - inadimplencia ou matricula pausada;
-   - trancamento com `pause_collection` na Stripe;
-   - motor de graduacao com congelamento de tempo ativo;
-   - LGPD, menores, biometria e prontuario medico;
-   - exportacao CSV com trava fail-fast;
-   - fechamento de caixa com divergencia acima do limiar gerencial;
-   - auditoria transversal obrigatoria em fluxos criticos;
-8. apresente um plano curto e objetivo antes de implementar, deixando explicitos:
-   - objetivo real da mudanca;
-   - agregado ou fluxo principal afetado;
-   - invariantes que nao podem ser quebradas;
-- estratégia de validação ao final.
-
-### Fase 1.5 - Reset obrigatório do ambiente antes de implementar
-Antes de iniciar qualquer correção ou implementação de código:
-1. execute `.\.venv\Scripts\python.exe clear_migrations.py` para destruir o banco, migrations existentes, `__pycache__` e artefatos locais;
-2. somente após a limpeza completa, inicie as alterações de código;
-3. **nunca** tente preservar dados, migrations intermediárias ou estado do banco entre ciclos de trabalho;
-4. o banco será recriado do zero após a implementação, via `makemigrations` + `migrate` + seeds;
-5. se qualquer etapa falhar, recomece do `clear_migrations.py`.
-
-> Este fluxo é inegociável. O projeto está em fase MVP de teste e dados locais são sempre descartáveis.
-
-### Fase 2 - Implementacao limpa e aderente ao dominio
-Ao implementar:
-1. mantenha views finas e delegue regras complexas para `services.py`, `selectors.py`, `managers.py` ou metodos de dominio;
-2. trate o portal e o Django Admin como superfícies independentes:
-   - fluxos do produto não podem depender de `django.contrib.auth.User`;
-   - autenticação do portal, reset de senha, sessão e permissão funcional devem viver no domínio local;
-   - o Django Admin só pode ser usado como administração técnica;
-3. use `transaction.atomic()` em fluxos compostos, especialmente:
-   - onboarding de titular + dependentes;
-   - criacao de aluno + vinculo financeiro + perfis;
-   - confirmacao de pagamento + desbloqueio de acesso;
-   - reserva de vaga + consumo de capacidade;
-4. nao use hardcode para:
-   - chaves e segredos;
-   - URLs base;
-   - TTL do QR Code;
-   - idade minima/configuravel para dependente com credencial;
-   - regras de pausa, carencia, tolerancia e limites operacionais;
-5. trate integracoes externas como faliveis e auditaveis;
-6. garanta que o backend sempre revalide regras criticas, mesmo que a UI ja tenha bloqueado a acao.
-7. em catalogo Stripe, nunca deduza vinculacao de plano por heuristica solta quando existir risco de ambiguidade; use mapeamento persistido e explicitamente aprovado;
-8. quando um novo `Price` Stripe passar a ser o vigente de um plano, aposente o mapeamento vigente anterior de forma deterministica, sem manter dois candidatos correntes.
-
-### Fase 2.5 - Validação visual obrigatória
-Quando a tarefa envolver templates, paginas ou fluxos de interface:
-1. leia a tela existente equivalente antes de implementar;
-2. preserve o padrao visual ja adotado pelo sistema, em vez de entregar uma versao apenas "funcional";
-3. valide responsividade em desktop, tablet e mobile;
-4. nao deixe ajuste visual, hierarquia de informacao ou estados vazios para depois;
-5. trate consistencia visual e UX como parte da definicao de pronto, nao como acabamento opcional;
-6. revise títulos, rótulos, placeholders, mensagens, CTAs e textos de apoio em pt-BR antes de encerrar a tarefa.
-7. antes de qualquer entrega que altere rota, template, CSS ou fluxo visual, valide **todas as rotas afetadas** em navegador automatizado.
-8. ferramenta preferencial: **Playwright MCP no Codex CLI**.
-   - configuracao oficial recomendada: `codex mcp add playwright npx "@playwright/mcp@latest"`
-9. fallback permitido quando o MCP Playwright nao estiver disponivel: navegador headless local com captura real da pagina.
-10. se a validacao visual automatizada nao puder ser executada de verdade, a resposta final deve declarar explicitamente que a interface **nao foi validada visualmente por navegador automatizado**.
-11. status HTTP 200 sozinho, teste unitario sozinho ou leitura de HTML sozinho **nao substituem** validacao visual automatizada da rota.
-
-### Fase 3 - Validação estrita com reset completo
-Antes de considerar a entrega pronta:
-1. valide impacto de modelagem, migracao e permissoes;
-2. verifique risco de N+1 em dashboards, listagens e relatorios;
-3. confirme que webhooks e callbacks sao idempotentes e auditaveis;
-4. cubra a mudanca com testes de unidade e, quando fizer sentido, testes de integracao.
-5. **sempre** execute o fluxo completo de recriação do ambiente ao final de qualquer tarefa que altere models, views, forms, services ou migrations:
-   - `.\.venv\Scripts\python.exe clear_migrations.py`
-   - `.\.venv\Scripts\python.exe manage.py makemigrations`
-   - `.\.venv\Scripts\python.exe manage.py test`
-   - `.\.venv\Scripts\python.exe manage.py migrate`
-   - `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
-6. nesse fluxo, a validacao deve ser baseada no log real do terminal ate antes do `runserver`; nao basta assumir que a limpeza funcionou.
-7. **nao existe cenario em que o agente deve tentar migrar incrementalmente sobre um banco existente.** O banco sempre nasce do zero.
-8. se os testes falharem apos o reset, corrija o codigo e recomece do `clear_migrations.py` novamente.
-9. durante a fase atual, refatoracoes de identidade, cadastro, relacionamento e cardinalidade devem sempre assumir banco descartavel; nao preserve SQLite incoerente.
-
-### Fase 4 - Evolucao da spec
-Ao terminar:
-1. avalie se a tarefa revelou uma nova regra de negocio ou uma lacuna de arquitetura;
-2. se revelou, proponha explicitamente atualizacao do `CLAUDE.md` e/ou deste `AGENTS.md`.
-
-Frase de encerramento obrigatoria quando houver nova descoberta relevante:
-
-> **"Identifiquei que nosso CLAUDE.md/AGENTS.md precisa evoluir com base nesta iteracao [motivo]. Deseja que eu gere a atualizacao destes arquivos?"**
+*(No LV JIU JITSU, qualidade linguística de interface — acentuação, concordância, microcopy — é regra de produto; ver `CLAUDE.md`.)*
 
 ---
 
-## 3. Invariantes que o agente nunca pode violar
+## Prioridade em caso de conflito
 
-### 3.1 Identidade e papeis
-- Uma pessoa nao pode ser duplicada no sistema para resolver problema de negocio.
-- O login usa **CPF como identificador unico de autenticacao**.
-- Cada pessoa deve possuir apenas um `PersonType` na fase atual.
-- Multi-papel e matriz N:N de tipos por pessoa nao devem ser implementados.
-- Dependente com credencial propria continua vinculado ao responsavel, mas acessa apenas o escopo permitido.
-- Dependente com credencial propria, mesmo quando for o unico papel autenticavel da conta, deve conseguir entrar no portal e cair no escopo operacional de aluno.
-- A conta de acesso do portal pertence ao dominio local e nao deve ser substituida por `django.contrib.auth.User`.
-- O Django Admin nao e a fonte de verdade de autenticacao do produto.
-- Login no Django Admin nao pode conceder acesso funcional ao portal.
+1. Solicitação atual do usuário (sem violar segurança)
+2. Regras de segurança e ambiente (`.venv`, segredos, LGPD)
+3. Este `AGENTS.md`
+4. `CLAUDE.md`
+5. Convenções do repositório
 
-### 3.2 Presenca, reserva e tatame
-- O sistema deve validar **antes de abrir a camera** se o aluno pode tentar o check-in.
-- A UI nao pode chamar `getUserMedia()` quando houver bloqueio por inadimplencia, pausa, ausencia de reserva ou outra trava de acesso.
-- O backend deve revalidar tudo no momento de gravar a presenca.
-- Em turmas com capacidade, a vaga e consumida na **reserva previa**, nao na porta.
-- O QR valida presenca fisica de quem ja tinha direito a entrar.
-
-### 3.2.1 Turmas, categorias e horarios
-- `ClassGroup` nao deve possuir eixo separado de `publico` nem flag de publicacao.
-- A classificacao da turma deve vir exclusivamente de `ClassCategory`.
-- `ClassSchedule` representa o horario da turma e nao deve ser embutido no nome da turma.
-- CRUD, listagens e telas informativas nao devem exibir coluna ou atributo redundante de `Publico` em `Turmas`.
-- A liberacao esportiva do aluno deve acontecer por `ClassGroup`, e nao por um `ClassSchedule` unico.
-- Ao liberar uma turma para o aluno, todos os horarios ativos dessa turma ficam disponiveis automaticamente, respeitando as regras de elegibilidade.
-- Onboarding de aluno ou dependente nao deve forcar escolha manual de um unico dia da semana ou horario fixo quando o plano permitir livre frequencia na turma.
-- Compatibilidade de turma deve ser revalidada no backend por faixa etaria; turma feminina exige sexo biologico feminino e perfil etario compativel com a categoria adulta.
-
-### 3.3 Financeiro e trancamento
-- Matricula pausada e um estado de negocio local do sistema, mesmo quando a Stripe mantem a assinatura ativa com cobranca pausada.
-- Se existir assinatura Stripe elegivel, o trancamento deve integrar com `pause_collection`.
-- Aluno `PAUSADO` nao faz check-in.
-- Tempo de graduacao nao corre enquanto a matricula estiver pausada.
-- O `Price` Stripe vigente de cada plano precisa ser unico e persistido localmente.
-- Espelho `dj-stripe`, quando habilitado, complementa auditoria e reconciliacao, mas nao substitui o estado local da assinatura.
-- Comprovante manual em `UNDER_REVIEW` mantem o contrato em `PENDING_FINANCIAL` ate decisao administrativa explicita.
-- Redirecionamento de sucesso, cancelamento ou retorno visual do checkout nunca concede acesso por si so; liberacao depende de reconciliacao local confiavel, preferencialmente por webhook idempotente.
-- Divergencia de caixa acima do limiar configurado deve persistir alerta gerencial e impedir edicao retroativa silenciosa do turno encerrado.
-
-### 3.4 Graduacao
-- O motor de graduacao considera **tempo ativo de treino**, nao apenas tempo corrido de calendario.
-- Ausencias prolongadas, pausa e regras configuraveis da academia precisam coexistir com a referencia oficial de tempo minimo.
-
-### 3.5 LGPD e dados sensiveis
-- Exclusao definitiva nao e `soft delete` simples.
-- Quando juridicamente cabivel, deve haver anonimizacao de dados pessoais e eliminacao de dados sensiveis, preservando apenas o minimo tecnico/contabil necessario.
-- Selfie, biometria, prontuario medico e dados de menores exigem acesso restrito, trilha de auditoria e minimizacao.
-- Solicitacao LGPD destrutiva nao pode ser processada enquanto existirem contratos financeiros locais ativos, pausados, bloqueados ou pendentes que ainda dependam de retencao operacional/contabil.
-
-### 3.6 Exportacoes criticas
-- Extracao critica para BI ou CSV so pode iniciar apos validacao obrigatoria do arquivo de controle.
-- O arquivo de controle precisa conter a diretiva explicita `EXPORT_ALLOWED=1`.
-- Se o arquivo nao existir, nao puder ser criado, estiver bloqueado ou invalido, o processo deve abortar imediatamente.
-
-### 3.7 Auditoria transversal
-- Fluxos criticos de autenticacao, financeiro, pagamentos, graduacao, emergencia, PDV e exportacao devem registrar trilha de auditoria propria.
-- Log tecnico nao substitui `AuditLog`; ambos podem coexistir quando um atende operacao e o outro atende rastreabilidade de negocio.
-- Auditoria nao pode armazenar payload excessivo nem vazar dado sensivel desnecessario.
-
-### 3.8 Fronteira portal x administracao tecnica
-- CRUDs, dashboards e jornadas do produto devem usar permissao local do portal, nao `request.user.is_staff`.
-- O agente nao deve introduzir `LoginRequiredMixin`, `AuthenticationForm`, `PasswordResetView` ou outros fluxos padrao do Django como base do portal, salvo se o usuario pedir explicitamente uma integracao tecnica especifica.
-- Se o portal precisar de conta, senha, token de reset, sessao ou trilha de acesso, isso deve ser modelado no dominio do app `system`.
+Registrar exceções no fechamento da tarefa.
 
 ---
 
-## 4. Regras de qualidade de codigo
+## Protocolo obrigatório — não pular etapas
 
-### Estrutura
-- Prefira monolito modular Django bem organizado a espalhar regra de negocio em arquivos aleatorios.
-- Templates nao carregam regra de negocio complexa.
-- Regras de dominio ficam no backend.
-- Visual, legibilidade operacional e responsividade fazem parte da entrega quando houver interface.
+### FASE 1 — Contexto
 
-### Codigo limpo
-- Evite comentarios, docstrings e anotacoes explicativas.
-- Use-os apenas quando uma decisao de negocio nao puder ser inferida pela estrutura do codigo.
-- Codigo novo deve expressar o dominio com nomes claros, sem ruido e sem helpers genericos que escondam regra central.
+1. Ler `CLAUDE.md`, PRDs em `docs/prd/` quando existirem, e arquivos impactados.
+2. Classificar: correção, feature, refatoração ou ajuste de arquitetura.
+3. Identificar regras críticas tocadas (lista orientativa abaixo).
+4. **Não** executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
+5. Confirmar que **todo** Python, `pip`, `manage.py` e scripts usam **`.\.venv\Scripts\python.exe`** (Windows) ou o equivalente da `.venv` no SO em uso. Proibido Python global para este repositório.
+6. Identificar módulos internos do app `system` eventualmente impactados: `public`, `identity_access`, `student_registry`, `instructor_ops`, `class_catalog`, `attendance_qr`, `finance_contracts`, `payments_stripe`, `graduation_engine`, `communications`, `documents_lgpd`, `reports_audit`, `settings_seed`.
 
-### Limites de complexidade
-- Metodo longo ou com muitas decisoes deve ser quebrado.
-- View com multiplas responsabilidades deve ser fatiada.
-- Sinais (`signals.py`) so podem ser usados quando o acoplamento implicito for realmente aceitavel.
-- Se uma regra e central para o dominio, ela nao deve ficar escondida em helper generico.
+**Regras críticas (verificar se a mudança toca):** identidade única por CPF; autenticação do portal local vs Django Admin; um `PersonType` por cadastro; classificação de turma só via `ClassCategory`; matrícula esportiva por `ClassGroup` com horários herdados; onboarding transacional; check-in com QR/WebRTC; reserva prévia; inadimplência e matrícula pausada; Stripe/`pause_collection`; graduação com tempo ativo; LGPD, menores, biometria; exportação com fail-fast; caixa e divergência; auditoria em fluxos críticos.
 
-### Limites Anti-Code Smell (Robocop)
-- **Linhas por metodo:** maximo de 25 linhas. Acima disso, extraia submetodos ou mova a regra para servico, selector ou objeto de dominio.
-- **Argumentos por funcao:** maximo de 4. Acima disso, use objetos de contexto, `dataclasses` ou parametros nomeados bem estruturados.
-- **Consultas ORM:** e proibido executar consultas ao banco dentro de lacos `for` para resolver listagem, dashboard ou relatorio. Use `select_related()` e `prefetch_related()` quando aplicavel.
+Apresentar **plano curto** antes de implementar: objetivo, agregado ou fluxo afetado, invariantes, validação ao final.
 
-### ORM e performance
-- Em telas de dashboard e listagens, antecipe relacoes com `select_related()` e `prefetch_related()` quando necessario.
-- E proibido resolver N+1 no template "sem querer".
-- Queries de relatorios devem ser explicitas e auditaveis.
+### FASE 1.5 — Reset obrigatório do ambiente (perfil VMP — LV JIU JITSU)
 
-### Configuracao
-- O que muda por ambiente vai para `settings.py`, `.env` ou configuracao persistida.
-- O que muda por academia deve ser configuravel por modelo, admin ou painel, nao codificado em constante solta.
-- Nada sensivel ou operacionalmente variavel deve ficar hardcoded em view, template ou JavaScript de pagina.
-- A `.venv` do repositorio e obrigatoria; o agente nao pode usar nem poluir o Python global para instalar, executar testes ou rodar comandos Django.
-- Artefatos temporarios de teste devem ficar dentro do workspace do projeto, nunca depender de pasta temporaria global do sistema quando isso puder gerar ruido operacional ou problema de permissao.
-- O script oficial de limpeza do ambiente e `clear_migrations.py`; ele deve limpar banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da regeneracao do ambiente.
+Antes de **iniciar** correção ou implementação que altere models, migrations ou dados coerentes:
 
----
+1. Executar `.\.venv\Scripts\python.exe clear_migrations.py` (limpa banco local, migrations geradas, `__pycache__` e artefatos conforme o script).
+2. Só depois alterar código.
+3. Nunca preservar migrations intermediárias nem migrar incrementalmente sobre banco legado neste perfil; se algo falhar após a entrega, recomeçar do `clear_migrations.py`.
 
-## 5. Política de testes
+Este fluxo é obrigatório para o ciclo de trabalho descrito no `CLAUDE.md` (MVP descartável).
 
-Toda mudanca relevante deve, no minimo, considerar testes para:
-- identidade unica por CPF;
-- independencia entre autenticacao do portal e login do Django Admin;
-- tipo unico por pessoa;
-- perfil `dependent` isolado conseguindo autenticar e navegar no escopo permitido;
-- onboarding transacional;
-- onboarding com selecao de multiplas turmas liberadas sem horario unico;
-- bloqueio de turma infantil para adulto e de turma adulta para crianca;
-- bloqueio de turma feminina para sexo biologico masculino;
-- inadimplencia bloqueando check-in antes da camera;
-- reserva previa e consumo de vagas;
-- trancamento de matricula com congelamento de graduacao;
-- webhooks Stripe com idempotencia;
-- checkout Stripe sem liberacao prematura por redirect;
-- comprovante manual mantendo bloqueio enquanto estiver em analise;
-- fechamento de caixa com sobra/quebra acima do limiar;
-- emissao de trilha em `AuditLog` nos fluxos criticos alterados;
-- exclusao/anonimizacao LGPD;
-- permissoes de dependente vs titular;
-- exportacao fail-fast.
+### FASE 2 — PRD da tarefa
 
-Quando a mudanca for critica, o agente deve informar claramente:
-1. o que foi testado;
-2. o que ainda precisa de teste;
-3. quais riscos permanecem.
+Criar `docs/prd/PRD-<NNN>-<slug>.md` quando a mudança não for trivial (vide SDD acima), com: resumo, problema, objetivo, escopo, fora do escopo, critérios de aceite, plano com `[ ]`. O PRD pode ser curto, mas não vago. Se o trajeto mudar, atualizar no fechamento.
 
-Para fluxos centrais de dominio, prefira abordagem test-first:
-1. ajuste ou adicione o teste que evidencia o comportamento esperado;
-2. implemente a menor mudanca estrutural correta;
-3. valide regressao nos fluxos adjacentes.
+### FASE 3 — Estratégia
 
-### 5.1 Seeds de validacao manual
-- `inicial_seed` deve cadastrar apenas catalogos base e configuracoes minimas.
-- `inicial_seed_test` deve gerar dados navegaveis para validacao manual ampla do portal.
-- `inicial_seed_test` nao deve criar matriz N:N de tipos por pessoa.
-- `inicial_seed_test` deve priorizar cenarios simples, deterministicos e auditaveis: aluno, dependente, responsavel, professor e administrativo, sempre com um unico tipo por identidade.
+Definir abordagem, arquivos impactados, testes planejados e riscos. Menor mudança correta; não expandir escopo em silêncio.
 
----
+### FASE 4 — Implementação
 
-## 6. O que o agente deve evitar
+Ordem de referência Django: **Models → Forms → Services → Views → URLs → Templates → Tests**.
 
-- criar dois usuarios para a mesma pessoa;
-- acoplar o portal do produto ao `django.contrib.auth.User`;
-- usar autenticacao do Django Admin como atalho para rotas do produto;
-- criar migracoes manuais ou manter migracoes antigas — o fluxo padrao e sempre `clear_migrations.py` + `makemigrations` do zero;
-- tentar migrar incrementalmente sobre banco existente ou preservar dados entre ciclos de trabalho;
-- misturar regra financeira com renderizacao de template;
-- confiar apenas em bloqueio visual de frontend;
-- acoplar logica da Stripe diretamente em view gigante;
-- colocar regra de graduacao em JavaScript;
-- expor dados medicos ou financeiros a dependente com credencial restrita;
-- resolver lacuna de dominio com `if` solto e sem modelagem;
-- criar status redundantes sem tabela de estados clara;
-- prosseguir com exportacao quando a pre-condicao do arquivo de controle falhar;
-- executar comandos `git` sem pedido explicito do usuario na tarefa atual;
-- entregar template sem validar consistencia visual e responsividade.
+**Regras obrigatórias:**
+
+- Views finas; regras complexas em `services.py`, `selectors.py`, `managers.py` ou métodos de domínio.
+- Portal e Django Admin são superfícies independentes: o produto **não** usa `django.contrib.auth.User` como identidade do aluno/professor/responsável; autenticação e reset do portal no domínio local (`system`).
+- `transaction.atomic()` em fluxos compostos (onboarding titular + dependentes, pagamento + efeitos, reserva + capacidade, etc.).
+- Não hardcodar chaves, segredos, URLs base, TTL de QR, regras configuráveis.
+- Backend **sempre** revalida regras críticas, mesmo com bloqueio na UI.
+- Integrações externas são falíveis e auditáveis.
+- Catálogo Stripe: mapeamento explícito de plano → `Price` vigente; aposentar mapeamento anterior de forma determinística; espelho `dj-stripe` não substitui contrato local.
+
+### FASE 5 — Testes
+
+Cobrir models, forms, views, services, commands, fluxos felizes e de erro quando relevante. **Validar no terminal** a execução real (contagem, falhas, erros, skips). Preferir test-first nos fluxos centrais de domínio.
+
+### FASE 6 — Validação obrigatória
+
+| Item | Como | Critério |
+|------|------|----------|
+| Servidor | Verificar se já há processo na porta antes de subir outro | Sem erros no terminal |
+| Testes | `.\.venv\Scripts\python.exe manage.py test` | 0 falhas, 0 erros |
+| Migrações (VMP) | `system/migrations/` | Apenas `0001_initial.py` coerente por app, após ciclo limpo |
+| ORM/SQLite | Shell ou script | FKs e registros coerentes quando aplicável |
+| Visual | Headless + MCP Playwright (ou browser MCP do ambiente) | OK em mobile (~375px) e desktop (~1440px) nas rotas alteradas |
+| Console browser | DevTools | Zero erros JS relevantes |
+| Console terminal | stdout/stderr | Sem stack traces não explicados |
+
+Ao finalizar tarefa que altere models, views, forms, services ou migrations, executar o **ciclo completo** documentado no `CLAUDE.md` (clear → makemigrations → test → migrate → `create_admin_superuser`), com evidência no log até antes de `runserver`.
+
+**Se a validação visual não puder ser executada**, declarar explicitamente que a interface **não** foi validada por navegador automatizado. Status HTTP 200, teste unitário ou leitura de HTML **não** substituem validação visual.
+
+### FASE 7 — Fechamento
+
+Usar o modelo abaixo na resposta (adaptar títulos se necessário):
+
+```md
+## Resumo da demanda
+## O que foi implementado
+## O que mudou no trajeto
+## Validação
+- [ ] Testes
+- [ ] Migrações
+- [ ] ORM
+- [ ] Visual (headless + Playwright / MCP)
+- [ ] Console browser
+- [ ] Console terminal
+## O que NÃO foi validado (e por quê)
+## Pendências
+## Próximo passo sugerido
+```
+
+Não declarar conclusão sem evidência alinhada à implementação real.
 
 ---
 
-## 7. Formato esperado das respostas do agente
+## Debate multiagente interno
 
-Ao responder uma tarefa tecnica, organize a entrega em linguagem objetiva:
-1. contexto e impacto;
-2. plano;
-3. implementacao proposta;
-4. riscos e validacoes;
-5. atualizacao necessaria da spec, se houver.
+Antes de implementar, simular brevemente:
 
-Se existir conflito entre pedido do usuario e regra estrutural do projeto, explique o conflito e proponha a forma correta de implementar.
+| Papel | Pergunta-chave |
+|-------|----------------|
+| **Arquiteto** | Estrutura e padrões adequados? Impacto controlado? |
+| **Testador** | Cobertura de fluxos felizes e de erro? Regressão protegida? |
+| **Revisor UI** | Responsivo? Feedback visual e pt-BR ok? |
+| **Revisor dados** | ORM correto? Política VMP respeitada? Seeds coerentes? |
 
 ---
 
-## 8. Fonte de verdade
+## Django VMP — política de migração descartável (LV JIU JITSU)
 
-- **Como trabalhar:** este `AGENTS.md`.
-- **O que o sistema e e como deve funcionar:** `CLAUDE.md`.
-- **Requisitos funcionais e telas:** PRD, mapeamento de telas e documentos de negocio do projeto.
-- **Fluxos operacionais e integracoes reais:** codigo do dominio, testes existentes e documentacao complementar do projeto.
+### Quando se aplica
 
-Se houver contradicao entre codigo legado e spec atual, o agente deve sinalizar isso explicitamente e priorizar a correcao estrutural.
+Projeto em MVP com banco local descartável, sem histórico evolutivo obrigatório e sem ambiente compartilhado que exija migrações incrementais.
+
+### Ciclo de comandos (ordem exata; verificar porta 8000 antes de `runserver`)
+
+```bash
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py inicial_seed
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+(Em ambientes Unix, prefixar com `./.venv/bin/python` em vez de `.\.venv\Scripts\python.exe`.)
+
+### Regras invioláveis
+
+- **Nunca** criar ou editar migration manualmente; corrigir models e deixar o Django gerar.
+- **Nunca** migrar incrementalmente sobre banco existente neste perfil: o banco nasce do zero a cada ciclo de reset.
+- Validar que restou apenas `0001_initial.py` coerente por app após o ciclo.
+- Se qualquer etapa falhar, corrigir o código e recomeçar do `clear_migrations.py`.
+- Se um comando não existir no projeto, **reportar** — não simular sucesso.
+
+### Cláusula de escape
+
+Se o projeto passar a usar banco persistente compartilhado ou política diferente de migração, **interromper** esta política VMP, documentar o motivo e tratar migrações de forma convencional.
+
+---
+
+## Anti-code-smell (regras concretas)
+
+- **Máximo 25 linhas por método.** Acima disso, extrair para serviço ou submétodo.
+- **Máximo 4 argumentos por função.** Acima disso, dataclass ou kwargs nomeados.
+- **Proibido N+1** em listagens e dashboards: `select_related()` / `prefetch_related()`.
+- **Proibido** `except: pass` ou engolir erro sem tratamento explícito.
+- **Signals** (`signals.py`): só quando acoplamento implícito for aceitável; regra central fica no serviço.
+- Template não resolve query; view não resolve layout (orquestração fina; layout no template).
+
+---
+
+## Invariantes de domínio que o agente não pode violar
+
+Resumo alinhado ao `CLAUDE.md` (detalhes lá):
+
+- **Identidade:** uma pessoa, um cadastro; CPF como identificador de login do portal; um `PersonType` por cadastro na fase atual; sem multi-papel N:N; conta do portal no domínio local, não como identidade primária via `User` do Django; Admin técnico não concede sessão do portal.
+- **Tatame:** validações antes da câmera; reserva consome capacidade; QR confirma quem já tinha direito; turma classificada por `ClassCategory`; liberação por `ClassGroup`; `ClassSchedule` não colapsado no nome da turma.
+- **Financeiro:** estado local canônico; Stripe confirma eventos mas não substitui regras de acesso; checkout/redirect não libera acesso sozinho; `Price` vigente único por plano; comprovante em análise não regulariza até decisão explícita.
+- **Graduação:** tempo ativo de treino; pausa congela quando aplicável.
+- **LGPD / exportação / auditoria:** fluxos sensíveis com trilha; exportação crítica só com arquivo de controle `EXPORT_ALLOWED=1`; fail-fast.
+
+---
+
+## Política de testes (orientação)
+
+Considerar testes para: CPF único; portal independente do login Admin; dependente com credencial no escopo permitido; onboarding transacional e multi-turma; elegibilidade de turma (idade, sexo quando regra); inadimplência antes da câmera; reserva e vagas; pausa e graduação; webhooks idempotentes; caixa e limiar; `AuditLog` nos fluxos alterados; LGPD e exportação.
+
+Para mudanças críticas, informar o que foi testado, o que falta e riscos residuais.
+
+**Seeds:** `inicial_seed` mínima; `inicial_seed_test` navegável, determinística, sem N:N de tipos por pessoa.
+
+---
+
+## Proibições
+
+- Pular leitura de contexto; implementar sem PRD quando a tarefa exige spec (alinhado ao SDD).
+- Simular execução de testes, Playwright ou validação ORM.
+- Declarar sucesso sem evidência.
+- Editar migration manualmente (perfil VMP).
+- Expandir escopo sem registrar pendência.
+- Inventar comandos ou paths inexistentes.
+- Executar `git` sem pedido explícito do usuário.
+- Confiar só no frontend para regra crítica de segurança ou negócio.
+
+---
+
+## Sinais de bloqueio
+
+Reportar tarefa como **não concluída** quando: servidor não sobe, UI não validável, **Playwright** (ou MCP equivalente) indisponível quando era obrigatório para a entrega, testes quebram sem caminho de correção, comandos esperados ausentes, ou política VMP aplicada indevidamente a ambiente que exige migração incremental.
+
+---
+
+## Evolução contínua
+
+Se a execução revelar lacuna ou workflow repetitivo:
+
+> **"Identifiquei que nosso CLAUDE.md/AGENTS.md precisa evoluir com base nesta iteração [motivo]. Deseja que eu proponha a atualização?"**
+
+---
+
+## Fonte de verdade
+
+| O quê | Onde |
+|-------|------|
+| Como o agente trabalha | Este `AGENTS.md` |
+| O que o sistema é e como funciona | `CLAUDE.md` |
+| Requisitos por tarefa | PRDs em `docs/prd/` |
+| Fluxos reais | Código do domínio e testes |
+
+Contradição entre código legado e spec atual: sinalizar e priorizar correção estrutural.

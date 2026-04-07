@@ -12,61 +12,25 @@
     <a class="primary-button" href="{% url 'system:class-category-create' %}">Nova categoria</a>
 </section>
 
-<section class="table-card data-table-wrap">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Categoria</th>
-                <th>Base</th>
-                <th>Ordem</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for class_category in class_categories %}
-                <tr>
-                    <td>
-                        <strong>{{ class_category.display_name }}</strong><br>
-                        <span class="muted-text">{{ class_category.code }}</span>
-                    </td>
-                    <td>{{ class_category.get_audience_display }}</td>
-                    <td>{{ class_category.display_order }}</td>
-                    <td>{{ class_category.is_active|yesno:"Ativa,Inativa" }}</td>
-                    <td class="table-actions">
-                        <a href="{% url 'system:class-category-update' class_category.pk %}">Editar</a>
-                        <a href="{% url 'system:class-category-delete' class_category.pk %}">Excluir</a>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="5" class="empty-row">Nenhuma categoria cadastrada.</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-
-<section class="card-list">
+<div class="record-list">
     {% for class_category in class_categories %}
         <div class="record-card">
-            <div class="record-card-title">{{ class_category.display_name }}</div>
-            <div class="record-card-rows">
+            <div class="record-card-head">
+                <span class="record-card-name">{{ class_category.display_name }}</span>
+                <span class="record-card-badge">{{ class_category.is_active|yesno:"Ativa,Inativa" }}</span>
+            </div>
+            <div class="record-card-info">
                 <div class="record-card-row">
-                    <span class="record-card-label">Código</span>
-                    <span class="record-card-value">{{ class_category.code }}</span>
+                    <span class="record-card-lbl">Código</span>
+                    <span class="record-card-val">{{ class_category.code }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Base</span>
-                    <span class="record-card-value">{{ class_category.get_audience_display }}</span>
+                    <span class="record-card-lbl">Base</span>
+                    <span class="record-card-val">{{ class_category.get_audience_display }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Ordem</span>
-                    <span class="record-card-value">{{ class_category.display_order }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-label">Status</span>
-                    <span class="record-card-value">{{ class_category.is_active|yesno:"Ativa,Inativa" }}</span>
+                    <span class="record-card-lbl">Ordem</span>
+                    <span class="record-card-val">{{ class_category.display_order }}</span>
                 </div>
             </div>
             <div class="record-card-actions">
@@ -77,5 +41,5 @@
     {% empty %}
         <div class="empty-state">Nenhuma categoria cadastrada.</div>
     {% endfor %}
-</section>
+</div>
 {% endblock %}

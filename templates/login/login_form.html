@@ -10,23 +10,23 @@
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-inner" aria-label="Tela de login">
-      <div class="screen-tools">
+      <div class="screen-tools-with-draft">
         <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
       </div>
 
-      <div class="inner-header">
-        <div class="logo-frame logo-frame-small">
-          <img
-            class="brand-logo brand-logo-small"
-            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
-            alt="Logo LV JIU JITSU"
-          >
+      <div class="inner-header inner-header-horizontal">
+        <div class="logo-frame logo-frame-compact">
+          <img class="brand-logo" src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
         </div>
-
         <div>
           <p class="eyebrow">Acesso</p>
           <h1>Login</h1>
-          <p class="inner-copy">Entre com seu CPF ou acesso técnico e sua senha.</p>
+          <p class="inner-copy">Entre com seu CPF e senha.</p>
         </div>
       </div>
 
@@ -86,14 +86,6 @@
         <a class="text-link" href="{% url 'system:password-reset' %}">Esqueci minha senha</a>
         <button class="primary-button" type="submit">Entrar</button>
       </form>
-
-      <div class="screen-tools-floating" aria-hidden="false">
-        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-          <span class="theme-toggle-track">
-            <span class="theme-toggle-knob"></span>
-          </span>
-        </button>
-      </div>
     </section>
   </main>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>

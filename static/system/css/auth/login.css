@@ -18,6 +18,10 @@
   --silver: #cfd2d8;
   --silver-strong: #b9bec7;
   --shadow: 0 24px 80px rgba(19, 19, 24, 0.10);
+  --logo-size-home: 188px;
+  --logo-padding-home: 18px;
+  --logo-size-compact: 64px;
+  --logo-padding-compact: 8px;
 }
 
 html[data-theme="dark"] {
@@ -34,6 +38,10 @@ html[data-theme="dark"] {
   --silver: #8f96a3;
   --silver-strong: #d5dae2;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  --logo-size-home: 188px;
+  --logo-padding-home: 18px;
+  --logo-size-compact: 64px;
+  --logo-padding-compact: 8px;
 }
 
 html,
@@ -123,15 +131,22 @@ body {
 }
 
 .logo-frame-home {
-  width: 188px;
-  height: 188px;
-  padding: 18px;
+  width: var(--logo-size-home);
+  height: var(--logo-size-home);
+  padding: var(--logo-padding-home);
 }
 
 .logo-frame-small {
   width: 88px;
   height: 88px;
   padding: 12px;
+}
+
+.logo-frame-compact {
+  width: var(--logo-size-compact);
+  height: var(--logo-size-compact);
+  padding: var(--logo-padding-compact);
+  flex-shrink: 0;
 }
 
 .brand-logo {
@@ -333,6 +348,25 @@ html[data-theme="dark"] .theme-toggle-knob {
 
 .inner-header .logo-frame {
   justify-self: center;
+}
+
+.inner-header-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.inner-header-horizontal .logo-frame {
+  justify-self: unset;
+}
+
+.inner-header-horizontal > div:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.inner-header-horizontal h1 {
+  font-size: clamp(1.5rem, 5vw, 2rem);
 }
 
 .eyebrow {
@@ -616,7 +650,9 @@ h1 {
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.field input[aria-invalid="true"] {
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
   border-color: rgba(180, 35, 24, 0.35);
   box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.12);
 }
@@ -722,9 +758,40 @@ h1 {
   background: var(--surface-soft);
 }
 
+.draft-note.is-hidden {
+  display: none;
+}
+
 .draft-note.is-restored {
   border-style: solid;
   background: var(--panel-strong);
+}
+
+.draft-note-minimal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.draft-note-minimal.is-hidden {
+  display: none;
+}
+
+.draft-note-minimal.is-restored {
+  border-style: solid;
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.draft-note-minimal .text-button {
+  font-size: 0.78rem;
+  padding: 0;
 }
 
 .draft-note-copy {
@@ -1279,6 +1346,57 @@ h1 {
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
+.info-card-expandable {
+  padding: 0;
+  overflow: hidden;
+}
+
+.info-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.info-card-header:hover {
+  background: var(--surface-soft);
+}
+
+.info-card-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.info-card-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 1.2rem;
+  transition: transform 0.2s ease, background 0.18s ease;
+}
+
+.info-card-expandable.is-open .info-card-toggle {
+  transform: rotate(180deg);
+}
+
+.info-card-content {
+  display: none;
+  padding: 0 18px 18px;
+}
+
+.info-card-expandable.is-open .info-card-content {
+  display: block;
+}
+
 .info-card h2 {
   margin: 0 0 8px;
   font-size: 1rem;
@@ -1440,6 +1558,10 @@ h1 {
     flex-direction: column;
   }
 
+  .inner-header-horizontal {
+    gap: 12px;
+  }
+
   .class-option-card {
     grid-template-columns: 1fr;
   }
@@ -1546,5 +1668,35 @@ h1 {
 @media (min-width: 768px) {
   .class-option-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.screen-tools-with-draft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.screen-tools-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 380px) {
+  .inner-header-horizontal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .inner-header-horizontal h1 {
+    font-size: 1.5rem;
+  }
+  
+  :root {
+    --logo-size-compact: 56px;
+    --logo-padding-compact: 6px;
   }
 }

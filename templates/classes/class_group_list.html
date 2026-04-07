@@ -7,76 +7,30 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Turmas</h1>
-        <p>Gerencie modalidade, categoria, professor principal, auxiliares e capacidade padrão. O aluno é liberado por turma e passa a acessar todos os horários ativos compatíveis dessa turma.</p>
+        <p>Gerencie modalidade, categoria, professor e capacidade. O aluno é liberado por turma.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-group-create' %}">Nova turma</a>
 </section>
 
-<section class="table-card data-table-wrap">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Modalidade</th>
-                <th>Categoria</th>
-                <th>Professor principal</th>
-                <th>Auxiliares</th>
-                <th>Horários</th>
-                <th>Capacidade</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for class_group in class_groups %}
-                <tr>
-                    <td>
-                        <strong>{{ class_group.display_name }}</strong><br>
-                        <span class="muted-text">{{ class_group.code }}</span>
-                    </td>
-                    <td>{{ class_group.class_category.display_name|default:"Sem categoria" }}</td>
-                    <td>{{ class_group.main_teacher.full_name|default:"Sem professor" }}</td>
-                    <td>{{ class_group.assistant_count }}</td>
-                    <td>{{ class_group.schedule_count }}</td>
-                    <td>{{ class_group.default_capacity }}</td>
-                    <td>
-                        <span class="tag">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
-                    </td>
-                    <td class="table-actions">
-                        <a href="{% url 'system:class-group-update' class_group.pk %}">Editar</a>
-                        <a href="{% url 'system:class-group-delete' class_group.pk %}">Excluir</a>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="8" class="empty-row">Nenhuma turma cadastrada.</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-
-<section class="card-list">
+<div class="record-list">
     {% for class_group in class_groups %}
         <div class="record-card">
-            <div class="record-card-title">{{ class_group.display_name }}</div>
-            <div class="record-card-rows">
+            <div class="record-card-head">
+                <span class="record-card-name">{{ class_group.display_name }}</span>
+                <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
+            </div>
+            <div class="record-card-info">
                 <div class="record-card-row">
-                    <span class="record-card-label">Categ.</span>
-                    <span class="record-card-value">{{ class_group.class_category.display_name|default:"Sem categoria" }}</span>
+                    <span class="record-card-lbl">Categ.</span>
+                    <span class="record-card-val">{{ class_group.class_category.display_name|default:"Sem categoria" }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Prof.</span>
-                    <span class="record-card-value">{{ class_group.main_teacher.full_name|default:"Sem professor" }}</span>
+                    <span class="record-card-lbl">Prof.</span>
+                    <span class="record-card-val">{{ class_group.main_teacher.full_name|default:"Sem professor" }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-label">Cap.</span>
-                    <span class="record-card-value">{{ class_group.default_capacity }} vagas &middot; {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-label">Status</span>
-                    <span class="record-card-value">
-                        <span class="tag">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
-                    </span>
+                    <span class="record-card-lbl">Vagas</span>
+                    <span class="record-card-val">{{ class_group.default_capacity }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</span>
                 </div>
             </div>
             <div class="record-card-actions">
@@ -87,5 +41,5 @@
     {% empty %}
         <div class="empty-state">Nenhuma turma cadastrada.</div>
     {% endfor %}
-</section>
+</div>
 {% endblock %}

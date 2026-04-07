@@ -101,7 +101,7 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:info"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Resumo de turma, professor e horários ativos.")
+        self.assertContains(response, "Turmas, horários e professores.")
         self.assertContains(response, "Turma")
         self.assertContains(response, "Adulto")
         self.assertContains(response, "Layon Quirino")

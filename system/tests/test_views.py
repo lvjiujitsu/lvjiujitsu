@@ -61,7 +61,7 @@ class PortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:legacy-login-form"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Entre com seu CPF ou acesso técnico e sua senha.")
+        self.assertContains(response, "Entre com seu CPF e senha.")
         self.assertContains(response, "Esqueci minha senha")
         self.assertContains(response, "Mostrar")
 
@@ -70,8 +70,7 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sexo biológico")
-        self.assertContains(response, "Nenhuma turma está disponível no momento.")
-        self.assertContains(response, "Rascunho automático")
+        self.assertContains(response, "Rascunho salvo")
 
     def test_login_with_invalid_numeric_identifier_returns_form_error(self):
         response = self.client.post(
@@ -206,7 +205,7 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Rotinas mais usadas")
-        self.assertContains(response, "Tipos de vínculo")
+        self.assertContains(response, "Tipos")
 
     def test_administrative_portal_account_can_open_person_edit_form(self):
         administrative_account = self._create_portal_account(

@@ -10,47 +10,48 @@
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-inner" aria-label="Informações da academia">
-      <div class="screen-tools">
+      <div class="screen-tools-with-draft">
         <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
       </div>
 
-      <div class="inner-header">
-        <div class="logo-frame logo-frame-small">
-          <img
-            class="brand-logo brand-logo-small"
-            src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}"
-            alt="Logo LV JIU JITSU"
-          >
+      <div class="inner-header inner-header-horizontal">
+        <div class="logo-frame logo-frame-compact">
+          <img class="brand-logo" src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
         </div>
-
         <div>
           <h1>Informações</h1>
-          <p class="inner-copy">Resumo de turma, professor e horários ativos.</p>
+          <p class="inner-copy">Turmas, horários e professores.</p>
         </div>
       </div>
 
       <div class="info-stack">
         {% for class_group in class_groups %}
-          <article class="info-card">
-            <h2>{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</h2>
-            <div class="info-summary-grid">
-              <div class="info-summary-block">
-                <span class="info-summary-label">Turma</span>
-                <p class="info-summary-value">{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</p>
-              </div>
-              <div class="info-summary-block">
-                <span class="info-summary-label">Professor</span>
-                <p class="info-summary-value">{{ class_group.main_teacher.full_name|default:"Não definido" }}</p>
-              </div>
-              <div class="info-summary-block">
-                <span class="info-summary-label">Horários</span>
-                <ul class="schedule-list schedule-list-compact">
-                  {% for schedule in class_group.schedules.all %}
-                    <li>{{ schedule.get_weekday_display }} · {{ schedule.start_time|time:"H:i" }}</li>
-                  {% empty %}
-                    <li>Nenhum horário ativo cadastrado.</li>
-                  {% endfor %}
-                </ul>
+          <article class="info-card info-card-expandable" data-expandable-card>
+            <div class="info-card-header" data-expandable-trigger>
+              <h2>{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</h2>
+              <span class="info-card-toggle" aria-hidden="true">▼</span>
+            </div>
+            <div class="info-card-content">
+              <div class="info-summary-grid">
+                <div class="info-summary-block">
+                  <span class="info-summary-label">Professor</span>
+                  <p class="info-summary-value">{{ class_group.main_teacher.full_name|default:"Não definido" }}</p>
+                </div>
+                <div class="info-summary-block">
+                  <span class="info-summary-label">Horários</span>
+                  <ul class="schedule-list schedule-list-compact">
+                    {% for schedule in class_group.schedules.all %}
+                      <li>{{ schedule.get_weekday_display }} · {{ schedule.start_time|time:"H:i" }}</li>
+                    {% empty %}
+                      <li>Nenhum horário ativo cadastrado.</li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
             </div>
           </article>
@@ -61,16 +62,20 @@
           </article>
         {% endfor %}
       </div>
-
-      <div class="screen-tools-floating" aria-hidden="false">
-        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-          <span class="theme-toggle-track">
-            <span class="theme-toggle-knob"></span>
-          </span>
-        </button>
-      </div>
     </section>
   </main>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+  <script>
+    (function () {
+      var cards = document.querySelectorAll('[data-expandable-card]');
+      cards.forEach(function (card) {
+        var trigger = card.querySelector('[data-expandable-trigger]');
+        if (!trigger) return;
+        trigger.addEventListener('click', function () {
+          card.classList.toggle('is-open');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

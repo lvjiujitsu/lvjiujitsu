@@ -8,7 +8,7 @@
     <div class="panel-card">
         <p class="panel-eyebrow">Portal administrativo</p>
         <h1>Painel master</h1>
-        <p>Gerencie pessoas, tipos, turmas e horários em superfícies auditáveis do portal. Em telas pequenas, pessoas, turmas e horários aparecem primeiro.</p>
+        <p>Gerencie pessoas, tipos, turmas e horários em superfícies auditáveis do portal.</p>
     </div>
 
     <section class="panel-card dashboard-shortcuts">
@@ -16,26 +16,25 @@
             <div>
                 <p class="panel-eyebrow">Ações principais</p>
                 <h2>O que fazer agora</h2>
-                <p>Em telas compactas, mostramos primeiro os atalhos operacionais mais úteis para recepção e gestão da grade.</p>
             </div>
-            <button class="ghost-button dashboard-actions-toggle" type="button" data-dashboard-actions-toggle aria-controls="admin-secondary-actions" aria-expanded="false" hidden>Mostrar mais atalhos</button>
+            <button class="ghost-button dashboard-actions-toggle" type="button" data-dashboard-actions-toggle aria-controls="admin-secondary-actions" aria-expanded="false" hidden>Mostrar mais</button>
         </div>
 
         <div class="dashboard-actions-grid">
             <a class="dashboard-action-card" href="{% url 'system:person-list' %}">
                 <span class="dashboard-action-meta">Cadastro</span>
                 <span class="dashboard-action-title">Pessoas</span>
-                <span class="dashboard-action-description">Revise CPF, acesso ao portal e status do cadastro.</span>
+                <span class="dashboard-action-description">CPF, acesso e status do cadastro.</span>
             </a>
             <a class="dashboard-action-card" href="{% url 'system:class-group-list' %}">
                 <span class="dashboard-action-meta">Tatame</span>
                 <span class="dashboard-action-title">Turmas</span>
-                <span class="dashboard-action-description">Organize a grade operacional e a capacidade das aulas.</span>
+                <span class="dashboard-action-description">Grade operacional e capacidade.</span>
             </a>
             <a class="dashboard-action-card" href="{% url 'system:class-schedule-list' %}">
                 <span class="dashboard-action-meta">Agenda</span>
                 <span class="dashboard-action-title">Horários</span>
-                <span class="dashboard-action-description">Mantenha a agenda da semana coerente com a grade.</span>
+                <span class="dashboard-action-description">Agenda da semana.</span>
             </a>
         </div>
 
@@ -43,17 +42,17 @@
             <a class="dashboard-action-card" href="{% url 'system:person-type-list' %}">
                 <span class="dashboard-action-meta">Permissões</span>
                 <span class="dashboard-action-title">Tipos</span>
-                <span class="dashboard-action-description">Ajuste os vínculos usados nas jornadas do portal.</span>
+                <span class="dashboard-action-description">Vínculos operacionais.</span>
             </a>
             <a class="dashboard-action-card" href="{% url 'system:class-category-list' %}">
                 <span class="dashboard-action-meta">Catálogo</span>
                 <span class="dashboard-action-title">Categorias</span>
-                <span class="dashboard-action-description">Revise a classificação que organiza cada turma.</span>
+                <span class="dashboard-action-description">Classificação das turmas.</span>
             </a>
             <a class="dashboard-action-card dashboard-action-card--technical" href="/django-admin/">
                 <span class="dashboard-action-meta">Superfície técnica</span>
                 <span class="dashboard-action-title">Django Admin</span>
-                <span class="dashboard-action-description">Acesso isolado para manutenção técnica e suporte do projeto.</span>
+                <span class="dashboard-action-description">Manutenção técnica do projeto.</span>
             </a>
         </div>
     </section>
@@ -61,5 +60,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'system/js/home/admin-dashboard.js' %}?v=20260405-frontfix-5"></script>
+<script src="{% static 'system/js/home/admin-dashboard.js' %}?v=20260407"></script>
 {% endblock %}

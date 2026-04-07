@@ -1,10 +1,149 @@
-﻿# CLAUDE.md — Spec Arquitetural e de Domínio do projeto LV JIU JITSU
+﻿# CLAUDE.md — Spec arquitetural e de domínio (LV JIU JITSU)
 
-> **Fonte única de verdade técnica do projeto.**  
-> Este documento descreve arquitetura, domínios, invariantes, integrações, fluxos críticos e restrições operacionais do sistema **LV JIU JITSU**.  
-> Regras de comportamento do agente ficam no `AGENTS.md`.
+> **Fonte única de verdade técnica do produto.** Descreve arquitetura, domínios, invariantes, integrações, fluxos críticos e restrições operacionais do sistema **LV JIU JITSU**.
+> Este arquivo guarda **o que o agente precisa saber sobre o projeto**, não como se comportar — para protocolo (fases, PRD, VMP, validação), leia `AGENTS.md` primeiro.
 
 ---
+
+## Perfil do projeto
+
+- **Produto:** plataforma web para gestão de academia de Jiu-Jitsu (escopo: operação comercial, financeira, acadêmica e administrativa).
+- **Stack:** Python + Django (MTV); app único `system` com modularização interna.
+- **Banco:** PostgreSQL em produção; **dev/local:** SQLite descartável no perfil VMP (ciclo em `AGENTS.md`).
+- **Ambiente Python:** `.venv` local **obrigatória** — proibido atender o repositório com instalações no Python global.
+- **Assíncrono:** Celery + Redis (quando em uso no ambiente).
+- **Frontend:** templates Django + JS progressivo; validação visual preferencialmente **headless + MCP Playwright** (ou equivalente no ambiente).
+- **Pagamentos:** `dj-stripe` + `stripe-python`.
+- **QR / câmera:** `qrcode`; `html5-qrcode` + WebRTC/MediaDevices.
+- **Paradigmas de trabalho:** SDD (spec/PRD), TDD, padrões só quando simplificarem.
+- **Artefatos temporários:** preferir diretórios dentro do workspace do projeto.
+
+### Regra de ambiente
+
+- Todo `manage.py`, teste, `pip` e script operacional deve rodar com o interpretador da `.venv` (Windows: `.\.venv\Scripts\python.exe`).
+- Se a `.venv` existir, comandos fora dela são erro operacional para este repositório.
+
+---
+
+## Arquitetura Django no repositório
+
+| Camada | Local | Responsabilidade |
+|--------|--------|------------------|
+| Domínio | `system/models/` | Persistência e invariantes de domínio |
+| Negócio | `system/services/` | Orquestração e regras (não em views) |
+| Leitura | `system/selectors/` (quando houver) | Consultas, dashboards, listagens |
+| HTTP | `system/views/` | Orquestração — views finas |
+| Validação | `system/forms/` | Entrada server-side |
+| Rotas | `system/urls.py` + raiz do projeto | Namespaces conforme organização atual |
+| Apresentação | `templates/` (e segmentação por jornada) | Herdam `base.html`; blocos: `content`, `extra_css`, `extra_js` |
+| Estáticos | `static/system/` | CSS/JS do produto |
+| Testes | `system/tests/` | Por fluxo e domínio |
+| Automação | `system/management/commands/` | Seeds, `create_admin_superuser`, etc. |
+
+### Regras estruturais
+
+- View não vira God Object; template não carrega regra de negócio complexa.
+- Design pattern só entra quando simplifica (KISS; ver também `AGENTS.md`).
+- `transaction.atomic()` em fluxos compostos (onboarding, vínculos, pagamento + efeitos).
+- `select_related()` / `prefetch_related()` em listagens — proibido N+1 deliberado.
+- Signals só quando acoplamento implícito for aceitável; regra central no serviço.
+- Padrões aceitáveis quando úteis: Service Layer, Factory, Strategy, Repository, Adapter, Command.
+
+### Seeds operacionais
+
+- `inicial_seed`: catálogos base e configurações mínimas.
+- `inicial_seed_test`: dados navegáveis para validação manual; cenários determinísticos e simples; um único `PersonType` por identidade; sem matriz N:N de tipos por pessoa.
+
+---
+
+## Sequência canônica de comandos (perfil VMP — desenvolvimento local)
+
+Ordem de referência; ajustar prefixo da `.venv` ao SO:
+
+```bash
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py inicial_seed
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+### Regras críticas
+
+- **Nunca** criar ou editar migration manualmente; corrigir models e regenerar.
+- **Nunca** migrar incrementalmente sobre banco existente neste perfil — o banco nasce do zero a cada ciclo de reset.
+- Não subir segundo servidor se já houver um na mesma porta.
+- Se qualquer etapa falhar, corrigir e recomeçar do `clear_migrations.py`.
+- Se um comando não existir no projeto, reportar — não simular sucesso.
+
+### Cláusula de escape
+
+Só se aplica com banco descartável e política alinhada ao time. Ambiente compartilhado ou banco persistente exige migração convencional e decisão explícita.
+
+---
+
+## PRD — estrutura mínima
+
+Criar em `docs/prd/PRD-<NNN>-<slug>.md` quando a tarefa não for trivial:
+
+```md
+# PRD-<NNN>: <Título>
+## Resumo
+## Problema atual
+## Objetivo
+## Contexto consultado
+## Escopo / Fora do escopo
+## Regras e restrições
+## Critérios de aceite
+## Plano
+- [ ] Etapa 1
+- [ ] Etapa 2
+## Implementado (preencher ao final)
+## Desvios do plano
+```
+
+---
+
+## Estrutura esperada do repositório (referência)
+
+```
+lvjiujitsu/
+├── docs/prd/
+├── system/
+│   ├── models/
+│   ├── views/
+│   ├── forms/
+│   ├── services/
+│   ├── tests/
+│   ├── migrations/          # após ciclo VMP: tipicamente 0001_initial.py
+│   ├── management/commands/
+│   └── urls.py
+├── templates/
+├── static/system/
+├── clear_migrations.py
+├── manage.py
+├── CLAUDE.md
+└── AGENTS.md
+```
+
+---
+
+## Critérios de falha obrigatória
+
+Marcar tarefa como **NÃO CONCLUÍDA** quando: implementou sem spec/PRD quando era necessário; alterou UI sem validação visual automatizada quando exigida; não verificou logs/console; declarou feito sem evidência; aplicou política VMP indevida a ambiente não descartável.
+
+---
+
+## Manutenção deste arquivo
+
+- Manter conciso nas partes operacionais; não duplicar o passo a passo que já está em `AGENTS.md`.
+- Decisões estruturais do produto entram na spec de domínio abaixo e no changelog (formato sugerido: `- **[YYYY-MM-DD]** Descrição`).
+
+---
+
+# Spec de domínio e visão do sistema
 
 ## 0. Status da spec
 
@@ -13,6 +152,7 @@
 **Escopo atual:** operação comercial, financeira, acadêmica e administrativa da academia, incluindo onboarding, check-in com QR, graduação, cobrança recorrente, dependentes, comunicação e relatórios.
 
 Esta spec deve ser atualizada sempre que surgir:
+
 - nova regra de negócio do tatame;
 - nova exigência operacional da recepção;
 - nova restrição legal, financeira ou de integração;
@@ -23,6 +163,7 @@ Esta spec deve ser atualizada sempre que surgir:
 ## 1. Visão do sistema
 
 O **LV JIU JITSU** é um monólito Django com app único `system` e modularização interna forte, com foco em:
+
 - identidade única por pessoa;
 - tipo de pessoa único por cadastro na fase atual;
 - gestão de planos, pagamentos e inadimplência;
@@ -34,6 +175,7 @@ O **LV JIU JITSU** é um monólito Django com app único `system` e modularizaç
 - conformidade com LGPD para dados pessoais e sensíveis.
 
 Arquitetura alvo:
+
 - **backend:** Django;
 - **autenticação do portal:** conta local do domínio, persistida no app `system`, com sessão própria;
 - **admin técnico:** `django.contrib.admin` + `django.contrib.auth`, restritos à operação técnica e manutenção do projeto;
@@ -67,6 +209,7 @@ Arquitetura alvo:
 14. **Validação visual automatizada é obrigatória em interface.** Mudanças em rotas, templates, CSS e jornadas visuais só podem ser dadas como prontas após conferência por navegador automatizado, preferencialmente via Playwright MCP no Codex CLI.
 
 ### 2.1 Regra operacional de ambiente
+
 - O projeto deve possuir e usar uma `.venv` local.
 - É proibido instalar dependências no Python global para atender este repositório.
 - `manage.py`, testes e scripts operacionais devem ser executados com o interpretador da `.venv`.
@@ -76,24 +219,16 @@ Arquitetura alvo:
 - Artefatos temporários de teste devem ser gerados preferencialmente dentro do workspace do projeto.
 
 ### 2.2 Fluxo obrigatório de reset — critério principal de trabalho
+
 - O projeto está em **fase MVP de teste**. Dados locais são descartáveis e não há preocupação com integridade de dados existentes.
 - O script oficial de reset do ambiente local é `clear_migrations.py`.
 - Esse script deve remover banco SQLite, migrations do projeto, `__pycache__`, artefatos locais e encerrar outros processos Python ativos antes da recriação do ambiente.
-- **Toda correção ou implementação deve começar com `clear_migrations.py`**, destruindo o banco antes de qualquer alteração de código.
-- Após implementar as mudanças, o ambiente deve ser reconstruído nesta ordem:
-  1. `.\.venv\Scripts\python.exe clear_migrations.py` (já executado antes de codificar)
-  2. `.\.venv\Scripts\python.exe manage.py makemigrations`
-  3. `.\.venv\Scripts\python.exe manage.py test`
-  4. `.\.venv\Scripts\python.exe manage.py migrate`
-  5. `.\.venv\Scripts\python.exe manage.py create_admin_superuser`
-- **Nunca** tentar migrar incrementalmente sobre banco existente. O banco sempre nasce do zero.
+- **Toda correção ou implementação** no perfil VMP **deve** alinhar-se ao ciclo definido em `AGENTS.md` (incluindo `clear_migrations.py` antes de alterar código quando aplicável).
+- Após implementar mudanças, o ambiente deve ser reconstruído na ordem documentada na seção **Sequência canônica** deste arquivo.
+- **Nunca** tentar migrar incrementalmente sobre banco existente neste perfil. O banco sempre nasce do zero.
 - **Nunca** preservar migrations intermediárias, dados ou estado do banco entre ciclos de trabalho.
 - Se qualquer etapa falhar após a implementação, corrigir o código e recomeçar do `clear_migrations.py`.
-- A validação do reset deve considerar o log real do terminal até antes do `runserver`, incluindo limpeza, geração de migrations, testes, migrate e criação do superusuário.
-- Para validacao visual de interface no Codex CLI, a configuracao preferencial e Playwright MCP:
-  - `codex mcp add playwright npx "@playwright/mcp@latest"`
-- Quando o Playwright MCP nao estiver disponivel, o fallback aceitavel e navegador headless local com captura real das rotas afetadas.
-- Sem essa etapa, a interface nao deve ser considerada visualmente validada.
+- Para validação visual de interface: configuração preferencial Playwright MCP — `codex mcp add playwright npx "@playwright/mcp@latest"`. Sem essa etapa quando exigida, a interface não deve ser considerada validada.
 
 ---
 
@@ -113,10 +248,11 @@ Estrutura-alvo:
 - `system/selectors/` — consultas de leitura e montagem de dashboards/listagens;
 - `system/tests/` — testes por módulo interno e por nível de validação;
 - `system/management/commands/` — comandos operacionais e seeds;
-- `templates/system/` — templates segmentados por jornada;
+- `templates/` — templates por jornada (organização atual do repositório);
 - `static/system/` — assets e comportamento frontend do sistema.
 
 ### 3.1 Módulos internos obrigatórios dentro de `system/`
+
 - `public` — landing, páginas abertas, mural e recuperação de acesso.
 - `identity_access` — autenticação, usuário, papéis, permissões e trilhas de acesso.
 - `student_registry` — aluno titular, dependentes, responsável financeiro, prontuário e documentos.
@@ -132,12 +268,14 @@ Estrutura-alvo:
 - `settings_seed` — parâmetros operacionais, catálogos internos e carga inicial.
 
 ### 3.1.1 Seeds operacionais
+
 - `inicial_seed` deve carregar apenas catálogos base e configurações mínimas do sistema.
 - `inicial_seed_test` deve ser tratada como carga navegável de validação manual do portal.
 - `inicial_seed_test` deve gerar cenários determinísticos simples, sem matriz N:N de tipos por pessoa.
 - As seeds de teste devem cobrir apenas cadastros coerentes com um único `PersonType` por identidade, mantendo relacionamentos de responsável e dependente quando aplicáveis.
 
 ### 3.2 Fonte de verdade por agregado dentro de `system/`
+
 - `identity_access`: identidade, autenticação, papéis e permissões.
 - `student_registry`: pessoa, dependentes, dados cadastrais, contato de emergência e dados sensíveis.
 - `instructor_ops`: perfil docente, agenda e alocação operacional.
@@ -151,10 +289,12 @@ Estrutura-alvo:
 - `reports_audit`: leitura agregada, auditoria, exportação e BI com fail-fast.
 
 Regra central:
+
 - o estado de negócio da academia é sempre local;
 - integrações externas confirmam eventos, mas não substituem a fonte de verdade do domínio.
 
 ### 3.3 Fronteira entre portal e Django Admin
+
 - O portal da academia e o Django Admin são superfícies distintas.
 - O **portal** usa identidade local do domínio, modelada em `system`, com conta de acesso, sessão própria e permissões baseadas em `Person` + `PersonType`.
 - O **Django Admin** existe apenas para administração técnica, suporte operacional restrito e manutenção de dados por equipe autorizada.
@@ -168,6 +308,7 @@ Regra central:
 ## 4. Identidade, autenticação e modelo de acesso
 
 ### 4.1 Regra central de identidade
+
 - Cada pessoa física deve ter **uma única identidade** no sistema.
 - Cada identidade do portal deve possuir **um único `PersonType` ativo** na fase atual.
 - **CPF é o identificador único de autenticação**.
@@ -175,6 +316,7 @@ Regra central:
 - É proibido duplicar cadastro para a mesma pessoa só porque ela exerce mais de um papel.
 
 ### 4.1.1 Regra de autenticação do portal
+
 - A autenticação do portal é local ao domínio e deve ser modelada dentro de `system.identity_access`.
 - A conta autenticável do portal deve referenciar exatamente uma `Person`.
 - Hash de senha, tentativas de login, reset de senha, sessão e flags operacionais do acesso devem ficar em modelos do próprio domínio.
@@ -183,7 +325,9 @@ Regra central:
 - Sessão do portal deve ser independente da sessão usada pelo Django Admin.
 
 ### 4.2 Papéis de negócio
+
 Os tipos de pessoa disponíveis são:
+
 - `ADMIN_MASTER`
 - `ADMIN_UNIDADE` / `RECEPCAO`
 - `PROFESSOR`
@@ -192,10 +336,12 @@ Os tipos de pessoa disponíveis são:
 - `RESPONSAVEL_FINANCEIRO`
 
 Regra da fase atual:
+
 - uma pessoa possui apenas um tipo de pessoa por cadastro;
 - multi-papel e matriz N:N de tipos por identidade não devem ser implementados enquanto essa fase de modelagem estiver ativa.
 
 ### 4.3 Dependentes
+
 - Dependentes podem existir vinculados ao responsável financeiro.
 - Acima de uma idade configurável e cumpridos os requisitos de cadastro, um dependente pode possuir credencial própria.
 - O dependente com credencial acessa apenas o necessário para sua jornada esportiva.
@@ -203,10 +349,12 @@ Regra da fase atual:
 - Dados financeiros do titular não podem ser exibidos para o dependente.
 
 ### 4.4 Professor e aluno na fase atual
+
 - A fase atual não suporta multi-papel no mesmo cadastro.
 - Se houver necessidade de reintroduzir professor que também é aluno, isso deve ser tratado como nova decisão estrutural de modelagem antes de qualquer implementação.
 
 ### 4.5 Superfície administrativa técnica
+
 - `django.contrib.admin` deve permanecer disponível apenas em `/django-admin/`.
 - O superusuário técnico existe para administração do projeto, inspeção e suporte de manutenção.
 - CRUDs do produto, permissões do portal e jornadas operacionais não devem exigir login no Django Admin.
@@ -217,6 +365,7 @@ Regra da fase atual:
 ## 5. Regras canônicas de negócio
 
 ### 5.1 Onboarding e cadastro
+
 - O cadastro do titular e de seus dependentes deve ser transacional.
 - Não pode existir onboarding parcialmente concluído com identidade quebrada.
 - O onboarding coleta dados pessoais, contatos, documentos e, quando aplicável, dados de emergência e saúde.
@@ -227,6 +376,7 @@ Regra da fase atual:
 - Horários ativos de treino são derivados automaticamente das turmas liberadas ao aluno; o onboarding não deve exigir seleção manual de dia da semana ou horário único para matrícula esportiva recorrente.
 
 ### 5.2 Presença e check-in
+
 - O QR Code deve ser dinâmico e de curta duração.
 - A presença é gravada contra uma **sessão de aula** específica.
 - O sistema deve verificar, antes de abrir a câmera:
@@ -238,11 +388,13 @@ Regra da fase atual:
 - O backend repete as validações antes de persistir a presença.
 
 ### 5.3 Lotação e reserva prévia
+
 - Capacidade máxima é consumida na reserva de vaga, não no momento do escaneamento na porta.
 - O QR serve para confirmar presença física do aluno que já garantiu a vaga.
 - Regras de no-show, tolerância e reaproveitamento de vaga devem ser configuráveis.
 
 ### 5.3.1 Turma, categoria e horário
+
 - `ClassGroup` não deve possuir eixo separado de `público` ou flag de publicação.
 - A classificação operacional da turma deve vir exclusivamente de `ClassCategory`.
 - `ClassSchedule` representa o horário da turma e não deve ser colapsado no nome da turma.
@@ -253,12 +405,14 @@ Regra da fase atual:
 - Turma feminina exige pessoa com **sexo biológico feminino** e faixa etária compatível com a categoria adulta.
 
 ### 5.4 Inadimplência
+
 - Inadimplência bloqueia check-in e acesso esportivo conforme política da academia.
 - O bloqueio precisa aparecer na UI antes de qualquer tentativa de câmera.
 - O dashboard do aluno deve oferecer rota clara para regularização.
 - Comprovante manual enviado para pagamento não regulariza acesso automaticamente: enquanto a fatura estiver `UNDER_REVIEW`, o contrato local permanece `PENDING_FINANCIAL` até revisão administrativa explícita.
 
 ### 5.5 Trancamento / pausa de matrícula
+
 - O sistema deve permitir trancamento temporário de matrícula.
 - Durante a pausa:
   - o aluno assume status local `PAUSADO`;
@@ -269,12 +423,14 @@ Regra da fase atual:
 - Retomada de matrícula deve reativar permissões conforme situação financeira e operacional.
 
 ### 5.6 Graduação
+
 - O motor de graduação considera presença válida e tempo de treino ativo.
 - Tempo corrido sem treino efetivo não deve gerar elegibilidade artificial.
 - Pausas e ausências reconhecidas precisam congelar o relógio de progressão quando a regra assim exigir.
 - A academia pode configurar regras internas, mas o sistema deve preservar referência aos tempos mínimos oficiais adotados.
 
 ### 5.7 Caixa e balcão
+
 - O sistema deve suportar vendas avulsas de recepção.
 - Deve existir fluxo de PDV/caixa rápido para itens como água, açaí, aluguel de kimono e materiais.
 - Fechamento de caixa diário precisa separar dinheiro físico de cobranças recorrentes digitais.
@@ -282,15 +438,18 @@ Regra da fase atual:
 - Divergência acima do limiar configurável de caixa deve marcar o turno para revisão gerencial.
 
 ### 5.8 Comunicações
+
 - A administração precisa conseguir publicar avisos e comunicados em massa.
 - O sistema deve suportar mural interno e canais externos configurados.
 - Mensagens operacionais precisam ser auditáveis.
 
 ### 5.9 Prontuário de emergência
+
 - Contato de emergência, dados médicos essenciais e informações rápidas devem ser acessíveis em modo de emergência com forte restrição de acesso.
 - Toda consulta de prontuário sensível deve gerar trilha de auditoria.
 
 ### 5.10 Relatórios e exportações
+
 - Dashboards e exportações não podem inferir regra crítica a partir de dado inconsistente.
 - Geração de CSV/extração de BI depende de pré-validação obrigatória do arquivo de controle.
 - O arquivo de controle de exportação crítica deve conter a diretiva explícita `EXPORT_ALLOWED=1`.
@@ -301,9 +460,11 @@ Regra da fase atual:
 ## 6. Integrações externas
 
 ### 6.1 Stripe
+
 A integração de pagamentos deve usar preferencialmente `dj-stripe` como camada principal de ecossistema Django, complementada por `stripe-python` quando for necessário acessar fluxos específicos da API Stripe.
 
 O projeto pode usar Stripe para:
+
 - Checkout de assinatura;
 - cobrança recorrente;
 - Customer Portal;
@@ -312,6 +473,7 @@ O projeto pode usar Stripe para:
 - pausa de cobrança por `pause_collection`, quando aplicável.
 
 Regras:
+
 - webhooks precisam validar assinatura do evento;
 - processamento deve ser idempotente;
 - o sistema precisa manter estado de negócio próprio, sem depender apenas do `status` devolvido pela Stripe;
@@ -319,6 +481,7 @@ Regras:
 - redirecionamentos de `success_url`, `cancel_url` ou retorno de portal não podem ser usados como prova de quitação ou liberação de acesso.
 
 #### 6.1.1 Fonte de verdade: Stripe x domínio local
+
 - Stripe confirma eventos financeiros, cobrança recorrente, checkout e portal;
 - `system.finance_contracts` e os agregados locais definem acesso, bloqueio, pausa, retomada e efeitos esportivos;
 - uma assinatura ativa na Stripe não autoriza, sozinha, check-in, graduação ou acesso irrestrito;
@@ -328,11 +491,13 @@ Regras:
 - o espelho `dj-stripe` deve ser tratado como camada auxiliar de observabilidade e reconciliacao, nunca como substituto do contrato local.
 
 ### 6.2 Câmera / WebRTC
+
 - A geração de QR no backend deve usar `qrcode`.
 - A leitura no frontend deve usar `html5-qrcode` em contexto seguro para câmera em produção.
 - A UI não deve solicitar câmera quando a regra de negócio já sabe que o acesso está bloqueado.
 
 ### 6.3 Mensageria
+
 - E-mail, push ou integração com WhatsApp devem ser tratados como canais desacoplados.
 - Falha de entrega de mensagem não pode quebrar fluxo principal de cadastro, cobrança ou presença.
 
@@ -341,7 +506,9 @@ Regras:
 ## 7. Segurança, LGPD e dados sensíveis
 
 ### 7.1 Base de proteção
+
 O sistema lida com:
+
 - dados cadastrais;
 - dados financeiros;
 - selfies/biometria facial;
@@ -349,6 +516,7 @@ O sistema lida com:
 - dados de crianças e adolescentes.
 
 ### 7.2 Regras obrigatórias
+
 - coletar apenas o mínimo necessário;
 - restringir acesso por papel e necessidade operacional;
 - registrar auditoria de acesso a dados sensíveis;
@@ -357,14 +525,18 @@ O sistema lida com:
 - separar claramente autenticação técnica do Django Admin da autenticação funcional do portal.
 
 ### 7.3 Exclusão definitiva
+
 Quando juridicamente cabível e respeitadas obrigações de retenção:
+
 - apagar ou anonimizar dados pessoais identificáveis;
 - remover selfie/biometria e dados médicos que não precisem ser preservados;
 - manter apenas o mínimo técnico/financeiro necessário para integridade histórica e contábil.
 - solicitações destrutivas de LGPD não podem ser concluídas enquanto houver contrato financeiro local em estado operacional ativo, pausado, bloqueado ou pendente, porque ainda existe obrigação de retenção operacional/contábil e vínculo transacional em aberto.
 
 ### 7.4 Lacunas que precisam permanecer explícitas
+
 Enquanto não houver definição mais forte de produto e operação, estas lacunas precisam continuar visíveis no planejamento:
+
 - política formal de retenção para selfie, biometria e prontuário;
 - trilha de auditoria detalhada para acesso emergencial e dados médicos;
 - política de chargeback, contestação e exceções financeiras;
@@ -376,6 +548,7 @@ Enquanto não houver definição mais forte de produto e operação, estas lacun
 ## 8. Mapeamento macro de telas e domínios
 
 O sistema cobre, no mínimo, estes macroblocos funcionais:
+
 - T01 Landing, login e acesso;
 - T02 Cadastro e onboarding;
 - T03 Checkout e assinaturas;
@@ -437,6 +610,7 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 ## 11. Definição mínima de pronto para mudanças sensíveis
 
 Uma mudança é considerada pronta quando:
+
 1. respeita esta spec e o `AGENTS.md`;
 2. não quebra identidade única;
 3. não abre brecha de permissão indevida;
@@ -445,8 +619,10 @@ Uma mudança é considerada pronta quando:
 6. possui trilha de auditoria quando necessário;
 7. foi coberta por testes adequados ao risco.
 
-## 11.1 Fronteiras atuais e lacunas abertas para planejamento
+### 11.1 Fronteiras atuais e lacunas abertas para planejamento
+
 Estas lacunas devem ser tratadas como backlog arquitetural, e não como detalhe casual:
+
 - formalização completa da política LGPD para exclusão, anonimização e retenção;
 - evolução do motor de graduação para regras configuráveis mais finas por academia;
 - governança explícita para multi-unidade e papéis administrativos mais granulares;
@@ -484,5 +660,4 @@ Essas lacunas não invalidam a spec atual, mas precisam orientar o planejamento 
 - **[2026-04-04]** Formalizado que a fase atual usa um único `PersonType` por pessoa e que `inicial_seed_test` deve gerar apenas cenários simples e determinísticos.
 - **[2026-04-04]** Formalizado que, em refatorações estruturais da modelagem durante o desenvolvimento, o banco local deve ser descartado e recriado com `clear_migrations.py`.
 - **[2026-04-05]** Formalizado que `ClassGroup` não possui eixo separado de `público`; a classificação da turma vem exclusivamente de `ClassCategory`, e a UI não deve exibir coluna redundante de `Público` em turmas.
-
-
+- **[2026-04-07]** Reorganização do `AGENTS.md`/`CLAUDE.md` com protocolo SDD/TDD, PRDs em `docs/prd/`, fases de validação e política VMP explícita, preservando a spec de domínio do LV JIU JITSU.
