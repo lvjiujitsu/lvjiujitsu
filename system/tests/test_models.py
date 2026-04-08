@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -7,6 +8,7 @@ from django.utils import timezone
 from system.forms import PortalRegistrationForm
 from system.models import (
     BiologicalSex,
+    ClassCategory,
     ClassEnrollment,
     ClassGroup,
     Person,
@@ -16,6 +18,7 @@ from system.models import (
     PortalAccount,
     PortalPasswordResetToken,
 )
+from system.services.class_overview import build_class_group_filter_value
 from system.services.seeding import seed_class_catalog
 
 
@@ -156,10 +159,10 @@ class PersonModelTestCase(TestCase):
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
 
-    def test_registration_creates_multiple_class_enrollments_from_selected_groups(self):
+    def test_registration_creates_multiple_physical_enrollments_from_logical_choice(self):
         seed_class_catalog()
-        primary_group = ClassGroup.objects.get(code="adult-lauro")
-        secondary_group = ClassGroup.objects.get(code="adult-layon")
+        adult_category = ClassCategory.objects.get(code="adult")
+        adult_key = build_class_group_filter_value(adult_category.pk, "Jiu Jitsu")
 
         form = PortalRegistrationForm(
             data={
@@ -170,7 +173,7 @@ class PersonModelTestCase(TestCase):
                 "holder_biological_sex": BiologicalSex.MALE,
                 "holder_password": "123456",
                 "holder_password_confirm": "123456",
-                "holder_class_groups": [primary_group.pk, secondary_group.pk],
+                "holder_class_groups": [adult_key],
             }
         )
 
@@ -178,10 +181,19 @@ class PersonModelTestCase(TestCase):
         created = form.save()
         holder = created["holder"]
 
-        self.assertEqual(holder.class_group, primary_group)
+        self.assertEqual(holder.class_category, adult_category)
+        self.assertEqual(holder.class_group.class_category, adult_category)
         self.assertIsNone(holder.class_schedule)
-        self.assertEqual(holder.class_category, primary_group.class_category)
-        self.assertEqual(ClassEnrollment.objects.filter(person=holder).count(), 2)
+        self.assertEqual(ClassEnrollment.objects.filter(person=holder).count(), 3)
+        self.assertEqual(
+            set(
+                ClassEnrollment.objects.filter(person=holder).values_list(
+                    "class_group__code",
+                    flat=True,
+                )
+            ),
+            {"adult-lauro", "adult-layon", "adult-vinicius"},
+        )
 
     def test_guardian_registration_accepts_multiple_dependents(self):
         form = PortalRegistrationForm(

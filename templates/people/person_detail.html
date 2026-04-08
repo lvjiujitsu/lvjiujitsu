@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pessoa | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
+{% block content %}
+<section class="catalog-page-header">
+    <div>
+        <p class="panel-eyebrow">Visualizar pessoa</p>
+        <h1>{{ person.full_name }}</h1>
+        <p>{% if person.person_type %}{{ person.person_type.display_name }}{% else %}Sem tipo definido{% endif %} · {{ person.cpf }}</p>
+    </div>
+    <a class="ghost-link" href="{% url 'system:person-list' %}">Voltar para pessoas</a>
+</section>
+
+<div class="catalog-editor-grid">
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Dados</p>
+                <h2>Resumo</h2>
+            </div>
+        </div>
+        <div class="catalog-guidance-list">
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">E-mail</span>
+                <p>{{ person.email|default:"Não informado" }}</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Telefone</span>
+                <p>{{ person.phone|default:"Não informado" }}</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Sexo biológico</span>
+                <p>{{ person.get_biological_sex_display|default:"Não informado" }}</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Status</span>
+                <p>{{ person.is_active|yesno:"Ativo,Inativo" }} · {{ person.has_portal_access|yesno:"Com acesso,Sem acesso" }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Como aluno</p>
+                <h2>Turmas liberadas</h2>
+            </div>
+        </div>
+        <div class="catalog-chip-list">
+            {% for label in person.active_group_labels %}
+                <span class="catalog-chip">{{ label }}</span>
+            {% empty %}
+                <span class="catalog-empty-inline">Sem turma liberada.</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Como aluno</p>
+                <h2>Horários liberados</h2>
+            </div>
+        </div>
+        <div class="catalog-chip-list">
+            {% for label in person.active_schedule_labels %}
+                <span class="catalog-chip">{{ label }}</span>
+            {% empty %}
+                <span class="catalog-empty-inline">Sem horário liberado.</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="form-card catalog-section-card catalog-section-card--full">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Atuação como professor</p>
+                <h2>Atuação como professor</h2>
+            </div>
+        </div>
+        <div class="catalog-guidance-list">
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Turmas</span>
+                <div class="catalog-chip-list">
+                    {% for label in person.teaching_group_labels %}
+                        <span class="catalog-chip">{{ label }}</span>
+                    {% empty %}
+                        <span class="catalog-empty-inline">Sem atuação docente.</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Horários</span>
+                <div class="catalog-chip-list">
+                    {% for label in person.teaching_schedule_labels %}
+                        <span class="catalog-chip">{{ label }}</span>
+                    {% empty %}
+                        <span class="catalog-empty-inline">Sem horários docentes vinculados.</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

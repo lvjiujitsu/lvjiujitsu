@@ -5,7 +5,7 @@ from .auth_forms import (
 )
 from .category_forms import ClassCategoryForm
 from .class_forms import ClassGroupForm, ClassScheduleForm
-from .person_forms import PersonForm, PersonTypeForm
+from .person_forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from .registration_forms import PortalRegistrationForm
 
 __all__ = [
@@ -13,6 +13,7 @@ __all__ = [
     "ClassGroupForm",
     "ClassScheduleForm",
     "PersonForm",
+    "PersonListFilterForm",
     "PersonTypeForm",
     "PortalAuthenticationForm",
     "PortalPasswordResetRequestForm",

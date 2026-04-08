@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Horário | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
+{% block content %}
+<section class="catalog-page-header">
+    <div>
+        <p class="panel-eyebrow">Visualizar horário</p>
+        <h1>{{ class_schedule.title }}</h1>
+        <p>{{ class_schedule.schedule_count }} horário{{ class_schedule.schedule_count|pluralize:"s" }} · {{ class_schedule.class_group_count }} turma{{ class_schedule.class_group_count|pluralize:"s" }}</p>
+    </div>
+    <a class="ghost-link" href="{% url 'system:class-schedule-list' %}">Voltar para horários</a>
+</section>
+
+<div class="catalog-editor-grid">
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Turmas do dia</p>
+                <h2>Turmas do dia</h2>
+            </div>
+        </div>
+        <div class="catalog-chip-list">
+            {% for group_title in class_schedule.group_titles %}
+                <span class="catalog-chip">{{ group_title }}</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="form-card catalog-section-card catalog-section-card--full">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Ocorrências do dia</p>
+                <h2>Ocorrências do dia</h2>
+            </div>
+        </div>
+        <div class="record-list">
+            {% for occurrence in class_schedule.occurrences %}
+                <article class="record-card">
+                    <div class="record-card-head">
+                        <div>
+                            <span class="record-card-name">{{ occurrence.time_label }} · {{ occurrence.class_group_title }}</span>
+                            <div class="record-card-subtitle">{{ occurrence.training_style_display }} · {{ occurrence.duration_minutes }} min</div>
+                        </div>
+                        <span class="record-card-badge">{{ occurrence.is_active|yesno:"Ativo,Inativo" }}</span>
+                    </div>
+                    <div class="record-card-info">
+                        <div class="record-card-row">
+                            <span class="record-card-lbl">Categoria</span>
+                            <span class="record-card-val">{{ occurrence.category_title }}</span>
+                        </div>
+                        <div class="record-card-row">
+                            <span class="record-card-lbl">Professores</span>
+                            <span class="record-card-val">{{ occurrence.teacher_names|join:", " }}</span>
+                        </div>
+                    </div>
+                    <div class="record-card-actions">
+                        <a href="{% url 'system:class-schedule-update' occurrence.pk %}">Editar</a>
+                        <a class="danger-link" href="{% url 'system:class-schedule-delete' occurrence.pk %}">Excluir</a>
+                    </div>
+                </article>
+            {% empty %}
+                <span class="catalog-empty-inline">Nenhuma ocorrência cadastrada.</span>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

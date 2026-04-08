@@ -8,5 +8,7 @@ staticfiles/
 .pytest_cache/
 .pytest_tmp/
 test_artifacts/
+test_screenshots/
+.playwright-mcp/
 pytest-cache-files-*/
 .coverage

@@ -4,6 +4,7 @@ from django import forms
 
 from system.models import BiologicalSex, BloodType, ClassGroup, Person, PersonType
 from system.models.class_membership import get_class_group_eligibility_error
+from system.services.class_overview import get_public_class_group_choice_options
 from system.services.registration import (
     create_portal_registration,
     get_kinship_choices,
@@ -154,15 +155,7 @@ class PortalRegistrationForm(forms.Form):
         self.fields["other_type_code"].choices = choices
 
     def _configure_class_choices(self):
-        groups = (
-            ClassGroup.objects.filter(is_active=True)
-            .select_related("class_category")
-            .order_by("class_category__display_order", "code")
-        )
-        group_choices = [("", "Selecione")] + [
-            (group.pk, f"{group.class_category.display_name} · {group.display_name}")
-            for group in groups
-        ]
+        group_choices = [("", "Selecione")] + get_public_class_group_choice_options()
         for prefix in ("holder", "dependent", "student"):
             self.fields[f"{prefix}_class_groups"].choices = group_choices
 
@@ -344,7 +337,7 @@ class PortalRegistrationForm(forms.Form):
             if self.catalog_is_available and not groups:
                 self.add_error(None, f"Dependente adicional {index}: selecione ao menos uma turma.")
                 continue
-            if len(groups) != len({str(group_id) for group_id in raw_group_ids if str(group_id)}):
+            if self._has_invalid_class_group_selection(raw_group_ids):
                 self.add_error(
                     None,
                     f"Dependente adicional {index}: selecione apenas turmas válidas.",
@@ -374,7 +367,7 @@ class PortalRegistrationForm(forms.Form):
 
         if required and not groups:
             self.add_error(field_name, "Selecione ao menos uma turma.")
-        if len(groups) != len({str(group_id) for group_id in raw_group_ids if str(group_id)}):
+        if self._has_invalid_class_group_selection(raw_group_ids):
             self.add_error(field_name, "Selecione apenas turmas válidas.")
 
         self._add_class_group_eligibility_errors(
@@ -384,6 +377,15 @@ class PortalRegistrationForm(forms.Form):
             self.cleaned_data.get(f"{prefix}_biological_sex", ""),
         )
         self.cleaned_data[field_name] = groups
+
+    def _has_invalid_class_group_selection(self, raw_group_ids):
+        for raw_group_id in raw_group_ids:
+            if not str(raw_group_id):
+                continue
+            if resolve_class_groups([raw_group_id]):
+                continue
+            return True
+        return False
 
     def _add_class_group_eligibility_errors(
         self,

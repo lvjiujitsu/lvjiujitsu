@@ -13,9 +13,9 @@ from system.forms import (
     PortalRegistrationForm,
     PortalSetPasswordForm,
 )
-from system.services.class_catalog import (
-    get_ibjjf_age_category_payload,
-    get_info_catalog_context,
+from system.services.class_catalog import get_ibjjf_age_category_payload
+from system.services.class_overview import (
+    get_public_class_group_cards,
     get_registration_catalog_payload,
 )
 from system.services import (
@@ -110,7 +110,7 @@ class PortalInfoView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update(get_info_catalog_context())
+        context["class_group_cards"] = get_public_class_group_cards()
         return context
 
 

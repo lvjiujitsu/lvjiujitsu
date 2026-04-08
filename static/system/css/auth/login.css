@@ -707,6 +707,11 @@ h1 {
   appearance: auto;
 }
 
+.field select[multiple] {
+  min-height: 148px;
+  padding: 10px 12px;
+}
+
 .field textarea {
   min-height: 110px;
   padding: 14px 16px;
@@ -770,6 +775,7 @@ h1 {
 .draft-note-minimal {
   display: inline-flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
   padding: 6px 12px;
   border: 1px dashed var(--border);
@@ -777,6 +783,14 @@ h1 {
   background: var(--surface-soft);
   font-size: 0.8rem;
   color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.draft-note-minimal [data-registration-draft-label] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .draft-note-minimal.is-hidden {
@@ -1608,6 +1622,11 @@ h1 {
     border-radius: 18px;
   }
 
+  .field select[multiple] {
+    min-height: 132px;
+    padding: 10px;
+  }
+
   .field textarea {
     min-height: 96px;
     border-radius: 18px;
@@ -1672,17 +1691,37 @@ h1 {
 }
 
 .screen-tools-with-draft {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .screen-tools-right {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
   gap: 10px;
+}
+
+.screen-tools-right .theme-toggle {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .screen-tools-with-draft {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .screen-tools-right {
+    width: auto;
+    align-items: center;
+  }
 }
 
 @media (max-width: 380px) {

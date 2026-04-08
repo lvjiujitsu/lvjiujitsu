@@ -12,54 +12,23 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Horários</h1>
-        <p>Cada horário mostra a turma, a categoria e a equipe docente vinculada, sem cadastro isolado ou ambíguo.</p>
+        <p>Resumo direto da grade. Vínculos completos ficam dentro de Visualizar.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-schedule-create' %}">Novo horário</a>
 </section>
 
 <div class="record-list">
     {% for class_schedule in class_schedules %}
-        <article class="record-card record-card-catalog">
+        <article class="record-card">
             <div class="record-card-head">
                 <div>
-                    <span class="record-card-name">{{ class_schedule.card_title }}</span>
-                    <div class="record-card-subtitle">{{ class_schedule.class_group_title }}</div>
+                    <span class="record-card-name">{{ class_schedule.title }}</span>
+                    <div class="record-card-subtitle">{{ class_schedule.schedule_count }} horário{{ class_schedule.schedule_count|pluralize:"s" }} · {{ class_schedule.class_group_count }} turma{{ class_schedule.class_group_count|pluralize:"s" }}</div>
                 </div>
                 <span class="record-card-badge">{{ class_schedule.is_active|yesno:"Ativo,Inativo" }}</span>
             </div>
-
-            <div class="record-card-info">
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Categoria</span>
-                    <span class="record-card-val">{{ class_schedule.category_title }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Equipe</span>
-                    <span class="record-card-val">{{ class_schedule.linked_teacher_names|join:", "|default:"Equipe docente não definida" }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Estilo</span>
-                    <span class="record-card-val">{{ class_schedule.get_training_style_display }} · {{ class_schedule.duration_minutes }} min</span>
-                </div>
-            </div>
-
-            <div class="catalog-chip-group">
-                <span class="catalog-chip-group-title">Professores vinculados</span>
-                <div class="catalog-chip-list">
-                    {% for member in class_schedule.linked_teachers %}
-                        <span class="catalog-chip">
-                            {{ member.full_name }}
-                            <small>{{ member.role_label }}</small>
-                        </span>
-                    {% empty %}
-                        <span class="catalog-empty-inline">Equipe docente não definida.</span>
-                    {% endfor %}
-                </div>
-            </div>
-
             <div class="record-card-actions">
-                <a href="{% url 'system:class-schedule-update' class_schedule.pk %}">Editar</a>
-                <a href="{% url 'system:class-schedule-delete' class_schedule.pk %}">Excluir</a>
+                <a href="{% url 'system:class-schedule-detail' class_schedule.pk %}">Visualizar</a>
             </div>
         </article>
     {% empty %}

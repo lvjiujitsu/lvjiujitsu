@@ -12,9 +12,11 @@ from pathlib import Path
 
 EXCLUDED_DIR_NAMES = {".git", ".venv", "venv", "node_modules"}
 RUNTIME_DIR_NAMES = {
+    ".playwright-mcp",
     ".pytest_cache",
     ".pytest_tmp",
     "test_artifacts",
+    "test_screenshots",
     "staticfiles",
     "media",
     "htmlcov",

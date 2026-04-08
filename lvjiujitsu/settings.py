@@ -23,6 +23,15 @@ ALLOWED_HOSTS = [
 if DEBUG and "*" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("*")
 
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in config(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        default="http://127.0.0.1,http://localhost,https://127.0.0.1,https://localhost,https://*.ngrok-free.dev,https://*.ngrok.io",
+    ).split(",")
+    if origin.strip()
+]
+
 ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
 ADMIN_SUPERUSER_EMAIL = config("ADMIN_SUPERUSER_EMAIL", default="")
 ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")

@@ -236,13 +236,12 @@ class BaseClassGroupScheduleFormSet(BaseInlineFormSet):
 
 def get_class_group_schedule_formset(*, data=None, instance=None):
     target_instance = instance or ClassGroup()
-    extra_forms = 4 if getattr(target_instance, "pk", None) else 6
     formset_class = inlineformset_factory(
         ClassGroup,
         ClassSchedule,
         form=ClassGroupScheduleForm,
         formset=BaseClassGroupScheduleFormSet,
-        extra=extra_forms,
+        extra=1,
         can_delete=True,
     )
     return formset_class(

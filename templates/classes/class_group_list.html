@@ -12,65 +12,23 @@
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Turmas</h1>
-        <p>Veja cada turma junto da categoria, da equipe docente e dos horários ativos já vinculados.</p>
+        <p>Lista resumida. O cruzamento completo fica dentro de Visualizar.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-group-create' %}">Nova turma</a>
 </section>
 
 <div class="record-list">
     {% for class_group in class_groups %}
-        <article class="record-card record-card-catalog">
+        <article class="record-card">
             <div class="record-card-head">
                 <div>
                     <span class="record-card-name">{{ class_group.catalog_title }}</span>
-                    <div class="record-card-subtitle">Código {{ class_group.code }}</div>
+                    <div class="record-card-subtitle">{{ class_group.team_count }} professor{{ class_group.team_count|pluralize:"es" }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</div>
                 </div>
                 <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
             </div>
-
-            <div class="record-card-info">
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Equipe</span>
-                    <span class="record-card-val">{{ class_group.team_summary }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Vagas</span>
-                    <span class="record-card-val">{{ class_group.default_capacity }} vagas</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Descrição</span>
-                    <span class="record-card-val">{{ class_group.description|default:"Sem observações operacionais." }}</span>
-                </div>
-            </div>
-
-            <div class="catalog-chip-group">
-                <span class="catalog-chip-group-title">Equipe docente</span>
-                <div class="catalog-chip-list">
-                    {% for member in class_group.teaching_team %}
-                        <span class="catalog-chip">
-                            {{ member.full_name }}
-                            <small>{{ member.role_label }}</small>
-                        </span>
-                    {% empty %}
-                        <span class="catalog-empty-inline">Equipe docente não definida.</span>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="catalog-chip-group">
-                <span class="catalog-chip-group-title">Horários ativos</span>
-                <div class="catalog-chip-list">
-                    {% for schedule in class_group.schedule_cards %}
-                        <span class="catalog-chip">{{ schedule.card_label }}</span>
-                    {% empty %}
-                        <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
-                    {% endfor %}
-                </div>
-            </div>
-
             <div class="record-card-actions">
-                <a href="{% url 'system:class-group-update' class_group.pk %}">Editar</a>
-                <a href="{% url 'system:class-group-delete' class_group.pk %}">Excluir</a>
+                <a href="{% url 'system:class-group-detail' class_group.pk %}">Visualizar</a>
             </div>
         </article>
     {% empty %}

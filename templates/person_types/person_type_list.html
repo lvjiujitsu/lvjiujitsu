@@ -1,35 +1,38 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Tipos de vínculo | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
 
 {% block content %}
 <section class="crud-header">
     <div>
         <p class="panel-eyebrow">Configuração de perfis</p>
         <h1>Tipos de vínculo</h1>
-        <p>Gerencie os tipos disponíveis para cruzamento de perfis e permissões.</p>
+        <p>Resumo direto. Mais detalhes ficam dentro de Visualizar.</p>
     </div>
     <a class="primary-button" href="{% url 'system:person-type-create' %}">Novo tipo</a>
 </section>
 
 <div class="record-list">
     {% for person_type in person_types %}
-        <div class="record-card">
+        <article class="record-card">
             <div class="record-card-head">
-                <span class="record-card-name">{{ person_type.display_name }}</span>
+                <div>
+                    <span class="record-card-name">{{ person_type.display_name }}</span>
+                    <div class="record-card-subtitle">{{ person_type.people_count }} pessoa{{ person_type.people_count|pluralize:"s" }}</div>
+                </div>
                 <span class="record-card-badge">{{ person_type.is_active|yesno:"Ativo,Inativo" }}</span>
             </div>
-            <div class="record-card-info">
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Código</span>
-                    <span class="record-card-val">{{ person_type.code }}</span>
-                </div>
-            </div>
             <div class="record-card-actions">
+                <a href="{% url 'system:person-type-detail' person_type.pk %}">Visualizar</a>
                 <a href="{% url 'system:person-type-update' person_type.pk %}">Editar</a>
-                <a href="{% url 'system:person-type-delete' person_type.pk %}">Excluir</a>
+                <a class="danger-link" href="{% url 'system:person-type-delete' person_type.pk %}">Excluir</a>
             </div>
-        </div>
+        </article>
     {% empty %}
         <div class="empty-state">Nenhum tipo cadastrado.</div>
     {% endfor %}

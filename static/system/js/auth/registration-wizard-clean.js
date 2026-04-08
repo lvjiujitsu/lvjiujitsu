@@ -12,6 +12,7 @@
   if (!form) return;
 
   var profileInputs = Array.from(form.querySelectorAll('input[name="registration_profile"]'));
+  var profileChoiceCards = Array.from(form.querySelectorAll('[data-choice-card]'));
   var dependentToggle = document.getElementById('include-dependent');
   var dependentToggleCard = form.querySelector('[data-dependent-toggle-card]');
   var otherTypePanel = form.querySelector('[data-other-type-panel]');
@@ -23,6 +24,7 @@
   var backButton = form.querySelector('[data-step-back]');
   var nextButton = form.querySelector('[data-step-next]');
   var submitButton = form.querySelector('[data-step-submit]');
+  var dateInputs = Array.from(form.querySelectorAll('[data-date-mask]'));
   
   var draftNote = document.querySelector('[data-registration-draft-note]');
   var draftLabel = document.querySelector('[data-registration-draft-label]');
@@ -59,14 +61,14 @@
       label: 'Aluno',
       title: 'Dados do aluno',
       panelSelector: '[data-panel="holder"]',
-      requiredFields: ['holder_name', 'holder_cpf', 'holder_birthdate', 'holder_biological_sex', 'holder_phone', 'holder_email', 'holder_password', 'holder_password_confirm']
+      requiredFields: ['holder_name', 'holder_cpf', 'holder_birthdate', 'holder_biological_sex', 'holder_password', 'holder_password_confirm']
     },
     holder_titular: {
       key: 'holder_titular',
       label: 'Titular',
       title: 'Dados do titular',
       panelSelector: '[data-panel="holder"]',
-      requiredFields: ['holder_name', 'holder_cpf', 'holder_birthdate', 'holder_biological_sex', 'holder_phone', 'holder_email', 'holder_password', 'holder_password_confirm']
+      requiredFields: ['holder_name', 'holder_cpf', 'holder_birthdate', 'holder_biological_sex', 'holder_password', 'holder_password_confirm']
     },
     dependent: {
       key: 'dependent',
@@ -80,35 +82,63 @@
       label: 'Responsável',
       title: 'Dados do responsável',
       panelSelector: '[data-panel="guardian"]',
-      requiredFields: ['guardian_name', 'guardian_cpf', 'guardian_phone', 'guardian_email', 'guardian_password', 'guardian_password_confirm']
+      requiredFields: ['guardian_name', 'guardian_cpf', 'guardian_password', 'guardian_password_confirm']
     },
     student: {
       key: 'student',
       label: 'Aluno',
       title: 'Dados do aluno',
       panelSelector: '[data-panel="student"]',
-      requiredFields: ['student_name', 'student_cpf', 'student_birthdate', 'student_biological_sex']
+      requiredFields: ['student_name', 'student_cpf', 'student_birthdate', 'student_biological_sex', 'student_password', 'student_password_confirm', 'student_kinship_type']
     },
-    classes: {
-      key: 'classes',
-      label: 'Turmas',
-      title: 'Escolha as turmas',
-      panelSelector: '[data-panel="classes"]',
+    holder_classes: {
+      key: 'holder_classes',
+      label: 'Turmas titular',
+      title: 'Turmas do titular/aluno',
+      panelSelector: '[data-panel="holder-classes"]',
       requiredFields: []
     },
-    medical: {
-      key: 'medical',
-      label: 'Prontuário',
-      title: 'Informações médicas',
-      panelSelector: '[data-panel="medical"]',
-      requiredFields: ['emergency_contact']
+    holder_medical: {
+      key: 'holder_medical',
+      label: 'Prontuário titular',
+      title: 'Prontuário do titular/aluno',
+      panelSelector: '[data-panel="holder-medical"]',
+      requiredFields: []
+    },
+    dependent_classes: {
+      key: 'dependent_classes',
+      label: 'Turmas dependente',
+      title: 'Turmas do dependente',
+      panelSelector: '[data-panel="dependent-classes"]',
+      requiredFields: []
+    },
+    dependent_medical: {
+      key: 'dependent_medical',
+      label: 'Prontuário dependente',
+      title: 'Prontuário do dependente',
+      panelSelector: '[data-panel="dependent-medical"]',
+      requiredFields: []
+    },
+    student_classes: {
+      key: 'student_classes',
+      label: 'Turmas aluno',
+      title: 'Turmas do aluno',
+      panelSelector: '[data-panel="student-classes"]',
+      requiredFields: []
+    },
+    student_medical: {
+      key: 'student_medical',
+      label: 'Prontuário aluno',
+      title: 'Prontuário do aluno',
+      panelSelector: '[data-panel="student-medical"]',
+      requiredFields: []
     },
     other: {
       key: 'other',
       label: 'Dados',
       title: 'Seus dados',
       panelSelector: '[data-panel="other"]',
-      requiredFields: ['other_name', 'other_cpf', 'other_phone', 'other_email', 'other_password', 'other_password_confirm']
+      requiredFields: ['other_name', 'other_cpf', 'other_birthdate', 'other_password', 'other_password_confirm']
     }
   };
 
@@ -127,23 +157,25 @@
       // OTHER: Tipo → Dados (2 steps)
       steps.push(STEP_DEFINITIONS.other);
     } else if (profile === 'guardian') {
-      // RESPONSÁVEL: Tipo → Responsável → Aluno → Turmas → Prontuário (5 steps)
+      // RESPONSÁVEL: Tipo -> Responsável -> Aluno -> Turmas aluno -> Prontuário aluno
       steps.push(STEP_DEFINITIONS.guardian);
       steps.push(STEP_DEFINITIONS.student);
-      steps.push(STEP_DEFINITIONS.classes);
-      steps.push(STEP_DEFINITIONS.medical);
+      steps.push(STEP_DEFINITIONS.student_classes);
+      steps.push(STEP_DEFINITIONS.student_medical);
     } else if (profile === 'holder') {
       if (hasDependentFlow) {
-        // ALUNO COM DEPENDENTE: Tipo → Titular → Dependente → Turmas → Prontuário (5 steps)
+        // TITULAR + DEPENDENTE: fluxo completo por pessoa
         steps.push(STEP_DEFINITIONS.holder_titular);
+        steps.push(STEP_DEFINITIONS.holder_classes);
+        steps.push(STEP_DEFINITIONS.holder_medical);
         steps.push(STEP_DEFINITIONS.dependent);
-        steps.push(STEP_DEFINITIONS.classes);
-        steps.push(STEP_DEFINITIONS.medical);
+        steps.push(STEP_DEFINITIONS.dependent_classes);
+        steps.push(STEP_DEFINITIONS.dependent_medical);
       } else {
-        // ALUNO SEM DEPENDENTE: Tipo → Aluno → Turmas → Prontuário (4 steps)
+        // ALUNO: fluxo completo da própria pessoa
         steps.push(STEP_DEFINITIONS.holder);
-        steps.push(STEP_DEFINITIONS.classes);
-        steps.push(STEP_DEFINITIONS.medical);
+        steps.push(STEP_DEFINITIONS.holder_classes);
+        steps.push(STEP_DEFINITIONS.holder_medical);
       }
     }
 
@@ -247,6 +279,7 @@
   }
 
   function updateUI() {
+    syncProfileChoiceCards();
     renderStepIndicators();
     renderStepPanels();
     updateProgressBar();
@@ -269,6 +302,13 @@
     var shouldShow = profile === 'other';
     otherTypePanel.classList.toggle('is-hidden', !shouldShow);
     otherTypePanel.hidden = !shouldShow;
+  }
+
+  function syncProfileChoiceCards() {
+    profileChoiceCards.forEach(function (card) {
+      var input = card.querySelector('input[name="registration_profile"]');
+      card.classList.toggle('is-selected', Boolean(input && input.checked));
+    });
   }
 
   // ============================================================================
@@ -305,41 +345,147 @@
   // ============================================================================
   // Validation
   // ============================================================================
-  function validateCurrentStep() {
-    var currentStep = activeSteps[currentStepIndex];
-    if (!currentStep || !currentStep.requiredFields) return true;
-    
-    var firstInvalidField = null;
-    var isValid = true;
-    
-    currentStep.requiredFields.forEach(function (fieldName) {
-      var field = form.querySelector('[name="' + fieldName + '"]');
-      if (!field) return;
-      
-      var value = field.value ? field.value.trim() : '';
-      var isEmpty = !value;
-      
-      if (field.type === 'radio') {
-        var radioGroup = form.querySelectorAll('[name="' + fieldName + '"]');
-        isEmpty = !Array.from(radioGroup).some(function (radio) { return radio.checked; });
-      }
-      
-      if (isEmpty) {
-        field.setAttribute('aria-invalid', 'true');
-        if (!firstInvalidField) {
-          firstInvalidField = field;
-        }
-        isValid = false;
-      } else {
-        field.removeAttribute('aria-invalid');
-      }
-    });
-    
-    if (!isValid && firstInvalidField) {
-      firstInvalidField.focus();
+  function isFieldVisible(field) {
+    if (!field) return false;
+    return !field.hidden && !field.disabled && !field.closest('[hidden], .is-hidden');
+  }
+
+  function clearFieldValidation(field) {
+    if (!field) return;
+    field.removeAttribute('aria-invalid');
+    if (typeof field.setCustomValidity === 'function') {
+      field.setCustomValidity('');
     }
-    
-    return isValid;
+  }
+
+  function markInvalid(field, message) {
+    if (!field) return false;
+    field.setAttribute('aria-invalid', 'true');
+    if (typeof field.setCustomValidity === 'function') {
+      field.setCustomValidity(message);
+      field.reportValidity();
+    }
+    field.focus();
+    return false;
+  }
+
+  function validateRequiredField(fieldName) {
+    var field = form.querySelector('[name="' + fieldName + '"]');
+    if (!field || !isFieldVisible(field)) return true;
+    clearFieldValidation(field);
+    var value = field.value ? field.value.trim() : '';
+    if (!value) {
+      return markInvalid(field, 'Campo obrigatório.');
+    }
+    if (typeof field.checkValidity === 'function' && !field.checkValidity()) {
+      return markInvalid(field, field.validationMessage || 'Valor inválido.');
+    }
+    return true;
+  }
+
+  function validatePasswordPair(passwordName, confirmName, label) {
+    var passwordField = form.querySelector('[name="' + passwordName + '"]');
+    var confirmField = form.querySelector('[name="' + confirmName + '"]');
+    if (!passwordField || !confirmField) return true;
+    if (!isFieldVisible(passwordField) || !isFieldVisible(confirmField)) return true;
+    clearFieldValidation(confirmField);
+    if ((passwordField.value || '') !== (confirmField.value || '')) {
+      return markInvalid(confirmField, 'As senhas de ' + label + ' não coincidem.');
+    }
+    return true;
+  }
+
+  function validateKinshipOtherField(typeName, otherName) {
+    var typeField = form.querySelector('[name="' + typeName + '"]');
+    var otherField = form.querySelector('[name="' + otherName + '"]');
+    if (!typeField || !otherField) return true;
+    if (!isFieldVisible(typeField) || !isFieldVisible(otherField)) return true;
+    clearFieldValidation(otherField);
+    if (typeField.value === 'other' && !(otherField.value || '').trim()) {
+      return markInvalid(otherField, 'Informe o grau de parentesco.');
+    }
+    return true;
+  }
+
+  function validateTypeStep() {
+    var profile = getSelectedProfile();
+    if (profile !== 'other') return true;
+    return validateRequiredField('other_type_code');
+  }
+
+  function validateSingleClassField(fieldName) {
+    var selectField = form.querySelector('select[name="' + fieldName + '"]');
+    if (!selectField || !isFieldVisible(selectField)) return true;
+    clearFieldValidation(selectField);
+    var hasSelectedOption = Array.from(selectField.selectedOptions || []).some(function (option) {
+      return Boolean(option.value);
+    });
+    if (!hasSelectedOption) {
+      return markInvalid(selectField, 'Selecione ao menos uma turma.');
+    }
+    return true;
+  }
+
+  function validateStep(index) {
+    var step = activeSteps[index];
+    if (!step) return true;
+
+    if (step.key === 'type') {
+      return validateTypeStep();
+    }
+
+    for (var i = 0; i < step.requiredFields.length; i++) {
+      if (!validateRequiredField(step.requiredFields[i])) {
+        return false;
+      }
+    }
+
+    if (step.key === 'holder' || step.key === 'holder_titular') {
+      return validatePasswordPair('holder_password', 'holder_password_confirm', 'aluno titular');
+    }
+    if (step.key === 'guardian') {
+      return validatePasswordPair('guardian_password', 'guardian_password_confirm', 'responsável');
+    }
+    if (step.key === 'dependent') {
+      if (!validatePasswordPair('dependent_password', 'dependent_password_confirm', 'dependente')) {
+        return false;
+      }
+      return validateKinshipOtherField('dependent_kinship_type', 'dependent_kinship_other_label');
+    }
+    if (step.key === 'student') {
+      if (!validatePasswordPair('student_password', 'student_password_confirm', 'dependente')) {
+        return false;
+      }
+      return validateKinshipOtherField('student_kinship_type', 'student_kinship_other_label');
+    }
+    if (step.key === 'other') {
+      return validatePasswordPair('other_password', 'other_password_confirm', 'cadastro');
+    }
+    if (step.key === 'holder_classes') {
+      return validateSingleClassField('holder_class_groups');
+    }
+    if (step.key === 'dependent_classes') {
+      return validateSingleClassField('dependent_class_groups');
+    }
+    if (step.key === 'student_classes') {
+      return validateSingleClassField('student_class_groups');
+    }
+
+    return true;
+  }
+
+  function validateAllStepsUpTo(targetIndex) {
+    for (var i = 0; i <= targetIndex; i++) {
+      if (!validateStep(i)) {
+        goToStep(i);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function validateCurrentStep() {
+    return validateStep(currentStepIndex);
   }
 
   // ============================================================================
@@ -508,6 +654,15 @@
     });
   });
 
+  profileChoiceCards.forEach(function (card) {
+    card.addEventListener('click', function () {
+      var input = card.querySelector('input[name="registration_profile"]');
+      if (!input || input.checked) return;
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
   if (dependentToggle) {
     dependentToggle.addEventListener('change', function () {
       activeSteps = computeActiveSteps();
@@ -525,6 +680,12 @@
     nextButton.addEventListener('click', nextStep);
   }
 
+  form.addEventListener('submit', function (event) {
+    if (!validateAllStepsUpTo(activeSteps.length - 1)) {
+      event.preventDefault();
+    }
+  });
+
   if (discardButton) {
     discardButton.addEventListener('click', function (e) {
       e.preventDefault();
@@ -541,6 +702,25 @@
   
   form.addEventListener('change', function () {
     saveDraft();
+  });
+
+  function applyDateMask(value) {
+    var digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2);
+    return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+  }
+
+  dateInputs.forEach(function (input) {
+    input.addEventListener('input', function () {
+      input.value = applyDateMask(input.value);
+    });
+    input.addEventListener('change', function () {
+      input.value = applyDateMask(input.value);
+    });
+    input.addEventListener('blur', function () {
+      input.value = applyDateMask(input.value);
+    });
   });
 
   // ============================================================================

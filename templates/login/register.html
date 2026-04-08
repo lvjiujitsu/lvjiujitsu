@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
+  {% include "includes/_favicon.html" %}
   <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
 </head>
 <body>
@@ -219,6 +220,24 @@
                     {% endfor %}
                   </select>
                 </label>
+                <label class="field field-full" for="dependent-kinship-other-label">
+                  <span>Parentesco (quando "Outro")</span>
+                  <input id="dependent-kinship-other-label" name="dependent_kinship_other_label" type="text" placeholder="Informe o parentesco" value="{{ form.dependent_kinship_other_label.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="dependent-password">
+                  <span>Senha de acesso</span>
+                  <div class="password-input-wrapper">
+                    <input id="dependent-password" name="dependent_password" type="password" placeholder="Defina a senha" autocomplete="new-password">
+                    <button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password">Mostrar</button>
+                  </div>
+                </label>
+                <label class="field" for="dependent-password-confirm">
+                  <span>Confirmar senha</span>
+                  <div class="password-input-wrapper">
+                    <input id="dependent-password-confirm" name="dependent_password_confirm" type="password" placeholder="Repita a senha" autocomplete="new-password">
+                    <button class="password-visibility-button" type="button" data-password-toggle data-target-id="dependent-password-confirm">Mostrar</button>
+                  </div>
+                </label>
               </div>
             </section>
           </section>
@@ -297,57 +316,208 @@
                     {% endfor %}
                   </select>
                 </label>
+                <label class="field field-full" for="student-kinship-type">
+                  <span>Parentesco</span>
+                  <select id="student-kinship-type" name="student_kinship_type" data-kinship-select>
+                    {% for choice_value, choice_label in form.student_kinship_type.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.student_kinship_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full" for="student-kinship-other-label">
+                  <span>Parentesco (quando "Outro")</span>
+                  <input id="student-kinship-other-label" name="student_kinship_other_label" type="text" placeholder="Informe o parentesco" value="{{ form.student_kinship_other_label.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="student-password">
+                  <span>Senha de acesso</span>
+                  <div class="password-input-wrapper">
+                    <input id="student-password" name="student_password" type="password" placeholder="Defina a senha" autocomplete="new-password">
+                    <button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password">Mostrar</button>
+                  </div>
+                </label>
+                <label class="field" for="student-password-confirm">
+                  <span>Confirmar senha</span>
+                  <div class="password-input-wrapper">
+                    <input id="student-password-confirm" name="student_password_confirm" type="password" placeholder="Repita a senha" autocomplete="new-password">
+                    <button class="password-visibility-button" type="button" data-password-toggle data-target-id="student-password-confirm">Mostrar</button>
+                  </div>
+                </label>
               </div>
             </section>
           </section>
 
           <!-- ============================================================ -->
-          <!-- STEP: CLASSES (Turmas) -->
+          <!-- STEP: CLASSES HOLDER (Turmas do titular/aluno) -->
           <!-- ============================================================ -->
-          <section class="wizard-step is-hidden" data-panel="classes" hidden>
+          <section class="wizard-step is-hidden" data-panel="holder-classes" hidden>
             <section class="form-section">
               <div class="section-heading">
                 <span class="section-step-label" data-step-label>Etapa 4</span>
-                <h2 class="section-title" data-panel-title>Escolha as turmas</h2>
+                <h2 class="section-title" data-panel-title>Turmas do titular/aluno</h2>
               </div>
-              <p class="form-helper-text">Selecione as turmas de interesse.</p>
-              <!-- Class selection will be handled by JavaScript -->
-              <div class="empty-state-box">
-                <p>Seleção de turmas em desenvolvimento.</p>
+              <div class="field-grid">
+                <label class="field field-full" for="holder-class-groups">
+                  <span>Selecione as turmas</span>
+                  <select id="holder-class-groups" name="holder_class_groups" multiple>
+                    {% for choice_value, choice_label in form.holder_class_groups.field.choices %}
+                      {% if choice_value %}
+                        <option value="{{ choice_value }}"{% if form.holder_class_groups.value and choice_value in form.holder_class_groups.value %} selected{% endif %}>{{ choice_label }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
               </div>
             </section>
           </section>
 
           <!-- ============================================================ -->
-          <!-- STEP: MEDICAL (Prontuário) -->
+          <!-- STEP: MEDICAL HOLDER (Prontuário do titular/aluno) -->
           <!-- ============================================================ -->
-          <section class="wizard-step is-hidden" data-panel="medical" hidden>
+          <section class="wizard-step is-hidden" data-panel="holder-medical" hidden>
             <section class="form-section">
               <div class="section-heading">
                 <span class="section-step-label" data-step-label>Etapa 5</span>
-                <h2 class="section-title" data-panel-title>Informações médicas</h2>
+                <h2 class="section-title" data-panel-title>Prontuário do titular/aluno</h2>
               </div>
               <div class="field-grid">
-                <label class="field" for="blood-type">
+                <label class="field" for="holder-blood-type">
                   <span>Tipo sanguíneo</span>
-                  <select id="blood-type" name="blood_type">
+                  <select id="holder-blood-type" name="holder_blood_type">
                     <option value="">Selecione</option>
                     {% for choice_value, choice_label in form.holder_blood_type.field.choices %}
                       {% if choice_value %}<option value="{{ choice_value }}"{% if form.holder_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endif %}
                     {% endfor %}
                   </select>
                 </label>
-                <label class="field field-full" for="allergies">
+                <label class="field field-full" for="holder-allergies">
                   <span>Alergias</span>
-                  <textarea id="allergies" name="allergies" placeholder="Informe alergias importantes">{{ form.holder_allergies.value|default_if_none:'' }}</textarea>
+                  <textarea id="holder-allergies" name="holder_allergies" placeholder="Informe alergias importantes">{{ form.holder_allergies.value|default_if_none:'' }}</textarea>
                 </label>
-                <label class="field field-full" for="injuries">
+                <label class="field field-full" for="holder-injuries">
                   <span>Lesões prévias</span>
-                  <textarea id="injuries" name="injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea>
+                  <textarea id="holder-injuries" name="holder_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.holder_injuries.value|default_if_none:'' }}</textarea>
                 </label>
-                <label class="field field-full" for="emergency-contact">
+                <label class="field field-full" for="holder-emergency-contact">
                   <span>Contato de emergência</span>
-                  <input id="emergency-contact" name="emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}">
+                  <input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}">
+                </label>
+              </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: CLASSES DEPENDENT -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="dependent-classes" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Turmas do dependente</h2>
+              </div>
+              <div class="field-grid">
+                <label class="field field-full" for="dependent-class-groups">
+                  <span>Selecione as turmas</span>
+                  <select id="dependent-class-groups" name="dependent_class_groups" multiple>
+                    {% for choice_value, choice_label in form.dependent_class_groups.field.choices %}
+                      {% if choice_value %}
+                        <option value="{{ choice_value }}"{% if form.dependent_class_groups.value and choice_value in form.dependent_class_groups.value %} selected{% endif %}>{{ choice_label }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: MEDICAL DEPENDENT -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="dependent-medical" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Prontuário do dependente</h2>
+              </div>
+              <div class="field-grid">
+                <label class="field" for="dependent-blood-type">
+                  <span>Tipo sanguíneo</span>
+                  <select id="dependent-blood-type" name="dependent_blood_type">
+                    <option value="">Selecione</option>
+                    {% for choice_value, choice_label in form.dependent_blood_type.field.choices %}
+                      {% if choice_value %}<option value="{{ choice_value }}"{% if form.dependent_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full" for="dependent-allergies">
+                  <span>Alergias</span>
+                  <textarea id="dependent-allergies" name="dependent_allergies" placeholder="Informe alergias importantes">{{ form.dependent_allergies.value|default_if_none:'' }}</textarea>
+                </label>
+                <label class="field field-full" for="dependent-injuries">
+                  <span>Lesões prévias</span>
+                  <textarea id="dependent-injuries" name="dependent_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.dependent_injuries.value|default_if_none:'' }}</textarea>
+                </label>
+                <label class="field field-full" for="dependent-emergency-contact">
+                  <span>Contato de emergência</span>
+                  <input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}">
+                </label>
+              </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: CLASSES STUDENT -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="student-classes" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Turmas do aluno</h2>
+              </div>
+              <div class="field-grid">
+                <label class="field field-full" for="student-class-groups">
+                  <span>Selecione as turmas</span>
+                  <select id="student-class-groups" name="student_class_groups" multiple>
+                    {% for choice_value, choice_label in form.student_class_groups.field.choices %}
+                      {% if choice_value %}
+                        <option value="{{ choice_value }}"{% if form.student_class_groups.value and choice_value in form.student_class_groups.value %} selected{% endif %}>{{ choice_label }}</option>
+                      {% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: MEDICAL STUDENT -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="student-medical" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Prontuário do aluno</h2>
+              </div>
+              <div class="field-grid">
+                <label class="field" for="student-blood-type">
+                  <span>Tipo sanguíneo</span>
+                  <select id="student-blood-type" name="student_blood_type">
+                    <option value="">Selecione</option>
+                    {% for choice_value, choice_label in form.student_blood_type.field.choices %}
+                      {% if choice_value %}<option value="{{ choice_value }}"{% if form.student_blood_type.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>{% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full" for="student-allergies">
+                  <span>Alergias</span>
+                  <textarea id="student-allergies" name="student_allergies" placeholder="Informe alergias importantes">{{ form.student_allergies.value|default_if_none:'' }}</textarea>
+                </label>
+                <label class="field field-full" for="student-injuries">
+                  <span>Lesões prévias</span>
+                  <textarea id="student-injuries" name="student_injuries" placeholder="Informe lesões ou restrições relevantes">{{ form.student_injuries.value|default_if_none:'' }}</textarea>
+                </label>
+                <label class="field field-full" for="student-emergency-contact">
+                  <span>Contato de emergência</span>
+                  <input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}">
                 </label>
               </div>
             </section>
@@ -370,6 +540,18 @@
                 <label class="field" for="other-cpf">
                   <span>CPF</span>
                   <input id="other-cpf" name="other_cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" value="{{ form.other_cpf.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="other-birthdate">
+                  <span>Data de nascimento</span>
+                  <input id="other-birthdate" name="other_birthdate" type="text" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" data-date-mask value="{{ form.other_birthdate.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="other-biological-sex">
+                  <span>Sexo biológico</span>
+                  <select id="other-biological-sex" name="other_biological_sex">
+                    {% for choice_value, choice_label in form.other_biological_sex.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.other_biological_sex.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
                 </label>
                 <label class="field" for="other-phone">
                   <span>Telefone</span>
@@ -412,6 +594,6 @@
 
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260408-02"></script>
 </body>
 </html>

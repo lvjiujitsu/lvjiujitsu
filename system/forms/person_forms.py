@@ -1,7 +1,20 @@
 from django import forms
 
-from system.models import BiologicalSex, BloodType, ClassGroup, Person, PersonType
+from system.models import (
+    BiologicalSex,
+    BloodType,
+    ClassCategory,
+    Person,
+    PersonType,
+)
 from system.models.class_membership import get_class_group_eligibility_error
+from system.services.class_overview import (
+    build_class_group_filter_value,
+    get_class_group_filter_choices,
+    get_public_class_group_choice_options,
+    get_weekday_filter_choices,
+    resolve_class_group_selection,
+)
 from system.services.registration import sync_person_class_enrollments
 from system.utils import ensure_formatted_cpf
 
@@ -21,14 +34,35 @@ class PersonTypeForm(forms.ModelForm):
         }
 
 
+class PersonListFilterForm(forms.Form):
+    full_name = forms.CharField(required=False, label="Nome")
+    cpf = forms.CharField(required=False, label="CPF")
+    is_teacher = forms.BooleanField(required=False, label="Somente professores")
+    class_category = forms.ModelChoiceField(
+        queryset=ClassCategory.objects.none(),
+        required=False,
+        label="Categoria",
+        empty_label="Todas",
+    )
+    class_group_key = forms.ChoiceField(required=False, label="Turma")
+    weekday = forms.ChoiceField(required=False, label="Horário")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["class_category"].queryset = ClassCategory.objects.filter(
+            is_active=True
+        ).order_by("display_order", "display_name")
+        self.fields["class_group_key"].choices = [("", "Todas")] + get_class_group_filter_choices()
+        self.fields["weekday"].choices = [("", "Todos")] + get_weekday_filter_choices()
+
+
 class PersonForm(forms.ModelForm):
     person_type = forms.ModelChoiceField(
         queryset=PersonType.objects.none(),
         required=True,
         label="Tipo de vínculo",
     )
-    class_groups = forms.ModelMultipleChoiceField(
-        queryset=ClassGroup.objects.none(),
+    class_groups = forms.MultipleChoiceField(
         required=False,
         label="Turmas liberadas",
         help_text="Selecione as turmas que a pessoa pode frequentar. Os horários ativos dessas turmas ficam liberados automaticamente.",
@@ -65,7 +99,10 @@ class PersonForm(forms.ModelForm):
             "is_active": "Cadastro ativo",
         }
         widgets = {
-            "birth_date": forms.DateInput(attrs={"type": "date"}),
+            "birth_date": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
+            ),
             "biological_sex": forms.Select(
                 choices=[("", "Selecione")] + list(BiologicalSex.choices),
             ),
@@ -84,18 +121,15 @@ class PersonForm(forms.ModelForm):
         self.fields["person_type"].queryset = PersonType.objects.filter(
             is_active=True
         ).order_by("display_name")
-        self.fields["class_groups"].queryset = ClassGroup.objects.filter(
-            is_active=True
-        ).select_related("class_category", "main_teacher").order_by(
-            "class_category__display_order",
-            "class_category__display_name",
-            "code",
-        )
+        self.fields["class_groups"].choices = get_public_class_group_choice_options()
         if self.instance.pk:
-            self.fields["class_groups"].initial = list(
-                self.instance.class_enrollments.select_related("class_group")
-                .filter(status="active")
-                .values_list("class_group_id", flat=True)
+            self.initial["birth_date"] = (
+                self.instance.birth_date.strftime("%Y-%m-%d")
+                if self.instance.birth_date
+                else ""
+            )
+            self.fields["class_groups"].initial = _get_initial_class_group_values(
+                self.instance
             )
         self.order_fields(
             [
@@ -120,13 +154,15 @@ class PersonForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        class_groups = cleaned_data.get("class_groups") or []
+        class_group_values = cleaned_data.get("class_groups") or []
+        class_groups = resolve_class_group_selection(class_group_values)
         person_type = cleaned_data.get("person_type")
         if class_groups and not (person_type and person_type.code in ("student", "dependent")):
             self.add_error(
                 "class_groups",
                 "Apenas aluno titular ou dependente pode receber turmas liberadas.",
             )
+        seen_errors = set()
         for class_group in class_groups:
             error = get_class_group_eligibility_error(
                 birth_date=cleaned_data.get("birth_date"),
@@ -134,10 +170,17 @@ class PersonForm(forms.ModelForm):
                 class_group=class_group,
             )
             if error:
+                message = (
+                    f"{class_group.class_category.display_name} · {class_group.display_name}: {error}"
+                )
+                if message in seen_errors:
+                    continue
                 self.add_error(
                     "class_groups",
-                    f"{class_group.class_category.display_name} · {class_group.display_name}: {error}",
+                    message,
                 )
+                seen_errors.add(message)
+        cleaned_data["class_groups"] = class_groups
         return cleaned_data
 
     def save(self, commit=True):
@@ -151,3 +194,29 @@ class PersonForm(forms.ModelForm):
             person.save()
             sync_person_class_enrollments(person, class_groups)
         return person
+
+
+def _get_initial_class_group_values(person):
+    logical_values = []
+    seen_values = set()
+    active_groups = (
+        person.class_enrollments.select_related("class_group", "class_group__class_category")
+        .filter(status="active")
+        .order_by(
+            "class_group__class_category__display_order",
+            "class_group__class_category__display_name",
+            "class_group__display_name",
+            "class_group__code",
+        )
+    )
+    for enrollment in active_groups:
+        class_group = enrollment.class_group
+        filter_value = build_class_group_filter_value(
+            class_group.class_category_id,
+            class_group.display_name,
+        )
+        if filter_value in seen_values:
+            continue
+        logical_values.append(filter_value)
+        seen_values.add(filter_value)
+    return logical_values

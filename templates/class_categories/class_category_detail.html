@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Categoria | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
+{% block content %}
+<section class="catalog-page-header">
+    <div>
+        <p class="panel-eyebrow">Visualizar categoria</p>
+        <h1>{{ class_category.display_name }}</h1>
+        <p>{{ class_category.get_audience_display }} · ordem {{ class_category.display_order }}</p>
+    </div>
+    <a class="ghost-link" href="{% url 'system:class-category-list' %}">Voltar para categorias</a>
+</section>
+
+<div class="catalog-editor-grid">
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Turmas vinculadas</p>
+                <h2>Turmas vinculadas</h2>
+            </div>
+        </div>
+        <div class="catalog-chip-list">
+            {% for class_group in linked_class_groups %}
+                <span class="catalog-chip">{{ class_group.catalog_title }}</span>
+            {% empty %}
+                <span class="catalog-empty-inline">Nenhuma turma vinculada.</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Pessoas nesta categoria</p>
+                <h2>Pessoas nesta categoria</h2>
+            </div>
+        </div>
+        <div class="catalog-chip-list">
+            {% for person in linked_people %}
+                <span class="catalog-chip">{{ person.full_name }}</span>
+            {% empty %}
+                <span class="catalog-empty-inline">Nenhuma pessoa vinculada.</span>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

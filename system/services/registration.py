@@ -2,9 +2,9 @@ import json
 
 from django.db import transaction
 
+from system.services.class_overview import resolve_class_group_selection
 from system.models import (
     ClassEnrollment,
-    ClassGroup,
     EnrollmentStatus,
     Person,
     PersonRelationship,
@@ -76,27 +76,14 @@ def parse_extra_dependents_payload(raw_payload):
 
 
 def resolve_class_groups(group_ids):
-    if not group_ids:
-        return []
-    normalized_ids = [str(group_id) for group_id in group_ids if str(group_id)]
-    group_map = {
-        str(group.pk): group
-        for group in ClassGroup.objects.filter(pk__in=normalized_ids, is_active=True).select_related(
-            "class_category"
-        )
-    }
-    ordered_groups = []
-    for group_id in normalized_ids:
-        group = group_map.get(group_id)
-        if group and group not in ordered_groups:
-            ordered_groups.append(group)
-    return ordered_groups
+    return resolve_class_group_selection(group_ids)
 
 
 def sync_person_class_enrollments(person, class_groups):
     selected_groups = class_groups or []
     if not selected_groups:
         ClassEnrollment.objects.filter(person=person).delete()
+        _sync_person_membership_snapshot(person, [])
         return
     selected_group_ids = [group.pk for group in selected_groups]
     ClassEnrollment.objects.filter(person=person).exclude(
@@ -107,6 +94,23 @@ def sync_person_class_enrollments(person, class_groups):
             person=person,
             class_group=class_group,
             defaults={"status": EnrollmentStatus.ACTIVE, "notes": ""},
+        )
+    _sync_person_membership_snapshot(person, selected_groups)
+
+
+def _sync_person_membership_snapshot(person, class_groups):
+    primary_group = class_groups[0] if class_groups else None
+    person.class_category = primary_group.class_category if primary_group else None
+    person.class_group = primary_group
+    person.class_schedule = None
+    if person.pk:
+        person.save(
+            update_fields=(
+                "class_category",
+                "class_group",
+                "class_schedule",
+                "updated_at",
+            )
         )
 
 

@@ -197,9 +197,9 @@ html[data-theme="dark"] .theme-knob {
 }
 .primary-button:active { opacity: 0.8; }
 .danger-button {
-  background: var(--danger); color: #fff; border-color: var(--danger);
+  background: var(--danger-soft); color: var(--danger); border-color: rgba(180,35,24,0.18);
 }
-.danger-button:active { opacity: 0.8; }
+.danger-button:active { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 /* === PANEL / CARD CONTAINERS === */
 .panel-grid { display: grid; gap: 16px; }
@@ -281,6 +281,16 @@ html[data-theme="dark"] .theme-knob {
 }
 .record-card-actions a:active {
   background: var(--text); color: var(--panel-solid); border-color: var(--text);
+}
+.record-card-actions .danger-link {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: rgba(180,35,24,0.18);
+}
+.record-card-actions .danger-link:active {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
 }
 
 .empty-state {
@@ -373,6 +383,14 @@ html[data-theme="dark"] .theme-knob {
 }
 .button-row > * { flex: 1 1 auto; }
 
+.filter-form-shell {
+  margin-bottom: 14px;
+}
+
+.filter-form-grid .field-group:last-child {
+  grid-column: auto;
+}
+
 /* === DESKTOP ENHANCEMENTS (>= 640px) === */
 @media (min-width: 640px) {
   .topbar { padding: calc(14px + env(safe-area-inset-top,0px)) 20px 14px; }
@@ -389,6 +407,9 @@ html[data-theme="dark"] .theme-knob {
   .dashboard-action-card { padding: 18px; border-radius: 20px; min-height: 100px; }
   .dashboard-section-heading {
     display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between;
+  }
+  .filter-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -407,9 +428,19 @@ html[data-theme="dark"] .theme-knob {
     background: var(--text); color: var(--panel-solid); border-color: var(--text);
   }
   .primary-button:hover { background: var(--silver); color: #101114; border-color: var(--silver); }
-  .danger-button:hover { box-shadow: 0 12px 28px rgba(180,35,24,0.18); }
+  .danger-button:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+    box-shadow: 0 12px 28px rgba(180,35,24,0.18);
+  }
   .record-card-actions a:hover {
     background: var(--text); color: var(--panel-solid); border-color: var(--text);
+  }
+  .record-card-actions .danger-link:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
   }
   .dashboard-action-card:hover {
     background: var(--text); color: var(--panel-solid); border-color: var(--text);

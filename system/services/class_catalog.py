@@ -175,6 +175,26 @@ def prepare_class_group_for_display(class_group):
     return _prepare_class_group(class_group)
 
 
+def build_schedule_day_summary(class_group):
+    prepared_group = _prepare_class_group(class_group)
+    grouped_schedule_map = OrderedDict()
+
+    for schedule in prepared_group.schedule_cards:
+        weekday_label = schedule.get_weekday_display()
+        if weekday_label not in grouped_schedule_map:
+            grouped_schedule_map[weekday_label] = []
+        grouped_schedule_map[weekday_label].append(schedule.start_time.strftime("%H:%M"))
+
+    return [
+        {
+            "weekday_label": weekday_label,
+            "time_labels": time_labels,
+            "summary_label": f"{weekday_label} · {', '.join(time_labels)}",
+        }
+        for weekday_label, time_labels in grouped_schedule_map.items()
+    ]
+
+
 def _get_schedule_queryset(*, active_only):
     queryset = ClassSchedule.objects.order_by("weekday", "start_time")
     if active_only:

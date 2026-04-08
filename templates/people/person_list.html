@@ -12,58 +12,55 @@
     <div>
         <p class="panel-eyebrow">Cadastro central</p>
         <h1>Pessoas</h1>
-        <p>Consulte vínculo principal, turmas como aluno e atuação como professor sem misturar papéis.</p>
+        <p>Resumo direto. Mais contexto fica dentro de Visualizar.</p>
     </div>
     <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
 </section>
 
+<form method="get" class="form-card catalog-section-card filter-form-shell">
+    <div class="catalog-section-head">
+        <div>
+            <p class="panel-eyebrow">Filtros</p>
+            <h2>Filtrar</h2>
+        </div>
+    </div>
+    <div class="catalog-field-grid filter-form-grid">
+        {% for field in filter_form %}
+            <div class="field-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="button-row">
+        <a class="ghost-link" href="{% url 'system:person-list' %}">Limpar</a>
+        <button type="submit" class="primary-button">Filtrar</button>
+    </div>
+</form>
+
 <div class="record-list">
     {% for person in people %}
-        <article class="record-card record-card-catalog">
+        <article class="record-card">
             <div class="record-card-head">
                 <span class="record-card-name">{{ person.full_name }}</span>
                 {% if person.person_type %}
                     <span class="record-card-badge">{{ person.person_type.display_name }}</span>
                 {% endif %}
             </div>
-
             <div class="record-card-info">
                 <div class="record-card-row">
                     <span class="record-card-lbl">CPF</span>
                     <span class="record-card-val">{{ person.cpf }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-lbl">Sexo</span>
-                    <span class="record-card-val">{{ person.get_biological_sex_display|default:"Não informado" }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Aluno</span>
-                    <span class="record-card-val">{% if person.active_group_labels %}{{ person.active_group_labels|join:", " }}{% else %}Sem turma liberada{% endif %}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Professor</span>
-                    <span class="record-card-val">{% if person.teaching_group_labels %}{{ person.teaching_group_labels|join:", " }}{% else %}Sem atuação docente{% endif %}</span>
-                </div>
-                <div class="record-card-row">
                     <span class="record-card-lbl">Status</span>
                     <span class="record-card-val">{{ person.is_active|yesno:"Ativo,Inativo" }} · {{ person.has_portal_access|yesno:"Com acesso,Sem acesso" }}</span>
                 </div>
             </div>
-
-            {% if person.teaching_schedule_labels %}
-                <div class="catalog-chip-group">
-                    <span class="catalog-chip-group-title">Horários de docência</span>
-                    <div class="catalog-chip-list">
-                        {% for label in person.teaching_schedule_labels %}
-                            <span class="catalog-chip">{{ label }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-
             <div class="record-card-actions">
+                <a href="{% url 'system:person-detail' person.pk %}">Visualizar</a>
                 <a href="{% url 'system:person-update' person.pk %}">Editar</a>
-                <a href="{% url 'system:person-delete' person.pk %}">Excluir</a>
+                <a class="danger-link" href="{% url 'system:person-delete' person.pk %}">Excluir</a>
             </div>
         </article>
     {% empty %}

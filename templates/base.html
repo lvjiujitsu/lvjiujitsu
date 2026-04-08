@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
+    {% include "includes/_favicon.html" %}
     <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260407">
     {% block extra_css %}{% endblock %}
 </head>
@@ -22,11 +23,9 @@
                     <b>LV JIU JITSU</b>
                 </a>
             </div>
-            {% if not request.portal_account and not request.portal_is_technical_admin %}
-                <button class="theme-btn" type="button" data-theme-toggle aria-label="Alternar tema">
-                    <span class="theme-track"><span class="theme-knob"></span></span>
-                </button>
-            {% endif %}
+            <button class="theme-btn" type="button" data-theme-toggle aria-label="Alternar tema">
+                <span class="theme-track"><span class="theme-knob"></span></span>
+            </button>
         </header>
 
         {% if request.portal_account or request.portal_is_technical_admin %}
