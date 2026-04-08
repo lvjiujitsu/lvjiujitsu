@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260407">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="page-shell">
@@ -71,6 +72,7 @@
     </div>
     <script src="{% static 'system/js/shared/theme-toggle.js' %}?v=20260407"></script>
     <script src="{% static 'system/js/shared/drawer-menu.js' %}?v=20260407"></script>
+    {% block extra_js %}{% endblock %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

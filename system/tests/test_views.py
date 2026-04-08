@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from system.models import Person, PersonType, PortalAccount
+from system.models import ClassCategory, ClassGroup, ClassSchedule, Person, PersonType, PortalAccount
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -227,6 +227,46 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Editar pessoa")
+
+    def test_person_list_shows_teacher_groups_and_schedule_context(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao LV",
+            cpf="321.654.987-07",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        instructor = Person.objects.create(
+            full_name="Professor Contexto",
+            cpf="321.654.987-77",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-test",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-context",
+            display_name="Jiu Jitsu",
+            class_category=adult_category,
+            main_teacher=instructor,
+        )
+        ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday="monday",
+            training_style="gi",
+            start_time="07:00",
+            duration_minutes=60,
+            display_order=1,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(reverse("system:person-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Professor Contexto")
+        self.assertContains(response, "Adulto · Jiu Jitsu")
+        self.assertContains(response, "Segunda-feira · 07:00")
 
     def test_anonymous_user_is_redirected_to_login_when_opening_person_edit_form(self):
         target_person = Person.objects.create(

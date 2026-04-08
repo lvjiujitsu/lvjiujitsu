@@ -1,43 +1,78 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Turmas | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
 
 {% block content %}
 <section class="crud-header">
     <div>
         <p class="panel-eyebrow">Catálogo operacional</p>
         <h1>Turmas</h1>
-        <p>Gerencie modalidade, categoria, professor e capacidade. O aluno é liberado por turma.</p>
+        <p>Veja cada turma junto da categoria, da equipe docente e dos horários ativos já vinculados.</p>
     </div>
     <a class="primary-button" href="{% url 'system:class-group-create' %}">Nova turma</a>
 </section>
 
 <div class="record-list">
     {% for class_group in class_groups %}
-        <div class="record-card">
+        <article class="record-card record-card-catalog">
             <div class="record-card-head">
-                <span class="record-card-name">{{ class_group.display_name }}</span>
+                <div>
+                    <span class="record-card-name">{{ class_group.catalog_title }}</span>
+                    <div class="record-card-subtitle">Código {{ class_group.code }}</div>
+                </div>
                 <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
             </div>
+
             <div class="record-card-info">
                 <div class="record-card-row">
-                    <span class="record-card-lbl">Categ.</span>
-                    <span class="record-card-val">{{ class_group.class_category.display_name|default:"Sem categoria" }}</span>
-                </div>
-                <div class="record-card-row">
-                    <span class="record-card-lbl">Prof.</span>
-                    <span class="record-card-val">{{ class_group.main_teacher.full_name|default:"Sem professor" }}</span>
+                    <span class="record-card-lbl">Equipe</span>
+                    <span class="record-card-val">{{ class_group.team_summary }}</span>
                 </div>
                 <div class="record-card-row">
                     <span class="record-card-lbl">Vagas</span>
-                    <span class="record-card-val">{{ class_group.default_capacity }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</span>
+                    <span class="record-card-val">{{ class_group.default_capacity }} vagas</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-lbl">Descrição</span>
+                    <span class="record-card-val">{{ class_group.description|default:"Sem observações operacionais." }}</span>
                 </div>
             </div>
+
+            <div class="catalog-chip-group">
+                <span class="catalog-chip-group-title">Equipe docente</span>
+                <div class="catalog-chip-list">
+                    {% for member in class_group.teaching_team %}
+                        <span class="catalog-chip">
+                            {{ member.full_name }}
+                            <small>{{ member.role_label }}</small>
+                        </span>
+                    {% empty %}
+                        <span class="catalog-empty-inline">Equipe docente não definida.</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="catalog-chip-group">
+                <span class="catalog-chip-group-title">Horários ativos</span>
+                <div class="catalog-chip-list">
+                    {% for schedule in class_group.schedule_cards %}
+                        <span class="catalog-chip">{{ schedule.card_label }}</span>
+                    {% empty %}
+                        <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
+                    {% endfor %}
+                </div>
+            </div>
+
             <div class="record-card-actions">
                 <a href="{% url 'system:class-group-update' class_group.pk %}">Editar</a>
                 <a href="{% url 'system:class-group-delete' class_group.pk %}">Excluir</a>
             </div>
-        </div>
+        </article>
     {% empty %}
         <div class="empty-state">Nenhuma turma cadastrada.</div>
     {% endfor %}

@@ -1,26 +1,32 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Pessoas | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
 
 {% block content %}
 <section class="crud-header">
     <div>
         <p class="panel-eyebrow">Cadastro central</p>
         <h1>Pessoas</h1>
-        <p>Cadastre e mantenha tipo, sexo biológico e turmas liberadas da pessoa.</p>
+        <p>Consulte vínculo principal, turmas como aluno e atuação como professor sem misturar papéis.</p>
     </div>
     <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
 </section>
 
 <div class="record-list">
     {% for person in people %}
-        <div class="record-card">
+        <article class="record-card record-card-catalog">
             <div class="record-card-head">
                 <span class="record-card-name">{{ person.full_name }}</span>
                 {% if person.person_type %}
                     <span class="record-card-badge">{{ person.person_type.display_name }}</span>
                 {% endif %}
             </div>
+
             <div class="record-card-info">
                 <div class="record-card-row">
                     <span class="record-card-lbl">CPF</span>
@@ -31,19 +37,35 @@
                     <span class="record-card-val">{{ person.get_biological_sex_display|default:"Não informado" }}</span>
                 </div>
                 <div class="record-card-row">
-                    <span class="record-card-lbl">Turmas</span>
-                    <span class="record-card-val">{% if person.active_group_labels %}{{ person.active_group_labels|join:", " }}{% else %}Sem turma{% endif %}</span>
+                    <span class="record-card-lbl">Aluno</span>
+                    <span class="record-card-val">{% if person.active_group_labels %}{{ person.active_group_labels|join:", " }}{% else %}Sem turma liberada{% endif %}</span>
+                </div>
+                <div class="record-card-row">
+                    <span class="record-card-lbl">Professor</span>
+                    <span class="record-card-val">{% if person.teaching_group_labels %}{{ person.teaching_group_labels|join:", " }}{% else %}Sem atuação docente{% endif %}</span>
                 </div>
                 <div class="record-card-row">
                     <span class="record-card-lbl">Status</span>
                     <span class="record-card-val">{{ person.is_active|yesno:"Ativo,Inativo" }} · {{ person.has_portal_access|yesno:"Com acesso,Sem acesso" }}</span>
                 </div>
             </div>
+
+            {% if person.teaching_schedule_labels %}
+                <div class="catalog-chip-group">
+                    <span class="catalog-chip-group-title">Horários de docência</span>
+                    <div class="catalog-chip-list">
+                        {% for label in person.teaching_schedule_labels %}
+                            <span class="catalog-chip">{{ label }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="record-card-actions">
                 <a href="{% url 'system:person-update' person.pk %}">Editar</a>
                 <a href="{% url 'system:person-delete' person.pk %}">Excluir</a>
             </div>
-        </div>
+        </article>
     {% empty %}
         <div class="empty-state">Nenhuma pessoa cadastrada.</div>
     {% endfor %}

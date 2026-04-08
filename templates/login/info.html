@@ -1,81 +1,167 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>LV JIU JITSU | Informações</title>
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
-</head>
-<body>
-  <main class="screen-shell">
-    <section class="screen-card screen-card-inner" aria-label="Informações da academia">
-      <div class="screen-tools-with-draft">
-        <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
-        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-          <span class="theme-toggle-track">
-            <span class="theme-toggle-knob"></span>
-          </span>
-        </button>
-      </div>
 
-      <div class="inner-header inner-header-horizontal">
-        <div class="logo-frame logo-frame-compact">
-          <img class="brand-logo" src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="Logo LV JIU JITSU">
-        </div>
-        <div>
-          <h1>Informações</h1>
-          <p class="inner-copy">Turmas, horários e professores.</p>
-        </div>
-      </div>
+{% block title %}Informações | LV JIU JITSU{% endblock %}
 
-      <div class="info-stack">
-        {% for class_group in class_groups %}
-          <article class="info-card info-card-expandable" data-expandable-card>
-            <div class="info-card-header" data-expandable-trigger>
-              <h2>{{ class_group.display_name }} · {{ class_group.class_category.display_name }}</h2>
-              <span class="info-card-toggle" aria-hidden="true">▼</span>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
+{% block content %}
+<section class="catalog-hero">
+    <div class="catalog-hero-copy">
+        <p class="panel-eyebrow">Informações da academia</p>
+        <h1>Categoria, turma, professores e horários sem confusão</h1>
+        <p>Consulte a grade pública por categoria, por professor ou por horário e entenda os vínculos corretos antes do cadastro.</p>
+    </div>
+    <div class="catalog-hero-actions" data-catalog-nav>
+        <a class="catalog-nav-pill" href="#info-categories">Categorias</a>
+        <a class="catalog-nav-pill" href="#info-teachers">Ver por professor</a>
+        <a class="catalog-nav-pill" href="#info-schedules">Ver por horário</a>
+    </div>
+</section>
+
+{% if category_sections %}
+    <section id="info-categories" class="catalog-display-section">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Categorias</p>
+                <h2>Categorias</h2>
             </div>
-            <div class="info-card-content">
-              <div class="info-summary-grid">
-                <div class="info-summary-block">
-                  <span class="info-summary-label">Professor</span>
-                  <p class="info-summary-value">{{ class_group.main_teacher.full_name|default:"Não definido" }}</p>
-                </div>
-                <div class="info-summary-block">
-                  <span class="info-summary-label">Horários</span>
-                  <ul class="schedule-list schedule-list-compact">
-                    {% for schedule in class_group.schedules.all %}
-                      <li>{{ schedule.get_weekday_display }} · {{ schedule.start_time|time:"H:i" }}</li>
-                    {% empty %}
-                      <li>Nenhum horário ativo cadastrado.</li>
-                    {% endfor %}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </article>
-        {% empty %}
-          <article class="info-card">
-            <h2>Sem informações disponíveis</h2>
-            <p>Nenhuma turma ativa está cadastrada no momento.</p>
-          </article>
-        {% endfor %}
-      </div>
+            <p>Cada categoria organiza as turmas sem perder a equipe docente e os horários vinculados.</p>
+        </div>
+
+        <div class="catalog-stack">
+            {% for category in category_sections %}
+                <article class="catalog-cluster-card">
+                    <div class="catalog-cluster-head">
+                        <div>
+                            <span class="catalog-cluster-label">Categoria</span>
+                            <h3>{{ category.display_name }}</h3>
+                        </div>
+                        <span class="catalog-cluster-meta">{{ category.class_groups|length }} turma{{ category.class_groups|length|pluralize:"s" }}</span>
+                    </div>
+
+                    <div class="catalog-grid">
+                        {% for class_group in category.class_groups %}
+                            <article class="catalog-relation-card">
+                                <span class="catalog-relation-type">Turma</span>
+                                <h4>{{ class_group.catalog_title }}</h4>
+
+                                <div class="catalog-relation-block">
+                                    <span class="catalog-relation-label">Equipe docente</span>
+                                    <div class="catalog-chip-list">
+                                        {% for member in class_group.teaching_team %}
+                                            <span class="catalog-chip">
+                                                {{ member.full_name }}
+                                                <small>{{ member.role_label }}</small>
+                                            </span>
+                                        {% empty %}
+                                            <span class="catalog-empty-inline">Equipe docente não definida.</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="catalog-relation-block">
+                                    <span class="catalog-relation-label">Horários</span>
+                                    <div class="catalog-chip-list">
+                                        {% for schedule in class_group.schedule_cards %}
+                                            <span class="catalog-chip">{{ schedule.card_label }}</span>
+                                        {% empty %}
+                                            <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
     </section>
-  </main>
-  <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
-  <script>
-    (function () {
-      var cards = document.querySelectorAll('[data-expandable-card]');
-      cards.forEach(function (card) {
-        var trigger = card.querySelector('[data-expandable-trigger]');
-        if (!trigger) return;
-        trigger.addEventListener('click', function () {
-          card.classList.toggle('is-open');
-        });
-      });
-    })();
-  </script>
-</body>
-</html>
+
+    <section id="info-teachers" class="catalog-display-section">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Professores</p>
+                <h2>Professores</h2>
+            </div>
+            <p>Veja em quais turmas e horários cada integrante da equipe docente atua.</p>
+        </div>
+
+        <div class="catalog-grid">
+            {% for teacher in teacher_sections %}
+                <article class="catalog-relation-card">
+                    <span class="catalog-relation-type">Professor</span>
+                    <h3>{{ teacher.display_name }}</h3>
+                    <p class="catalog-support-copy">{{ teacher.role_label }}</p>
+
+                    <div class="catalog-relation-block">
+                        <span class="catalog-relation-label">Turmas</span>
+                        <div class="catalog-chip-list">
+                            {% for class_group in teacher.class_groups %}
+                                <span class="catalog-chip">{{ class_group.catalog_title }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="catalog-relation-block">
+                        <span class="catalog-relation-label">Horários</span>
+                        <div class="catalog-chip-list">
+                            {% for label in teacher.schedule_labels %}
+                                <span class="catalog-chip">{{ label }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="info-schedules" class="catalog-display-section">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Horários</p>
+                <h2>Horários</h2>
+            </div>
+            <p>Consulte cada faixa de horário e veja quais turmas e professores aparecem nela.</p>
+        </div>
+
+        <div class="catalog-grid">
+            {% for schedule in schedule_sections %}
+                <article class="catalog-relation-card">
+                    <span class="catalog-relation-type">Horário</span>
+                    <h3>{{ schedule.label }}</h3>
+
+                    <div class="catalog-relation-block">
+                        <span class="catalog-relation-label">Turmas vinculadas</span>
+                        <div class="catalog-chip-list">
+                            {% for class_group in schedule.groups %}
+                                <span class="catalog-chip">{{ class_group.catalog_title }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="catalog-relation-block">
+                        <span class="catalog-relation-label">Equipe docente</span>
+                        <div class="catalog-chip-list">
+                            {% for class_group in schedule.groups %}
+                                <span class="catalog-chip">{{ class_group.team_summary }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+{% else %}
+    <section class="form-card">
+        <h2>Sem informações disponíveis</h2>
+        <p>Nenhuma turma ativa está cadastrada no momento.</p>
+    </section>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'system/js/shared/public-info.js' %}?v=20260407"></script>
+{% endblock %}

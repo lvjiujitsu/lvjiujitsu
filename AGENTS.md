@@ -1,160 +1,418 @@
-﻿# AGENTS.md — Protocolo operacional do agente (LV JIU JITSU)
+# AGENTS.md
 
-> Instruções de **como** o agente trabalha. Contexto de domínio e arquitetura do produto ficam em `CLAUDE.md`.
+> Instruções universais e **obrigatórias** para agentes de desenvolvimento (Claude Code, Codex, Cursor, Jules, Copilot).
+> Contexto específico do projeto fica em `CLAUDE.md`.
+> **Nenhuma etapa é opcional.** Pular qualquer fase invalida a entrega.
 
 ---
 
 ## Princípios
 
-- **SDD**: nenhuma implementação sem spec (**PRD** em `docs/prd/` no formato definido em `CLAUDE.md`). Para ajustes triviais (typo, label), registro mínimo no fechamento pode substituir PRD completo; para feature, correção de fluxo ou mudança de modelo, PRD obrigatório. O código segue a especificação.
-- **TDD**: testes fazem parte da entrega. Cobertura de models, views, services, forms e fluxos de erro, conforme risco.
-- **MTV** (Django): lógica de negócio em `services.py` / domínio; **nunca** em views ou templates como regra central.
-- **Design patterns**: só quando simplificarem. KISS, DRY, YAGNI. Composição sobre herança.
-- **Destruição > remendo** (MVP): código ruim pode ser reescrito; corrigir causa, não sintoma.
-
-**Objetivo:** atuar como arquiteto sênior no **LV JIU JITSU**, preservando coerência de domínio, segurança operacional e regras da academia.
-
-**Fase atual:** MVP de teste; dados locais descartáveis; fluxo padrão assume recriação completa do banco por ciclo quando aplicável (ver `CLAUDE.md` e política VMP abaixo).
-
----
-
-## Política de idioma (regra inviolável)
-
-- **Backend 100% inglês:** models, fields, variáveis, funções, classes, services, views, forms, URLs, nomes de arquivos e diretórios.
-- **Texto visível ao usuário em pt-BR:** labels, placeholders, mensagens, títulos, botões, tooltips, textos de ajuda.
-- **Código frontend em inglês:** variáveis JS, classes CSS, IDs. Apenas conteúdo textual renderizado em pt-BR.
-- **Respostas do agente ao desenvolvedor:** sempre em pt-BR.
-- **Código limpo:** evitar comentários e docstrings; usar apenas quando uma decisão de negócio não puder ser inferida pela estrutura.
-
-*(No LV JIU JITSU, qualidade linguística de interface — acentuação, concordância, microcopy — é regra de produto; ver `CLAUDE.md`.)*
+- **SDD**: nenhuma implementação sem spec (PRD ou equivalente acordado). O código segue a especificação.
+- **TDD (Red-Green-Refactor)**: ciclo obrigatório para fluxos centrais de domínio:
+  1. **Red**: escrever teste que falha (o comportamento esperado ainda não existe).
+  2. **Green**: escrever o código mínimo para o teste passar.
+  3. **Refactor**: limpar o código mantendo todos os testes verdes.
+  - Double-loop: testes funcionais (Playwright — comportamento do usuário) como loop externo; testes unitários (models, services, views) como loop interno.
+- **MTV (Django)**: lógica de negócio em `services.py` / domínio, nunca só na view ou template.
+- **Design Patterns Django**: Service Objects com `@transaction.atomic`, custom Manager/QuerySet, Form `clean_*` para validação, Mixins de view para reuso. KISS, DRY, YAGNI. Composição sobre herança.
+- **Destruição > remendo**: em fase MVP, código ruim não é ajustado — é reescrito.
 
 ---
 
 ## Prioridade em caso de conflito
 
-1. Solicitação atual do usuário (sem violar segurança)
-2. Regras de segurança e ambiente (`.venv`, segredos, LGPD)
+1. Solicitação atual do usuário
+2. Regras de segurança e ambiente
 3. Este `AGENTS.md`
 4. `CLAUDE.md`
 5. Convenções do repositório
 
-Registrar exceções no fechamento da tarefa.
+---
+
+## Preparação do ambiente (regra inviolável)
+
+### PowerShell — configuração obrigatória (Windows)
+
+```powershell
+# 1. Liberar execução de scripts
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+
+# 2. Forçar encoding UTF-8 (evita corromper templates pt-BR com acentos)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001
+```
+
+**Armadilhas do PowerShell que o agente DEVE evitar:**
+- **`&&` não existe no PowerShell.** Usar `;` para encadear comandos, ou executar um por vez.
+- **`source` não existe no PowerShell.** Ativar venv com `.\.venv\Scripts\Activate.ps1`.
+- **Caminhos usam `\`**, não `/`. Usar `.\.venv\Scripts\python.exe`, não `./.venv/bin/python`.
+
+### `.venv` — ambiente virtual (obrigatório)
+
+**Se não existir:**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**Se existir:** `.\.venv\Scripts\Activate.ps1`
+
+**Linux/macOS:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Confirmar: `Get-Command python` (ou `which python`) deve apontar para a `.venv`.
 
 ---
 
-## Protocolo obrigatório — não pular etapas
+## Gestão de dependências (regra inviolável)
+
+- Instalar: `.\.venv\Scripts\pip.exe install <pacote>` → verificar com `pip show <pacote>` → **atualizar `requirements.txt` imediatamente**.
+- `ModuleNotFoundError` em runtime: instalar → atualizar requirements → re-executar. **Não prosseguir até resolver.**
+- Sincronizar ao iniciar: `pip install -r requirements.txt`.
+- **Nunca** instalar no global, **nunca** `pip install --user`, **nunca** adicionar lib sem atualizar requirements.
+- Se o projeto usar `pyproject.toml`, `Pipfile` ou outro gerenciador, seguir a convenção.
+
+### Variáveis de ambiente e `.env`
+
+- Credenciais e configurações sensíveis ficam em arquivo `.env` na raiz (fora do versionamento).
+- Usar `python-decouple` ou `django-environ` para ler. Exemplo em `settings.py`:
+  ```python
+  from decouple import config
+  SECRET_KEY = config('SECRET_KEY')
+  DEBUG = config('DEBUG', default=False, cast=bool)
+  ```
+- Se o projeto não tiver `.env` e precisar de um, criar com valores de exemplo e informar o usuário.
+
+---
+
+## Execução real no terminal (regra inviolável)
+
+- Shell padrão: **PowerShell** (Windows) com encoding UTF-8 configurado.
+- **Executar comandos diretamente** — proibido criar `.ps1`, `.bat`, `.cmd`, `.sh` ou scripts auxiliares.
+- Cada etapa reporta: comando exato, diretório, código de saída, trecho de stdout/stderr.
+- Comandos sempre com caminho da `.venv`: `.\.venv\Scripts\python.exe manage.py <comando>`
+
+---
+
+## Política de idioma (regra inviolável)
+
+- **Código e nomes técnicos**: inglês (models, fields, variáveis, funções, classes, rotas, arquivos).
+- **Texto visível ao usuário final**: pt-BR (labels, mensagens, títulos, botões).
+- **Respostas ao desenvolvedor**: pt-BR.
+- **Código limpo**: evitar comentários; usar apenas quando decisão não é inferível pela estrutura.
+
+---
+
+## Segurança (regra inviolável)
+
+- **Nunca** hardcodar `SECRET_KEY`, senhas, tokens, chaves de API. Usar `.env` + `python-decouple`/`django-environ`.
+- **CSRF**: `{% csrf_token %}` em todo formulário POST. Nunca desabilitar sem justificativa.
+- **Validação server-side obrigatória**: frontend bloqueia para UX, backend bloqueia por segurança.
+- **SQL injection**: nunca concatenar strings em queries. Usar ORM ou queries parametrizadas.
+- **XSS**: nunca `|safe` ou `mark_safe()` em dados do usuário sem sanitização.
+- **Auth**: views protegidas com `@login_required`/`@permission_required`. Nunca confiar em esconder botões.
+- **Upload**: validar MIME, extensão e tamanho no backend.
+- **DEBUG**: nunca `True` em produção. Ler de `.env`.
+- **Frontend**: nunca credenciais em JS/HTML. Nunca `innerHTML` com dados do usuário.
+
+---
+
+## Estrutura de arquivos frontend (obrigatória)
+
+### Templates (`templates/`)
+
+```
+templates/
+├── base.html                          # Layout raiz com blocos: content, extra_css, extra_js
+├── includes/                          # Fragmentos reutilizáveis (prefixo _)
+│   ├── _navbar.html
+│   ├── _footer.html
+│   └── _messages.html
+├── <app_name>/
+│   ├── <entity>_list.html
+│   ├── <entity>_detail.html
+│   ├── <entity>_form.html
+│   └── <entity>_confirm_delete.html
+└── registration/
+    └── login.html
+```
+
+Herança obrigatória de `base.html`. Nomes em inglês, snake_case.
+
+### Arquivos estáticos (`static/`) — com namespacing por app
+
+**Django exige namespacing** para evitar colisão entre apps com arquivos de mesmo nome.
+
+```
+static/
+├── css/
+│   └── base.css                       # Estilos globais
+├── js/
+│   └── base.js                        # Scripts globais
+├── images/
+│   └── logo.svg
+└── <app_name>/                        # Namespace por app (OBRIGATÓRIO)
+    ├── css/
+    │   └── <entity>_list.css
+    ├── js/
+    │   └── <entity>_form.js
+    └── images/
+```
+
+**Regras críticas:**
+- Carregar via `{% load static %}` e `{% static '<app_name>/css/file.css' %}`.
+- `base.html` carrega `css/base.css` e `js/base.js`. Filhos usam `{% block extra_css %}` / `{% block extra_js %}`.
+- **Nunca** colocar arquivos diretamente em `STATIC_ROOT` — esse diretório é gerado pelo `collectstatic`.
+- **Nunca** CSS/JS inline no template. **Nunca** arquivo monolítico com tudo junto.
+- Cada tela com comportamento específico tem seu próprio arquivo CSS/JS.
+
+### `collectstatic` — comando obrigatório
+
+Após criar ou alterar arquivos estáticos, executar:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+```
+
+Na validação (Fase 6), verificar que `collectstatic` roda sem erros e que `STATIC_ROOT` não é o mesmo diretório onde os arquivos fonte estão.
+
+### Media files (uploads de usuário)
+
+Se o projeto tiver upload de arquivos, garantir no `settings.py`:
+
+```python
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+```
+
+E no `urls.py` (desenvolvimento):
+
+```python
+from django.conf import settings
+from django.conf.urls.static import static
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+`media/` fica fora do versionamento (adicionar ao `.gitignore`).
+
+---
+
+## Anti-code-smell (regras concretas)
+
+- **Máx. 25 linhas/método, 4 argumentos/função, 300 linhas/arquivo.**
+- **Proibido God Class.** Uma classe faz uma coisa. View orquestra, serviço processa, model persiste.
+- **Proibido condicionais aninhadas (máx. 2 níveis).** Usar early return, guard clauses, dicionários de dispatch.
+- **Proibido `except: pass`** ou `except Exception` genérico sem justificativa. Capturar exceções específicas.
+- **Proibido hardcode de valores configuráveis.** Extrair para `settings.py`, `.env`, constante ou enum.
+- **Proibido N+1**: `select_related`/`prefetch_related`. Proibido queries em loop. Proibido `.all()` sem paginação.
+- **Signals**: só quando acoplamento implícito for aceitável. Regra central explícita no serviço.
+- **Frontend**: proibido CSS/JS inline, arquivo monolítico, seletor CSS por ID para estilo, `innerHTML` com dados do usuário.
+
+---
+
+## Protocolo obrigatório — TODAS as fases
+
+### FASE 0 — Ambiente (uma vez por sessão)
+
+1. PowerShell: `Set-ExecutionPolicy` + encoding UTF-8 + `chcp 65001`.
+2. `.venv` ativa + `pip install -r requirements.txt`.
+3. Confirmar `python`/`pip` apontam para `.venv`.
 
 ### FASE 1 — Contexto
 
-1. Ler `CLAUDE.md`, PRDs em `docs/prd/` quando existirem, e arquivos impactados.
-2. Classificar: correção, feature, refatoração ou ajuste de arquitetura.
-3. Identificar regras críticas tocadas (lista orientativa abaixo).
-4. **Não** executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
-5. Confirmar que **todo** Python, `pip`, `manage.py` e scripts usam **`.\.venv\Scripts\python.exe`** (Windows) ou o equivalente da `.venv` no SO em uso. Proibido Python global para este repositório.
-6. Identificar módulos internos do app `system` eventualmente impactados: `public`, `identity_access`, `student_registry`, `instructor_ops`, `class_catalog`, `attendance_qr`, `finance_contracts`, `payments_stripe`, `graduation_engine`, `communications`, `documents_lgpd`, `reports_audit`, `settings_seed`.
+Ler `CLAUDE.md`, PRDs, arquivos impactados. Classificar a mudança. Não executar `git` sem pedido.
 
-**Regras críticas (verificar se a mudança toca):** identidade única por CPF; autenticação do portal local vs Django Admin; um `PersonType` por cadastro; classificação de turma só via `ClassCategory`; matrícula esportiva por `ClassGroup` com horários herdados; onboarding transacional; check-in com QR/WebRTC; reserva prévia; inadimplência e matrícula pausada; Stripe/`pause_collection`; graduação com tempo ativo; LGPD, menores, biometria; exportação com fail-fast; caixa e divergência; auditoria em fluxos críticos.
+### FASE 2 — Pesquisa e contexto externo
 
-Apresentar **plano curto** antes de implementar: objetivo, agregado ou fluxo afetado, invariantes, validação ao final.
+1. **MCP Context7**: documentação das libs envolvidas (instalar se ausente).
+2. **Busca na internet**: soluções, padrões, issues conhecidas.
+3. Novas libs necessárias: instalar na `.venv`, atualizar `requirements.txt`, registrar no PRD.
 
-### FASE 1.5 — Reset obrigatório do ambiente (perfil VMP — LV JIU JITSU)
+### FASE 3 — PRD
 
-Antes de **iniciar** correção ou implementação que altere models, migrations ou dados coerentes:
+Criar `docs/prd/PRD-<NNN>-<slug>.md`:
 
-1. Executar `.\.venv\Scripts\python.exe clear_migrations.py` (limpa banco local, migrations geradas, `__pycache__` e artefatos conforme o script).
-2. Só depois alterar código.
-3. Nunca preservar migrations intermediárias nem migrar incrementalmente sobre banco legado neste perfil; se algo falhar após a entrega, recomeçar do `clear_migrations.py`.
+```md
+# PRD-<NNN>: <Título>
+## Resumo
+## Problema atual
+## Objetivo
+## Contexto consultado
+  - Context7: (o que foi encontrado)
+  - Web: (links e resumos relevantes)
+## Dependências adicionadas
+  - (pacote==versão — motivo) ou "nenhuma"
+## Escopo / Fora do escopo
+## Arquivos impactados
+  - (lista de arquivos que serão criados, alterados ou removidos)
+## Riscos e edge cases
+  - (o que pode dar errado, casos limite, dependências externas frágeis)
+## Regras e restrições (SDD, TDD, MTV, Design Patterns aplicáveis)
+## Critérios de aceite (escritos como assertions testáveis)
+  - [ ] Ao fazer X, o sistema deve Y (verificável por: comando/teste/visual)
+  - [ ] Se Z inválido, o sistema deve retornar erro W
+## Plano (ordenado por dependência — fundações primeiro)
+  - [ ] 1. Models e migrações
+  - [ ] 2. Forms e validação
+  - [ ] 3. Services (lógica de negócio)
+  - [ ] 4. Views e URLs
+  - [ ] 5. Templates e estáticos
+  - [ ] 6. Testes (Red-Green-Refactor)
+  - [ ] 7. Validação completa (Fase 6)
+## Comandos de validação
+  - (quais comandos rodar para verificar os critérios — ex.: test, shell, collectstatic, playwright)
+## Implementado (preencher ao final)
+## Desvios do plano
+```
 
-Este fluxo é obrigatório para o ciclo de trabalho descrito no `CLAUDE.md` (MVP descartável).
+### FASE 4 — Estratégia
 
-### FASE 2 — PRD da tarefa
+Abordagem, arquivos impactados, testes planejados, riscos. Menor mudança correta.
 
-Criar `docs/prd/PRD-<NNN>-<slug>.md` quando a mudança não for trivial (vide SDD acima), com: resumo, problema, objetivo, escopo, fora do escopo, critérios de aceite, plano com `[ ]`. O PRD pode ser curto, mas não vago. Se o trajeto mudar, atualizar no fechamento.
+### FASE 5 — Implementação
 
-### FASE 3 — Estratégia
+Ordem: **Models → Forms → Services → Views → URLs → Templates → Static (CSS/JS) → Tests**.
 
-Definir abordagem, arquivos impactados, testes planejados e riscos. Menor mudança correta; não expandir escopo em silêncio.
+**Ciclo TDD para fluxos centrais (obrigatório):**
+1. Escrever teste que falha (Red) para o comportamento esperado.
+2. Implementar código mínimo para passar (Green).
+3. Refatorar mantendo testes verdes (Refactor).
+4. Para features com interface: teste funcional (Playwright) como loop externo primeiro.
 
-### FASE 4 — Implementação
+**Estrutura de testes por camada:**
 
-Ordem de referência Django: **Models → Forms → Services → Views → URLs → Templates → Tests**.
+```
+<app_name>/
+├── tests/
+│   ├── __init__.py
+│   ├── test_models.py       # Validações, propriedades, constraints
+│   ├── test_services.py     # Regras de negócio, fluxos felizes e de erro
+│   ├── test_selectors.py    # Queries, filtros, paginação
+│   ├── test_views.py        # Status codes, redirects, contexto, permissões
+│   ├── test_forms.py        # Validação de entrada, clean_*
+│   └── test_commands.py     # Management commands (se existirem)
+```
 
-**Regras obrigatórias:**
+Usar `setUp` / `setUpTestData` para dados de teste — nunca hardcodar dados repetidos em cada teste. Se o projeto tiver `factory_boy`, usar factories.
 
-- Views finas; regras complexas em `services.py`, `selectors.py`, `managers.py` ou métodos de domínio.
-- Portal e Django Admin são superfícies independentes: o produto **não** usa `django.contrib.auth.User` como identidade do aluno/professor/responsável; autenticação e reset do portal no domínio local (`system`).
-- `transaction.atomic()` em fluxos compostos (onboarding titular + dependentes, pagamento + efeitos, reserva + capacidade, etc.).
-- Não hardcodar chaves, segredos, URLs base, TTL de QR, regras configuráveis.
-- Backend **sempre** revalida regras críticas, mesmo com bloqueio na UI.
-- Integrações externas são falíveis e auditáveis.
-- Catálogo Stripe: mapeamento explícito de plano → `Price` vigente; aposentar mapeamento anterior de forma determinística; espelho `dj-stripe` não substitui contrato local.
+**Patterns obrigatórios nos serviços:**
+- `@transaction.atomic` em fluxos que envolvem múltiplas escritas.
+- Levantar exceção explícita (nunca retornar `None` silencioso) em caso de erro.
+- Serviço recebe dados já validados (pelo Form) — não revalidar o que o Form já fez.
 
-### FASE 5 — Testes
+**Regras de implementação:**
+- Views finas; regras de negócio em `services.py` ou domínio.
+- Templates herdam de `base.html`, organizados por app.
+- CSS e JS separados por app/tela em `static/<app_name>/`.
+- Respeitar regras de segurança e anti-code-smell.
+- Biblioteca nova: instalar na `.venv`, atualizar `requirements.txt`, registrar no PRD.
 
-Cobrir models, forms, views, services, commands, fluxos felizes e de erro quando relevante. **Validar no terminal** a execução real (contagem, falhas, erros, skips). Preferir test-first nos fluxos centrais de domínio.
+### FASE 6 — Validação completa (a mais importante)
 
-### FASE 6 — Validação obrigatória
+#### 6.1 — Ferramentas
 
-| Item | Como | Critério |
-|------|------|----------|
-| Servidor | Verificar se já há processo na porta antes de subir outro | Sem erros no terminal |
-| Testes | `.\.venv\Scripts\python.exe manage.py test` | 0 falhas, 0 erros |
-| Migrações (VMP) | `system/migrations/` | Apenas `0001_initial.py` coerente por app, após ciclo limpo |
-| ORM/SQLite | Shell ou script | FKs e registros coerentes quando aplicável |
-| Visual | Headless + MCP Playwright (ou browser MCP do ambiente) | OK em mobile (~375px) e desktop (~1440px) nas rotas alteradas |
-| Console browser | DevTools | Zero erros JS relevantes |
-| Console terminal | stdout/stderr | Sem stack traces não explicados |
+Garantir: ExecutionPolicy, `.venv`, dependências, Playwright + Chromium instalados (na `.venv`, atualizar requirements).
 
-Ao finalizar tarefa que altere models, views, forms, services ou migrations, executar o **ciclo completo** documentado no `CLAUDE.md` (clear → makemigrations → test → migrate → `create_admin_superuser`), com evidência no log até antes de `runserver`.
+```powershell
+.\.venv\Scripts\pip.exe install playwright
+.\.venv\Scripts\playwright.exe install chromium
+.\.venv\Scripts\python.exe -c "from playwright.sync_api import sync_playwright; print('OK')"
+```
 
-**Se a validação visual não puder ser executada**, declarar explicitamente que a interface **não** foi validada por navegador automatizado. Status HTTP 200, teste unitário ou leitura de HTML **não** substituem validação visual.
+#### 6.2 — Visual (HTML + CSS + JS)
 
-### FASE 7 — Fechamento
+Playwright MCP ou headless. Screenshot. Renderização, responsividade, estados. Se impossível: declarar.
 
-Usar o modelo abaixo na resposta (adaptar títulos se necessário):
+#### 6.3 — Arquivos estáticos
+
+```powershell
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+.\.venv\Scripts\python.exe manage.py findstatic css/base.css
+```
+
+Sem 404 para CSS/JS/imagens no browser.
+
+#### 6.4 — Console browser
+
+Sem erros JS críticos. Reportar warnings.
+
+#### 6.5 — Testes
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test --verbosity 2
+```
+
+0 falhas, 0 erros. `ModuleNotFoundError` → instalar + requirements + re-executar.
+
+#### 6.6 — Terminal
+
+Sem stack traces. Servidor sobe sem erros (verificar porta livre).
+
+#### 6.7 — ORM / Banco
+
+```powershell
+.\.venv\Scripts\python.exe manage.py showmigrations
+.\.venv\Scripts\python.exe manage.py shell -c "<verificação>"
+```
+
+#### 6.8 — Verificação cruzada
+
+Re-executar testes. Checar outros endpoints. Corrigir antes de seguir.
+
+### FASE 7 — Atualização do PRD
+
+Marcar `[x]`, preencher Implementado, Dependências, Desvios, evidências.
+
+### FASE 8 — Fechamento
 
 ```md
 ## Resumo da demanda
 ## O que foi implementado
-## O que mudou no trajeto
+## Dependências adicionadas ao requirements.txt
 ## Validação
-- [ ] Testes
-- [ ] Migrações
-- [ ] ORM
-- [ ] Visual (headless + Playwright / MCP)
-- [ ] Console browser
-- [ ] Console terminal
+- [ ] Ambiente (.venv, ExecutionPolicy, UTF-8, dependências)
+- [ ] Visual (Playwright/headless)
+- [ ] Estáticos (collectstatic OK, sem 404)
+- [ ] Console browser (sem erros JS)
+- [ ] Testes (0 falhas, 0 erros)
+- [ ] Terminal (sem stack traces)
+- [ ] ORM/Banco (integridade)
+- [ ] Segurança (CSRF, server-side, sem hardcode)
+- [ ] Verificação cruzada (sem regressões)
 ## O que NÃO foi validado (e por quê)
 ## Pendências
 ## Próximo passo sugerido
 ```
 
-Não declarar conclusão sem evidência alinhada à implementação real.
-
 ---
 
 ## Debate multiagente interno
 
-Antes de implementar, simular brevemente:
-
 | Papel | Pergunta-chave |
-|-------|----------------|
-| **Arquiteto** | Estrutura e padrões adequados? Impacto controlado? |
-| **Testador** | Cobertura de fluxos felizes e de erro? Regressão protegida? |
-| **Revisor UI** | Responsivo? Feedback visual e pt-BR ok? |
-| **Revisor dados** | ORM correto? Política VMP respeitada? Seeds coerentes? |
+|---|---|
+| **Arquiteto** | Estrutura adequada? Impacto controlado? |
+| **Testador** | Fluxos felizes e de erro cobertos? |
+| **Revisor UI** | Responsivo? CSS/JS separados por tela? |
+| **Revisor Dados** | Migrações coerentes? |
+| **Revisor Segurança** | CSRF? Validação server-side? Sem credenciais expostas? |
 
 ---
 
-## Django VMP — política de migração descartável (LV JIU JITSU)
+## Reset destrutivo local (somente sob pedido explícito)
 
-### Quando se aplica
+**Não é o fluxo padrão.** Somente quando o usuário pedir e `CLAUDE.md` declarar banco descartável. Executar na ordem (somente comandos existentes):
 
-Projeto em MVP com banco local descartável, sem histórico evolutivo obrigatório e sem ambiente compartilhado que exija migrações incrementais.
-
-### Ciclo de comandos (ordem exata; verificar porta 8000 antes de `runserver`)
-
-```bash
+```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
 .\.venv\Scripts\python.exe manage.py makemigrations
 .\.venv\Scripts\python.exe manage.py test
@@ -164,89 +422,34 @@ Projeto em MVP com banco local descartável, sem histórico evolutivo obrigatór
 .\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 ```
 
-(Em ambientes Unix, prefixar com `./.venv/bin/python` em vez de `.\.venv\Scripts\python.exe`.)
-
-### Regras invioláveis
-
-- **Nunca** criar ou editar migration manualmente; corrigir models e deixar o Django gerar.
-- **Nunca** migrar incrementalmente sobre banco existente neste perfil: o banco nasce do zero a cada ciclo de reset.
-- Validar que restou apenas `0001_initial.py` coerente por app após o ciclo.
-- Se qualquer etapa falhar, corrigir o código e recomeçar do `clear_migrations.py`.
-- Se um comando não existir no projeto, **reportar** — não simular sucesso.
-
-### Cláusula de escape
-
-Se o projeto passar a usar banco persistente compartilhado ou política diferente de migração, **interromper** esta política VMP, documentar o motivo e tratar migrações de forma convencional.
-
----
-
-## Anti-code-smell (regras concretas)
-
-- **Máximo 25 linhas por método.** Acima disso, extrair para serviço ou submétodo.
-- **Máximo 4 argumentos por função.** Acima disso, dataclass ou kwargs nomeados.
-- **Proibido N+1** em listagens e dashboards: `select_related()` / `prefetch_related()`.
-- **Proibido** `except: pass` ou engolir erro sem tratamento explícito.
-- **Signals** (`signals.py`): só quando acoplamento implícito for aceitável; regra central fica no serviço.
-- Template não resolve query; view não resolve layout (orquestração fina; layout no template).
-
----
-
-## Invariantes de domínio que o agente não pode violar
-
-Resumo alinhado ao `CLAUDE.md` (detalhes lá):
-
-- **Identidade:** uma pessoa, um cadastro; CPF como identificador de login do portal; um `PersonType` por cadastro na fase atual; sem multi-papel N:N; conta do portal no domínio local, não como identidade primária via `User` do Django; Admin técnico não concede sessão do portal.
-- **Tatame:** validações antes da câmera; reserva consome capacidade; QR confirma quem já tinha direito; turma classificada por `ClassCategory`; liberação por `ClassGroup`; `ClassSchedule` não colapsado no nome da turma.
-- **Financeiro:** estado local canônico; Stripe confirma eventos mas não substitui regras de acesso; checkout/redirect não libera acesso sozinho; `Price` vigente único por plano; comprovante em análise não regulariza até decisão explícita.
-- **Graduação:** tempo ativo de treino; pausa congela quando aplicável.
-- **LGPD / exportação / auditoria:** fluxos sensíveis com trilha; exportação crítica só com arquivo de controle `EXPORT_ALLOWED=1`; fail-fast.
-
----
-
-## Política de testes (orientação)
-
-Considerar testes para: CPF único; portal independente do login Admin; dependente com credencial no escopo permitido; onboarding transacional e multi-turma; elegibilidade de turma (idade, sexo quando regra); inadimplência antes da câmera; reserva e vagas; pausa e graduação; webhooks idempotentes; caixa e limiar; `AuditLog` nos fluxos alterados; LGPD e exportação.
-
-Para mudanças críticas, informar o que foi testado, o que falta e riscos residuais.
-
-**Seeds:** `inicial_seed` mínima; `inicial_seed_test` navegável, determinística, sem N:N de tipos por pessoa.
+Não editar migrations manualmente. Se comando não existir, reportar.
 
 ---
 
 ## Proibições
 
-- Pular leitura de contexto; implementar sem PRD quando a tarefa exige spec (alinhado ao SDD).
-- Simular execução de testes, Playwright ou validação ORM.
-- Declarar sucesso sem evidência.
-- Editar migration manualmente (perfil VMP).
-- Expandir escopo sem registrar pendência.
-- Inventar comandos ou paths inexistentes.
-- Executar `git` sem pedido explícito do usuário.
-- Confiar só no frontend para regra crítica de segurança ou negócio.
+- Pular qualquer fase. Implementar sem PRD. Pular pesquisa de contexto.
+- Fingir execução. Declarar sucesso sem evidência.
+- Criar scripts wrapper. Substituir execução por documentação.
+- Expandir escopo sem registrar. Inventar comandos.
+- `git` sem pedido. Reset destrutivo sem pedido.
+- Instalar no global. `pip install --user`. Lib sem atualizar requirements.
+- Hardcodar credenciais. Desabilitar CSRF. `except: pass`. God Class.
+- CSS/JS inline. Usar `&&` no PowerShell. Colocar arquivos em `STATIC_ROOT`.
 
 ---
 
 ## Sinais de bloqueio
 
-Reportar tarefa como **não concluída** quando: servidor não sobe, UI não validável, **Playwright** (ou MCP equivalente) indisponível quando era obrigatório para a entrega, testes quebram sem caminho de correção, comandos esperados ausentes, ou política VMP aplicada indevidamente a ambiente que exige migração incremental.
-
----
-
-## Evolução contínua
-
-Se a execução revelar lacuna ou workflow repetitivo:
-
-> **"Identifiquei que nosso CLAUDE.md/AGENTS.md precisa evoluir com base nesta iteração [motivo]. Deseja que eu proponha a atualização?"**
+Reportar **não concluído** quando: servidor não sobe, UI não validável, testes quebram, comandos não existem, ferramentas não instaláveis, PowerShell não permite execução, encoding corrompendo saída, `.venv` não criável, dependência não resolve.
 
 ---
 
 ## Fonte de verdade
 
 | O quê | Onde |
-|-------|------|
+|---|---|
 | Como o agente trabalha | Este `AGENTS.md` |
-| O que o sistema é e como funciona | `CLAUDE.md` |
-| Requisitos por tarefa | PRDs em `docs/prd/` |
-| Fluxos reais | Código do domínio e testes |
-
-Contradição entre código legado e spec atual: sinalizar e priorizar correção estrutural.
+| O que o projeto é | `CLAUDE.md` |
+| Requisitos | PRDs em `docs/prd/` |
+| Fluxos reais | Código e testes |

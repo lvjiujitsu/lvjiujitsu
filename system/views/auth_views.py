@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
@@ -13,7 +15,7 @@ from system.forms import (
 )
 from system.services.class_catalog import (
     get_ibjjf_age_category_payload,
-    get_info_class_group_queryset,
+    get_info_catalog_context,
     get_registration_catalog_payload,
 )
 from system.services import (
@@ -40,8 +42,12 @@ class PortalRegisterView(FormView):
         form = context["form"]
         context["registration_initial_step"] = self._get_initial_step(form)
         context["selected_other_type_code"] = form["other_type_code"].value() or ""
-        context["registration_catalog"] = get_registration_catalog_payload()
-        context["ibjjf_age_categories"] = get_ibjjf_age_category_payload()
+        context["registration_catalog_json"] = json.dumps(
+            get_registration_catalog_payload(), ensure_ascii=False
+        )
+        context["ibjjf_categories_json"] = json.dumps(
+            get_ibjjf_age_category_payload(), ensure_ascii=False
+        )
         return context
 
     def form_valid(self, form):
@@ -104,7 +110,7 @@ class PortalInfoView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["class_groups"] = get_info_class_group_queryset()
+        context.update(get_info_catalog_context())
         return context
 
 

@@ -1,29 +1,85 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Horário | LV JIU JITSU{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
 {% block content %}
-<section class="form-card">
-    <p class="form-eyebrow">Gestão de horários</p>
-    <h1>{% if object %}Editar horário{% else %}Cadastrar horário{% endif %}</h1>
-    <form method="post" class="form-stack">
-        {% csrf_token %}
-        {% for field in form %}
-            <div class="field-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                    <div class="field-help">{{ field.help_text }}</div>
-                {% endif %}
-                {% if field.errors %}
-                    <div class="field-error">{{ field.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-        {% endfor %}
-        <div class="button-row">
-            <a class="ghost-link" href="{% url 'system:class-schedule-list' %}">Cancelar</a>
-            <button type="submit" class="primary-button">Salvar</button>
-        </div>
-    </form>
+<section class="catalog-page-header">
+    <div>
+        <p class="panel-eyebrow">Gestão de horários</p>
+        <h1>{% if object %}Editar horário{% else %}Cadastrar horário{% endif %}</h1>
+        <p>Use este formulário para ajustes finos. Para cadastrar uma turma inteira com sua grade, prefira o editor de turma.</p>
+    </div>
+    <a class="ghost-link" href="{% url 'system:class-schedule-list' %}">Voltar para horários</a>
 </section>
+
+<div class="catalog-editor-grid">
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Horário</p>
+                <h2>Dados do slot</h2>
+            </div>
+            <p>O horário sempre permanece vinculado a uma turma já cadastrada.</p>
+        </div>
+
+        <form method="post" class="form-stack">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="field-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="field-help">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="field-error">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <div class="button-row">
+                <a class="ghost-link" href="{% url 'system:class-schedule-list' %}">Cancelar</a>
+                <button type="submit" class="primary-button">Salvar horário</button>
+            </div>
+        </form>
+    </section>
+
+    <aside class="form-card catalog-aside-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Vínculo atual</p>
+                <h2>Leitura rápida</h2>
+            </div>
+        </div>
+
+        {% if selected_class_group %}
+            <div class="catalog-guidance-list">
+                <div class="catalog-guidance-item">
+                    <span class="catalog-guidance-label">Turma</span>
+                    <p>{{ selected_class_group.catalog_title }}</p>
+                </div>
+                <div class="catalog-guidance-item">
+                    <span class="catalog-guidance-label">Equipe docente</span>
+                    <p>{{ selected_class_group.team_summary }}</p>
+                </div>
+                <div class="catalog-guidance-item">
+                    <span class="catalog-guidance-label">Horários ativos</span>
+                    <div class="catalog-chip-list">
+                        {% for schedule in selected_class_group.schedule_cards %}
+                            <span class="catalog-chip">{{ schedule.card_label }}</span>
+                        {% empty %}
+                            <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p class="catalog-support-copy">Selecione uma turma para visualizar a equipe docente e a grade já vinculada.</p>
+        {% endif %}
+    </aside>
+</div>
 {% endblock %}

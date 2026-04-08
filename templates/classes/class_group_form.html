@@ -1,29 +1,163 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Turma | LV JIU JITSU{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+{% endblock %}
+
 {% block content %}
-<section class="form-card">
-    <p class="form-eyebrow">Gestão de turmas</p>
-    <h1>{% if object %}Editar turma{% else %}Cadastrar turma{% endif %}</h1>
-    <form method="post" class="form-stack">
-        {% csrf_token %}
-        {% for field in form %}
-            <div class="field-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                    <div class="field-help">{{ field.help_text }}</div>
-                {% endif %}
-                {% if field.errors %}
-                    <div class="field-error">{{ field.errors|join:", " }}</div>
-                {% endif %}
-            </div>
-        {% endfor %}
-        <div class="button-row">
-            <a class="ghost-link" href="{% url 'system:class-group-list' %}">Cancelar</a>
-            <button type="submit" class="primary-button">Salvar</button>
-        </div>
-    </form>
+<section class="catalog-page-header">
+    <div>
+        <p class="panel-eyebrow">Gestão relacional</p>
+        <h1>{% if object %}Editar turma{% else %}Cadastrar turma{% endif %}</h1>
+        <p>Defina categoria, equipe docente e horários no mesmo fluxo para evitar vínculos incompletos.</p>
+    </div>
+    <a class="ghost-link" href="{% url 'system:class-group-list' %}">Voltar para turmas</a>
 </section>
+
+<form method="post" class="catalog-editor-grid">
+    {% csrf_token %}
+    {{ schedule_formset.management_form }}
+
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Etapa 1</p>
+                <h2>Base da turma</h2>
+            </div>
+            <p>Esses dados definem o agrupamento principal exibido no portal e no cadastro.</p>
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="alert error">{{ form.non_field_errors|join:", " }}</div>
+        {% endif %}
+
+        <div class="catalog-field-grid">
+            {% for field in form %}
+                {% if field.name == "main_teacher" or field.name == "assistant_staff" or field.name == "description" %}
+                {% else %}
+                    <div class="field-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <div class="field-help">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="field-error">{{ field.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <aside class="form-card catalog-aside-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Leitura do vínculo</p>
+                <h2>Como essa turma será entendida</h2>
+            </div>
+        </div>
+        <div class="catalog-guidance-list">
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Categoria</span>
+                <p>Recorte operacional usado para separar Adulto, Juvenil, Kids e Feminino.</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Turma</span>
+                <p>Nome base da modalidade. O contexto real fica claro pela categoria, pela equipe docente e pelos horários vinculados.</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Equipe docente</span>
+                <p>Professor principal é obrigatório para turma ativa. Auxiliares aparecem junto da turma e dos horários vinculados.</p>
+            </div>
+            <div class="catalog-guidance-item">
+                <span class="catalog-guidance-label">Horários</span>
+                <p>Cadastre pelo menos um horário ativo para qualquer turma ativa. Isso evita catálogo confuso no portal.</p>
+            </div>
+        </div>
+    </aside>
+
+    <section class="form-card catalog-section-card">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Etapa 2</p>
+                <h2>Equipe docente</h2>
+            </div>
+            <p>Os professores abaixo aparecem vinculados à turma, à grade de horários e à tela pública de informações.</p>
+        </div>
+
+        {% for field in form %}
+            {% if field.name == "main_teacher" or field.name == "assistant_staff" or field.name == "description" %}
+                <div class="field-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="field-help">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="field-error">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </section>
+
+    <section class="form-card catalog-section-card catalog-section-card--full">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Etapa 3</p>
+                <h2>Horários vinculados</h2>
+            </div>
+            <p>Cadastre os horários da própria turma aqui para evitar criação separada e sem contexto.</p>
+        </div>
+
+        {% if schedule_formset.non_form_errors %}
+            <div class="alert error">{{ schedule_formset.non_form_errors|join:", " }}</div>
+        {% endif %}
+
+        <div class="schedule-form-list">
+            {% for schedule_form in schedule_formset %}
+                <article class="schedule-row-card">
+                    {% for hidden in schedule_form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+
+                    {% if schedule_form.non_field_errors %}
+                        <div class="field-error">{{ schedule_form.non_field_errors|join:", " }}</div>
+                    {% endif %}
+
+                    <div class="schedule-row-grid">
+                        {% for field in schedule_form.visible_fields %}
+                            <div class="field-group field-group-compact {% if field.name == 'DELETE' %}field-group-delete{% endif %}">
+                                <label for="{{ field.id_for_label }}">
+                                    {% if field.name == "DELETE" %}
+                                        Remover
+                                    {% else %}
+                                        {{ field.label }}
+                                    {% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="field-error">{{ field.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        <div class="field-help">
+            Horários duplicados na mesma turma são bloqueados. Turma ativa precisa sair daqui com pelo menos um horário ativo.
+        </div>
+    </section>
+
+    <div class="button-row catalog-button-row">
+        <a class="ghost-link" href="{% url 'system:class-group-list' %}">Cancelar</a>
+        <button type="submit" class="primary-button">Salvar turma completa</button>
+    </div>
+</form>
 {% endblock %}

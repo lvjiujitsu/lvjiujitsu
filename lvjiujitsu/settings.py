@@ -1,50 +1,31 @@
-import os
 from pathlib import Path
+
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-def load_env_file(env_path: Path) -> None:
-    if not env_path.exists():
-        return
-
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-
-        if key:
-            os.environ.setdefault(key, value)
-
-
-load_env_file(BASE_DIR / ".env")
-
-SECRET_KEY = os.environ.get(
+SECRET_KEY = config(
     "DJANGO_SECRET_KEY",
-    "django-insecure-dev-only-key-change-me",
+    default="django-insecure-dev-only-key-change-me",
 )
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
 
-configured_allowed_hosts = [
+ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get(
+    for host in config(
         "DJANGO_ALLOWED_HOSTS",
-        "127.0.0.1,localhost,localhost.,0.0.0.0",
+        default="127.0.0.1,localhost,localhost.,0.0.0.0",
     ).split(",")
     if host.strip()
 ]
-ALLOWED_HOSTS = configured_allowed_hosts
 if DEBUG and "*" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("*")
 
-ADMIN_SUPERUSER_USERNAME = os.environ.get("ADMIN_SUPERUSER_USERNAME", "")
-ADMIN_SUPERUSER_EMAIL = os.environ.get("ADMIN_SUPERUSER_EMAIL", "")
-ADMIN_SUPERUSER_PASSWORD = os.environ.get("ADMIN_SUPERUSER_PASSWORD", "")
+ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
+ADMIN_SUPERUSER_EMAIL = config("ADMIN_SUPERUSER_EMAIL", default="")
+ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
 
 
 # Application definition
@@ -136,19 +117,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (uploads de usuário)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_URL = "system:login"
 LOGIN_REDIRECT_URL = "system:dashboard-redirect"
 LOGOUT_REDIRECT_URL = "system:login"
-EMAIL_BACKEND = os.environ.get(
+
+EMAIL_BACKEND = config(
     "DJANGO_EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend",
+    default="django.core.mail.backends.console.EmailBackend",
 )
-DEFAULT_FROM_EMAIL = os.environ.get(
+DEFAULT_FROM_EMAIL = config(
     "DJANGO_DEFAULT_FROM_EMAIL",
-    "nao-responda@lvjiujitsu.local",
+    default="nao-responda@lvjiujitsu.local",
 )
 
 # Default primary key field type
