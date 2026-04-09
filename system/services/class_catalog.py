@@ -216,6 +216,9 @@ def _prepare_class_group(class_group):
     class_group.schedule_labels = [
         schedule.card_label for schedule in class_group.schedule_cards
     ]
+    class_group.schedule_day_summary = _build_schedule_day_summary(
+        class_group.schedule_cards
+    )
     class_group.schedule_count = len(class_group.schedule_cards)
     class_group.catalog_title = (
         f"{class_group.class_category.display_name} · {class_group.display_name}"
@@ -352,6 +355,24 @@ def _build_schedule_sections(class_groups):
 
 def _build_schedule_label(schedule):
     return f"{schedule.get_weekday_display()} · {schedule.start_time.strftime('%H:%M')}"
+
+
+def _build_schedule_day_summary(schedule_cards):
+    grouped_map = OrderedDict()
+    for schedule in schedule_cards:
+        weekday_label = schedule.get_weekday_display()
+        if weekday_label not in grouped_map:
+            grouped_map[weekday_label] = []
+        time_label = schedule.start_time.strftime("%H:%M")
+        if time_label not in grouped_map[weekday_label]:
+            grouped_map[weekday_label].append(time_label)
+    return [
+        {
+            "weekday_label": weekday_label,
+            "time_labels": time_labels,
+        }
+        for weekday_label, time_labels in grouped_map.items()
+    ]
 
 
 def _schedule_label_sort_key(label):

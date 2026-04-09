@@ -142,6 +142,7 @@ def _hydrate_person_relationships(person, active_ibjjf_categories):
     student_relationships = _build_student_relationships(active_enrollments)
     person.active_group_labels = student_relationships["group_labels"]
     person.active_schedule_labels = student_relationships["schedule_labels"]
+    person.active_schedule_sections = student_relationships["schedule_sections"]
     person.teaching_groups = _get_person_teaching_groups(person)
     person.teaching_group_labels = [
         class_group.catalog_title for class_group in person.teaching_groups
@@ -151,6 +152,9 @@ def _hydrate_person_relationships(person, active_ibjjf_categories):
         for label in class_group.schedule_labels:
             if label not in person.teaching_schedule_labels:
                 person.teaching_schedule_labels.append(label)
+    person.teaching_schedule_sections = _build_grouped_schedule_sections(
+        person.teaching_groups
+    )
     person.resolved_ibjjf_category = next(
         (
             category
@@ -181,6 +185,7 @@ def _get_person_teaching_groups(person):
 
 def _build_student_relationships(active_enrollments):
     grouped_labels = OrderedDict()
+    grouped_schedule_entries = OrderedDict()
     schedule_entries = OrderedDict()
 
     for enrollment in active_enrollments:
@@ -193,15 +198,88 @@ def _build_student_relationships(active_enrollments):
             grouped_labels[group_key] = (
                 f"{class_group.class_category.display_name} · {class_group.display_name}"
             )
+        if group_key not in grouped_schedule_entries:
+            grouped_schedule_entries[group_key] = OrderedDict()
         for schedule in class_group.schedules.all():
             schedule_key = (schedule.weekday, schedule.start_time.strftime("%H:%M"))
-            if schedule_key in schedule_entries:
-                continue
-            schedule_entries[schedule_key] = (
+            schedule_label = (
                 f"{schedule.get_weekday_display()} · {schedule.start_time.strftime('%H:%M')}"
             )
+            weekday_label = schedule.get_weekday_display()
+            time_label = schedule.start_time.strftime("%H:%M")
+            if weekday_label not in grouped_schedule_entries[group_key]:
+                grouped_schedule_entries[group_key][weekday_label] = []
+            if time_label not in grouped_schedule_entries[group_key][weekday_label]:
+                grouped_schedule_entries[group_key][weekday_label].append(time_label)
+            if schedule_key in schedule_entries:
+                continue
+            schedule_entries[schedule_key] = schedule_label
 
     return {
         "group_labels": list(grouped_labels.values()),
         "schedule_labels": list(schedule_entries.values()),
+        "schedule_sections": [
+            {
+                "group_label": grouped_labels[group_key],
+                "schedule_labels": [
+                    f"{weekday_label} · {time_label}"
+                    for weekday_label, time_labels in grouped_schedule_entries[group_key].items()
+                    for time_label in _sort_time_labels(time_labels)
+                ],
+                "schedule_count": sum(
+                    len(time_labels)
+                    for time_labels in grouped_schedule_entries[group_key].values()
+                ),
+                "weekday_sections": [
+                    {
+                        "weekday_label": weekday_label,
+                        "time_labels": _sort_time_labels(time_labels),
+                    }
+                    for weekday_label, time_labels in grouped_schedule_entries[group_key].items()
+                ],
+            }
+            for group_key in grouped_labels
+        ],
     }
+
+
+def _build_grouped_schedule_sections(class_groups):
+    sections = []
+    for class_group in class_groups:
+        schedule_labels = []
+        seen_labels = set()
+        weekday_entries = OrderedDict()
+        for label in class_group.schedule_labels:
+            if label in seen_labels:
+                continue
+            schedule_labels.append(label)
+            seen_labels.add(label)
+        for schedule in class_group.schedule_cards:
+            weekday_label = schedule.get_weekday_display()
+            time_label = schedule.start_time.strftime("%H:%M")
+            if weekday_label not in weekday_entries:
+                weekday_entries[weekday_label] = []
+            if time_label not in weekday_entries[weekday_label]:
+                weekday_entries[weekday_label].append(time_label)
+        sections.append(
+            {
+                "group_label": class_group.catalog_title,
+                "schedule_labels": schedule_labels,
+                "schedule_count": len(schedule_labels),
+                "weekday_sections": [
+                    {
+                        "weekday_label": weekday_label,
+                        "time_labels": _sort_time_labels(time_labels),
+                    }
+                    for weekday_label, time_labels in weekday_entries.items()
+                ],
+            }
+        )
+    return sections
+
+
+def _sort_time_labels(time_labels):
+    return sorted(
+        time_labels,
+        key=lambda value: tuple(int(part) for part in value.split(":", 1)),
+    )

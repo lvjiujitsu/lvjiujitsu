@@ -18,6 +18,13 @@
                         <span></span><span></span><span></span>
                     </button>
                 {% endif %}
+                <a
+                    class="topbar-back-link"
+                    href="{% url 'system:root' %}"
+                    onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+                >
+                    Voltar
+                </a>
                 <a class="brand" href="{% url 'system:root' %}">
                     <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="LV BJJ" width="40" height="40">
                     <b>LV JIU JITSU</b>

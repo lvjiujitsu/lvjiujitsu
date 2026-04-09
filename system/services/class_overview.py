@@ -68,7 +68,7 @@ def get_class_group_filter_choices():
 
 def get_public_class_group_choice_options():
     return [
-        (card.filter_value, card.catalog_title)
+        (card.filter_value, _build_class_group_choice_label(card))
         for card in get_public_class_group_cards()
     ]
 
@@ -255,6 +255,27 @@ def _build_schedule_day_summary(schedule_entries):
         )
         for weekday_label, time_labels in grouped_map.items()
     ]
+
+
+def _build_class_group_choice_label(card):
+    teacher_label = (
+        ", ".join(member["full_name"] for member in card.teaching_team)
+        if card.teaching_team
+        else "Equipe docente não definida"
+    )
+    schedule_label = (
+        "; ".join(
+            f"{day_summary.weekday_label}: {', '.join(day_summary.time_labels)}"
+            for day_summary in card.schedule_day_summary
+        )
+        if card.schedule_day_summary
+        else "Sem horários ativos"
+    )
+    return (
+        f"{card.catalog_title} | "
+        f"Professores: {teacher_label} | "
+        f"Horários: {schedule_label}"
+    )
 
 
 def _get_class_group_key(class_group):

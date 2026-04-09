@@ -114,7 +114,10 @@ class PortalViewTestCase(TestCase):
             for value, label in response.context["form"].fields["holder_class_groups"].choices
             if value
         ]
-        self.assertEqual(choices.count("Adulto · Jiu Jitsu"), 1)
+        self.assertEqual(
+            sum(label.startswith("Adulto · Jiu Jitsu") for label in choices),
+            1,
+        )
 
     def test_login_with_invalid_numeric_identifier_returns_form_error(self):
         response = self.client.post(
@@ -319,7 +322,8 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, "Atuação como professor")
         self.assertContains(detail_response, "Adulto · Jiu Jitsu")
-        self.assertContains(detail_response, "Segunda-feira · 07:00")
+        self.assertContains(detail_response, "Segunda-feira")
+        self.assertContains(detail_response, "07:00")
 
     def test_person_list_supports_operational_filters(self):
         administrative_account = self._create_portal_account(
@@ -454,10 +458,14 @@ class PortalViewTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Adulto · Jiu Jitsu", count=1)
+        self.assertContains(response, "Adulto · Jiu Jitsu")
         self.assertContains(response, "Horários liberados")
-        self.assertContains(response, "Segunda-feira · 06:30")
-        self.assertContains(response, "Segunda-feira · 19:00")
+        self.assertContains(response, "Segunda-feira")
+        self.assertContains(response, "06:30")
+        self.assertContains(response, "11:00")
+        self.assertContains(response, "19:00")
+        content = response.content.decode("utf-8")
+        self.assertTrue(content.index("06:30") < content.index("11:00") < content.index("19:00"))
 
     def test_person_update_form_renders_birth_date_and_logical_class_choice_once(self):
         administrative_account = self._create_portal_account(

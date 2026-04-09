@@ -14,7 +14,6 @@
         <h1>{{ person.full_name }}</h1>
         <p>{% if person.person_type %}{{ person.person_type.display_name }}{% else %}Sem tipo definido{% endif %} · {{ person.cpf }}</p>
     </div>
-    <a class="ghost-link" href="{% url 'system:person-list' %}">Voltar para pessoas</a>
 </section>
 
 <div class="catalog-editor-grid">
@@ -61,16 +60,38 @@
         </div>
     </section>
 
-    <section class="form-card catalog-section-card">
+    <section class="form-card catalog-section-card catalog-section-card--full">
         <div class="catalog-section-head">
             <div>
                 <p class="panel-eyebrow">Como aluno</p>
-                <h2>Horários liberados</h2>
+                <h2>Horários liberados por turma</h2>
             </div>
         </div>
-        <div class="catalog-chip-list">
-            {% for label in person.active_schedule_labels %}
-                <span class="catalog-chip">{{ label }}</span>
+        <div class="catalog-schedule-grid">
+            {% for section in person.active_schedule_sections %}
+                <article class="catalog-physical-card">
+                    <div class="catalog-physical-card-head">
+                        <span class="catalog-chip-group-title">{{ section.group_label }}</span>
+                        <span class="catalog-relation-type">{{ section.schedule_count }} horário{{ section.schedule_count|pluralize:"s" }}</span>
+                    </div>
+                    <div class="catalog-weekday-grid">
+                        {% for weekday_section in section.weekday_sections %}
+                            <div class="catalog-weekday-block">
+                                <div class="catalog-weekday-header">
+                                    <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
+                                    <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
+                                </div>
+                                <div class="catalog-chip-list">
+                                    {% for time_label in weekday_section.time_labels %}
+                                        <span class="catalog-chip">{{ time_label }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <span class="catalog-empty-inline">Sem horário liberado nesta turma.</span>
+                        {% endfor %}
+                    </div>
+                </article>
             {% empty %}
                 <span class="catalog-empty-inline">Sem horário liberado.</span>
             {% endfor %}
@@ -97,9 +118,31 @@
             </div>
             <div class="catalog-guidance-item">
                 <span class="catalog-guidance-label">Horários</span>
-                <div class="catalog-chip-list">
-                    {% for label in person.teaching_schedule_labels %}
-                        <span class="catalog-chip">{{ label }}</span>
+                <div class="catalog-schedule-grid">
+                    {% for section in person.teaching_schedule_sections %}
+                        <article class="catalog-physical-card">
+                            <div class="catalog-physical-card-head">
+                                <span class="catalog-chip-group-title">{{ section.group_label }}</span>
+                                <span class="catalog-relation-type">{{ section.schedule_count }} horário{{ section.schedule_count|pluralize:"s" }}</span>
+                            </div>
+                            <div class="catalog-weekday-grid">
+                                {% for weekday_section in section.weekday_sections %}
+                                    <div class="catalog-weekday-block">
+                                        <div class="catalog-weekday-header">
+                                            <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
+                                            <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
+                                        </div>
+                                        <div class="catalog-chip-list">
+                                            {% for time_label in weekday_section.time_labels %}
+                                                <span class="catalog-chip">{{ time_label }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <span class="catalog-empty-inline">Sem horários docentes nesta turma.</span>
+                                {% endfor %}
+                            </div>
+                        </article>
                     {% empty %}
                         <span class="catalog-empty-inline">Sem horários docentes vinculados.</span>
                     {% endfor %}

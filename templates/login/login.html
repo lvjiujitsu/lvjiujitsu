@@ -11,6 +11,21 @@
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-home" aria-label="Entrada do portal">
+      <div class="screen-tools-floating" aria-hidden="false">
+        <a
+          class="back-link"
+          href="{% url 'system:legacy-home' %}"
+          onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+        >
+          Voltar
+        </a>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+
       <div class="brand-block brand-block-home">
         <div class="logo-frame logo-frame-home">
           <img
@@ -33,7 +48,7 @@
         </a>
 
         <a class="action-card" href="{% url 'system:legacy-info' %}">
-          <span class="action-title">Informa&ccedil;&otilde;es</span>
+          <span class="action-title">Turmas e Hor&aacute;rios</span>
           <span class="action-arrow" aria-hidden="true">&rsaquo;</span>
         </a>
       </nav>
@@ -48,13 +63,6 @@
         <span>Falar com a LV</span>
       </a>
 
-      <div class="screen-tools-floating" aria-hidden="false">
-        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-          <span class="theme-toggle-track">
-            <span class="theme-toggle-knob"></span>
-          </span>
-        </button>
-      </div>
     </section>
   </main>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>

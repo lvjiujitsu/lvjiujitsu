@@ -63,7 +63,10 @@ class PersonFormTestCase(TestCase):
         person = form.save()
 
         choices = [label for value, label in form.fields["class_groups"].choices]
-        self.assertEqual(choices.count("Adulto · Jiu Jitsu"), 1)
+        self.assertEqual(
+            sum(label.startswith("Adulto · Jiu Jitsu") for label in choices),
+            1,
+        )
         self.assertEqual(
             set(
                 ClassEnrollment.objects.filter(person=person).values_list(

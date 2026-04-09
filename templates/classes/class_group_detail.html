@@ -14,50 +14,14 @@
         <h1>{{ class_group.catalog_title }}</h1>
         <p>{{ class_group.team_count }} professor{{ class_group.team_count|pluralize:"es" }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</p>
     </div>
-    <a class="ghost-link" href="{% url 'system:class-group-list' %}">Voltar para turmas</a>
 </section>
 
 <div class="catalog-editor-grid">
-    <section class="form-card catalog-section-card">
-        <div class="catalog-section-head">
-            <div>
-                <p class="panel-eyebrow">Equipe docente</p>
-                <h2>Equipe docente</h2>
-            </div>
-        </div>
-        <div class="catalog-chip-list">
-            {% for member in class_group.teaching_team %}
-                <span class="catalog-chip">
-                    {{ member.full_name }}
-                    <small>{{ member.role_label }}</small>
-                </span>
-            {% empty %}
-                <span class="catalog-empty-inline">Equipe docente não definida.</span>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="form-card catalog-section-card">
-        <div class="catalog-section-head">
-            <div>
-                <p class="panel-eyebrow">Horários vinculados</p>
-                <h2>Horários vinculados</h2>
-            </div>
-        </div>
-        <div class="catalog-chip-list">
-            {% for schedule in class_group.schedule_day_summary %}
-                <span class="catalog-chip">{{ schedule.summary_label }}</span>
-            {% empty %}
-                <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
-            {% endfor %}
-        </div>
-    </section>
-
     <section class="form-card catalog-section-card catalog-section-card--full">
         <div class="catalog-section-head">
             <div>
-                <p class="panel-eyebrow">Ocorrências cadastradas</p>
-                <h2>Turmas físicas cadastradas</h2>
+                <p class="panel-eyebrow">Professor + horários</p>
+                <h2>Equipe docente e horários por turma física</h2>
             </div>
         </div>
         <div class="record-list">
@@ -70,19 +34,46 @@
                         </div>
                         <span class="record-card-badge">{{ physical_group.is_active|yesno:"Ativa,Inativa" }}</span>
                     </div>
-                    <div class="record-card-info">
-                        <div class="record-card-row">
-                            <span class="record-card-lbl">Código</span>
-                            <span class="record-card-val">{{ physical_group.code }}</span>
+                    <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Código da turma</span>
+                        <span class="record-card-val">{{ physical_group.code }}</span>
+                    </div>
+                    <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Equipe docente</span>
+                        <div class="catalog-chip-list">
+                            {% for member in physical_group.teaching_team %}
+                                <span class="catalog-chip">
+                                    {{ member.full_name }}
+                                    <small>{{ member.role_label }}</small>
+                                </span>
+                            {% empty %}
+                                <span class="catalog-empty-inline">Equipe docente não definida.</span>
+                            {% endfor %}
                         </div>
-                        <div class="record-card-row">
-                            <span class="record-card-lbl">Horários</span>
-                            <span class="record-card-val">{{ physical_group.schedule_labels|join:", " }}</span>
+                    </div>
+                    <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Horários</span>
+                        <div class="catalog-weekday-grid">
+                            {% for weekday_section in physical_group.schedule_day_summary %}
+                                <div class="catalog-weekday-block">
+                                    <div class="catalog-weekday-header">
+                                        <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
+                                        <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
+                                    </div>
+                                    <div class="catalog-chip-list">
+                                        {% for time_label in weekday_section.time_labels %}
+                                            <span class="catalog-chip">{{ time_label }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <span class="catalog-empty-inline">Nenhum horário ativo cadastrado.</span>
+                            {% endfor %}
                         </div>
-                        <div class="record-card-row">
-                            <span class="record-card-lbl">Descrição</span>
-                            <span class="record-card-val">{{ physical_group.description|default:"Sem observações operacionais." }}</span>
-                        </div>
+                    </div>
+                    <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Descrição</span>
+                        <span class="record-card-val">{{ physical_group.description|default:"Sem observações operacionais." }}</span>
                     </div>
                     <div class="record-card-actions">
                         <a href="{% url 'system:class-group-update' physical_group.pk %}">Editar</a>

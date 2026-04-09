@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Informações | LV JIU JITSU{% endblock %}
+{% block title %}Turmas e Horários | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
@@ -10,7 +10,7 @@
 {% block content %}
 <section class="catalog-hero">
     <div class="catalog-hero-copy">
-        <p class="panel-eyebrow">Informações da academia</p>
+        <p class="panel-eyebrow">Turmas e horários</p>
         <h1>Turmas ativas</h1>
         <p>Veja rapidamente modalidade, categoria e o volume de horários e professores de cada turma.</p>
     </div>
@@ -27,6 +27,52 @@
                     </div>
                     <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
                 </div>
+                <details class="catalog-dropdown">
+                    <summary class="catalog-dropdown-summary">Ver horários e professores</summary>
+                    <div class="catalog-dropdown-content">
+                        {% for physical_group in class_group.physical_groups %}
+                            <article class="catalog-physical-card">
+                                <div class="catalog-physical-card-head">
+                                    <span class="catalog-chip-group-title">{{ physical_group.class_category.display_name }} · {{ physical_group.display_name }}</span>
+                                    <span class="catalog-relation-type">Código: {{ physical_group.code }}</span>
+                                </div>
+                                <div class="catalog-physical-card-block">
+                                    <span class="catalog-guidance-label">Equipe docente</span>
+                                    <div class="catalog-chip-list">
+                                        {% for member in physical_group.teaching_team %}
+                                            <span class="catalog-chip">
+                                                {{ member.full_name }}
+                                                <small>{{ member.role_label }}</small>
+                                            </span>
+                                        {% empty %}
+                                            <span class="catalog-empty-inline">Equipe docente não definida.</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="catalog-physical-card-block">
+                                    <span class="catalog-guidance-label">Horários</span>
+                                    <div class="catalog-weekday-grid">
+                                        {% for weekday_section in physical_group.schedule_day_summary %}
+                                            <div class="catalog-weekday-block">
+                                                <div class="catalog-weekday-header">
+                                                    <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
+                                                    <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
+                                                </div>
+                                                <div class="catalog-chip-list">
+                                                    {% for time_label in weekday_section.time_labels %}
+                                                        <span class="catalog-chip">{{ time_label }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% empty %}
+                                            <span class="catalog-empty-inline">Sem horários ativos.</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </details>
             </article>
         {% endfor %}
     </div>

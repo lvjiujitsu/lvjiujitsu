@@ -173,15 +173,17 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "13 horários")
         self.assertContains(response, "3 professores")
 
-    def test_public_info_page_keeps_the_first_level_summarized(self):
+    def test_public_info_page_exposes_dropdown_with_schedule_and_teaching_team(self):
         seed_class_catalog()
 
         response = self.client.get(reverse("system:info"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Ver por professor")
-        self.assertNotContains(response, "Equipe docente")
-        self.assertNotContains(response, "Segunda-feira · 06:30")
+        self.assertContains(response, "Ver horários e professores")
+        self.assertContains(response, "Equipe docente")
+        self.assertContains(response, "Segunda-feira")
+        self.assertContains(response, "06:30")
+        self.assertContains(response, "Professor principal")
         self.assertContains(response, "Jiu Jitsu · Adulto", count=1)
 
     def test_class_group_list_groups_logical_classes_once(self):
@@ -211,9 +213,10 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Layon Quirino")
         self.assertContains(response, "Vinicius Antonio")
         self.assertContains(response, "Lauro Viana")
-        self.assertContains(response, "Segunda-feira · 06:30")
-        self.assertContains(response, "Segunda-feira · 11:00")
-        self.assertContains(response, "Segunda-feira · 19:00")
+        self.assertContains(response, "Segunda-feira")
+        self.assertContains(response, "06:30")
+        self.assertContains(response, "11:00")
+        self.assertContains(response, "19:00")
         self.assertContains(response, "Editar")
         self.assertContains(response, "Excluir")
 
