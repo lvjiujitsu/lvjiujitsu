@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Materiais | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Estoque</p>
+        <h1>Materiais</h1>
+        <p>Produtos disponíveis na academia.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:product-create' %}">Novo produto</a>
+</section>
+
+<div class="record-list">
+    {% for product in products %}
+        <article class="record-card">
+            <div class="record-card-head">
+                <div>
+                    <span class="record-card-name">{{ product.display_name }}</span>
+                    <div class="record-card-subtitle">{{ product.category }} · SKU {{ product.sku }}</div>
+                </div>
+                <span class="record-card-badge {% if not product.is_active %}badge--inactive{% endif %}">
+                    {% if not product.is_active %}Inativo{% elif product.total_stock == 0 %}Esgotado{% else %}{{ product.total_stock }} un.{% endif %}
+                </span>
+            </div>
+            <div class="record-card-row">
+                <span class="record-card-label">Preço</span>
+                <span class="record-card-val">R$ {{ product.unit_price }}</span>
+            </div>
+            <div class="record-card-row">
+                <span class="record-card-label">Variantes</span>
+                <span class="record-card-val">{{ product.variant_count }}</span>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:product-detail' product.pk %}">Visualizar</a>
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty-state">Nenhum produto cadastrado.</div>
+    {% endfor %}
+</div>
+{% endblock %}

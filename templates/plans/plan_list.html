@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Planos | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Comercial</p>
+        <h1>Planos</h1>
+        <p>Planos de assinatura disponíveis na academia.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:plan-create' %}">Novo plano</a>
+</section>
+
+<div class="record-list">
+    {% for plan in plans %}
+        <article class="record-card">
+            <div class="record-card-head">
+                <div>
+                    <span class="record-card-name">{{ plan.display_name }}</span>
+                    <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }} · {{ plan.code }}</div>
+                </div>
+                <span class="record-card-badge {% if not plan.is_active %}badge--inactive{% endif %}">
+                    {% if plan.is_active %}Ativo{% else %}Inativo{% endif %}
+                </span>
+            </div>
+            <div class="record-card-row">
+                <span class="record-card-label">Preço</span>
+                <span class="record-card-val">R$ {{ plan.price }}</span>
+            </div>
+            <div class="record-card-actions">
+                <a href="{% url 'system:plan-detail' plan.pk %}">Visualizar</a>
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty-state">Nenhum plano cadastrado.</div>
+    {% endfor %}
+</div>
+{% endblock %}

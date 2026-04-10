@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Materiais | LV JIU JITSU</title>
+  {% include "includes/_favicon.html" %}
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+</head>
+<body>
+  <main class="screen-shell">
+    <section class="screen-card screen-card-inner" aria-label="Materiais disponíveis">
+      <div class="screen-tools-triple" aria-hidden="false">
+        <a
+          class="back-link"
+          href="{% url 'system:legacy-home' %}"
+          onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+        >
+          Voltar
+        </a>
+        <span class="screen-tools-triple-center" aria-hidden="true"></span>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+
+      <section class="catalog-hero">
+        <div class="catalog-hero-copy">
+          <p class="panel-eyebrow">Materiais</p>
+          <h1>Produtos disponíveis</h1>
+          <p>Kimonos, faixas, rashguards e acessórios oficiais LV Jiu Jitsu.</p>
+        </div>
+      </section>
+
+      {% if products %}
+        <div class="record-list info-record-list">
+          {% for product in products %}
+            <article class="record-card record-card-catalog">
+              <div class="record-card-head">
+                <div>
+                  <span class="record-card-name">{{ product.display_name }}</span>
+                  <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
+                </div>
+                <span class="record-card-badge">
+                  {% if product.total_stock > 0 %}Disponível{% else %}Esgotado{% endif %}
+                </span>
+              </div>
+              {% if product.description %}
+                <div class="record-card-row">
+                  <span class="record-card-val">{{ product.description }}</span>
+                </div>
+              {% endif %}
+              {% with active_variants=product.variants.all %}
+                {% if active_variants|length > 1 %}
+                  <details class="catalog-dropdown">
+                    <summary class="catalog-dropdown-summary">Ver opções disponíveis</summary>
+                    <div class="catalog-dropdown-content">
+                      <div class="catalog-chip-list">
+                        {% for variant in active_variants %}
+                          {% if variant.is_active %}
+                            <span class="catalog-chip">
+                              {% if variant.color %}{{ variant.color }}{% endif %}
+                              {% if variant.size %} {{ variant.size }}{% endif %}
+                              {% if not variant.color and not variant.size %}Padrão{% endif %}
+                              <small>{% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} un.{% else %}Esgotado{% endif %}</small>
+                            </span>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                {% endif %}
+              {% endwith %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <section class="form-card">
+          <h2>Sem materiais disponíveis</h2>
+          <p>Nenhum produto ativo está cadastrado no momento.</p>
+        </section>
+      {% endif %}
+    </section>
+  </main>
+  <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+</body>
+</html>

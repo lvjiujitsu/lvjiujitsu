@@ -252,6 +252,8 @@ html[data-theme="dark"] .theme-btn::before {
 }
 .crud-header > div { display: grid; gap: 6px; }
 .crud-header .primary-button { align-self: flex-start; }
+.crud-header--sub { margin-top: 1rem; margin-bottom: 8px; }
+.catalog-hero--materials { margin-top: 2rem; }
 
 /* === RECORD LIST (UNIFIED CARDS) === */
 .record-list { display: grid; gap: 10px; }

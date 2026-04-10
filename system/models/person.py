@@ -38,6 +38,27 @@ class BiologicalSex(models.TextChoices):
     FEMALE = "female", "Feminino"
 
 
+class MartialArt(models.TextChoices):
+    JIU_JITSU = "jiu_jitsu", "Jiu Jitsu"
+    MUAY_THAI = "muay_thai", "Muay Thai"
+    JUDO = "judo", "Judô"
+    KARATE = "karate", "Karatê"
+    BOXING = "boxing", "Boxe"
+    WRESTLING = "wrestling", "Wrestling"
+    OTHER = "other", "Outra"
+
+
+class JiuJitsuBelt(models.TextChoices):
+    WHITE = "white", "Branca"
+    BLUE = "blue", "Azul"
+    PURPLE = "purple", "Roxa"
+    BROWN = "brown", "Marrom"
+    BLACK = "black", "Preta"
+    RED_BLACK = "red_black", "Vermelha e Preta"
+    RED_WHITE = "red_white", "Vermelha e Branca"
+    RED = "red", "Vermelha"
+
+
 class Person(TimeStampedModel):
     full_name = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14, unique=True)
@@ -53,6 +74,10 @@ class Person(TimeStampedModel):
     allergies = models.TextField(blank=True)
     previous_injuries = models.TextField(blank=True)
     emergency_contact = models.CharField(max_length=255, blank=True)
+    martial_art = models.CharField(max_length=24, choices=MartialArt.choices, blank=True)
+    martial_art_graduation = models.CharField(max_length=120, blank=True)
+    jiu_jitsu_belt = models.CharField(max_length=24, choices=JiuJitsuBelt.choices, blank=True)
+    jiu_jitsu_stripes = models.PositiveSmallIntegerField(null=True, blank=True)
     person_type = models.ForeignKey(
         PersonType,
         on_delete=models.PROTECT,

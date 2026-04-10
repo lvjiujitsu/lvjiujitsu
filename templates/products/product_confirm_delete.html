@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir produto | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="form-card">
+    <p class="form-eyebrow">Gestão de materiais</p>
+    <h1>Excluir produto</h1>
+    <p class="danger-copy">Confirme a exclusão de <strong>{{ product.display_name }}</strong>.</p>
+    <form method="post" class="button-row">
+        {% csrf_token %}
+        <a class="ghost-link" href="{% url 'system:product-list' %}">Cancelar</a>
+        <button type="submit" class="danger-button">Excluir</button>
+    </form>
+</section>
+{% endblock %}

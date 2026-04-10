@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.display_name }} | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">{{ product.category }}</p>
+        <h1>{{ product.display_name }}</h1>
+        <p>SKU {{ product.sku }} · R$ {{ product.unit_price }} · {{ product.total_stock }} un. em estoque</p>
+    </div>
+</section>
+
+<div class="record-list">
+    <article class="record-card">
+        <div class="record-card-head">
+            <div>
+                <span class="record-card-name">Dados do produto</span>
+            </div>
+            <span class="record-card-badge">{{ product.is_active|yesno:"Ativo,Inativo" }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Categoria</span>
+            <span class="record-card-val">{{ product.category }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Preço unitário</span>
+            <span class="record-card-val">R$ {{ product.unit_price }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Estoque total</span>
+            <span class="record-card-val">{{ product.total_stock }} un.</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Variantes ativas</span>
+            <span class="record-card-val">{{ product.variant_count }}</span>
+        </div>
+        {% if product.description %}
+        <div class="record-card-row">
+            <span class="record-card-label">Descrição</span>
+            <span class="record-card-val">{{ product.description }}</span>
+        </div>
+        {% endif %}
+        <div class="record-card-actions">
+            <a href="{% url 'system:product-update' product.pk %}">Editar</a>
+            <a class="danger-link" href="{% url 'system:product-delete' product.pk %}">Excluir</a>
+        </div>
+    </article>
+
+    {% for variant in product.variants.all %}
+        {% if forloop.first %}
+        <section class="crud-header crud-header--sub">
+            <div>
+                <p class="panel-eyebrow">Estoque</p>
+                <h2>Variantes</h2>
+            </div>
+        </section>
+        {% endif %}
+        <article class="record-card">
+            <div class="record-card-head">
+                <div>
+                    <span class="record-card-name">
+                        {% if variant.color %}{{ variant.color }}{% endif %}
+                        {% if variant.size %}{% if variant.color %} · {% endif %}{{ variant.size }}{% endif %}
+                        {% if not variant.color and not variant.size %}Padrão{% endif %}
+                    </span>
+                </div>
+                <span class="record-card-badge {% if not variant.is_in_stock %}badge--inactive{% endif %}">
+                    {% if not variant.is_active %}Inativo{% elif variant.stock_quantity == 0 %}Esgotado{% else %}{{ variant.stock_quantity }} un.{% endif %}
+                </span>
+            </div>
+            <div class="record-card-row">
+                <span class="record-card-label">Quantidade</span>
+                <span class="record-card-val">{{ variant.stock_quantity }} un.</span>
+            </div>
+            <div class="record-card-row">
+                <span class="record-card-label">Status</span>
+                <span class="record-card-val">{{ variant.is_active|yesno:"Ativo,Inativo" }}</span>
+            </div>
+        </article>
+    {% endfor %}
+</div>
+{% endblock %}

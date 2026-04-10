@@ -1,85 +1,190 @@
-{% extends "base.html" %}
 {% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Turmas e Horários | LV JIU JITSU</title>
+  {% include "includes/_favicon.html" %}
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+</head>
+<body>
+  <main class="screen-shell">
+    <section class="screen-card screen-card-inner" aria-label="Turmas e horários">
+      <div class="screen-tools-triple" aria-hidden="false">
+        <a
+          class="back-link"
+          href="{% url 'system:legacy-home' %}"
+          onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+        >
+          Voltar
+        </a>
+        <span class="screen-tools-triple-center" aria-hidden="true"></span>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
 
-{% block title %}Turmas e Horários | LV JIU JITSU{% endblock %}
+      <section class="catalog-hero">
+        <div class="catalog-hero-copy">
+          <p class="panel-eyebrow">Turmas e horários</p>
+          <h1>Turmas ativas</h1>
+          <p>Veja rapidamente modalidade, categoria e o volume de horários e professores de cada turma.</p>
+        </div>
+      </section>
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
-{% endblock %}
-
-{% block content %}
-<section class="catalog-hero">
-    <div class="catalog-hero-copy">
-        <p class="panel-eyebrow">Turmas e horários</p>
-        <h1>Turmas ativas</h1>
-        <p>Veja rapidamente modalidade, categoria e o volume de horários e professores de cada turma.</p>
-    </div>
-</section>
-
-{% if class_group_cards %}
-    <div class="record-list">
-        {% for class_group in class_group_cards %}
+      {% if class_group_cards %}
+        <div class="record-list info-record-list">
+          {% for class_group in class_group_cards %}
             <article class="record-card record-card-catalog">
-                <div class="record-card-head">
-                    <div>
-                        <span class="record-card-name">{{ class_group.public_title }}</span>
-                        <div class="record-card-subtitle">{{ class_group.team_count }} professor{{ class_group.team_count|pluralize:"es" }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</div>
-                    </div>
-                    <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
+              <div class="record-card-head">
+                <div>
+                  <span class="record-card-name">{{ class_group.display_name }} - {{ class_group.class_category.display_name }}</span>
+                  <div class="record-card-subtitle">{{ class_group.team_count }} professor{{ class_group.team_count|pluralize:"es" }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize:"s" }}</div>
                 </div>
-                <details class="catalog-dropdown">
-                    <summary class="catalog-dropdown-summary">Ver horários e professores</summary>
-                    <div class="catalog-dropdown-content">
-                        {% for physical_group in class_group.physical_groups %}
-                            <article class="catalog-physical-card">
-                                <div class="catalog-physical-card-head">
-                                    <span class="catalog-chip-group-title">{{ physical_group.class_category.display_name }} · {{ physical_group.display_name }}</span>
-                                    <span class="catalog-relation-type">Código: {{ physical_group.code }}</span>
-                                </div>
-                                <div class="catalog-physical-card-block">
-                                    <span class="catalog-guidance-label">Equipe docente</span>
-                                    <div class="catalog-chip-list">
-                                        {% for member in physical_group.teaching_team %}
-                                            <span class="catalog-chip">
-                                                {{ member.full_name }}
-                                                <small>{{ member.role_label }}</small>
-                                            </span>
-                                        {% empty %}
-                                            <span class="catalog-empty-inline">Equipe docente não definida.</span>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <div class="catalog-physical-card-block">
-                                    <span class="catalog-guidance-label">Horários</span>
-                                    <div class="catalog-weekday-grid">
-                                        {% for weekday_section in physical_group.schedule_day_summary %}
-                                            <div class="catalog-weekday-block">
-                                                <div class="catalog-weekday-header">
-                                                    <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
-                                                    <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
-                                                </div>
-                                                <div class="catalog-chip-list">
-                                                    {% for time_label in weekday_section.time_labels %}
-                                                        <span class="catalog-chip">{{ time_label }}</span>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% empty %}
-                                            <span class="catalog-empty-inline">Sem horários ativos.</span>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </article>
-                        {% endfor %}
-                    </div>
-                </details>
+                <span class="record-card-badge">{{ class_group.is_active|yesno:"Ativa,Inativa" }}</span>
+              </div>
+              <details class="catalog-dropdown">
+                <summary class="catalog-dropdown-summary">Ver horários e professores</summary>
+                <div class="catalog-dropdown-content">
+                  {% for physical_group in class_group.physical_groups %}
+                    <article class="catalog-physical-card">
+                      <div class="catalog-physical-card-head">
+                        <span class="catalog-chip-group-title catalog-activity-title">{{ physical_group.display_name }} - {{ physical_group.class_category.display_name }}</span>
+                        <span class="catalog-relation-type">Código: {{ physical_group.code }}</span>
+                      </div>
+                      <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Equipe docente</span>
+                        <div class="catalog-chip-list">
+                          {% for member in physical_group.teaching_team %}
+                            <span class="catalog-chip">
+                              {{ member.full_name }}
+                              <small>{{ member.role_label }}</small>
+                            </span>
+                          {% empty %}
+                            <span class="catalog-empty-inline">Equipe docente não definida.</span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Horários</span>
+                        <div class="catalog-weekday-grid">
+                          {% for weekday_section in physical_group.schedule_day_summary %}
+                            <div class="catalog-weekday-block">
+                              <div class="catalog-weekday-header">
+                                <span class="catalog-chip-group-title">{{ weekday_section.weekday_label }}</span>
+                                <span class="catalog-relation-type">{{ weekday_section.time_labels|length }} horário{{ weekday_section.time_labels|length|pluralize:"s" }}</span>
+                              </div>
+                              <div class="catalog-chip-list">
+                                {% for time_label in weekday_section.time_labels %}
+                                  <span class="catalog-chip">{{ time_label }}</span>
+                                {% endfor %}
+                              </div>
+                            </div>
+                          {% empty %}
+                            <span class="catalog-empty-inline">Sem horários ativos.</span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              </details>
             </article>
-        {% endfor %}
-    </div>
-{% else %}
-    <section class="form-card">
-        <h2>Sem informações disponíveis</h2>
-        <p>Nenhuma turma ativa está cadastrada no momento.</p>
+          {% endfor %}
+        </div>
+      {% else %}
+        <section class="form-card">
+          <h2>Sem informações disponíveis</h2>
+          <p>Nenhuma turma ativa está cadastrada no momento.</p>
+        </section>
+      {% endif %}
+
+      {% if product_cards %}
+        <section class="catalog-hero catalog-hero--materials">
+          <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Materiais</p>
+            <h1>Produtos disponíveis</h1>
+            <p>Kimonos, faixas, rashguards e acessórios oficiais LV Jiu Jitsu.</p>
+          </div>
+        </section>
+
+        <div class="record-list info-record-list">
+          {% for product in product_cards %}
+            <article class="record-card record-card-catalog">
+              <div class="record-card-head">
+                <div>
+                  <span class="record-card-name">{{ product.display_name }}</span>
+                  <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
+                </div>
+                <span class="record-card-badge">
+                  {% if product.total_stock > 0 %}Disponível{% else %}Esgotado{% endif %}
+                </span>
+              </div>
+              {% if product.description %}
+                <div class="record-card-row">
+                  <span class="record-card-val">{{ product.description }}</span>
+                </div>
+              {% endif %}
+              {% with active_variants=product.variants.all %}
+                {% if active_variants|length > 1 %}
+                  <details class="catalog-dropdown">
+                    <summary class="catalog-dropdown-summary">Ver opções disponíveis</summary>
+                    <div class="catalog-dropdown-content">
+                      <div class="catalog-chip-list">
+                        {% for variant in active_variants %}
+                          {% if variant.is_active %}
+                            <span class="catalog-chip">
+                              {% if variant.color %}{{ variant.color }}{% endif %}
+                              {% if variant.size %} {{ variant.size }}{% endif %}
+                              {% if not variant.color and not variant.size %}Padrão{% endif %}
+                              <small>{% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} un.{% else %}Esgotado{% endif %}</small>
+                            </span>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </details>
+                {% endif %}
+              {% endwith %}
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if plan_cards %}
+        <section class="catalog-hero catalog-hero--materials">
+          <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Comercial</p>
+            <h1>Planos disponíveis</h1>
+            <p>Mensalidades e pacotes para treinar na LV Jiu Jitsu.</p>
+          </div>
+        </section>
+
+        <div class="record-list info-record-list">
+          {% for plan in plan_cards %}
+            <article class="record-card record-card-catalog">
+              <div class="record-card-head">
+                <div>
+                  <span class="record-card-name">{{ plan.display_name }}</span>
+                  <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }}</div>
+                </div>
+                <span class="record-card-badge">R$ {{ plan.price }}</span>
+              </div>
+              {% if plan.description %}
+                <div class="record-card-row">
+                  <span class="record-card-val">{{ plan.description }}</span>
+                </div>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% endif %}
     </section>
-{% endif %}
-{% endblock %}
+  </main>
+  <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+</body>
+</html>

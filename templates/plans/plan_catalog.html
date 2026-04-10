@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Planos | LV JIU JITSU</title>
+  {% include "includes/_favicon.html" %}
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+</head>
+<body>
+  <main class="screen-shell">
+    <section class="screen-card screen-card-inner" aria-label="Planos disponíveis">
+      <div class="screen-tools-triple" aria-hidden="false">
+        <a
+          class="back-link"
+          href="{% url 'system:legacy-home' %}"
+          onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+        >
+          Voltar
+        </a>
+        <span class="screen-tools-triple-center" aria-hidden="true"></span>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
+      </div>
+
+      <section class="catalog-hero">
+        <div class="catalog-hero-copy">
+          <p class="panel-eyebrow">Comercial</p>
+          <h1>Planos disponíveis</h1>
+          <p>Mensalidades e pacotes para treinar na LV Jiu Jitsu.</p>
+        </div>
+      </section>
+
+      {% if plans %}
+        <div class="record-list info-record-list">
+          {% for plan in plans %}
+            <article class="record-card record-card-catalog">
+              <div class="record-card-head">
+                <div>
+                  <span class="record-card-name">{{ plan.display_name }}</span>
+                  <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }}</div>
+                </div>
+                <span class="record-card-badge">R$ {{ plan.price }}</span>
+              </div>
+              {% if plan.description %}
+                <div class="record-card-row">
+                  <span class="record-card-val">{{ plan.description }}</span>
+                </div>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <section class="form-card">
+          <h2>Sem planos disponíveis</h2>
+          <p>Nenhum plano ativo está cadastrado no momento.</p>
+        </section>
+      {% endif %}
+    </section>
+  </main>
+  <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
+</body>
+</html>

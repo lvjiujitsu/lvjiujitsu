@@ -4,6 +4,8 @@ from system.models import (
     BiologicalSex,
     BloodType,
     ClassCategory,
+    JiuJitsuBelt,
+    MartialArt,
     Person,
     PersonType,
 )
@@ -82,6 +84,10 @@ class PersonForm(forms.ModelForm):
             "allergies",
             "previous_injuries",
             "emergency_contact",
+            "martial_art",
+            "martial_art_graduation",
+            "jiu_jitsu_belt",
+            "jiu_jitsu_stripes",
             "person_type",
             "is_active",
         )
@@ -96,6 +102,10 @@ class PersonForm(forms.ModelForm):
             "allergies": "Alergias",
             "previous_injuries": "Lesões prévias",
             "emergency_contact": "Contato de emergência",
+            "martial_art": "Modalidade já praticada",
+            "martial_art_graduation": "Graduação/nível na modalidade",
+            "jiu_jitsu_belt": "Faixa de Jiu Jitsu",
+            "jiu_jitsu_stripes": "Graus na faixa (0 a 4)",
             "is_active": "Cadastro ativo",
         }
         widgets = {
@@ -113,6 +123,12 @@ class PersonForm(forms.ModelForm):
             "previous_injuries": forms.Textarea(attrs={"rows": 3}),
             "emergency_contact": forms.TextInput(
                 attrs={"placeholder": "Nome e telefone do contato"}
+            ),
+            "martial_art": forms.Select(
+                choices=[("", "Não possui")] + list(MartialArt.choices),
+            ),
+            "jiu_jitsu_belt": forms.Select(
+                choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
             ),
         }
 
@@ -143,6 +159,10 @@ class PersonForm(forms.ModelForm):
                 "allergies",
                 "previous_injuries",
                 "emergency_contact",
+                "martial_art",
+                "martial_art_graduation",
+                "jiu_jitsu_belt",
+                "jiu_jitsu_stripes",
                 "person_type",
                 "class_groups",
                 "is_active",
@@ -154,6 +174,18 @@ class PersonForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        martial_art = cleaned_data.get("martial_art") or ""
+        graduation = (cleaned_data.get("martial_art_graduation") or "").strip()
+        jiu_jitsu_belt = cleaned_data.get("jiu_jitsu_belt") or ""
+
+        if martial_art and not graduation:
+            self.add_error("martial_art_graduation", "Informe a graduação/nível na arte marcial.")
+        if martial_art == MartialArt.JIU_JITSU and not jiu_jitsu_belt:
+            self.add_error("jiu_jitsu_belt", "Informe a faixa atual de Jiu Jitsu.")
+        if martial_art != MartialArt.JIU_JITSU:
+            cleaned_data["jiu_jitsu_belt"] = ""
+            cleaned_data["jiu_jitsu_stripes"] = None
+
         class_group_values = cleaned_data.get("class_groups") or []
         class_groups = resolve_class_group_selection(class_group_values)
         person_type = cleaned_data.get("person_type")

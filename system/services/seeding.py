@@ -16,6 +16,8 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
+from system.models.plan import SubscriptionPlan
+from system.models.product import Product, ProductCategory, ProductVariant
 from system.services.registration import ensure_default_person_types, sync_person_class_enrollments
 from system.utils import ensure_formatted_cpf
 
@@ -568,3 +570,199 @@ def _upsert_class_schedule(
         },
     )
     return schedule
+
+
+# ---------------------------------------------------------------------------
+# Seed de Produtos (dados reais da loja SumUp lvjiujitsu.sumupstore.com)
+# ---------------------------------------------------------------------------
+
+PRODUCT_CATEGORY_DEFINITIONS = (
+    {"code": "belts", "display_name": "Faixas", "display_order": 1},
+    {"code": "kimonos", "display_name": "Kimonos", "display_order": 2},
+    {"code": "rashguards", "display_name": "Rash Guard", "display_order": 3},
+    {"code": "patches", "display_name": "Patches", "display_order": 4},
+)
+
+BELT_COLORS = (
+    "Branca", "Cinza", "Amarela", "Laranja", "Verde",
+    "Azul", "Roxa", "Marrom", "Preta",
+)
+
+PRODUCT_DEFINITIONS = (
+    {
+        "sku": "belt-lv",
+        "display_name": "Faixa LV",
+        "category": "belts",
+        "unit_price": "75.00",
+        "description": "Faixa oficial LV Jiu Jitsu. Disponível em todas as cores de graduação.",
+        "variants": [{"color": c, "size": "", "stock": 1} for c in BELT_COLORS],
+    },
+    {
+        "sku": "gi-premium-comp",
+        "display_name": "Kimono Premium Competition LV",
+        "category": "kimonos",
+        "unit_price": "520.00",
+        "description": "Kimono premium de competição LV. Tecido leve e resistente.",
+        "variants": [{"color": "Preto", "size": "A1", "stock": 1}],
+    },
+    {
+        "sku": "gi-trad-white",
+        "display_name": "Kimono Tradicional Trançado LV Branco",
+        "category": "kimonos",
+        "unit_price": "480.00",
+        "description": "Kimono tradicional trançado branco masculino.",
+        "variants": [{"color": "Branco", "size": "A2", "stock": 1}],
+    },
+    {
+        "sku": "gi-trad-white-fem",
+        "display_name": "Kimono Tradicional Trançado LV Branco Feminino",
+        "category": "kimonos",
+        "unit_price": "480.00",
+        "description": "Kimono tradicional trançado branco feminino.",
+        "variants": [{"color": "Branco", "size": "F3", "stock": 1}],
+    },
+    {
+        "sku": "gi-trad-black-fem",
+        "display_name": "Kimono Tradicional Trançado LV Preto Feminino",
+        "category": "kimonos",
+        "unit_price": "480.00",
+        "description": "Kimono tradicional trançado preto feminino.",
+        "variants": [{"color": "Preto", "size": "F3", "stock": 1}],
+    },
+    {
+        "sku": "gi-comp-black-red",
+        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho",
+        "category": "kimonos",
+        "unit_price": "480.00",
+        "description": "Kimono trançado de competição preto com detalhes em vermelho.",
+        "variants": [{"color": "Preto c/ Vermelho", "size": "A2", "stock": 1}],
+    },
+    {
+        "sku": "gi-comp-black-red-fem",
+        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Feminino",
+        "category": "kimonos",
+        "unit_price": "480.00",
+        "description": "Kimono trançado de competição preto com vermelho feminino.",
+        "variants": [{"color": "Preto c/ Vermelho", "size": "F3", "stock": 1}],
+    },
+    {
+        "sku": "gi-comp-black-red-kids",
+        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Infantil",
+        "category": "kimonos",
+        "unit_price": "450.00",
+        "description": "Kimono trançado de competição infantil preto com vermelho.",
+        "variants": [{"color": "Preto c/ Vermelho", "size": "M1", "stock": 1}],
+    },
+    {
+        "sku": "rash-lv",
+        "display_name": "Rash Guard LV",
+        "category": "rashguards",
+        "unit_price": "150.00",
+        "description": "Rash guard oficial LV Jiu Jitsu.",
+        "variants": [{"color": "Preto", "size": "M", "stock": 1}],
+    },
+    {
+        "sku": "patch-kit-3",
+        "display_name": "Kit 3 Patch's Kimono",
+        "category": "patches",
+        "unit_price": "45.00",
+        "description": "Kit com 3 patches oficiais LV para kimono.",
+        "variants": [{"color": "", "size": "", "stock": 1}],
+    },
+)
+
+
+@transaction.atomic
+def seed_products():
+    categories = {}
+    for definition in PRODUCT_CATEGORY_DEFINITIONS:
+        cat, _ = ProductCategory.objects.update_or_create(
+            code=definition["code"],
+            defaults={
+                "display_name": definition["display_name"],
+                "display_order": definition["display_order"],
+                "is_active": True,
+            },
+        )
+        categories[cat.code] = cat
+
+    products = {}
+    for definition in PRODUCT_DEFINITIONS:
+        product, _ = Product.objects.update_or_create(
+            sku=definition["sku"],
+            defaults={
+                "display_name": definition["display_name"],
+                "category": categories[definition["category"]],
+                "unit_price": definition["unit_price"],
+                "description": definition["description"],
+                "is_active": True,
+            },
+        )
+        for v in definition["variants"]:
+            ProductVariant.objects.update_or_create(
+                product=product,
+                color=v["color"],
+                size=v["size"],
+                defaults={
+                    "stock_quantity": v["stock"],
+                    "is_active": True,
+                },
+            )
+        products[product.sku] = product
+
+    return {"categories": categories, "products": products}
+
+
+SUBSCRIPTION_PLAN_DEFINITIONS = (
+    {
+        "code": "mensal",
+        "display_name": "Plano Mensal",
+        "billing_cycle": "monthly",
+        "price": "250.00",
+        "description": "Acesso mensal a todas as turmas disponíveis.",
+        "display_order": 1,
+    },
+    {
+        "code": "mensal-irmaos",
+        "display_name": "Plano Mensal Irmãos / Pais e Filhos",
+        "billing_cycle": "monthly",
+        "price": "225.00",
+        "description": "Desconto para familiares que treinam juntos.",
+        "display_order": 2,
+    },
+    {
+        "code": "trimestral",
+        "display_name": "Plano Trimestral",
+        "billing_cycle": "quarterly",
+        "price": "675.00",
+        "description": "Pagamento trimestral com desconto sobre o mensal.",
+        "display_order": 3,
+    },
+    {
+        "code": "mensal-desconto",
+        "display_name": "Plano Mensal com Desconto",
+        "billing_cycle": "monthly",
+        "price": "450.00",
+        "description": "Condição especial de mensalidade.",
+        "display_order": 4,
+    },
+)
+
+
+@transaction.atomic
+def seed_plans():
+    plans = {}
+    for definition in SUBSCRIPTION_PLAN_DEFINITIONS:
+        plan, _ = SubscriptionPlan.objects.update_or_create(
+            code=definition["code"],
+            defaults={
+                "display_name": definition["display_name"],
+                "billing_cycle": definition["billing_cycle"],
+                "price": definition["price"],
+                "description": definition["description"],
+                "display_order": definition["display_order"],
+                "is_active": True,
+            },
+        )
+        plans[plan.code] = plan
+    return plans

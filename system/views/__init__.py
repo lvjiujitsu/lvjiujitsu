@@ -37,6 +37,22 @@ from .home_views import (
     RootRedirectView,
     StudentHomeView,
 )
+from .plan_views import (
+    PlanCatalogView,
+    PlanCreateView,
+    PlanDeleteView,
+    PlanDetailView,
+    PlanListView,
+    PlanUpdateView,
+)
+from .product_views import (
+    ProductCatalogView,
+    ProductCreateView,
+    ProductDeleteView,
+    ProductDetailView,
+    ProductListView,
+    ProductUpdateView,
+)
 from .person_views import (
     PersonCreateView,
     PersonDeleteView,
@@ -89,7 +105,19 @@ __all__ = [
     "PortalPasswordResetConfirmView",
     "PortalPasswordResetDoneView",
     "PortalPasswordResetView",
+    "PlanCatalogView",
+    "PlanCreateView",
+    "PlanDeleteView",
+    "PlanDetailView",
+    "PlanListView",
+    "PlanUpdateView",
     "PortalRegisterView",
+    "ProductCatalogView",
+    "ProductCreateView",
+    "ProductDeleteView",
+    "ProductDetailView",
+    "ProductListView",
+    "ProductUpdateView",
     "RootRedirectView",
     "StudentHomeView",
 ]

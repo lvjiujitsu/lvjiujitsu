@@ -2,8 +2,10 @@ import json
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.test import RequestFactory
 from django.test import TestCase
 from django.utils import timezone
+from unittest.mock import patch
 
 from system.forms import PortalRegistrationForm
 from system.models import (
@@ -19,6 +21,7 @@ from system.models import (
     PortalPasswordResetToken,
 )
 from system.services.class_overview import build_class_group_filter_value
+from system.services.portal_auth import create_password_reset_token, reset_portal_password
 from system.services.seeding import seed_class_catalog
 
 
@@ -26,6 +29,9 @@ User = get_user_model()
 
 
 class PersonModelTestCase(TestCase):
+    def setUp(self):
+        self.request_factory = RequestFactory()
+
     def test_person_has_single_type(self):
         student_type = PersonType.objects.create(
             code="student-test",
@@ -158,6 +164,57 @@ class PersonModelTestCase(TestCase):
 
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
+
+    @patch("system.services.portal_auth.send_mail")
+    def test_password_reset_token_request_invalidates_previous_active_tokens(self, mocked_send_mail):
+        person = Person.objects.create(
+            full_name="Carlos Silva",
+            cpf="123.456.789-01",
+            email="carlos@example.com",
+        )
+        access_account = PortalAccount(person=person)
+        access_account.set_password("123456")
+        access_account.save()
+        previous_token = PortalPasswordResetToken.objects.create(access_account=access_account)
+
+        request = self.request_factory.get("/templates/login/esqueci-a-senha.html")
+        request.META["HTTP_HOST"] = "testserver"
+        create_password_reset_token(person.cpf, request)
+
+        previous_token.refresh_from_db()
+        self.assertIsNotNone(previous_token.used_at)
+        self.assertEqual(PortalPasswordResetToken.objects.filter(access_account=access_account).count(), 2)
+        self.assertEqual(
+            PortalPasswordResetToken.objects.filter(
+                access_account=access_account,
+                used_at__isnull=True,
+            ).count(),
+            1,
+        )
+        mocked_send_mail.assert_called_once()
+
+    def test_reset_password_marks_other_open_tokens_as_used(self):
+        person = Person.objects.create(
+            full_name="Carlos Silva",
+            cpf="123.456.789-01",
+            email="carlos@example.com",
+        )
+        access_account = PortalAccount(person=person)
+        access_account.set_password("123456")
+        access_account.save()
+
+        target_token = PortalPasswordResetToken.objects.create(access_account=access_account)
+        extra_token = PortalPasswordResetToken.objects.create(access_account=access_account)
+
+        reset_portal_password(target_token, "NovaSenha@123")
+
+        target_token.refresh_from_db()
+        extra_token.refresh_from_db()
+        access_account.refresh_from_db()
+
+        self.assertIsNotNone(target_token.used_at)
+        self.assertIsNotNone(extra_token.used_at)
+        self.assertTrue(access_account.check_password("NovaSenha@123"))
 
     def test_registration_creates_multiple_physical_enrollments_from_logical_choice(self):
         seed_class_catalog()

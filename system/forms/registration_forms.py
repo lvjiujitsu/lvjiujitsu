@@ -2,7 +2,15 @@ from datetime import datetime
 
 from django import forms
 
-from system.models import BiologicalSex, BloodType, ClassGroup, Person, PersonType
+from system.models import (
+    BiologicalSex,
+    BloodType,
+    ClassGroup,
+    JiuJitsuBelt,
+    MartialArt,
+    Person,
+    PersonType,
+)
 from system.models.class_membership import get_class_group_eligibility_error
 from system.services.class_overview import get_public_class_group_choice_options
 from system.services.registration import (
@@ -46,6 +54,16 @@ class PortalRegistrationForm(forms.Form):
     holder_allergies = forms.CharField(required=False)
     holder_injuries = forms.CharField(required=False)
     holder_emergency_contact = forms.CharField(required=False, max_length=255)
+    holder_martial_art = forms.ChoiceField(
+        required=False,
+        choices=[("", "Não possui")] + list(MartialArt.choices),
+    )
+    holder_martial_art_graduation = forms.CharField(required=False, max_length=120)
+    holder_jiu_jitsu_belt = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
+    )
+    holder_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
 
     dependent_name = forms.CharField(required=False, max_length=255)
     dependent_cpf = forms.CharField(required=False, max_length=14)
@@ -71,6 +89,16 @@ class PortalRegistrationForm(forms.Form):
     dependent_allergies = forms.CharField(required=False)
     dependent_injuries = forms.CharField(required=False)
     dependent_emergency_contact = forms.CharField(required=False, max_length=255)
+    dependent_martial_art = forms.ChoiceField(
+        required=False,
+        choices=[("", "Não possui")] + list(MartialArt.choices),
+    )
+    dependent_martial_art_graduation = forms.CharField(required=False, max_length=120)
+    dependent_jiu_jitsu_belt = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
+    )
+    dependent_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
 
     guardian_name = forms.CharField(required=False, max_length=255)
     guardian_cpf = forms.CharField(required=False, max_length=14)
@@ -107,6 +135,19 @@ class PortalRegistrationForm(forms.Form):
     student_allergies = forms.CharField(required=False)
     student_injuries = forms.CharField(required=False)
     student_emergency_contact = forms.CharField(required=False, max_length=255)
+    student_martial_art = forms.ChoiceField(
+        required=False,
+        choices=[("", "Não possui")] + list(MartialArt.choices),
+    )
+    student_martial_art_graduation = forms.CharField(required=False, max_length=120)
+    student_jiu_jitsu_belt = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
+    )
+    student_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
+
+    selected_plan = forms.IntegerField(required=False)
+    selected_products_payload = forms.CharField(required=False, widget=forms.HiddenInput)
 
     other_name = forms.CharField(required=False, max_length=255)
     other_cpf = forms.CharField(required=False, max_length=14)
@@ -141,6 +182,7 @@ class PortalRegistrationForm(forms.Form):
         self._clean_passwords(profile, include_dependent, extra_dependents)
         self._clean_class_links(profile, include_dependent, extra_dependents)
         self._clean_kinship(profile, include_dependent, extra_dependents)
+        self._clean_martial_background(profile, include_dependent, extra_dependents)
         return cleaned_data
 
     def save(self):
@@ -429,12 +471,67 @@ class PortalRegistrationForm(forms.Form):
             if dependent.get("kinship_type") == "other" and not (dependent.get("kinship_other_label") or "").strip():
                 self.add_error(None, f"Dependente adicional {index}: informe o grau de parentesco.")
 
+    def _clean_martial_background(self, profile, include_dependent, extra_dependents):
+        prefixes = []
+        if profile == "holder":
+            prefixes.append("holder")
+            if include_dependent:
+                prefixes.append("dependent")
+        elif profile == "guardian":
+            prefixes.append("student")
+
+        for prefix in prefixes:
+            martial_art = self.cleaned_data.get(f"{prefix}_martial_art") or ""
+            graduation = (self.cleaned_data.get(f"{prefix}_martial_art_graduation") or "").strip()
+            belt = self.cleaned_data.get(f"{prefix}_jiu_jitsu_belt") or ""
+            if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
+                self.add_error(
+                    f"{prefix}_martial_art_graduation",
+                    "Informe a graduação/nível na arte marcial.",
+                )
+            if martial_art == MartialArt.JIU_JITSU and not belt:
+                self.add_error(
+                    f"{prefix}_jiu_jitsu_belt",
+                    "Informe a faixa de Jiu Jitsu.",
+                )
+            if martial_art != MartialArt.JIU_JITSU:
+                self.cleaned_data[f"{prefix}_jiu_jitsu_belt"] = ""
+                self.cleaned_data[f"{prefix}_jiu_jitsu_stripes"] = None
+            if not martial_art or martial_art == MartialArt.JIU_JITSU:
+                self.cleaned_data[f"{prefix}_martial_art_graduation"] = ""
+
+        for index, dependent in enumerate(extra_dependents, start=1):
+            martial_art = dependent.get("martial_art") or ""
+            graduation = (dependent.get("martial_art_graduation") or "").strip()
+            belt = dependent.get("jiu_jitsu_belt") or ""
+            if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
+                self.add_error(None, f"Dependente adicional {index}: informe a graduação na arte marcial.")
+            if martial_art == MartialArt.JIU_JITSU and not belt:
+                self.add_error(None, f"Dependente adicional {index}: informe a faixa de Jiu Jitsu.")
+            if martial_art != MartialArt.JIU_JITSU:
+                dependent["jiu_jitsu_belt"] = ""
+                dependent["jiu_jitsu_stripes"] = None
+            if not martial_art or martial_art == MartialArt.JIU_JITSU:
+                dependent["martial_art_graduation"] = ""
+
     def _clean_extra_dependents_payload(self):
         payload = parse_extra_dependents_payload(self.cleaned_data.get("extra_dependents_payload"))
         cleaned_dependents = []
         for index, dependent in enumerate(payload, start=1):
             birth_date_raw = dependent.get("birth_date") or ""
             birth_date = None
+            jiu_jitsu_stripes = dependent.get("jiu_jitsu_stripes")
+            if jiu_jitsu_stripes in ("", None):
+                jiu_jitsu_stripes = None
+            else:
+                try:
+                    jiu_jitsu_stripes = int(jiu_jitsu_stripes)
+                except (TypeError, ValueError):
+                    self.add_error(None, f"Dependente adicional {index}: graus de Jiu Jitsu inválidos.")
+                    jiu_jitsu_stripes = None
+                if jiu_jitsu_stripes is not None and not (0 <= jiu_jitsu_stripes <= 4):
+                    self.add_error(None, f"Dependente adicional {index}: graus de Jiu Jitsu deve ser entre 0 e 4.")
+                    jiu_jitsu_stripes = None
             if birth_date_raw:
                 try:
                     birth_date = datetime.strptime(birth_date_raw, "%d/%m/%Y").date()
@@ -460,6 +557,10 @@ class PortalRegistrationForm(forms.Form):
                     "allergies": dependent.get("allergies") or "",
                     "previous_injuries": dependent.get("injuries") or dependent.get("previous_injuries") or "",
                     "emergency_contact": dependent.get("emergency_contact") or "",
+                    "martial_art": dependent.get("martial_art") or "",
+                    "martial_art_graduation": dependent.get("martial_art_graduation") or "",
+                    "jiu_jitsu_belt": dependent.get("jiu_jitsu_belt") or "",
+                    "jiu_jitsu_stripes": jiu_jitsu_stripes,
                 }
             )
         return cleaned_dependents

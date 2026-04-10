@@ -18,6 +18,9 @@ from system.services.class_overview import (
     get_public_class_group_cards,
     get_registration_catalog_payload,
 )
+from system.services.plan_management import get_active_plans
+from system.services.product_management import get_public_product_cards
+from system.services.registration_checkout import get_plan_catalog_payload, get_product_catalog_payload
 from system.services import (
     authenticate_portal_identity,
     create_password_reset_token,
@@ -47,6 +50,12 @@ class PortalRegisterView(FormView):
         )
         context["ibjjf_categories_json"] = json.dumps(
             get_ibjjf_age_category_payload(), ensure_ascii=False
+        )
+        context["plan_catalog_json"] = json.dumps(
+            get_plan_catalog_payload(), ensure_ascii=False
+        )
+        context["product_catalog_json"] = json.dumps(
+            get_product_catalog_payload(), ensure_ascii=False
         )
         return context
 
@@ -111,6 +120,8 @@ class PortalInfoView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["class_group_cards"] = get_public_class_group_cards()
+        context["product_cards"] = get_public_product_cards()
+        context["plan_cards"] = get_active_plans()
         return context
 
 

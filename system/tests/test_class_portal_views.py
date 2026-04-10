@@ -169,7 +169,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Turmas ativas")
         self.assertContains(response, "Adulto")
-        self.assertContains(response, "Jiu Jitsu · Adulto", count=1)
+        self.assertContains(response, "Jiu Jitsu - Adulto")
         self.assertContains(response, "13 horários")
         self.assertContains(response, "3 professores")
 
@@ -184,7 +184,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Segunda-feira")
         self.assertContains(response, "06:30")
         self.assertContains(response, "Professor principal")
-        self.assertContains(response, "Jiu Jitsu · Adulto", count=1)
+        self.assertContains(response, "Jiu Jitsu - Adulto")
 
     def test_class_group_list_groups_logical_classes_once(self):
         seed_class_catalog()

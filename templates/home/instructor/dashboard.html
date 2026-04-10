@@ -9,5 +9,32 @@
         <h1>Painel do professor</h1>
         <p>Área inicial reservada para docentes vinculados à academia.</p>
     </div>
+
+    <section class="panel-card dashboard-shortcuts">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Consultas</p>
+                <h2>Informações da academia</h2>
+            </div>
+        </div>
+
+        <div class="dashboard-actions-grid">
+            <a class="dashboard-action-card" href="{% url 'system:info' %}">
+                <span class="dashboard-action-meta">Consulta</span>
+                <span class="dashboard-action-title">Turmas e Horários</span>
+                <span class="dashboard-action-description">Grade de turmas, horários e professores.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:product-catalog' %}">
+                <span class="dashboard-action-meta">Estoque</span>
+                <span class="dashboard-action-title">Materiais</span>
+                <span class="dashboard-action-description">Kimonos, faixas e acessórios disponíveis.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:plan-catalog' %}">
+                <span class="dashboard-action-meta">Comercial</span>
+                <span class="dashboard-action-title">Planos</span>
+                <span class="dashboard-action-description">Mensalidades e pacotes disponíveis.</span>
+            </a>
+        </div>
+    </section>
 </section>
 {% endblock %}

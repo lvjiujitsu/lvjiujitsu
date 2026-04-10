@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}{{ plan.display_name }} | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Plano</p>
+        <h1>{{ plan.display_name }}</h1>
+        <p>{{ plan.get_billing_cycle_display }} · R$ {{ plan.price }}</p>
+    </div>
+</section>
+
+<div class="record-list">
+    <article class="record-card">
+        <div class="record-card-head">
+            <div>
+                <span class="record-card-name">Dados do plano</span>
+            </div>
+            <span class="record-card-badge">{{ plan.is_active|yesno:"Ativo,Inativo" }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Código</span>
+            <span class="record-card-val">{{ plan.code }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Ciclo</span>
+            <span class="record-card-val">{{ plan.get_billing_cycle_display }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Preço</span>
+            <span class="record-card-val">R$ {{ plan.price }}</span>
+        </div>
+        {% if plan.description %}
+        <div class="record-card-row">
+            <span class="record-card-label">Descrição</span>
+            <span class="record-card-val">{{ plan.description }}</span>
+        </div>
+        {% endif %}
+        <div class="record-card-actions">
+            <a href="{% url 'system:plan-update' plan.pk %}">Editar</a>
+            <a class="danger-link" href="{% url 'system:plan-delete' plan.pk %}">Excluir</a>
+        </div>
+    </article>
+</div>
+{% endblock %}

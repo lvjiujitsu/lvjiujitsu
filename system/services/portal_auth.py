@@ -94,6 +94,13 @@ def create_password_reset_token(cpf: str, request) -> None:
     if access_account is None or not access_account.person.email:
         return
 
+    now = timezone.now()
+    PortalPasswordResetToken.objects.filter(
+        access_account=access_account,
+        used_at__isnull=True,
+        expires_at__gt=now,
+    ).update(used_at=now, updated_at=now)
+
     reset_token = PortalPasswordResetToken.objects.create(
         access_account=access_account,
     )
@@ -136,6 +143,12 @@ def reset_portal_password(reset_token: PortalPasswordResetToken, new_password: s
         update_fields=("password_hash", "password_updated_at", "failed_login_attempts", "updated_at")
     )
     reset_token.mark_as_used()
+    now = timezone.now()
+    PortalPasswordResetToken.objects.filter(
+        access_account=access_account,
+        used_at__isnull=True,
+        expires_at__gt=now,
+    ).exclude(pk=reset_token.pk).update(used_at=now, updated_at=now)
 
 
 def _authenticate_local_portal_account(identifier: str, password: str):

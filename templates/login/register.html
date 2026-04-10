@@ -6,24 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260410-05">
 </head>
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-inner" aria-label="Tela de cadastro">
-      <div class="screen-tools-with-draft">
+      <div class="screen-tools-triple">
         <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
-        <div class="screen-tools-right">
-          <div class="draft-note-minimal is-hidden" data-registration-draft-note>
-            <span data-registration-draft-label>Rascunho salvo</span>
-            <button class="text-link text-button text-button-danger" type="button" data-registration-discard>Descartar</button>
-          </div>
-          <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
-            <span class="theme-toggle-track">
-              <span class="theme-toggle-knob"></span>
-            </span>
-          </button>
+        <div class="draft-note-minimal is-hidden" data-registration-draft-note>
+          <span data-registration-draft-label>Rascunho salvo</span>
+          <button class="text-link text-button text-button-danger" type="button" data-registration-discard>Descartar</button>
         </div>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Alternar tema">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-knob"></span>
+          </span>
+        </button>
       </div>
 
       <div class="inner-header inner-header-horizontal">
@@ -43,7 +41,7 @@
         <input type="hidden" id="extra-dependents-payload" name="extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default_if_none:'' }}">
 
         {% if messages %}
-          <div class="status-stack" role="status">
+          <div class="status-stack" role="status" data-server-status>
             {% for message in messages %}
               <div class="status-message">{{ message }}</div>
             {% endfor %}
@@ -51,10 +49,14 @@
         {% endif %}
 
         {% if form.errors %}
-          <div class="form-errors" role="alert">
+          <div class="form-errors" role="alert" data-server-errors>
             {% for field_name, error_list in form.errors.items %}
               {% for error in error_list %}
-                <p>{{ error }}</p>
+                {% if field_name == "__all__" %}
+                  <p>{{ error }}</p>
+                {% else %}
+                  <p><strong>{{ field_name|capfirst }}:</strong> {{ error }}</p>
+                {% endif %}
               {% endfor %}
             {% endfor %}
           </div>
@@ -220,7 +222,7 @@
                     {% endfor %}
                   </select>
                 </label>
-                <label class="field field-full" for="dependent-kinship-other-label">
+                <label class="field field-full{% if form.dependent_kinship_type.value != 'other' %} is-hidden{% endif %}" for="dependent-kinship-other-label" data-kinship-other-wrapper="dependent_kinship_type"{% if form.dependent_kinship_type.value != 'other' %} hidden{% endif %}>
                   <span>Parentesco (quando "Outro")</span>
                   <input id="dependent-kinship-other-label" name="dependent_kinship_other_label" type="text" placeholder="Informe o parentesco" value="{{ form.dependent_kinship_other_label.value|default_if_none:'' }}">
                 </label>
@@ -324,7 +326,7 @@
                     {% endfor %}
                   </select>
                 </label>
-                <label class="field field-full" for="student-kinship-other-label">
+                <label class="field field-full{% if form.student_kinship_type.value != 'other' %} is-hidden{% endif %}" for="student-kinship-other-label" data-kinship-other-wrapper="student_kinship_type"{% if form.student_kinship_type.value != 'other' %} hidden{% endif %}>
                   <span>Parentesco (quando "Outro")</span>
                   <input id="student-kinship-other-label" name="student_kinship_other_label" type="text" placeholder="Informe o parentesco" value="{{ form.student_kinship_other_label.value|default_if_none:'' }}">
                 </label>
@@ -343,6 +345,33 @@
                   </div>
                 </label>
               </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: GUARDIAN DEPENDENT COUNT -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="dependent-count" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa 3</span>
+                <h2 class="section-title" data-panel-title>Quantidade de dependentes</h2>
+              </div>
+              <section class="sub-choice-panel dependent-count-panel">
+                <label class="field field-full" for="dependent-count">
+                  <span>Quantidade de dependentes</span>
+                  <select id="dependent-count" name="dependent_count" data-dependent-count>
+                    <option value="1">1 dependente</option>
+                    <option value="2">2 dependentes</option>
+                    <option value="3">3 dependentes</option>
+                    <option value="4">4 dependentes</option>
+                    <option value="5">5 dependentes</option>
+                  </select>
+                </label>
+                <p class="dependent-count-help" data-dependent-count-help>
+                  As etapas de dependente serão ajustadas para 1 dependente.
+                </p>
+              </section>
             </section>
           </section>
 
@@ -400,6 +429,30 @@
                 <label class="field field-full" for="holder-emergency-contact">
                   <span>Contato de emergência</span>
                   <input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="holder-martial-art">
+                  <span>Já praticou arte marcial?</span>
+                  <select id="holder-martial-art" name="holder_martial_art" data-martial-art-select data-martial-prefix="holder">
+                    {% for choice_value, choice_label in form.holder_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.holder_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if not form.holder_martial_art.value or form.holder_martial_art.value == 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-martial-art-graduation" data-non-jiu-jitsu-only-wrapper="holder"{% if not form.holder_martial_art.value or form.holder_martial_art.value == 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graduação/nível na modalidade</span>
+                  <input id="holder-martial-art-graduation" name="holder_martial_art_graduation" type="text" placeholder="Ex.: iniciante, avançado, 2º kyu..." value="{{ form.holder_martial_art_graduation.value|default_if_none:'' }}">
+                </label>
+                <label class="field{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-jiu-jitsu-belt" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Faixa no Jiu Jitsu</span>
+                  <select id="holder-jiu-jitsu-belt" name="holder_jiu_jitsu_belt">
+                    {% for choice_value, choice_label in form.holder_jiu_jitsu_belt.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.holder_jiu_jitsu_belt.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-jiu-jitsu-stripes" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graus na faixa (0 a 4)</span>
+                  <input id="holder-jiu-jitsu-stripes" name="holder_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.holder_jiu_jitsu_stripes.value|default_if_none:'' }}">
                 </label>
               </div>
             </section>
@@ -460,6 +513,30 @@
                   <span>Contato de emergência</span>
                   <input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}">
                 </label>
+                <label class="field" for="dependent-martial-art">
+                  <span>Já praticou arte marcial?</span>
+                  <select id="dependent-martial-art" name="dependent_martial_art" data-martial-art-select data-martial-prefix="dependent">
+                    {% for choice_value, choice_label in form.dependent_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.dependent_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if not form.dependent_martial_art.value or form.dependent_martial_art.value == 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-martial-art-graduation" data-non-jiu-jitsu-only-wrapper="dependent"{% if not form.dependent_martial_art.value or form.dependent_martial_art.value == 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graduação/nível na modalidade</span>
+                  <input id="dependent-martial-art-graduation" name="dependent_martial_art_graduation" type="text" placeholder="Ex.: iniciante, avançado, 2º kyu..." value="{{ form.dependent_martial_art_graduation.value|default_if_none:'' }}">
+                </label>
+                <label class="field{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-jiu-jitsu-belt" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Faixa no Jiu Jitsu</span>
+                  <select id="dependent-jiu-jitsu-belt" name="dependent_jiu_jitsu_belt">
+                    {% for choice_value, choice_label in form.dependent_jiu_jitsu_belt.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.dependent_jiu_jitsu_belt.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-jiu-jitsu-stripes" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graus na faixa (0 a 4)</span>
+                  <input id="dependent-jiu-jitsu-stripes" name="dependent_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.dependent_jiu_jitsu_stripes.value|default_if_none:'' }}">
+                </label>
               </div>
             </section>
           </section>
@@ -518,6 +595,30 @@
                 <label class="field field-full" for="student-emergency-contact">
                   <span>Contato de emergência</span>
                   <input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}">
+                </label>
+                <label class="field" for="student-martial-art">
+                  <span>Já praticou arte marcial?</span>
+                  <select id="student-martial-art" name="student_martial_art" data-martial-art-select data-martial-prefix="student">
+                    {% for choice_value, choice_label in form.student_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.student_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if not form.student_martial_art.value or form.student_martial_art.value == 'jiu_jitsu' %} is-hidden{% endif %}" for="student-martial-art-graduation" data-non-jiu-jitsu-only-wrapper="student"{% if not form.student_martial_art.value or form.student_martial_art.value == 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graduação/nível na modalidade</span>
+                  <input id="student-martial-art-graduation" name="student_martial_art_graduation" type="text" placeholder="Ex.: iniciante, avançado, 2º kyu..." value="{{ form.student_martial_art_graduation.value|default_if_none:'' }}">
+                </label>
+                <label class="field{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="student-jiu-jitsu-belt" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Faixa no Jiu Jitsu</span>
+                  <select id="student-jiu-jitsu-belt" name="student_jiu_jitsu_belt">
+                    {% for choice_value, choice_label in form.student_jiu_jitsu_belt.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.student_jiu_jitsu_belt.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="student-jiu-jitsu-stripes" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Graus na faixa (0 a 4)</span>
+                  <input id="student-jiu-jitsu-stripes" name="student_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.student_jiu_jitsu_stripes.value|default_if_none:'' }}">
                 </label>
               </div>
             </section>
@@ -578,6 +679,50 @@
               </div>
             </section>
           </section>
+
+          <section class="wizard-step is-hidden" data-panel="plan-materials" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Plano e Materiais</h2>
+              </div>
+
+              <div class="checkout-section">
+                <h3 class="checkout-section-title">Escolha seu plano</h3>
+                <p class="checkout-section-description">Selecione o plano de mensalidade desejado.</p>
+                <div class="checkout-plan-list" data-plan-list>
+                </div>
+                <input type="hidden" name="selected_plan" id="selected-plan" value="">
+              </div>
+
+              <div class="checkout-section">
+                <h3 class="checkout-section-title">Materiais (opcional)</h3>
+                <p class="checkout-section-description">Adicione kimonos, faixas ou acessórios ao seu cadastro.</p>
+                <div class="checkout-product-list" data-product-list>
+                </div>
+                <input type="hidden" name="selected_products_payload" id="selected-products-payload" value="[]">
+              </div>
+            </section>
+          </section>
+
+          <section class="wizard-step is-hidden" data-panel="summary" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Resumo</h2>
+              </div>
+
+              <div class="checkout-summary">
+                <h3 class="checkout-section-title">Resumo do cadastro</h3>
+                <div class="checkout-summary-items" data-summary-items>
+                </div>
+                <div class="checkout-summary-total">
+                  <span class="checkout-total-label">Total</span>
+                  <span class="checkout-total-value" data-summary-total>R$ 0,00</span>
+                </div>
+              </div>
+            </section>
+          </section>
         </div>
 
         <div class="wizard-actions">
@@ -590,10 +735,12 @@
 
     <script id="registration-catalog" type="application/json">{{ registration_catalog_json|safe }}</script>
     <script id="ibjjf-age-categories" type="application/json">{{ ibjjf_categories_json|safe }}</script>
+    <script id="plan-catalog" type="application/json">{{ plan_catalog_json|safe }}</script>
+    <script id="product-catalog" type="application/json">{{ product_catalog_json|safe }}</script>
   </main>
 
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260408-02"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260410-11"></script>
 </body>
 </html>

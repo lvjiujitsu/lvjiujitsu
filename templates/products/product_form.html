@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Produto | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Gestão de materiais</p>
+        <h1>{% if object %}Editar produto{% else %}Cadastrar produto{% endif %}</h1>
+    </div>
+</section>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    {{ variant_formset.management_form }}
+
+    {% if form.non_field_errors %}
+        <div class="alert error">{{ form.non_field_errors|join:", " }}</div>
+    {% endif %}
+
+    <div class="catalog-field-grid">
+        {% for field in form %}
+            <div class="field-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="field-help">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="field-error">{{ field.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <section class="catalog-section-card catalog-section-card--full">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Estoque</p>
+                <h2>Variantes (tamanho / cor / estoque)</h2>
+            </div>
+        </div>
+
+        {% if variant_formset.non_form_errors %}
+            <div class="alert error">{{ variant_formset.non_form_errors|join:", " }}</div>
+        {% endif %}
+
+        <div class="schedule-form-list">
+            {% for vf in variant_formset %}
+                <article class="schedule-row-card">
+                    {% for hidden in vf.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+                    <div class="schedule-row-grid">
+                        {% for field in vf.visible_fields %}
+                            <div class="field-group field-group-compact {% if field.name == 'DELETE' %}field-group-delete{% endif %}">
+                                <label for="{{ field.id_for_label }}">
+                                    {% if field.name == "DELETE" %}Remover{% else %}{{ field.label }}{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="field-error">{{ field.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="button-row catalog-button-row">
+        <a class="ghost-link" href="{% url 'system:product-list' %}">Cancelar</a>
+        <button type="submit" class="primary-button">Salvar</button>
+    </div>
+</form>
+{% endblock %}

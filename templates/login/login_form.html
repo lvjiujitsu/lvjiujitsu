@@ -97,6 +97,8 @@
         return;
       }
       try {
+        window.sessionStorage.setItem('lv-registration-completed', '1');
+        window.localStorage.removeItem('lv-register-draft-clean');
         window.localStorage.removeItem('lv-register-draft-v1');
       } catch (_error) {
         return;

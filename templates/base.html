@@ -51,6 +51,8 @@
                         <a class="drawer-item" href="{% url 'system:class-category-list' %}">Categorias</a>
                         <a class="drawer-item" href="{% url 'system:class-group-list' %}">Turmas</a>
                         <a class="drawer-item" href="{% url 'system:class-schedule-list' %}">Horários</a>
+                        <a class="drawer-item" href="{% url 'system:product-list' %}">Materiais</a>
+                        <a class="drawer-item" href="{% url 'system:plan-list' %}">Planos</a>
                         {% if request.portal_is_technical_admin %}
                             <div class="drawer-sep">Técnico</div>
                             <a class="drawer-item" href="/django-admin/">Django Admin</a>

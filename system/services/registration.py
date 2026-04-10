@@ -3,6 +3,7 @@ import json
 from django.db import transaction
 
 from system.services.class_overview import resolve_class_group_selection
+from system.services.registration_checkout import create_registration_order
 from system.models import (
     ClassEnrollment,
     EnrollmentStatus,
@@ -51,9 +52,13 @@ def create_portal_registration(cleaned_data):
         person_types = ensure_default_person_types()
         profile = cleaned_data["registration_profile"]
         if profile == "holder":
-            return _create_holder_registration(cleaned_data, person_types)
+            result = _create_holder_registration(cleaned_data, person_types)
+            create_registration_order(result["holder"], cleaned_data)
+            return result
         if profile == "guardian":
-            return _create_guardian_registration(cleaned_data, person_types)
+            result = _create_guardian_registration(cleaned_data, person_types)
+            create_registration_order(result["guardian"], cleaned_data)
+            return result
         return _create_other_registration(cleaned_data, person_types)
 
 
@@ -134,6 +139,10 @@ def _create_holder_registration(cleaned_data, person_types):
         allergies=cleaned_data.get("holder_allergies", ""),
         previous_injuries=cleaned_data.get("holder_injuries", ""),
         emergency_contact=cleaned_data.get("holder_emergency_contact", ""),
+        martial_art=cleaned_data.get("holder_martial_art", ""),
+        martial_art_graduation=cleaned_data.get("holder_martial_art_graduation", ""),
+        jiu_jitsu_belt=cleaned_data.get("holder_jiu_jitsu_belt", ""),
+        jiu_jitsu_stripes=cleaned_data.get("holder_jiu_jitsu_stripes"),
         class_groups=cleaned_data.get("holder_class_groups", []),
     )
     created_people = {"holder": holder}
@@ -159,6 +168,10 @@ def _create_holder_registration(cleaned_data, person_types):
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),
             emergency_contact=dependent_payload.get("emergency_contact", ""),
+            martial_art=dependent_payload.get("martial_art", ""),
+            martial_art_graduation=dependent_payload.get("martial_art_graduation", ""),
+            jiu_jitsu_belt=dependent_payload.get("jiu_jitsu_belt", ""),
+            jiu_jitsu_stripes=dependent_payload.get("jiu_jitsu_stripes"),
             class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
@@ -205,6 +218,10 @@ def _create_guardian_registration(cleaned_data, person_types):
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),
             emergency_contact=dependent_payload.get("emergency_contact", ""),
+            martial_art=dependent_payload.get("martial_art", ""),
+            martial_art_graduation=dependent_payload.get("martial_art_graduation", ""),
+            jiu_jitsu_belt=dependent_payload.get("jiu_jitsu_belt", ""),
+            jiu_jitsu_stripes=dependent_payload.get("jiu_jitsu_stripes"),
             class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
@@ -253,6 +270,10 @@ def _create_person_with_account(
     allergies="",
     previous_injuries="",
     emergency_contact="",
+    martial_art="",
+    martial_art_graduation="",
+    jiu_jitsu_belt="",
+    jiu_jitsu_stripes=None,
     class_category=None,
     class_groups=None,
 ):
@@ -268,6 +289,10 @@ def _create_person_with_account(
         allergies=allergies,
         previous_injuries=previous_injuries,
         emergency_contact=emergency_contact,
+        martial_art=martial_art,
+        martial_art_graduation=martial_art_graduation,
+        jiu_jitsu_belt=jiu_jitsu_belt,
+        jiu_jitsu_stripes=jiu_jitsu_stripes,
         person_type=person_type,
         class_category=primary_group.class_category if primary_group else class_category,
         class_group=primary_group,
@@ -304,6 +329,10 @@ def _build_primary_dependent_payload(cleaned_data, prefix):
             "allergies": cleaned_data.get(f"{prefix}_allergies", ""),
             "previous_injuries": cleaned_data.get(f"{prefix}_injuries", ""),
             "emergency_contact": cleaned_data.get(f"{prefix}_emergency_contact", ""),
+            "martial_art": cleaned_data.get(f"{prefix}_martial_art", ""),
+            "martial_art_graduation": cleaned_data.get(f"{prefix}_martial_art_graduation", ""),
+            "jiu_jitsu_belt": cleaned_data.get(f"{prefix}_jiu_jitsu_belt", ""),
+            "jiu_jitsu_stripes": cleaned_data.get(f"{prefix}_jiu_jitsu_stripes"),
             "class_groups": cleaned_data.get(f"{prefix}_class_groups", []),
             "kinship_type": cleaned_data.get(f"{prefix}_kinship_type", ""),
             "kinship_other_label": cleaned_data.get(f"{prefix}_kinship_other_label", ""),

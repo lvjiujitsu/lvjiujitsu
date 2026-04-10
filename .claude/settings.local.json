@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(.venv/Scripts/python.exe:*)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "WebFetch(domain:lvjiujitsu.sumupstore.com)",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py makemigrations system)"
     ]
   }
 }

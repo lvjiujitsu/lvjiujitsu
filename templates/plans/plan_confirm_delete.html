@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir plano | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="form-card">
+    <p class="form-eyebrow">Gestão de planos</p>
+    <h1>Excluir plano</h1>
+    <p class="danger-copy">Confirme a exclusão de <strong>{{ plan.display_name }}</strong>.</p>
+    <form method="post" class="button-row">
+        {% csrf_token %}
+        <a class="ghost-link" href="{% url 'system:plan-list' %}">Cancelar</a>
+        <button type="submit" class="danger-button">Excluir</button>
+    </form>
+</section>
+{% endblock %}
