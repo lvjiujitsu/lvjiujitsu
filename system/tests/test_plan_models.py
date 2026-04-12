@@ -47,12 +47,12 @@ class SubscriptionPlanModelTestCase(TestCase):
 class SeedPlansTestCase(TestCase):
     def test_seed_plans_count(self):
         result = seed_plans()
-        self.assertEqual(len(result), 4)
+        self.assertEqual(len(result), 3)
 
     def test_seed_plans_idempotent(self):
         seed_plans()
         seed_plans()
-        self.assertEqual(SubscriptionPlan.objects.count(), 4)
+        self.assertEqual(SubscriptionPlan.objects.count(), 3)
 
     def test_seed_plans_prices(self):
         seed_plans()
@@ -62,5 +62,3 @@ class SeedPlansTestCase(TestCase):
         self.assertEqual(irmaos.price, Decimal("225.00"))
         trimestral = SubscriptionPlan.objects.get(code="trimestral")
         self.assertEqual(trimestral.price, Decimal("675.00"))
-        desconto = SubscriptionPlan.objects.get(code="mensal-desconto")
-        self.assertEqual(desconto.price, Decimal("450.00"))

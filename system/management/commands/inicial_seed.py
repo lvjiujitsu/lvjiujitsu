@@ -10,4 +10,5 @@ class Command(BaseCommand):
         call_command("seed_class_catalog", stdout=self.stdout)
         call_command("seed_products", stdout=self.stdout)
         call_command("seed_plans", stdout=self.stdout)
+        call_command("seed_holidays", stdout=self.stdout)
         self.stdout.write(self.style.SUCCESS("Seed inicial concluida com sucesso."))

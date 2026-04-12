@@ -738,14 +738,6 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
         "description": "Pagamento trimestral com desconto sobre o mensal.",
         "display_order": 3,
     },
-    {
-        "code": "mensal-desconto",
-        "display_name": "Plano Mensal com Desconto",
-        "billing_cycle": "monthly",
-        "price": "450.00",
-        "description": "Condição especial de mensalidade.",
-        "display_order": 4,
-    },
 )
 
 

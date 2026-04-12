@@ -1,6 +1,8 @@
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import RedirectView, TemplateView
 
+from system.services.class_calendar import get_today_classes_for_person
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
 
 
@@ -42,3 +44,19 @@ class InstructorHomeView(PortalRoleRequiredMixin, TemplateView):
 class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
     allowed_codes = ("student", "guardian", "dependent")
     template_name = "home/student/dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        person = getattr(self.request, "portal_person", None)
+        if person:
+            context["today_classes"] = get_today_classes_for_person(person)
+        else:
+            context["today_classes"] = []
+        today = timezone.localdate()
+        weekdays_pt = {
+            0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira",
+            3: "Quinta-feira", 4: "Sexta-feira", 5: "Sábado", 6: "Domingo",
+        }
+        context["today_weekday"] = weekdays_pt.get(today.weekday(), "")
+        context["today_date"] = today.strftime("%d/%m/%Y")
+        return context

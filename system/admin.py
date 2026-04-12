@@ -13,6 +13,9 @@ from system.models import (
     PersonType,
     PortalAccount,
     PortalPasswordResetToken,
+    ClassCheckin,
+    ClassSession,
+    Holiday,
     Product,
     ProductCategory,
     ProductVariant,
@@ -250,6 +253,29 @@ class RegistrationOrderAdmin(admin.ModelAdmin):
     search_fields = ("person__full_name", "person__cpf")
     autocomplete_fields = ("person", "plan")
     inlines = [RegistrationOrderItemInline]
+
+
+@admin.register(Holiday)
+class HolidayAdmin(admin.ModelAdmin):
+    list_display = ("date", "name", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name",)
+
+
+@admin.register(ClassSession)
+class ClassSessionAdmin(admin.ModelAdmin):
+    list_display = ("schedule", "date", "status")
+    list_filter = ("status", "date")
+    search_fields = ("schedule__class_group__display_name",)
+    autocomplete_fields = ("schedule",)
+
+
+@admin.register(ClassCheckin)
+class ClassCheckinAdmin(admin.ModelAdmin):
+    list_display = ("person", "session", "checked_in_at")
+    list_filter = ("checked_in_at",)
+    search_fields = ("person__full_name", "person__cpf")
+    autocomplete_fields = ("person", "session")
 
 
 @admin.register(ClassEnrollment)

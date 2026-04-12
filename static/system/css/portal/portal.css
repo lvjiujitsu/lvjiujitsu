@@ -494,3 +494,427 @@ html[data-theme="dark"] .theme-btn::before {
     color: rgba(255,255,255,0.78);
   }
 }
+
+
+/* ========== Today's classes (student dashboard) ========== */
+
+.today-class-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.today-class-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  transition: border-color 0.15s;
+}
+
+.today-class-card--cancelled {
+  opacity: 0.55;
+}
+
+.today-class-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+}
+
+.today-class-hour {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.today-class-duration {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.today-class-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.today-class-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.today-class-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.today-class-teacher {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.today-class-cancelled-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger, #dc2626);
+}
+
+.today-class-action {
+  flex-shrink: 0;
+}
+
+.today-class-checkin-btn {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent, #2563eb);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.today-class-checkin-btn:hover { opacity: 0.85; }
+.today-class-checkin-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.today-class-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.today-class-status-icon--done {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.today-class-status-icon--cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.today-class-empty {
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+
+/* ========== Calendar (mobile-first: mini-calendar + detail panel) ========== */
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.calendar-nav-btn:hover { background: var(--silver); }
+
+.calendar-nav-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Grid layout (always 7 columns) */
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.calendar-header span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0.3rem 0;
+}
+
+.calendar-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+/* Cell base — compact, tappable */
+.calendar-cell {
+  padding: 6px 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-cell--empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.calendar-cell--today .calendar-day-number {
+  background: var(--text);
+  color: var(--panel-solid);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-cell--holiday {
+  background: #fef3c7;
+}
+
+[data-theme="dark"] .calendar-cell--holiday {
+  background: rgba(254, 243, 199, 0.1);
+}
+
+.calendar-cell--selected {
+  border-color: var(--text);
+  background: var(--surface);
+}
+
+.calendar-day-number {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+/* Dots — activity indicators below day numbers */
+.calendar-dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.calendar-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent, #2563eb);
+  flex-shrink: 0;
+}
+
+.calendar-dot--cancelled { background: var(--muted); }
+.calendar-dot--holiday { background: var(--danger, #dc2626); }
+
+/* Pills — hidden on mobile, shown on desktop */
+.calendar-class-pill {
+  display: none;
+  gap: 0.2rem;
+  align-items: baseline;
+  padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+  background: var(--accent, #2563eb);
+  color: #fff;
+  font-size: 0.6rem;
+  line-height: 1.2;
+  border: none;
+  cursor: default;
+  text-align: left;
+  width: 100%;
+}
+
+.calendar-class-pill--admin { cursor: pointer; transition: opacity 0.15s; }
+.calendar-class-pill--admin:hover { opacity: 0.8; }
+
+.calendar-class-pill--cancelled {
+  background: var(--muted);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.calendar-class-time { font-weight: 700; }
+.calendar-class-name { font-weight: 400; }
+.calendar-class-cancel-tag { font-size: 0.55rem; font-weight: 600; text-decoration: none; }
+
+.calendar-holiday-label {
+  display: none;
+  font-size: 0.6rem;
+  color: var(--danger, #dc2626);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/* ---------- Day detail panel ---------- */
+.calendar-day-detail {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.calendar-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-solid);
+}
+
+.calendar-detail-weekday {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.calendar-detail-date {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.calendar-detail-body {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.calendar-detail-holiday {
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: var(--danger, #dc2626);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .calendar-detail-holiday {
+  background: rgba(254, 243, 199, 0.1);
+}
+
+.calendar-detail-class {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-solid);
+}
+
+.calendar-detail-class--cancelled { opacity: 0.55; }
+.calendar-detail-class--cancelled .calendar-detail-name { text-decoration: line-through; }
+
+.calendar-detail-time {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 42px;
+}
+
+.calendar-detail-name {
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.calendar-detail-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.calendar-detail-toggle-btn {
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-detail-toggle-btn:hover {
+  background: var(--text);
+  color: var(--panel-solid);
+}
+
+.calendar-detail-toggle-btn--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: rgba(180,35,24,0.18);
+}
+
+.calendar-detail-toggle-btn--danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.calendar-detail-empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---------- Desktop: show pills, hide dots ---------- */
+@media (min-width: 640px) {
+  .calendar-cell {
+    min-height: 80px;
+    padding: 0.35rem;
+    align-items: flex-start;
+  }
+
+  .calendar-dots { display: none; }
+
+  .calendar-class-pill { display: flex; }
+
+  .calendar-holiday-label { display: block; }
+}

@@ -1,7 +1,9 @@
 from django.urls import path
 
 from system.views import (
+    AdminCalendarView,
     AdminHomeView,
+    AdminToggleSessionView,
     AdministrativeHomeView,
     ClassCategoryCreateView,
     ClassCategoryDeleteView,
@@ -52,7 +54,9 @@ from system.views import (
     ProductDetailView,
     ProductListView,
     ProductUpdateView,
+    StudentCheckinView,
     StudentHomeView,
+    StudentScheduleView,
 )
 
 
@@ -79,6 +83,12 @@ urlpatterns = [
     path("home/administrative/", AdministrativeHomeView.as_view(), name="administrative-home"),
     path("home/instructor/", InstructorHomeView.as_view(), name="instructor-home"),
     path("home/student/", StudentHomeView.as_view(), name="student-home"),
+    path("schedule/", StudentScheduleView.as_view(), name="student-schedule"),
+    path("schedule/<int:year>/<int:month>/", StudentScheduleView.as_view(), name="student-schedule-month"),
+    path("checkin/", StudentCheckinView.as_view(), name="student-checkin"),
+    path("admin-calendar/", AdminCalendarView.as_view(), name="admin-calendar"),
+    path("admin-calendar/<int:year>/<int:month>/", AdminCalendarView.as_view(), name="admin-calendar-month"),
+    path("admin-calendar/toggle-session/", AdminToggleSessionView.as_view(), name="admin-toggle-session"),
     path("class-categories/", ClassCategoryListView.as_view(), name="class-category-list"),
     path("class-categories/create/", ClassCategoryCreateView.as_view(), name="class-category-create"),
     path("class-categories/<int:pk>/", ClassCategoryDetailView.as_view(), name="class-category-detail"),

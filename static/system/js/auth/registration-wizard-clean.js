@@ -161,11 +161,18 @@
       panelSelector: '[data-panel="other"]',
       requiredFields: ['other_name', 'other_cpf', 'other_birthdate', 'other_password', 'other_password_confirm']
     },
-    plan_materials: {
-      key: 'plan_materials',
+    plan: {
+      key: 'plan',
       label: 'Plano',
-      title: 'Plano e Materiais',
-      panelSelector: '[data-panel="plan-materials"]',
+      title: 'Escolha seu plano',
+      panelSelector: '[data-panel="plan"]',
+      requiredFields: []
+    },
+    materials: {
+      key: 'materials',
+      label: 'Materiais',
+      title: 'Materiais',
+      panelSelector: '[data-panel="materials"]',
       requiredFields: []
     },
     summary: {
@@ -202,7 +209,8 @@
         steps.push(buildDependentStep(STEP_DEFINITIONS.student_medical, guardianDependentIndex, dependentCount, 'student', 'Pront.'));
       }
       trimExtraDependentsToCount(dependentCount);
-      steps.push(STEP_DEFINITIONS.plan_materials);
+      steps.push(STEP_DEFINITIONS.plan);
+      steps.push(STEP_DEFINITIONS.materials);
       steps.push(STEP_DEFINITIONS.summary);
     } else if (profile === 'holder') {
       if (hasDependentFlow) {
@@ -224,7 +232,8 @@
         steps.push(STEP_DEFINITIONS.holder_medical);
         trimExtraDependentsToCount(1);
       }
-      steps.push(STEP_DEFINITIONS.plan_materials);
+      steps.push(STEP_DEFINITIONS.plan);
+      steps.push(STEP_DEFINITIONS.materials);
       steps.push(STEP_DEFINITIONS.summary);
     } else {
       trimExtraDependentsToCount(1);
@@ -319,8 +328,10 @@
     });
 
     // Render checkout panels when active
-    if (currentStep.key === 'plan_materials') {
+    if (currentStep.key === 'plan') {
       renderPlanList();
+    }
+    if (currentStep.key === 'materials') {
       renderProductList();
     }
     if (currentStep.key === 'summary') {

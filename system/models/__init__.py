@@ -1,3 +1,4 @@
+from .calendar import ClassCheckin, ClassSession, Holiday, SessionStatus
 from .category import CategoryAudience, ClassCategory, IbjjfAgeCategory
 from .class_group import ClassGroup
 from .class_membership import (
@@ -29,11 +30,14 @@ __all__ = [
     "BloodType",
     "CategoryAudience",
     "ClassCategory",
+    "ClassCheckin",
     "ClassEnrollment",
     "ClassGroup",
     "ClassInstructorAssignment",
     "ClassSchedule",
+    "ClassSession",
     "EnrollmentStatus",
+    "Holiday",
     "IbjjfAgeCategory",
     "JiuJitsuBelt",
     "MartialArt",
@@ -48,6 +52,7 @@ __all__ = [
     "ProductVariant",
     "RegistrationOrder",
     "RegistrationOrderItem",
+    "SessionStatus",
     "SubscriptionPlan",
     "TimeStampedModel",
     "TrainingStyle",

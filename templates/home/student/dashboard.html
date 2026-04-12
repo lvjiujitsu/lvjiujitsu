@@ -7,22 +7,70 @@
     <div class="panel-card">
         <p class="panel-eyebrow">Área do aluno</p>
         <h1>Painel do aluno</h1>
-        <p>Área inicial reservada para alunos e responsáveis vinculados ao portal.</p>
+        <p>{{ today_weekday }}, {{ today_date }}</p>
     </div>
+
+    <section class="panel-card">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Hoje</p>
+                <h2>Aulas do dia</h2>
+            </div>
+            <a class="ghost-button" href="{% url 'system:student-schedule' %}">Ver cronograma</a>
+        </div>
+
+        {% if today_classes %}
+            <div class="today-class-list">
+                {% for entry in today_classes %}
+                    <div class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %}" data-schedule-id="{{ entry.schedule.pk }}">
+                        <div class="today-class-time">
+                            <span class="today-class-hour">{{ entry.start_time }}</span>
+                            <span class="today-class-duration">{{ entry.duration_minutes }} min</span>
+                        </div>
+                        <div class="today-class-info">
+                            <span class="today-class-name">{{ entry.group_name }}</span>
+                            <span class="today-class-meta">{{ entry.category_name }} · {{ entry.training_style }}</span>
+                            {% if entry.teacher_name %}
+                                <span class="today-class-teacher">Prof. {{ entry.teacher_name }}</span>
+                            {% endif %}
+                            {% if entry.is_cancelled %}
+                                <span class="today-class-cancelled-badge">Cancelada{% if entry.cancellation_reason %} — {{ entry.cancellation_reason }}{% endif %}</span>
+                            {% endif %}
+                        </div>
+                        <div class="today-class-action">
+                            {% if entry.is_cancelled %}
+                                <span class="today-class-status-icon today-class-status-icon--cancelled" title="Aula cancelada">&#10005;</span>
+                            {% elif entry.has_checked_in %}
+                                <span class="today-class-status-icon today-class-status-icon--done" title="Check-in realizado">&#10003;</span>
+                            {% else %}
+                                <button class="today-class-checkin-btn" type="button" data-checkin-btn data-schedule-id="{{ entry.schedule.pk }}" title="Fazer check-in">
+                                    Check-in
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="today-class-empty">
+                <p>Nenhuma aula agendada para hoje.</p>
+            </div>
+        {% endif %}
+    </section>
 
     <section class="panel-card dashboard-shortcuts">
         <div class="dashboard-section-heading">
             <div>
-                <p class="panel-eyebrow">Consultas</p>
-                <h2>Informações da academia</h2>
+                <p class="panel-eyebrow">Atalhos</p>
+                <h2>Acesso rápido</h2>
             </div>
         </div>
 
         <div class="dashboard-actions-grid">
-            <a class="dashboard-action-card" href="{% url 'system:info' %}">
-                <span class="dashboard-action-meta">Consulta</span>
-                <span class="dashboard-action-title">Turmas e Horários</span>
-                <span class="dashboard-action-description">Grade de turmas, horários e professores.</span>
+            <a class="dashboard-action-card" href="{% url 'system:student-schedule' %}">
+                <span class="dashboard-action-meta">Agenda</span>
+                <span class="dashboard-action-title">Cronograma</span>
+                <span class="dashboard-action-description">Calendário de aulas, feriados e cancelamentos.</span>
             </a>
             <a class="dashboard-action-card" href="{% url 'system:product-catalog' %}">
                 <span class="dashboard-action-meta">Estoque</span>
@@ -37,4 +85,53 @@
         </div>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+  var buttons = document.querySelectorAll('[data-checkin-btn]');
+  buttons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var scheduleId = btn.dataset.scheduleId;
+      btn.disabled = true;
+      btn.textContent = '...';
+      fetch('{% url "system:student-checkin" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')
+            ? document.querySelector('[name=csrfmiddlewaretoken]').value
+            : getCookie('csrftoken')
+        },
+        body: JSON.stringify({ schedule_id: scheduleId })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          var icon = document.createElement('span');
+          icon.className = 'today-class-status-icon today-class-status-icon--done';
+          icon.title = 'Check-in realizado';
+          icon.innerHTML = '&#10003;';
+          btn.parentNode.replaceChild(icon, btn);
+        } else {
+          btn.textContent = data.error || 'Erro';
+          btn.disabled = false;
+        }
+      })
+      .catch(function() {
+        btn.textContent = 'Erro';
+        btn.disabled = false;
+      });
+    });
+  });
+
+  function getCookie(name) {
+    var value = '; ' + document.cookie;
+    var parts = value.split('; ' + name + '=');
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
+})();
+</script>
 {% endblock %}

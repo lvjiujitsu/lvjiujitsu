@@ -1,3 +1,9 @@
+from .calendar_views import (
+    AdminCalendarView,
+    AdminToggleSessionView,
+    StudentCheckinView,
+    StudentScheduleView,
+)
 from .auth_views import (
     ChromeDevtoolsProbeView,
     PortalHomeView,
@@ -67,6 +73,8 @@ from .person_views import (
 )
 
 __all__ = [
+    "AdminCalendarView",
+    "AdminToggleSessionView",
     "AdminHomeView",
     "AdministrativeHomeView",
     "ClassCategoryCreateView",
@@ -119,5 +127,7 @@ __all__ = [
     "ProductListView",
     "ProductUpdateView",
     "RootRedirectView",
+    "StudentCheckinView",
     "StudentHomeView",
+    "StudentScheduleView",
 ]
