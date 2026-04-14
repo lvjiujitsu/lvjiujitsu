@@ -91,3 +91,57 @@ class ClassCheckin(TimeStampedModel):
 
     def __str__(self):
         return f"{self.person.full_name} — {self.session}"
+
+
+class SpecialClass(TimeStampedModel):
+    title = models.CharField("Título", max_length=120, default="Aulão")
+    date = models.DateField("Data")
+    start_time = models.TimeField("Horário de início")
+    duration_minutes = models.PositiveIntegerField("Duração (min)", default=90)
+    teacher = models.ForeignKey(
+        "system.Person",
+        on_delete=models.PROTECT,
+        related_name="special_classes_taught",
+        verbose_name="Professor",
+        null=True,
+        blank=True,
+    )
+    notes = models.CharField("Observações", max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ("date", "start_time")
+        verbose_name = "Aulão"
+        verbose_name_plural = "Aulões"
+
+    def __str__(self):
+        return f"{self.title} — {self.date.strftime('%d/%m/%Y')} {self.start_time.strftime('%H:%M')}"
+
+
+class SpecialClassCheckin(TimeStampedModel):
+    special_class = models.ForeignKey(
+        SpecialClass,
+        on_delete=models.CASCADE,
+        related_name="checkins",
+        verbose_name="Aulão",
+    )
+    person = models.ForeignKey(
+        "system.Person",
+        on_delete=models.CASCADE,
+        related_name="special_class_checkins",
+        verbose_name="Pessoa",
+    )
+    checked_in_at = models.DateTimeField("Check-in em", default=timezone.now)
+
+    class Meta:
+        ordering = ("-checked_in_at",)
+        verbose_name = "Check-in de aulão"
+        verbose_name_plural = "Check-ins de aulão"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("special_class", "person"),
+                name="unique_special_class_checkin_per_person",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.person.full_name} — {self.special_class}"

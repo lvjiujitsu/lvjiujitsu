@@ -1,8 +1,11 @@
 from .calendar_views import (
     AdminCalendarView,
+    AdminSpecialClassCreateView,
+    AdminSpecialClassDeleteView,
     AdminToggleSessionView,
     StudentCheckinView,
     StudentScheduleView,
+    StudentSpecialClassCheckinView,
 )
 from .auth_views import (
     ChromeDevtoolsProbeView,
@@ -59,6 +62,12 @@ from .product_views import (
     ProductListView,
     ProductUpdateView,
 )
+from .payment_views import (
+    CreateCheckoutSessionView,
+    PaymentCancelView,
+    PaymentSuccessView,
+    StripeWebhookView,
+)
 from .person_views import (
     PersonCreateView,
     PersonDeleteView,
@@ -74,6 +83,8 @@ from .person_views import (
 
 __all__ = [
     "AdminCalendarView",
+    "AdminSpecialClassCreateView",
+    "AdminSpecialClassDeleteView",
     "AdminToggleSessionView",
     "AdminHomeView",
     "AdministrativeHomeView",
@@ -93,7 +104,11 @@ __all__ = [
     "ClassScheduleListView",
     "ClassScheduleUpdateView",
     "ChromeDevtoolsProbeView",
+    "CreateCheckoutSessionView",
     "DashboardRedirectView",
+    "PaymentCancelView",
+    "PaymentSuccessView",
+    "StripeWebhookView",
     "InstructorHomeView",
     "PersonCreateView",
     "PersonDeleteView",
@@ -130,4 +145,5 @@ __all__ = [
     "StudentCheckinView",
     "StudentHomeView",
     "StudentScheduleView",
+    "StudentSpecialClassCheckinView",
 ]

@@ -7,7 +7,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from system.models import ClassSchedule, WeekdayCode
-from system.models.calendar import ClassCheckin, ClassSession, Holiday, SessionStatus
+from system.models.calendar import (
+    ClassCheckin,
+    ClassSession,
+    Holiday,
+    SessionStatus,
+    SpecialClass,
+    SpecialClassCheckin,
+)
 
 
 PYTHON_WEEKDAY_TO_CODE = {
@@ -30,8 +37,42 @@ def get_today_classes_for_person(person):
     ).select_related("class_group")
     enrolled_group_ids = [e.class_group_id for e in enrollments]
 
+    specials = list(
+        SpecialClass.objects.filter(date=today)
+        .select_related("teacher")
+        .order_by("start_time")
+    )
+    special_checkin_ids = set(
+        SpecialClassCheckin.objects.filter(
+            person=person,
+            special_class__in=specials,
+        ).values_list("special_class_id", flat=True)
+    )
+
+    def _special_entries():
+        entries = []
+        for sc in specials:
+            entries.append(SimpleNamespace(
+                is_special=True,
+                special_class=sc,
+                special_id=sc.pk,
+                schedule=None,
+                session=None,
+                class_group=None,
+                start_time=sc.start_time.strftime("%H:%M"),
+                duration_minutes=sc.duration_minutes,
+                training_style="",
+                teacher_name=sc.teacher.full_name if sc.teacher else "",
+                category_name="",
+                group_name=sc.title,
+                is_cancelled=False,
+                cancellation_reason="",
+                has_checked_in=sc.pk in special_checkin_ids,
+            ))
+        return entries
+
     if not enrolled_group_ids:
-        return []
+        return _special_entries()
 
     schedules = (
         ClassSchedule.objects.filter(
@@ -73,6 +114,9 @@ def get_today_classes_for_person(person):
         has_checked_in = session.pk in checkin_session_ids if session else False
 
         result.append(SimpleNamespace(
+            is_special=False,
+            special_class=None,
+            special_id=None,
             schedule=schedule,
             session=session,
             class_group=schedule.class_group,
@@ -86,6 +130,7 @@ def get_today_classes_for_person(person):
             cancellation_reason=cancellation_reason,
             has_checked_in=has_checked_in,
         ))
+    result.extend(_special_entries())
     return result
 
 
@@ -146,6 +191,14 @@ def get_calendar_month_data(year, month):
     for session in sessions:
         sessions_map.setdefault(session.date, {})[session.schedule_id] = session
 
+    specials_by_date = {}
+    for sc in (
+        SpecialClass.objects.filter(date__gte=first_day, date__lte=last_day)
+        .select_related("teacher")
+        .order_by("start_time")
+    ):
+        specials_by_date.setdefault(sc.date, []).append(sc)
+
     days = []
     for day_num in range(1, num_days + 1):
         current_date = date(year, month, day_num)
@@ -159,13 +212,36 @@ def get_calendar_month_data(year, month):
             session = day_sessions.get(schedule.pk)
             is_cancelled = (session and session.is_cancelled) or bool(holiday_name)
             class_entries.append(SimpleNamespace(
+                is_special=False,
+                special_id=None,
                 schedule_id=schedule.pk,
                 session_id=session.pk if session else None,
                 start_time=schedule.start_time.strftime("%H:%M"),
                 group_name=schedule.class_group.display_name,
                 category_name=schedule.class_group.class_category.display_name,
+                teacher_name=(
+                    schedule.class_group.main_teacher.full_name
+                    if schedule.class_group.main_teacher
+                    else ""
+                ),
                 is_cancelled=is_cancelled,
                 cancellation_reason=session.cancellation_reason if session and session.is_cancelled else holiday_name,
+            ))
+
+        special_entries = []
+        for sc in specials_by_date.get(current_date, []):
+            special_entries.append(SimpleNamespace(
+                is_special=True,
+                special_id=sc.pk,
+                schedule_id=None,
+                session_id=None,
+                start_time=sc.start_time.strftime("%H:%M"),
+                group_name=sc.title,
+                category_name="Aulão",
+                teacher_name=sc.teacher.full_name if sc.teacher else "",
+                notes=sc.notes,
+                is_cancelled=False,
+                cancellation_reason="",
             ))
 
         days.append(SimpleNamespace(
@@ -176,7 +252,8 @@ def get_calendar_month_data(year, month):
             is_holiday=bool(holiday_name),
             holiday_name=holiday_name,
             classes=class_entries,
-            has_classes=len(class_entries) > 0,
+            specials=special_entries,
+            has_classes=len(class_entries) > 0 or len(special_entries) > 0,
         ))
 
     return SimpleNamespace(
@@ -207,6 +284,39 @@ def toggle_session_cancel(schedule_id, session_date, reason=""):
         session.cancellation_reason = reason
     session.save()
     return session
+
+
+@transaction.atomic
+def create_special_class(*, title, date, start_time, duration_minutes=90, teacher=None, notes=""):
+    if not title:
+        title = "Aulão"
+    special = SpecialClass.objects.create(
+        title=title,
+        date=date,
+        start_time=start_time,
+        duration_minutes=duration_minutes or 90,
+        teacher=teacher,
+        notes=notes or "",
+    )
+    return special
+
+
+@transaction.atomic
+def delete_special_class(special_id):
+    SpecialClass.objects.filter(pk=special_id).delete()
+
+
+@transaction.atomic
+def perform_special_class_checkin(person, special_id):
+    special = SpecialClass.objects.get(pk=special_id)
+    today = timezone.localdate()
+    if special.date != today:
+        raise ValueError("Check-in só é permitido no dia do aulão.")
+    checkin, created = SpecialClassCheckin.objects.get_or_create(
+        special_class=special,
+        person=person,
+    )
+    return checkin, created
 
 
 def _get_month_name(month):

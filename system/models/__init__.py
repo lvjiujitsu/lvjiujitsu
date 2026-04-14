@@ -1,4 +1,11 @@
-from .calendar import ClassCheckin, ClassSession, Holiday, SessionStatus
+from .calendar import (
+    ClassCheckin,
+    ClassSession,
+    Holiday,
+    SessionStatus,
+    SpecialClass,
+    SpecialClassCheckin,
+)
 from .category import CategoryAudience, ClassCategory, IbjjfAgeCategory
 from .class_group import ClassGroup
 from .class_membership import (
@@ -22,7 +29,12 @@ from .person import (
 )
 from .plan import BillingCycle, SubscriptionPlan
 from .product import Product, ProductCategory, ProductVariant
-from .registration_order import RegistrationOrder, RegistrationOrderItem
+from .registration_order import (
+    PaymentStatus,
+    RegistrationOrder,
+    RegistrationOrderItem,
+    StripeWebhookEvent,
+)
 
 __all__ = [
     "BiologicalSex",
@@ -45,6 +57,7 @@ __all__ = [
     "PersonRelationship",
     "PersonRelationshipKind",
     "PersonType",
+    "PaymentStatus",
     "PortalAccount",
     "PortalPasswordResetToken",
     "Product",
@@ -52,7 +65,10 @@ __all__ = [
     "ProductVariant",
     "RegistrationOrder",
     "RegistrationOrderItem",
+    "StripeWebhookEvent",
     "SessionStatus",
+    "SpecialClass",
+    "SpecialClassCheckin",
     "SubscriptionPlan",
     "TimeStampedModel",
     "TrainingStyle",

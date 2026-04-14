@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
     {% include "includes/_favicon.html" %}
-    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260407">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260413e">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -79,8 +79,9 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+    <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
     <script src="{% static 'system/js/shared/theme-toggle.js' %}?v=20260407"></script>
-    <script src="{% static 'system/js/shared/drawer-menu.js' %}?v=20260407"></script>
+    <script src="{% static 'system/js/shared/drawer-menu.js' %}?v=20260413c"></script>
     {% block extra_js %}{% endblock %}
     {% block extra_scripts %}{% endblock %}
 </body>

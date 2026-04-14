@@ -4,7 +4,18 @@
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(echo \"EXIT: $?\")",
       "WebFetch(domain:lvjiujitsu.sumupstore.com)",
-      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py makemigrations system)"
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py makemigrations system)",
+      "Bash(curl:*)",
+      "Bash(.\\\\.venv\\\\Scripts\\\\pip.exe show:*)",
+      "Bash(./.venv/Scripts/pip.exe show:*)",
+      "Bash(./.venv/Scripts/pip.exe install:*)",
+      "Bash(ls lv*/)",
+      "Bash(grep:*)",
+      "Bash(./.venv/Scripts/python.exe manage.py check)",
+      "Bash(./.venv/Scripts/python.exe manage.py test system.tests -v 0)",
+      "Bash(ls:*)",
+      "Bash(./.venv/Scripts/python.exe manage.py makemigrations system)",
+      "Bash(./.venv/Scripts/python.exe manage.py migrate)"
     ]
   }
 }

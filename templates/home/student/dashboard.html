@@ -22,14 +22,14 @@
         {% if today_classes %}
             <div class="today-class-list">
                 {% for entry in today_classes %}
-                    <div class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %}" data-schedule-id="{{ entry.schedule.pk }}">
+                    <div class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %} {% if entry.is_special %}today-class-card--special{% endif %}">
                         <div class="today-class-time">
                             <span class="today-class-hour">{{ entry.start_time }}</span>
                             <span class="today-class-duration">{{ entry.duration_minutes }} min</span>
                         </div>
                         <div class="today-class-info">
-                            <span class="today-class-name">{{ entry.group_name }}</span>
-                            <span class="today-class-meta">{{ entry.category_name }} · {{ entry.training_style }}</span>
+                            <span class="today-class-name">{{ entry.group_name }}{% if entry.is_special %} <span class="today-class-special-tag">Aulão</span>{% endif %}</span>
+                            <span class="today-class-meta">{% if entry.is_special %}Aulão liberado{% else %}{{ entry.category_name }} · {{ entry.training_style }}{% endif %}</span>
                             {% if entry.teacher_name %}
                                 <span class="today-class-teacher">Prof. {{ entry.teacher_name }}</span>
                             {% endif %}
@@ -43,9 +43,15 @@
                             {% elif entry.has_checked_in %}
                                 <span class="today-class-status-icon today-class-status-icon--done" title="Check-in realizado">&#10003;</span>
                             {% else %}
-                                <button class="today-class-checkin-btn" type="button" data-checkin-btn data-schedule-id="{{ entry.schedule.pk }}" title="Fazer check-in">
-                                    Check-in
-                                </button>
+                                {% if entry.is_special %}
+                                    <button class="today-class-checkin-btn" type="button" data-checkin-btn data-special-id="{{ entry.special_id }}" title="Fazer check-in no aulão">
+                                        Check-in
+                                    </button>
+                                {% else %}
+                                    <button class="today-class-checkin-btn" type="button" data-checkin-btn data-schedule-id="{{ entry.schedule.pk }}" title="Fazer check-in">
+                                        Check-in
+                                    </button>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -94,9 +100,12 @@
   buttons.forEach(function(btn) {
     btn.addEventListener('click', function() {
       var scheduleId = btn.dataset.scheduleId;
+      var specialId = btn.dataset.specialId;
       btn.disabled = true;
       btn.textContent = '...';
-      fetch('{% url "system:student-checkin" %}', {
+      var url = specialId ? '{% url "system:student-special-checkin" %}' : '{% url "system:student-checkin" %}';
+      var payload = specialId ? { special_id: specialId } : { schedule_id: scheduleId };
+      fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +113,7 @@
             ? document.querySelector('[name=csrfmiddlewaretoken]').value
             : getCookie('csrftoken')
         },
-        body: JSON.stringify({ schedule_id: scheduleId })
+        body: JSON.stringify(payload)
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {

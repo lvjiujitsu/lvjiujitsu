@@ -16,13 +16,23 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
-from system.models.calendar import ClassCheckin, ClassSession, Holiday, SessionStatus
+from system.models.calendar import (
+    ClassCheckin,
+    ClassSession,
+    Holiday,
+    SessionStatus,
+    SpecialClass,
+    SpecialClassCheckin,
+)
 from system.models.category import CategoryAudience, ClassCategory
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 from system.services.class_calendar import (
+    create_special_class,
+    delete_special_class,
     get_calendar_month_data,
     get_today_classes_for_person,
     perform_checkin,
+    perform_special_class_checkin,
     toggle_session_cancel,
 )
 
@@ -223,3 +233,193 @@ class CalendarViewTestCase(TestCase):
         response = self.client.get(reverse("system:admin-home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Cronograma")
+
+
+class SpecialClassServiceTestCase(TestCase):
+    def setUp(self):
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
+        self.teacher = Person.objects.create(
+            full_name="Prof. Teste", cpf="333.333.333-33",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        self.person = Person.objects.create(
+            full_name="Aluno Aulao", cpf="444.444.444-44",
+            person_type=self.student_type, birth_date=date(2000, 1, 1),
+            biological_sex="male",
+        )
+
+    def test_create_special_class(self):
+        today = timezone.localdate()
+        sc = create_special_class(
+            title="Aulão Rei-Zulu",
+            date=today,
+            start_time=time(19, 0),
+            duration_minutes=90,
+            teacher=self.teacher,
+            notes="Aberto a todos",
+        )
+        self.assertEqual(sc.title, "Aulão Rei-Zulu")
+        self.assertEqual(sc.teacher, self.teacher)
+        self.assertEqual(SpecialClass.objects.count(), 1)
+
+    def test_create_special_class_on_holiday(self):
+        today = timezone.localdate()
+        Holiday.objects.create(date=today, name="Feriado")
+        sc = create_special_class(
+            title="Aulão feriado",
+            date=today,
+            start_time=time(10, 0),
+        )
+        self.assertEqual(sc.date, today)
+
+    def test_delete_special_class(self):
+        sc = create_special_class(
+            title="Aulão",
+            date=timezone.localdate(),
+            start_time=time(19, 0),
+        )
+        delete_special_class(sc.pk)
+        self.assertFalse(SpecialClass.objects.filter(pk=sc.pk).exists())
+
+    def test_perform_special_class_checkin(self):
+        sc = create_special_class(
+            title="Aulão", date=timezone.localdate(), start_time=time(19, 0),
+        )
+        checkin, created = perform_special_class_checkin(self.person, sc.pk)
+        self.assertTrue(created)
+        self.assertEqual(checkin.person, self.person)
+
+    def test_special_checkin_idempotent(self):
+        sc = create_special_class(
+            title="Aulão", date=timezone.localdate(), start_time=time(19, 0),
+        )
+        perform_special_class_checkin(self.person, sc.pk)
+        _, created = perform_special_class_checkin(self.person, sc.pk)
+        self.assertFalse(created)
+
+    def test_special_checkin_blocked_on_other_date(self):
+        sc = create_special_class(
+            title="Aulão",
+            date=timezone.localdate() + timezone.timedelta(days=3) if False else date(2099, 12, 31),
+            start_time=time(19, 0),
+        )
+        with self.assertRaises(ValueError):
+            perform_special_class_checkin(self.person, sc.pk)
+
+    def test_today_classes_includes_special(self):
+        create_special_class(
+            title="Aulão", date=timezone.localdate(), start_time=time(20, 0),
+        )
+        entries = get_today_classes_for_person(self.person)
+        specials = [e for e in entries if getattr(e, "is_special", False)]
+        self.assertEqual(len(specials), 1)
+        self.assertEqual(specials[0].group_name, "Aulão")
+        self.assertFalse(specials[0].has_checked_in)
+
+    def test_calendar_month_data_includes_specials(self):
+        today = timezone.localdate()
+        create_special_class(
+            title="Aulão mês", date=today, start_time=time(19, 0),
+        )
+        data = get_calendar_month_data(today.year, today.month)
+        day_entry = next(d for d in data.days if d.date == today)
+        self.assertEqual(len(day_entry.specials), 1)
+        self.assertEqual(day_entry.specials[0].group_name, "Aulão mês")
+
+
+class SpecialClassViewTestCase(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username="admin2", email="a2@test.com", password="admin",
+        )
+        self.admin_type = PersonType.objects.create(
+            code="administrative-assistant", display_name="Administrativo",
+        )
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.admin_person = Person.objects.create(
+            full_name="Admin", cpf="555.555.555-55",
+            person_type=self.admin_type, birth_date=date(1990, 1, 1),
+            biological_sex="male",
+        )
+        self.admin_account = PortalAccount(person=self.admin_person)
+        self.admin_account.set_password("123456")
+        self.admin_account.save()
+        self.student_person = Person.objects.create(
+            full_name="Aluno", cpf="666.666.666-66",
+            person_type=self.student_type, birth_date=date(2000, 1, 1),
+            biological_sex="male",
+        )
+        self.student_account = PortalAccount(person=self.student_person)
+        self.student_account.set_password("123456")
+        self.student_account.save()
+
+    def _login_as_admin(self):
+        self.client.force_login(self.admin_user)
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = self.admin_account.pk
+        session[TECHNICAL_ADMIN_SESSION_KEY] = True
+        session.save()
+
+    def _login_as_student(self):
+        self.client.force_login(self.admin_user)
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = self.student_account.pk
+        session.save()
+
+    def test_create_special_class_view(self):
+        self._login_as_admin()
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("system:admin-special-class-create"),
+            data={
+                "title": "Aulão X",
+                "date": today.strftime("%Y-%m-%d"),
+                "start_time": "19:00",
+                "duration_minutes": 90,
+                "notes": "",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(SpecialClass.objects.filter(title="Aulão X").exists())
+
+    def test_create_special_class_invalid(self):
+        self._login_as_admin()
+        response = self.client.post(
+            reverse("system:admin-special-class-create"),
+            data={"title": ""},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_special_class_view(self):
+        self._login_as_admin()
+        sc = SpecialClass.objects.create(
+            title="Aulão Del", date=timezone.localdate(), start_time=time(19, 0),
+        )
+        response = self.client.post(
+            reverse("system:admin-special-class-delete"),
+            data={"special_id": sc.pk},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SpecialClass.objects.filter(pk=sc.pk).exists())
+
+    def test_student_special_checkin_view(self):
+        self._login_as_student()
+        sc = SpecialClass.objects.create(
+            title="Aulão Check", date=timezone.localdate(), start_time=time(19, 0),
+        )
+        response = self.client.post(
+            reverse("system:student-special-checkin"),
+            data={"special_id": sc.pk},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            SpecialClassCheckin.objects.filter(
+                special_class=sc, person=self.student_person
+            ).exists()
+        )

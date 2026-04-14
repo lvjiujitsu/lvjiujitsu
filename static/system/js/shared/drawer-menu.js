@@ -9,13 +9,11 @@
   function open() {
     drawer.style.transform = 'translateX(0)';
     overlay.style.display = 'block';
-    document.body.style.overflow = 'hidden';
   }
 
   function close() {
     drawer.style.transform = 'translateX(-100%)';
     overlay.style.display = 'none';
-    document.body.style.overflow = '';
   }
 
   openBtn.addEventListener('click', open);
@@ -23,7 +21,7 @@
   overlay.addEventListener('click', close);
 
   drawer.addEventListener('click', function (e) {
-    if (e.target.tagName === 'A') close();
+    if (e.target.closest && e.target.closest('a')) close();
   });
 
   document.addEventListener('keydown', function (e) {

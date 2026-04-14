@@ -53,11 +53,11 @@ def create_portal_registration(cleaned_data):
         profile = cleaned_data["registration_profile"]
         if profile == "holder":
             result = _create_holder_registration(cleaned_data, person_types)
-            create_registration_order(result["holder"], cleaned_data)
+            result["order"] = create_registration_order(result["holder"], cleaned_data)
             return result
         if profile == "guardian":
             result = _create_guardian_registration(cleaned_data, person_types)
-            create_registration_order(result["guardian"], cleaned_data)
+            result["order"] = create_registration_order(result["guardian"], cleaned_data)
             return result
         return _create_other_registration(cleaned_data, person_types)
 

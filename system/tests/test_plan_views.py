@@ -105,11 +105,11 @@ class PlanViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Planos")
 
-    def test_info_page_shows_plans(self):
+    def test_info_page_does_not_show_plans(self):
         response = self.client.get(reverse("system:info"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Plano Mensal Teste")
-        self.assertContains(response, "Planos disponíveis")
+        self.assertNotContains(response, "Plano Mensal Teste")
+        self.assertNotContains(response, "Planos disponíveis")
 
     def test_update_redirects_to_detail(self):
         self._login_as_admin()

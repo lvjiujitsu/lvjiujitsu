@@ -3,6 +3,13 @@ from django.db import models
 from .common import TimeStampedModel
 
 
+class PaymentStatus(models.TextChoices):
+    PENDING = "pending", "Pendente"
+    PAID = "paid", "Pago"
+    FAILED = "failed", "Falhou"
+    CANCELED = "canceled", "Cancelado"
+
+
 class RegistrationOrder(TimeStampedModel):
     person = models.ForeignKey(
         "system.Person",
@@ -31,6 +38,25 @@ class RegistrationOrder(TimeStampedModel):
         default=0,
     )
     notes = models.TextField("Observações", blank=True, default="")
+    payment_status = models.CharField(
+        "Status do pagamento",
+        max_length=16,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+    )
+    stripe_session_id = models.CharField(
+        "ID da sessão Stripe",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    stripe_payment_intent_id = models.CharField(
+        "ID do PaymentIntent Stripe",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    paid_at = models.DateTimeField("Pago em", null=True, blank=True)
 
     class Meta:
         ordering = ("-created_at",)
@@ -39,6 +65,40 @@ class RegistrationOrder(TimeStampedModel):
 
     def __str__(self):
         return f"Pedido #{self.pk} — {self.person.full_name}"
+
+    @property
+    def is_paid(self):
+        return self.payment_status == PaymentStatus.PAID
+
+    @property
+    def is_free(self):
+        return self.total is not None and self.total <= 0
+
+
+class StripeWebhookEvent(TimeStampedModel):
+    event_id = models.CharField(
+        "ID do evento Stripe",
+        max_length=255,
+        unique=True,
+    )
+    event_type = models.CharField("Tipo do evento", max_length=128)
+    order = models.ForeignKey(
+        RegistrationOrder,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stripe_events",
+        verbose_name="Pedido",
+    )
+    payload = models.JSONField("Payload", default=dict, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Evento de webhook Stripe"
+        verbose_name_plural = "Eventos de webhook Stripe"
+
+    def __str__(self):
+        return f"{self.event_type} — {self.event_id}"
 
 
 class RegistrationOrderItem(TimeStampedModel):

@@ -6,6 +6,7 @@
 
 :root {
   color-scheme: light;
+  --app-height: 100vh;
   --bg: #f3f4f6;
   --bg-accent: rgba(255, 255, 255, 0.75);
   --panel: rgba(255, 255, 255, 0.82);
@@ -22,6 +23,12 @@
   --logo-padding-home: 18px;
   --logo-size-compact: 64px;
   --logo-padding-compact: 8px;
+}
+@supports (height: 100dvh) {
+  :root { --app-height: 100dvh; }
+}
+@supports (height: 100svh) {
+  :root { --app-height: 100svh; }
 }
 
 html[data-theme="dark"] {
@@ -49,9 +56,16 @@ body {
   min-height: 100%;
   margin: 0;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+html {
+  height: -webkit-fill-available;
 }
 
 body {
+  overflow-y: auto;
+  min-height: var(--app-height);
+  min-height: -webkit-fill-available;
   background:
     radial-gradient(circle at top center, rgba(170, 175, 184, 0.14), transparent 24%),
     linear-gradient(180deg, var(--bg-accent) 0%, rgba(255, 255, 255, 0) 100%),
@@ -62,9 +76,7 @@ body {
 }
 
 .screen-shell {
-  min-height: 100vh;
-  min-height: 100svh;
-  min-height: 100dvh;
+  min-height: var(--app-height);
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -84,9 +96,7 @@ body {
 
 .screen-card-home {
   display: grid;
-  min-height: calc(100vh - 32px);
-  min-height: calc(100svh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  min-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  min-height: calc(var(--app-height) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   align-content: center;
   justify-items: center;
   gap: 34px;

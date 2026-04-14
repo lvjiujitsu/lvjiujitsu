@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Turmas e Horários | LV JIU JITSU</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260413f">
   <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
 </head>
 <body>
@@ -103,88 +103,9 @@
         </section>
       {% endif %}
 
-      {% if product_cards %}
-        <section class="catalog-hero catalog-hero--materials">
-          <div class="catalog-hero-copy">
-            <p class="panel-eyebrow">Materiais</p>
-            <h1>Produtos disponíveis</h1>
-            <p>Kimonos, faixas, rashguards e acessórios oficiais LV Jiu Jitsu.</p>
-          </div>
-        </section>
-
-        <div class="record-list info-record-list">
-          {% for product in product_cards %}
-            <article class="record-card record-card-catalog">
-              <div class="record-card-head">
-                <div>
-                  <span class="record-card-name">{{ product.display_name }}</span>
-                  <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
-                </div>
-                <span class="record-card-badge">
-                  {% if product.total_stock > 0 %}Disponível{% else %}Esgotado{% endif %}
-                </span>
-              </div>
-              {% if product.description %}
-                <div class="record-card-row">
-                  <span class="record-card-val">{{ product.description }}</span>
-                </div>
-              {% endif %}
-              {% with active_variants=product.variants.all %}
-                {% if active_variants|length > 1 %}
-                  <details class="catalog-dropdown">
-                    <summary class="catalog-dropdown-summary">Ver opções disponíveis</summary>
-                    <div class="catalog-dropdown-content">
-                      <div class="catalog-chip-list">
-                        {% for variant in active_variants %}
-                          {% if variant.is_active %}
-                            <span class="catalog-chip">
-                              {% if variant.color %}{{ variant.color }}{% endif %}
-                              {% if variant.size %} {{ variant.size }}{% endif %}
-                              {% if not variant.color and not variant.size %}Padrão{% endif %}
-                              <small>{% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} un.{% else %}Esgotado{% endif %}</small>
-                            </span>
-                          {% endif %}
-                        {% endfor %}
-                      </div>
-                    </div>
-                  </details>
-                {% endif %}
-              {% endwith %}
-            </article>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      {% if plan_cards %}
-        <section class="catalog-hero catalog-hero--materials">
-          <div class="catalog-hero-copy">
-            <p class="panel-eyebrow">Comercial</p>
-            <h1>Planos disponíveis</h1>
-            <p>Mensalidades e pacotes para treinar na LV Jiu Jitsu.</p>
-          </div>
-        </section>
-
-        <div class="record-list info-record-list">
-          {% for plan in plan_cards %}
-            <article class="record-card record-card-catalog">
-              <div class="record-card-head">
-                <div>
-                  <span class="record-card-name">{{ plan.display_name }}</span>
-                  <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }}</div>
-                </div>
-                <span class="record-card-badge">R$ {{ plan.price }}</span>
-              </div>
-              {% if plan.description %}
-                <div class="record-card-row">
-                  <span class="record-card-val">{{ plan.description }}</span>
-                </div>
-              {% endif %}
-            </article>
-          {% endfor %}
-        </div>
-      {% endif %}
     </section>
   </main>
+  <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
 </body>
 </html>

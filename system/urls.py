@@ -3,6 +3,8 @@ from django.urls import path
 from system.views import (
     AdminCalendarView,
     AdminHomeView,
+    AdminSpecialClassCreateView,
+    AdminSpecialClassDeleteView,
     AdminToggleSessionView,
     AdministrativeHomeView,
     ClassCategoryCreateView,
@@ -21,7 +23,11 @@ from system.views import (
     ClassScheduleListView,
     ClassScheduleUpdateView,
     ChromeDevtoolsProbeView,
+    CreateCheckoutSessionView,
     DashboardRedirectView,
+    PaymentCancelView,
+    PaymentSuccessView,
+    StripeWebhookView,
     InstructorHomeView,
     PersonCreateView,
     PersonDeleteView,
@@ -57,6 +63,7 @@ from system.views import (
     StudentCheckinView,
     StudentHomeView,
     StudentScheduleView,
+    StudentSpecialClassCheckinView,
 )
 
 
@@ -89,6 +96,9 @@ urlpatterns = [
     path("admin-calendar/", AdminCalendarView.as_view(), name="admin-calendar"),
     path("admin-calendar/<int:year>/<int:month>/", AdminCalendarView.as_view(), name="admin-calendar-month"),
     path("admin-calendar/toggle-session/", AdminToggleSessionView.as_view(), name="admin-toggle-session"),
+    path("admin-calendar/special-class/create/", AdminSpecialClassCreateView.as_view(), name="admin-special-class-create"),
+    path("admin-calendar/special-class/delete/", AdminSpecialClassDeleteView.as_view(), name="admin-special-class-delete"),
+    path("special-checkin/", StudentSpecialClassCheckinView.as_view(), name="student-special-checkin"),
     path("class-categories/", ClassCategoryListView.as_view(), name="class-category-list"),
     path("class-categories/create/", ClassCategoryCreateView.as_view(), name="class-category-create"),
     path("class-categories/<int:pk>/", ClassCategoryDetailView.as_view(), name="class-category-detail"),
@@ -126,4 +136,8 @@ urlpatterns = [
     path("products/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
     path("products/<int:pk>/edit/", ProductUpdateView.as_view(), name="product-update"),
     path("products/<int:pk>/delete/", ProductDeleteView.as_view(), name="product-delete"),
+    path("payments/checkout/<int:order_id>/", CreateCheckoutSessionView.as_view(), name="payment-checkout"),
+    path("payments/success/", PaymentSuccessView.as_view(), name="payment-success"),
+    path("payments/cancel/", PaymentCancelView.as_view(), name="payment-cancel"),
+    path("payments/webhook/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
 ]

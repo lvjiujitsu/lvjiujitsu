@@ -8,6 +8,7 @@ from system.models import (
     ClassInstructorAssignment,
     ClassSchedule,
     Person,
+    SpecialClass,
 )
 
 
@@ -299,3 +300,32 @@ class ClassScheduleForm(forms.ModelForm):
                 "Ative a turma antes de ativar um horário vinculado a ela.",
             )
         return cleaned_data
+
+
+class SpecialClassForm(forms.ModelForm):
+    class Meta:
+        model = SpecialClass
+        fields = ("title", "date", "start_time", "duration_minutes", "teacher", "notes")
+        labels = {
+            "title": "Título",
+            "date": "Data",
+            "start_time": "Horário",
+            "duration_minutes": "Duração (min)",
+            "teacher": "Professor",
+            "notes": "Observações",
+        }
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "start_time": forms.TimeInput(attrs={"type": "time"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["teacher"].queryset = (
+            Person.objects.filter(person_type__code="instructor", is_active=True)
+            .order_by("full_name")
+        )
+        self.fields["teacher"].required = False
+        self.fields["notes"].required = False
+        if not self.initial.get("title"):
+            self.initial["title"] = "Aulão"

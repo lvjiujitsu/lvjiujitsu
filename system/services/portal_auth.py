@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from system.models import PortalAccount, PortalPasswordResetToken
+from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.utils import ensure_formatted_cpf, only_digits
 
 
@@ -17,6 +18,8 @@ TECHNICAL_ADMIN_SESSION_KEY = "technical_admin_user_id"
 def authenticate_portal_identity(identifier: str, password: str):
     access_account = _authenticate_local_portal_account(identifier, password)
     if access_account is not None:
+        if has_pending_payment(access_account.person):
+            return {"blocked_reason": "payment_pending"}
         return {"portal_account": access_account, "technical_admin_user": None}
 
     technical_admin_user = _authenticate_technical_admin(identifier, password)
@@ -24,6 +27,13 @@ def authenticate_portal_identity(identifier: str, password: str):
         return {"portal_account": None, "technical_admin_user": technical_admin_user}
 
     return None
+
+
+def has_pending_payment(person) -> bool:
+    return RegistrationOrder.objects.filter(
+        person=person,
+        total__gt=0,
+    ).exclude(payment_status=PaymentStatus.PAID).exists()
 
 
 def login_portal_identity(request, *, portal_account=None, technical_admin_user=None) -> None:

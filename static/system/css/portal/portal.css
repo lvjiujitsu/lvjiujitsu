@@ -1,10 +1,14 @@
 /* === RESET === */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { min-height: 100%; margin: 0; -webkit-text-size-adjust: 100%; }
+html { height: -webkit-fill-available; }
+html, body { overflow-x: hidden; }
+body { overflow-y: auto; min-height: var(--app-height); min-height: -webkit-fill-available; }
 
 /* === THEME VARS === */
 :root {
   color-scheme: light;
+  --app-height: 100vh;
   --bg: #f3f4f6;
   --bg-accent: rgba(255,255,255,0.72);
   --panel: rgba(255,255,255,0.9);
@@ -19,6 +23,12 @@ html, body { min-height: 100%; margin: 0; -webkit-text-size-adjust: 100%; }
   --danger: #b42318;
   --danger-soft: rgba(180,35,24,0.08);
   --shadow: 0 24px 80px rgba(19,19,24,0.10);
+}
+@supports (height: 100dvh) {
+  :root { --app-height: 100dvh; }
+}
+@supports (height: 100svh) {
+  :root { --app-height: 100svh; }
 }
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -52,7 +62,7 @@ img { display: block; max-width: 100%; }
 button, input, select, textarea { font: inherit; }
 
 /* === PAGE SHELL === */
-.page-shell { min-height: 100vh; min-height: 100dvh; }
+.page-shell { min-height: var(--app-height); }
 
 /* === TOPBAR === */
 .topbar {
@@ -115,7 +125,7 @@ button, input, select, textarea { font: inherit; }
 .drawer {
   position: fixed; top: 0; left: 0; z-index: 40;
   display: flex; flex-direction: column;
-  width: min(300px, 85vw); height: 100%; height: 100dvh;
+  width: min(300px, 85vw); height: var(--app-height);
   background: var(--panel-solid);
   border-right: 1px solid var(--border);
   box-shadow: 8px 0 32px rgba(0,0,0,0.12);
@@ -767,6 +777,117 @@ html[data-theme="dark"] .theme-btn::before {
   background: var(--muted);
   opacity: 0.6;
   text-decoration: line-through;
+}
+
+.calendar-class-pill--special {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  border: 1px solid #d97706;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.25);
+}
+.calendar-class-special-tag {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0 0.3rem;
+  border-radius: 4px;
+}
+.calendar-detail-class--special {
+  border-left: 3px solid #ef4444;
+  padding-left: 0.5rem;
+}
+.calendar-detail-badge--special {
+  background: #ef4444;
+  color: #fff;
+}
+.calendar-detail-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: 0.5rem;
+}
+
+.today-class-card--special {
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.08), transparent 60%);
+}
+.today-class-special-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #ef4444;
+  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+/* Modal ---------- */
+.modal-overlay { display: none; }
+.modal-overlay:not([hidden]) {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  padding: 1rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-card {
+  background: var(--surface, #fff);
+  border-radius: 14px;
+  padding: 1.25rem;
+  width: min(420px, 100%);
+  max-height: calc(var(--app-height) - 2rem);
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+@supports not (height: 100dvh) {
+  .modal-card { max-height: calc(100vh - 2rem); }
+}
+@media (max-width: 480px) {
+  .modal-overlay { align-items: flex-start; padding: 0.5rem; }
+  .modal-card { padding: 1rem; max-height: calc(var(--app-height) - 1rem); }
+  .modal-card .form-actions { position: sticky; bottom: 0; background: var(--surface, #fff); padding-top: 0.5rem; }
+}
+.modal-card h2 { margin: 0 0 1rem; font-size: 1.15rem; }
+.modal-card .form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.modal-card label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.25rem;
+}
+.modal-card input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.modal-card .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.modal-card .form-errors {
+  color: var(--danger, #dc2626);
+  font-size: 0.8rem;
+  min-height: 1em;
 }
 
 .calendar-class-time { font-weight: 700; }

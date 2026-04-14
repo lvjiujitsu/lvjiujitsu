@@ -129,11 +129,11 @@ class ProductViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Materiais")
 
-    def test_info_page_shows_products(self):
+    def test_info_page_does_not_show_products(self):
         response = self.client.get(reverse("system:info"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Kimono View Test")
-        self.assertContains(response, "Produtos disponíveis")
+        self.assertNotContains(response, "Kimono View Test")
+        self.assertNotContains(response, "Produtos disponíveis")
 
     def test_info_page_hides_inactive_products(self):
         self.product.is_active = False

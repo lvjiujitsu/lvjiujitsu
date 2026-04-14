@@ -18,8 +18,6 @@ from system.services.class_overview import (
     get_public_class_group_cards,
     get_registration_catalog_payload,
 )
-from system.services.plan_management import get_active_plans
-from system.services.product_management import get_public_product_cards
 from system.services.registration_checkout import get_plan_catalog_payload, get_product_catalog_payload
 from system.services import (
     authenticate_portal_identity,
@@ -61,6 +59,7 @@ class PortalRegisterView(FormView):
 
     def form_valid(self, form):
         created_people = form.save()
+        order = created_people.pop("order", None)
         created_labels = []
         for value in created_people.values():
             if isinstance(value, list):
@@ -72,6 +71,8 @@ class PortalRegisterView(FormView):
             self.request,
             f"Cadastro registrado com sucesso para: {', '.join(unique_labels)}.",
         )
+        if order is not None and order.total and order.total > 0:
+            return redirect("system:payment-checkout", order_id=order.pk)
         return super().form_valid(form)
 
     def _get_initial_step(self, form):
@@ -120,8 +121,6 @@ class PortalInfoView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["class_group_cards"] = get_public_class_group_cards()
-        context["product_cards"] = get_public_product_cards()
-        context["plan_cards"] = get_active_plans()
         return context
 
 
@@ -144,6 +143,14 @@ class PortalLoginView(FormView):
 
         if identity is None:
             form.add_error(None, "CPF, acesso técnico ou senha inválidos.")
+            return self.form_invalid(form)
+
+        if identity.get("blocked_reason") == "payment_pending":
+            form.add_error(
+                None,
+                "Seu cadastro está aguardando a confirmação do pagamento. "
+                "Conclua o pagamento para acessar o sistema.",
+            )
             return self.form_invalid(form)
 
         login_portal_identity(

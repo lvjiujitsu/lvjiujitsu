@@ -5,10 +5,15 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from system.forms.class_forms import SpecialClassForm
+from system.models import SpecialClass
 from system.services.class_calendar import (
+    create_special_class,
+    delete_special_class,
     get_calendar_month_data,
     get_today_classes_for_person,
     perform_checkin,
+    perform_special_class_checkin,
     toggle_session_cancel,
 )
 from system.views.person_views import AdministrativeRequiredMixin
@@ -97,4 +102,73 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
             "success": True,
             "created": created,
             "message": "Check-in realizado!" if created else "Você já fez check-in nesta aula.",
+        })
+
+
+class AdminSpecialClassCreateView(AdministrativeRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        form = SpecialClassForm(data=body)
+        if not form.is_valid():
+            return JsonResponse({"error": "Dados inválidos.", "fields": form.errors}, status=400)
+
+        special = create_special_class(
+            title=form.cleaned_data["title"],
+            date=form.cleaned_data["date"],
+            start_time=form.cleaned_data["start_time"],
+            duration_minutes=form.cleaned_data.get("duration_minutes") or 90,
+            teacher=form.cleaned_data.get("teacher"),
+            notes=form.cleaned_data.get("notes") or "",
+        )
+        return JsonResponse({
+            "success": True,
+            "special": {
+                "id": special.pk,
+                "title": special.title,
+                "date": special.date.strftime("%Y-%m-%d"),
+                "start_time": special.start_time.strftime("%H:%M"),
+                "teacher_name": special.teacher.full_name if special.teacher else "",
+            },
+        })
+
+
+class AdminSpecialClassDeleteView(AdministrativeRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        try:
+            body = json.loads(request.body)
+            special_id = int(body["special_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        delete_special_class(special_id)
+        return JsonResponse({"success": True})
+
+
+class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if not person:
+            return JsonResponse({"error": "Não autenticado."}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            special_id = int(body["special_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            checkin, created = perform_special_class_checkin(person, special_id)
+        except SpecialClass.DoesNotExist:
+            return JsonResponse({"error": "Aulão não encontrado."}, status=404)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        return JsonResponse({
+            "success": True,
+            "created": created,
+            "message": "Check-in no aulão realizado!" if created else "Você já fez check-in neste aulão.",
         })

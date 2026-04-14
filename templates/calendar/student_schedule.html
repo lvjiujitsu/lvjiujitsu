@@ -51,6 +51,13 @@
                             <span class="calendar-class-name">{{ cls.group_name }}</span>
                         </div>
                     {% endfor %}
+                    {% for sp in day.specials %}
+                        <div class="calendar-class-pill calendar-class-pill--special">
+                            <span class="calendar-class-time">{{ sp.start_time }}</span>
+                            <span class="calendar-class-name">{{ sp.group_name }}</span>
+                            <span class="calendar-class-special-tag">Aulão</span>
+                        </div>
+                    {% endfor %}
                 </div>
             {% endfor %}
         </div>
@@ -68,7 +75,7 @@
 </section>
 
 <script type="application/json" id="calDaysData">
-[{% for day in calendar.days %}{"date":"{{ day.date|date:'Y-m-d' }}","day":{{ day.day }},"isToday":{% if day.is_today %}true{% else %}false{% endif %},"isHoliday":{% if day.is_holiday %}true{% else %}false{% endif %},"holidayName":"{{ day.holiday_name|default:''|escapejs }}","classes":[{% for cls in day.classes %}{"startTime":"{{ cls.start_time }}","groupName":"{{ cls.group_name|escapejs }}","isCancelled":{% if cls.is_cancelled %}true{% else %}false{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}]
+[{% for day in calendar.days %}{"date":"{{ day.date|date:'Y-m-d' }}","day":{{ day.day }},"isToday":{% if day.is_today %}true{% else %}false{% endif %},"isHoliday":{% if day.is_holiday %}true{% else %}false{% endif %},"holidayName":"{{ day.holiday_name|default:''|escapejs }}","classes":[{% for cls in day.classes %}{"startTime":"{{ cls.start_time }}","groupName":"{{ cls.group_name|escapejs }}","isCancelled":{% if cls.is_cancelled %}true{% else %}false{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}],"specials":[{% for sp in day.specials %}{"startTime":"{{ sp.start_time }}","groupName":"{{ sp.group_name|escapejs }}","teacherName":"{{ sp.teacher_name|default:''|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}]
 </script>
 {% endblock %}
 
@@ -121,6 +128,14 @@
       if (cls.isCancelled) {
         html += '<span class="calendar-detail-badge">Cancelada</span>';
       }
+      html += '</div>';
+    });
+    (day.specials || []).forEach(function(sp) {
+      html += '<div class="calendar-detail-class calendar-detail-class--special">';
+      html += '<span class="calendar-detail-time">' + esc(sp.startTime) + '</span>';
+      html += '<span class="calendar-detail-name">' + esc(sp.groupName) + '</span>';
+      html += '<span class="calendar-detail-badge calendar-detail-badge--special">Aulão</span>';
+      if (sp.teacherName) { html += '<span class="calendar-detail-meta">' + esc(sp.teacherName) + '</span>'; }
       html += '</div>';
     });
     detailBody.innerHTML = html;

@@ -10,6 +10,9 @@
             <h1>Cronograma de Aulas</h1>
             <p>Toque em um dia para ver detalhes. Cancele ou reative aulas.</p>
         </div>
+        <div class="crud-header-actions">
+            <button type="button" class="button button--primary" id="btnNewSpecialClass">+ Novo aulão</button>
+        </div>
     </section>
 
     <section class="panel-card">
@@ -60,6 +63,13 @@
                             {% if cls.is_cancelled %}<span class="calendar-class-cancel-tag">Cancelada</span>{% endif %}
                         </button>
                     {% endfor %}
+                    {% for sp in day.specials %}
+                        <div class="calendar-class-pill calendar-class-pill--special" title="Aulão">
+                            <span class="calendar-class-time">{{ sp.start_time }}</span>
+                            <span class="calendar-class-name">{{ sp.group_name }}</span>
+                            <span class="calendar-class-special-tag">Aulão</span>
+                        </div>
+                    {% endfor %}
                 </div>
             {% endfor %}
         </div>
@@ -77,8 +87,26 @@
 </section>
 
 <script type="application/json" id="calDaysData">
-[{% for day in calendar.days %}{"date":"{{ day.date|date:'Y-m-d' }}","day":{{ day.day }},"isToday":{% if day.is_today %}true{% else %}false{% endif %},"isHoliday":{% if day.is_holiday %}true{% else %}false{% endif %},"holidayName":"{{ day.holiday_name|default:''|escapejs }}","classes":[{% for cls in day.classes %}{"scheduleId":{{ cls.schedule_id }},"startTime":"{{ cls.start_time }}","groupName":"{{ cls.group_name|escapejs }}","isCancelled":{% if cls.is_cancelled %}true{% else %}false{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}]
+[{% for day in calendar.days %}{"date":"{{ day.date|date:'Y-m-d' }}","day":{{ day.day }},"isToday":{% if day.is_today %}true{% else %}false{% endif %},"isHoliday":{% if day.is_holiday %}true{% else %}false{% endif %},"holidayName":"{{ day.holiday_name|default:''|escapejs }}","classes":[{% for cls in day.classes %}{"scheduleId":{{ cls.schedule_id }},"startTime":"{{ cls.start_time }}","groupName":"{{ cls.group_name|escapejs }}","isCancelled":{% if cls.is_cancelled %}true{% else %}false{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}],"specials":[{% for sp in day.specials %}{"id":{{ sp.special_id }},"startTime":"{{ sp.start_time }}","groupName":"{{ sp.group_name|escapejs }}","teacherName":"{{ sp.teacher_name|default:''|escapejs }}","notes":"{{ sp.notes|default:''|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %}]
 </script>
+
+<div class="modal-overlay" id="specialModal" hidden>
+  <div class="modal-card">
+    <h2>Novo aulão</h2>
+    <form id="specialForm" class="form-grid">
+      <label>Título<input type="text" name="title" value="Aulão" required></label>
+      <label>Data<input type="date" name="date" required></label>
+      <label>Horário<input type="time" name="start_time" required></label>
+      <label>Duração (min)<input type="number" name="duration_minutes" value="90" min="1" required></label>
+      <label>Observações<input type="text" name="notes"></label>
+      <div class="form-errors" id="specialFormErrors"></div>
+      <div class="form-actions">
+        <button type="button" class="button button--ghost" id="specialCancel">Cancelar</button>
+        <button type="submit" class="button button--primary">Criar aulão</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -93,6 +121,8 @@
   var detailDate = document.getElementById('detailDate');
   var detailBody = document.getElementById('detailBody');
   var toggleUrl = '{% url "system:admin-toggle-session" %}';
+  var specialCreateUrl = '{% url "system:admin-special-class-create" %}';
+  var specialDeleteUrl = '{% url "system:admin-special-class-delete" %}';
 
   var todayIdx = days.findIndex(function(d) { return d.isToday; });
   if (todayIdx >= 0) selectDay(todayIdx);
@@ -143,11 +173,26 @@
       }
       html += '</div>';
     });
+    (day.specials || []).forEach(function(sp) {
+      html += '<div class="calendar-detail-class calendar-detail-class--special">';
+      html += '<span class="calendar-detail-time">' + esc(sp.startTime) + '</span>';
+      html += '<span class="calendar-detail-name">' + esc(sp.groupName) + '</span>';
+      html += '<span class="calendar-detail-badge calendar-detail-badge--special">Aulão</span>';
+      if (sp.teacherName) { html += '<span class="calendar-detail-meta">' + esc(sp.teacherName) + '</span>'; }
+      html += '<button class="calendar-detail-toggle-btn calendar-detail-toggle-btn--danger" type="button" data-sp-del data-spid="' + sp.id + '">Remover</button>';
+      html += '</div>';
+    });
     detailBody.innerHTML = html;
 
     detailBody.querySelectorAll('[data-dt-toggle]').forEach(function(btn) {
       btn.addEventListener('click', function() {
         doToggle(btn.dataset.sid, btn.dataset.d, btn.dataset.c === '1');
+      });
+    });
+    detailBody.querySelectorAll('[data-sp-del]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!confirm('Remover este aulão?')) return;
+        doSpecialDelete(btn.dataset.spid, day.date);
       });
     });
   }
@@ -205,6 +250,57 @@
       if (dayIdx >= 0) selectDay(dayIdx);
     })
     .catch(function() { alert('Erro ao atualizar sessão.'); });
+  }
+
+  var modal = document.getElementById('specialModal');
+  var modalForm = document.getElementById('specialForm');
+  var modalErrors = document.getElementById('specialFormErrors');
+  document.getElementById('btnNewSpecialClass').addEventListener('click', function() {
+    modalForm.reset();
+    modalForm.title.value = 'Aulão';
+    modalForm.duration_minutes.value = 90;
+    var sel = document.querySelector('.calendar-cell--selected');
+    if (sel && sel.dataset.calDate) modalForm.date.value = sel.dataset.calDate;
+    modalErrors.textContent = '';
+    modal.hidden = false;
+  });
+  document.getElementById('specialCancel').addEventListener('click', function() { modal.hidden = true; });
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.hidden = true; });
+  modalForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var payload = {
+      title: modalForm.title.value,
+      date: modalForm.date.value,
+      start_time: modalForm.start_time.value,
+      duration_minutes: parseInt(modalForm.duration_minutes.value, 10),
+      notes: modalForm.notes.value || ''
+    };
+    fetch(specialCreateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+      if (!res.ok) {
+        modalErrors.textContent = res.data.error || 'Erro ao criar aulão.';
+        return;
+      }
+      modal.hidden = true;
+      window.location.reload();
+    })
+    .catch(function() { modalErrors.textContent = 'Erro ao criar aulão.'; });
+  });
+
+  function doSpecialDelete(specialId, dateStr) {
+    fetch(specialDeleteUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ special_id: specialId })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() { window.location.reload(); })
+    .catch(function() { alert('Erro ao remover aulão.'); });
   }
 
   function esc(s) {
