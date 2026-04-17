@@ -1,7 +1,6 @@
 import logging
 
-from django.db import transaction
-from django.db.utils import OperationalError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from system.models.asaas import (
@@ -74,27 +73,33 @@ def process_asaas_event(event: dict):
             "duplicate": True,
         }
 
+    try:
+        log_row = AsaasWebhookEvent.objects.create(
+            event_id=event_id,
+            event_type=event_type,
+            payload=event,
+        )
+    except IntegrityError:
+        existing = AsaasWebhookEvent.objects.filter(event_id=event_id).first()
+        if existing is None:
+            raise
+        return {
+            "order": existing.order,
+            "payout": existing.payout,
+            "duplicate": True,
+        }
+
+    order = None
+    payout = None
     if event_type.startswith("PAYMENT_"):
         order = _handle_payment_event(event_type, event)
     elif event_type.startswith("TRANSFER_"):
         payout = _handle_transfer_event(event_type, event)
 
-    try:
-        AsaasWebhookEvent.objects.create(
-            event_id=event_id,
-            event_type=event_type,
-            order=order,
-            payout=payout,
-            payload=event,
-        )
-    except OperationalError as exc:
-        if "database is locked" in str(exc).lower():
-            logger.warning(
-                "SQLite lock ao registrar evento Asaas %s; continuando sem log.",
-                event_id,
-            )
-        else:
-            raise
+    log_row.order = order
+    log_row.payout = payout
+    log_row.save(update_fields=["order", "payout", "updated_at"])
+
     return {"order": order, "payout": payout, "duplicate": False}
 
 

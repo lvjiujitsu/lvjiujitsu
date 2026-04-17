@@ -37,6 +37,8 @@
       <form class="form-stack form-wizard" id="client-registration-form" method="post" novalidate 
             data-initial-step="{{ registration_initial_step }}"
             data-step-validate-url="{% url 'system:registration-step-validate' %}"
+            data-pix-icon-url="{% static 'system/img/icons/pix.svg' %}"
+            data-card-icon-url="{% static 'system/img/icons/credit-card.svg' %}"
             data-can-restore-draft="{% if form.is_bound %}false{% else %}true{% endif %}">
         {% csrf_token %}
         <input type="hidden" id="extra-dependents-payload" name="extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default_if_none:'' }}">
@@ -742,14 +744,20 @@
                       type="button"
                       data-checkout-action="stripe"
                     >
-                      Pagar com cartão
+                      <span class="checkout-action-button-content">
+                        <img class="checkout-action-icon" src="{% static 'system/img/icons/credit-card.svg' %}" alt="">
+                        <span>Pagar com cartão</span>
+                      </span>
                     </button>
                     <button
                       class="checkout-action-button"
                       type="button"
                       data-checkout-action="pix"
                     >
-                      Pagar com PIX
+                      <span class="checkout-action-button-content">
+                        <img class="checkout-action-icon checkout-action-icon--pix" src="{% static 'system/img/icons/pix.svg' %}" alt="">
+                        <span>Pagar com PIX</span>
+                      </span>
                     </button>
                     <button
                       class="checkout-action-button"

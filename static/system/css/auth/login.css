@@ -1905,6 +1905,48 @@ h1 {
   gap: 0.5rem;
 }
 
+.checkout-dropdown {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.checkout-dropdown + .checkout-dropdown {
+  margin-top: 0.35rem;
+}
+
+.checkout-dropdown-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.checkout-dropdown-summary::-webkit-details-marker {
+  display: none;
+}
+
+.checkout-dropdown-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.checkout-dropdown-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.checkout-dropdown-content {
+  padding: 0 0.5rem 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
 .checkout-plan-list .checkout-option-card {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
@@ -1937,13 +1979,13 @@ h1 {
 }
 
 .checkout-option-card {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface-soft);
+  background: var(--panel-strong);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -2007,25 +2049,33 @@ h1 {
 }
 
 .checkout-payment-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.7rem;
-    height: 1.65rem;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.7rem;
+  height: 1.65rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  overflow: hidden;
+  padding: 0 0.32rem;
+}
+
+.checkout-payment-icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .checkout-payment-icon--pix {
-    background: #dcfce7;
-    color: #166534;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .checkout-payment-icon--credit_card {
-    background: #e0f2fe;
-    color: #075985;
+  background: #e0f2fe;
+  color: #075985;
 }
 
 .checkout-option-card:hover {
@@ -2176,6 +2226,23 @@ h1 {
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
+}
+
+.checkout-action-button-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkout-action-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  color: currentColor;
+}
+
+.checkout-action-icon--pix {
+  width: 24px;
 }
 
 .checkout-action-button:hover {

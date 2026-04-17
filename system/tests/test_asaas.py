@@ -370,7 +370,7 @@ class AsaasWebhookTests(TestCase):
         self.assertFalse(result["duplicate"])
         self.assertIsNone(result["order"])
 
-    def test_event_log_lock_does_not_break_actionable_webhook(self):
+    def test_event_claim_lock_aborts_transaction_for_retry(self):
         event = {
             "id": "evt_locked",
             "event": "PAYMENT_RECEIVED",
@@ -381,7 +381,7 @@ class AsaasWebhookTests(TestCase):
             "create",
             side_effect=OperationalError("database is locked"),
         ):
-            result = asaas_webhooks.process_asaas_event(event)
+            with self.assertRaises(OperationalError):
+                asaas_webhooks.process_asaas_event(event)
         self.order.refresh_from_db()
-        self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
-        self.assertEqual(result["order"], self.order)
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)

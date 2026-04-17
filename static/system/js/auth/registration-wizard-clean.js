@@ -10,6 +10,8 @@
   // ============================================================================
   var form = document.getElementById('client-registration-form');
   if (!form) return;
+  var pixIconUrl = form.dataset.pixIconUrl || '';
+  var cardIconUrl = form.dataset.cardIconUrl || '';
 
   var profileInputs = Array.from(form.querySelectorAll('input[name="registration_profile"]'));
   var profileChoiceCards = Array.from(form.querySelectorAll('[data-choice-card]'));
@@ -1616,48 +1618,142 @@
       return;
     }
 
-    visiblePlans.forEach(function (plan) {
-      var card = document.createElement('label');
-      card.className = 'checkout-option-card' + (selectedPlanId === plan.id ? ' is-selected' : '');
+    var groupedPlans = groupPlansForDropdown(visiblePlans);
+    groupedPlans.forEach(function (group, index) {
+      var dropdown = document.createElement('details');
+      dropdown.className = 'checkout-dropdown';
+      if (index === 0 || group.hasSelection) {
+        dropdown.open = true;
+      }
 
-      var radio = document.createElement('input');
-      radio.type = 'radio';
-      radio.name = '_plan_radio';
-      radio.className = 'checkout-option-radio';
-      radio.value = String(plan.id);
-      radio.checked = selectedPlanId === plan.id;
-      radio.addEventListener('change', function () {
-        selectedPlanId = plan.id;
-        setCheckoutAction(getCheckoutActionForPlan(plan));
-        syncCheckoutHiddenFields();
-        renderPlanList();
+      var summary = document.createElement('summary');
+      summary.className = 'checkout-dropdown-summary';
+
+      var summaryTitle = document.createElement('span');
+      summaryTitle.className = 'checkout-dropdown-title';
+      summaryTitle.textContent = group.title;
+
+      var summaryMeta = document.createElement('span');
+      summaryMeta.className = 'checkout-dropdown-meta';
+      summaryMeta.textContent = group.plans.length + (group.plans.length === 1 ? ' opção' : ' opções');
+
+      summary.appendChild(summaryTitle);
+      summary.appendChild(summaryMeta);
+      dropdown.appendChild(summary);
+
+      var content = document.createElement('div');
+      content.className = 'checkout-dropdown-content';
+      group.plans.forEach(function (plan) {
+        content.appendChild(buildPlanCard(plan));
       });
-
-      var icon = document.createElement('span');
-      icon.className = 'checkout-payment-icon checkout-payment-icon--' + plan.payment_method;
-      icon.textContent = plan.payment_method === 'pix' ? 'PIX' : 'CARD';
-
-      var info = document.createElement('div');
-      info.className = 'checkout-option-info';
-      var name = document.createElement('span');
-      name.className = 'checkout-option-name';
-      name.textContent = plan.name;
-      var meta = document.createElement('span');
-      meta.className = 'checkout-option-meta';
-      meta.textContent = buildPlanMeta(plan);
-      info.appendChild(name);
-      info.appendChild(meta);
-
-      var price = document.createElement('span');
-      price.className = 'checkout-option-price';
-      price.textContent = formatBRL(plan.price);
-
-      card.appendChild(radio);
-      card.appendChild(icon);
-      card.appendChild(info);
-      card.appendChild(price);
-      container.appendChild(card);
+      dropdown.appendChild(content);
+      container.appendChild(dropdown);
     });
+  }
+
+  function buildPlanCard(plan) {
+    var card = document.createElement('label');
+    card.className = 'checkout-option-card' + (selectedPlanId === plan.id ? ' is-selected' : '');
+
+    var radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = '_plan_radio';
+    radio.className = 'checkout-option-radio';
+    radio.value = String(plan.id);
+    radio.checked = selectedPlanId === plan.id;
+    radio.addEventListener('change', function () {
+      selectedPlanId = plan.id;
+      setCheckoutAction(getCheckoutActionForPlan(plan));
+      syncCheckoutHiddenFields();
+      renderPlanList();
+    });
+
+    var icon = createPaymentIcon(plan.payment_method);
+
+    var info = document.createElement('div');
+    info.className = 'checkout-option-info';
+    var name = document.createElement('span');
+    name.className = 'checkout-option-name';
+    name.textContent = plan.name;
+    var meta = document.createElement('span');
+    meta.className = 'checkout-option-meta';
+    meta.textContent = buildPlanMeta(plan);
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    var price = document.createElement('span');
+    price.className = 'checkout-option-price';
+    price.textContent = formatBRL(plan.price);
+
+    card.appendChild(radio);
+    card.appendChild(icon);
+    card.appendChild(info);
+    card.appendChild(price);
+    return card;
+  }
+
+  function createPaymentIcon(paymentMethod) {
+    var icon = document.createElement('span');
+    icon.className = 'checkout-payment-icon checkout-payment-icon--' + paymentMethod;
+    icon.setAttribute('aria-hidden', 'true');
+    var isPix = paymentMethod === 'pix';
+    var iconUrl = isPix ? pixIconUrl : cardIconUrl;
+    if (iconUrl) {
+      var image = document.createElement('img');
+      image.className = 'checkout-payment-icon-image';
+      image.src = iconUrl;
+      image.alt = '';
+      icon.appendChild(image);
+    } else {
+      icon.textContent = isPix ? 'PIX' : 'CARD';
+    }
+    return icon;
+  }
+
+  function groupPlansForDropdown(plans) {
+    var cycleOrder = { monthly: 1, quarterly: 2, semiannual: 3, annual: 4 };
+    var grouped = {};
+
+    plans.forEach(function (plan) {
+      var section = plan.is_family_plan ? 'family' : 'standard';
+      var cycle = plan.billing_cycle || 'other';
+      var key = section + ':' + cycle;
+      if (!grouped[key]) {
+        grouped[key] = {
+          section: section,
+          cycle: cycle,
+          title: buildPlanGroupTitle(plan),
+          plans: [],
+          hasSelection: false
+        };
+      }
+      grouped[key].plans.push(plan);
+      if (selectedPlanId === plan.id) {
+        grouped[key].hasSelection = true;
+      }
+    });
+
+    return Object.keys(grouped)
+      .map(function (key) { return grouped[key]; })
+      .sort(function (a, b) {
+        if (a.section !== b.section) {
+          return a.section === 'standard' ? -1 : 1;
+        }
+        var orderA = cycleOrder[a.cycle] || 99;
+        var orderB = cycleOrder[b.cycle] || 99;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.title.localeCompare(b.title);
+      });
+  }
+
+  function buildPlanGroupTitle(plan) {
+    var cycleLabel = plan.cycle || 'Plano';
+    if (plan.is_family_plan) {
+      return 'Plano família - ' + cycleLabel;
+    }
+    return 'Plano ' + cycleLabel.toLowerCase();
   }
 
   function getVisiblePlanCatalog() {
@@ -1705,61 +1801,125 @@
       return;
     }
 
-    productCatalog.forEach(function (product) {
-      var qty = selectedProducts[product.id] || 0;
+    var groupedProducts = groupProductsForDropdown(productCatalog);
+    groupedProducts.forEach(function (group, index) {
+      var dropdown = document.createElement('details');
+      dropdown.className = 'checkout-dropdown';
+      if (index === 0 || group.hasSelection) {
+        dropdown.open = true;
+      }
 
-      var card = document.createElement('div');
-      card.className = 'checkout-option-card' + (qty > 0 ? ' is-selected' : '');
+      var summary = document.createElement('summary');
+      summary.className = 'checkout-dropdown-summary';
 
-      var info = document.createElement('div');
-      info.className = 'checkout-option-info';
-      info.innerHTML = '<span class="checkout-option-name">' + product.name + '</span><span class="checkout-option-meta">' + product.category + '</span>';
+      var summaryTitle = document.createElement('span');
+      summaryTitle.className = 'checkout-dropdown-title';
+      summaryTitle.textContent = group.title;
 
-      var price = document.createElement('span');
-      price.className = 'checkout-option-price';
-      price.textContent = formatBRL(product.price);
+      var summaryMeta = document.createElement('span');
+      summaryMeta.className = 'checkout-dropdown-meta';
+      summaryMeta.textContent = group.products.length + (group.products.length === 1 ? ' item' : ' itens');
 
-      var qtyControl = document.createElement('div');
-      qtyControl.className = 'checkout-qty-control';
+      summary.appendChild(summaryTitle);
+      summary.appendChild(summaryMeta);
+      dropdown.appendChild(summary);
 
-      var minusBtn = document.createElement('button');
-      minusBtn.type = 'button';
-      minusBtn.className = 'checkout-qty-btn';
-      minusBtn.textContent = '\u2212';
-      minusBtn.addEventListener('click', function () {
-        var current = selectedProducts[product.id] || 0;
-        if (current > 0) {
-          selectedProducts[product.id] = current - 1;
-          if (selectedProducts[product.id] === 0) delete selectedProducts[product.id];
-          syncCheckoutHiddenFields();
-          renderProductList();
-        }
+      var content = document.createElement('div');
+      content.className = 'checkout-dropdown-content';
+      group.products.forEach(function (product) {
+        content.appendChild(buildProductCard(product));
       });
 
-      var qtySpan = document.createElement('span');
-      qtySpan.className = 'checkout-qty-value';
-      qtySpan.textContent = String(qty);
+      dropdown.appendChild(content);
+      container.appendChild(dropdown);
+    });
+  }
 
-      var plusBtn = document.createElement('button');
-      plusBtn.type = 'button';
-      plusBtn.className = 'checkout-qty-btn';
-      plusBtn.textContent = '+';
-      plusBtn.addEventListener('click', function () {
-        var current = selectedProducts[product.id] || 0;
-        selectedProducts[product.id] = current + 1;
+  function groupProductsForDropdown(products) {
+    var grouped = {};
+    products.forEach(function (product) {
+      var category = product.category || 'Outros materiais';
+      if (!grouped[category]) {
+        grouped[category] = {
+          title: category,
+          products: [],
+          hasSelection: false
+        };
+      }
+      grouped[category].products.push(product);
+      if ((selectedProducts[product.id] || 0) > 0) {
+        grouped[category].hasSelection = true;
+      }
+    });
+    return Object.keys(grouped)
+      .sort(function (a, b) { return a.localeCompare(b); })
+      .map(function (key) { return grouped[key]; });
+  }
+
+  function buildProductCard(product) {
+    var qty = selectedProducts[product.id] || 0;
+
+    var card = document.createElement('div');
+    card.className = 'checkout-option-card' + (qty > 0 ? ' is-selected' : '');
+
+    var info = document.createElement('div');
+    info.className = 'checkout-option-info';
+
+    var name = document.createElement('span');
+    name.className = 'checkout-option-name';
+    name.textContent = product.name;
+
+    var meta = document.createElement('span');
+    meta.className = 'checkout-option-meta';
+    meta.textContent = product.category;
+
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    var price = document.createElement('span');
+    price.className = 'checkout-option-price';
+    price.textContent = formatBRL(product.price);
+
+    var qtyControl = document.createElement('div');
+    qtyControl.className = 'checkout-qty-control';
+
+    var minusBtn = document.createElement('button');
+    minusBtn.type = 'button';
+    minusBtn.className = 'checkout-qty-btn';
+    minusBtn.textContent = '\u2212';
+    minusBtn.addEventListener('click', function () {
+      var current = selectedProducts[product.id] || 0;
+      if (current > 0) {
+        selectedProducts[product.id] = current - 1;
+        if (selectedProducts[product.id] === 0) delete selectedProducts[product.id];
         syncCheckoutHiddenFields();
         renderProductList();
-      });
-
-      qtyControl.appendChild(minusBtn);
-      qtyControl.appendChild(qtySpan);
-      qtyControl.appendChild(plusBtn);
-
-      card.appendChild(info);
-      card.appendChild(price);
-      card.appendChild(qtyControl);
-      container.appendChild(card);
+      }
     });
+
+    var qtySpan = document.createElement('span');
+    qtySpan.className = 'checkout-qty-value';
+    qtySpan.textContent = String(qty);
+
+    var plusBtn = document.createElement('button');
+    plusBtn.type = 'button';
+    plusBtn.className = 'checkout-qty-btn';
+    plusBtn.textContent = '+';
+    plusBtn.addEventListener('click', function () {
+      var current = selectedProducts[product.id] || 0;
+      selectedProducts[product.id] = current + 1;
+      syncCheckoutHiddenFields();
+      renderProductList();
+    });
+
+    qtyControl.appendChild(minusBtn);
+    qtyControl.appendChild(qtySpan);
+    qtyControl.appendChild(plusBtn);
+
+    card.appendChild(info);
+    card.appendChild(price);
+    card.appendChild(qtyControl);
+    return card;
   }
 
   function renderSummary() {
