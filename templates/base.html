@@ -54,6 +54,12 @@
                         <a class="drawer-item" href="{% url 'system:product-list' %}">Materiais</a>
                         <a class="drawer-item" href="{% url 'system:plan-list' %}">Planos</a>
                         <a class="drawer-item" href="{% url 'system:admin-calendar' %}">Cronograma</a>
+                        <div class="drawer-sep">Financeiro</div>
+                        <a class="drawer-item" href="{% url 'system:financial-control' %}">Controle financeiro</a>
+                        <a class="drawer-item" href="{% url 'system:approval-queue' %}">Aprovações</a>
+                        <a class="drawer-item" href="{% url 'system:pending-payments' %}">Pagamentos pendentes</a>
+                        <a class="drawer-item" href="{% url 'system:payroll-list' %}">Folha de professores</a>
+                        <a class="drawer-item" href="{% url 'system:payout-queue' %}">Fila de pagamentos</a>
                         {% if request.portal_is_technical_admin %}
                             <div class="drawer-sep">Técnico</div>
                             <a class="drawer-item" href="/django-admin/">Django Admin</a>
@@ -76,6 +82,7 @@
         {% endif %}
 
         <main class="content-shell">
+            {% include "includes/_messages.html" %}
             {% block content %}{% endblock %}
         </main>
     </div>

@@ -15,7 +15,9 @@
       "Bash(./.venv/Scripts/python.exe manage.py test system.tests -v 0)",
       "Bash(ls:*)",
       "Bash(./.venv/Scripts/python.exe manage.py makemigrations system)",
-      "Bash(./.venv/Scripts/python.exe manage.py migrate)"
+      "Bash(./.venv/Scripts/python.exe manage.py migrate)",
+      "Bash(./.venv/Scripts/python.exe manage.py test system)",
+      "Bash(./.venv/Scripts/python.exe *)"
     ]
   }
 }

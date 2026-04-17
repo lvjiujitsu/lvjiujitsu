@@ -6,6 +6,8 @@ from django.utils import timezone
 
 from system.models import PortalAccount, PortalPasswordResetToken
 from system.models.registration_order import PaymentStatus, RegistrationOrder
+from system.services.membership import get_latest_open_order
+from system.services.trial_access import has_active_trial_for_person
 from system.utils import ensure_formatted_cpf, only_digits
 
 
@@ -18,8 +20,15 @@ TECHNICAL_ADMIN_SESSION_KEY = "technical_admin_user_id"
 def authenticate_portal_identity(identifier: str, password: str):
     access_account = _authenticate_local_portal_account(identifier, password)
     if access_account is not None:
-        if has_pending_payment(access_account.person):
-            return {"blocked_reason": "payment_pending"}
+        pending_order = get_latest_open_order(access_account.person)
+        if pending_order is not None and not has_active_trial_for_person(
+            access_account.person
+        ):
+            return {
+                "blocked_reason": "payment_pending",
+                "pending_order": pending_order,
+                "portal_account": access_account,
+            }
         return {"portal_account": access_account, "technical_admin_user": None}
 
     technical_admin_user = _authenticate_technical_admin(identifier, password)
@@ -30,10 +39,7 @@ def authenticate_portal_identity(identifier: str, password: str):
 
 
 def has_pending_payment(person) -> bool:
-    return RegistrationOrder.objects.filter(
-        person=person,
-        total__gt=0,
-    ).exclude(payment_status=PaymentStatus.PAID).exists()
+    return get_latest_open_order(person) is not None
 
 
 def login_portal_identity(request, *, portal_account=None, technical_admin_user=None) -> None:

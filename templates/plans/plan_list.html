@@ -18,7 +18,9 @@
             <div class="record-card-head">
                 <div>
                     <span class="record-card-name">{{ plan.display_name }}</span>
-                    <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }} · {{ plan.code }}</div>
+                    <div class="record-card-subtitle">
+                        {{ plan.get_billing_cycle_display }} · {{ plan.get_payment_method_display }} · {{ plan.code }}
+                    </div>
                 </div>
                 <span class="record-card-badge {% if not plan.is_active %}badge--inactive{% endif %}">
                     {% if plan.is_active %}Ativo{% else %}Inativo{% endif %}
@@ -28,6 +30,18 @@
                 <span class="record-card-label">Preço</span>
                 <span class="record-card-val">R$ {{ plan.price }}</span>
             </div>
+            {% if plan.monthly_reference_price %}
+            <div class="record-card-row">
+                <span class="record-card-label">Equivalente mensal</span>
+                <span class="record-card-val">R$ {{ plan.monthly_reference_price }}</span>
+            </div>
+            {% endif %}
+            {% if plan.is_family_plan %}
+            <div class="record-card-row">
+                <span class="record-card-label">Condição</span>
+                <span class="record-card-val">Irmãos / Pais e Filhos</span>
+            </div>
+            {% endif %}
             <div class="record-card-actions">
                 <a href="{% url 'system:plan-detail' plan.pk %}">Visualizar</a>
             </div>

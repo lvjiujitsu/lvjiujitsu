@@ -1,19 +1,32 @@
-from datetime import date
+from datetime import date, timedelta
+from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.test import TestCase
+from django.contrib.messages import get_messages
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from system.models import (
     BiologicalSex,
     ClassCategory,
     ClassGroup,
     ClassSchedule,
+    DepositStatus,
+    Membership,
+    MembershipStatus,
+    PaymentProvider,
     Person,
+    PersonRelationship,
     PersonType,
     PortalAccount,
+    RegistrationOrder,
+    SubscriptionPlan,
+    TrialAccessGrant,
 )
+from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.services.class_overview import build_class_group_filter_value
 from system.services.registration import sync_person_class_enrollments
 from system.services.seeding import seed_class_catalog
@@ -117,6 +130,51 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(
             sum(label.startswith("Adulto · Jiu Jitsu") for label in choices),
             1,
+        )
+
+    def test_registration_step_validation_blocks_existing_cpf(self):
+        Person.objects.create(
+            full_name="Aluno Existente",
+            cpf="123.456.789-03",
+            person_type=self.student_type,
+        )
+
+        response = self.client.post(
+            reverse("system:registration-step-validate"),
+            {
+                "step_key": "holder",
+                "registration_profile": "holder",
+                "holder_name": "Novo Aluno",
+                "holder_cpf": "12345678903",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["valid"])
+        self.assertIn("holder_cpf", payload["errors"])
+        self.assertEqual(payload["errors"]["holder_cpf"], "CPF já cadastrado no sistema.")
+
+    def test_registration_step_validation_blocks_missing_jiu_jitsu_belt(self):
+        response = self.client.post(
+            reverse("system:registration-step-validate"),
+            {
+                "step_key": "holder_medical",
+                "registration_profile": "holder",
+                "holder_martial_art": "jiu_jitsu",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["valid"])
+        self.assertEqual(
+            payload["errors"]["holder_jiu_jitsu_belt"],
+            "Informe a faixa de Jiu Jitsu.",
         )
 
     def test_login_with_invalid_numeric_identifier_returns_form_error(self):
@@ -467,6 +525,50 @@ class PortalViewTestCase(TestCase):
         content = response.content.decode("utf-8")
         self.assertTrue(content.index("06:30") < content.index("11:00") < content.index("19:00"))
 
+    def test_person_detail_shows_responsible_billing_context_for_dependent(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Financeiro",
+            cpf="321.654.987-14",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        responsible = Person.objects.create(
+            full_name="Responsável Financeiro",
+            cpf="321.654.987-15",
+            person_type=self.student_type,
+        )
+        dependent = Person.objects.create(
+            full_name="Dependente Financeiro",
+            cpf="321.654.987-16",
+            person_type=self.dependent_type,
+        )
+        PersonRelationship.objects.create(
+            source_person=responsible,
+            target_person=dependent,
+        )
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-admin-responsavel",
+            display_name="Plano Administrativo",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        Membership.objects.create(
+            person=responsible,
+            plan=plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(
+            reverse("system:person-detail", kwargs={"pk": dependent.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Financeiro vinculado ao responsável")
+        self.assertContains(response, "Plano Administrativo")
+
     def test_person_update_form_renders_birth_date_and_logical_class_choice_once(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao LV",
@@ -638,3 +740,399 @@ class PortalViewTestCase(TestCase):
         response = self.client.get("/.well-known/appspecific/com.chrome.devtools.json")
 
         self.assertEqual(response.status_code, 204)
+
+    def test_payment_checkout_with_missing_order_redirects_to_home_with_message(self):
+        response = self.client.get(
+            reverse("system:payment-checkout", kwargs={"order_id": 999999}),
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:root"))
+        messages = [message.message for message in get_messages(response.wsgi_request)]
+        self.assertIn("Pedido não encontrado.", messages)
+
+    def test_payment_checkout_without_authorization_redirects_to_home_with_message(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-pagamento",
+            display_name="Mensal",
+            price=Decimal("150.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        order_owner = Person.objects.create(
+            full_name="Aluno Checkout",
+            cpf="321.654.987-90",
+            person_type=self.student_type,
+        )
+        order = RegistrationOrder.objects.create(
+            person=order_owner,
+            plan=plan,
+            plan_price=Decimal("150.00"),
+            total=Decimal("150.00"),
+        )
+
+        response = self.client.get(
+            reverse("system:payment-checkout", kwargs={"order_id": order.pk}),
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:root"))
+        messages = [message.message for message in get_messages(response.wsgi_request)]
+        self.assertIn("Pedido não encontrado.", messages)
+
+    def test_payment_checkout_allows_dependent_when_order_belongs_to_responsible(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-relacao",
+            display_name="Mensal Relação",
+            price=Decimal("150.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        responsible_account = self._create_portal_account(
+            full_name="Responsável Checkout",
+            cpf="321.654.987-40",
+            password="123456",
+            person_type=self.student_type,
+        )
+        dependent_account = self._create_portal_account(
+            full_name="Dependente Checkout",
+            cpf="321.654.987-41",
+            password="123456",
+            person_type=self.dependent_type,
+        )
+        PersonRelationship.objects.create(
+            source_person=responsible_account.person,
+            target_person=dependent_account.person,
+        )
+        order = RegistrationOrder.objects.create(
+            person=responsible_account.person,
+            plan=plan,
+            plan_price=Decimal("150.00"),
+            total=Decimal("150.00"),
+        )
+        self._login_portal_account(dependent_account)
+
+        response = self.client.get(
+            reverse("system:payment-checkout", kwargs={"order_id": order.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pedido #")
+
+    def test_financial_control_lists_gateway_fee_and_net_amount(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Financeira",
+            cpf="321.654.987-77",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        self._login_portal_account(administrative_account)
+        plan = SubscriptionPlan.objects.create(
+            code="standard-monthly-pix",
+            display_name="Plano mensal PIX",
+            price=Decimal("240.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+            is_active=True,
+        )
+        person = Person.objects.create(
+            full_name="Aluno Entrada",
+            cpf="321.654.987-78",
+            person_type=self.student_type,
+        )
+        RegistrationOrder.objects.create(
+            person=person,
+            plan=plan,
+            plan_price=Decimal("240.00"),
+            total=Decimal("240.00"),
+            payment_provider=PaymentProvider.ASAAS,
+            administrative_fee=Decimal("1.99"),
+            net_amount=Decimal("238.01"),
+            deposit_status=DepositStatus.AVAILABLE,
+            expected_deposit_date=date(2026, 4, 16),
+        )
+
+        response = self.client.get(reverse("system:financial-control"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Controle financeiro")
+        self.assertContains(response, "Aluno Entrada")
+        self.assertContains(response, "Plano mensal PIX")
+        self.assertContains(response, "R$ 240,00")
+        self.assertContains(response, "R$ 1,99")
+        self.assertContains(response, "R$ 238,01")
+        self.assertContains(response, "Disponível")
+
+    def test_register_with_pay_later_grants_trial_and_redirects_to_login(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-trial",
+            display_name="Mensal Trial",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        response = self.client.post(
+            reverse("system:register"),
+            {
+                "registration_profile": "holder",
+                "holder_name": "Aluno Trial",
+                "holder_cpf": "12345678912",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
+                "holder_phone": "(62) 99999-1212",
+                "holder_email": "trial@example.com",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "selected_plan": str(plan.pk),
+                "checkout_action": "pay_later",
+            },
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:legacy-login-form"))
+        order = RegistrationOrder.objects.get(person__cpf="123.456.789-12")
+        grant = TrialAccessGrant.objects.get(order=order)
+        self.assertEqual(grant.granted_classes, 1)
+        self.assertEqual(grant.consumed_classes, 0)
+
+    def test_register_with_card_action_redirects_directly_to_stripe_checkout(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-stripe",
+            display_name="Mensal Stripe",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        response = self.client.post(
+            reverse("system:register"),
+            {
+                "registration_profile": "holder",
+                "holder_name": "Aluno Cartao",
+                "holder_cpf": "12345678913",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
+                "holder_phone": "(62) 99999-1313",
+                "holder_email": "cartao@example.com",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "selected_plan": str(plan.pk),
+                "checkout_action": "stripe",
+            },
+        )
+
+        order = RegistrationOrder.objects.get(person__cpf="123.456.789-13")
+        self.assertRedirects(
+            response,
+            reverse("system:stripe-checkout", kwargs={"order_id": order.pk}),
+            fetch_redirect_response=False,
+        )
+
+    def test_pending_payment_with_trial_allows_login(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-login-trial",
+            display_name="Mensal Login Trial",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        self.client.post(
+            reverse("system:register"),
+            {
+                "registration_profile": "holder",
+                "holder_name": "Aluno Login Trial",
+                "holder_cpf": "12345678914",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
+                "holder_phone": "(62) 99999-1414",
+                "holder_email": "logintrial@example.com",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "selected_plan": str(plan.pk),
+                "checkout_action": "pay_later",
+            },
+        )
+
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "12345678914", "password": "123456"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:student-home"))
+        self.assertContains(response, "período experimental")
+
+    def test_student_dashboard_shows_active_membership_and_due_date(self):
+        student_account = self._create_portal_account(
+            full_name="Aluno Mensalidade",
+            cpf="321.654.987-21",
+            password="123456",
+            person_type=self.student_type,
+        )
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-dashboard",
+            display_name="Plano Mensal",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        Membership.objects.create(
+            person=student_account.person,
+            plan=plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self._login_portal_account(student_account)
+
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano Mensal")
+        self.assertContains(response, "Próximo vencimento")
+
+    def test_student_dashboard_backfills_membership_from_paid_order(self):
+        student_account = self._create_portal_account(
+            full_name="Aluno Retroativo",
+            cpf="321.654.987-22",
+            password="123456",
+            person_type=self.student_type,
+        )
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-retroativo",
+            display_name="Plano Retroativo",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        RegistrationOrder.objects.create(
+            person=student_account.person,
+            plan=plan,
+            plan_price=Decimal("250.00"),
+            total=Decimal("250.00"),
+            payment_status="paid",
+            paid_at=timezone.now(),
+        )
+        self._login_portal_account(student_account)
+
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano Retroativo")
+        self.assertTrue(
+            Membership.objects.filter(person=student_account.person, plan=plan).exists()
+        )
+
+    def test_student_dashboard_uses_responsible_membership_for_dependent(self):
+        responsible_account = self._create_portal_account(
+            full_name="Responsável Mensalidade",
+            cpf="321.654.987-31",
+            password="123456",
+            person_type=self.student_type,
+        )
+        dependent_account = self._create_portal_account(
+            full_name="Dependente Mensalidade",
+            cpf="321.654.987-32",
+            password="123456",
+            person_type=self.dependent_type,
+        )
+        PersonRelationship.objects.create(
+            source_person=responsible_account.person,
+            target_person=dependent_account.person,
+        )
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-responsavel",
+            display_name="Plano do Responsável",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        Membership.objects.create(
+            person=responsible_account.person,
+            plan=plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_end=timezone.now() + timedelta(days=30),
+        )
+        self._login_portal_account(dependent_account)
+
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano do Responsável")
+        self.assertContains(response, "vinculada ao responsável")
+
+    @override_settings(STRIPE_SECRET_KEY="")
+    @patch("system.views.payment_views.logger.error")
+    def test_stripe_checkout_without_env_redirects_back_with_message(
+        self, _mock_log_error
+    ):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-env-stripe",
+            display_name="Mensal Env Stripe",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        order_owner = Person.objects.create(
+            full_name="Aluno Env Stripe",
+            cpf="321.654.987-91",
+            person_type=self.student_type,
+        )
+        order = RegistrationOrder.objects.create(
+            person=order_owner,
+            plan=plan,
+            plan_price=Decimal("250.00"),
+            total=Decimal("250.00"),
+        )
+        session = self.client.session
+        session["pending_checkout_order_id"] = order.pk
+        session.save()
+
+        response = self.client.get(
+            reverse("system:stripe-checkout", kwargs={"order_id": order.pk}),
+            follow=True,
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("system:payment-checkout", kwargs={"order_id": order.pk}),
+        )
+        messages = [message.message for message in get_messages(response.wsgi_request)]
+        self.assertTrue(any("indisponível" in message for message in messages))
+
+    @override_settings(ASAAS_API_KEY="")
+    @patch("system.views.asaas_views.logger.error")
+    def test_pix_checkout_without_env_redirects_back_with_message(
+        self, _mock_log_error
+    ):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-env-pix",
+            display_name="Mensal Env PIX",
+            price=Decimal("250.00"),
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        order_owner = Person.objects.create(
+            full_name="Aluno Env PIX",
+            cpf="321.654.987-92",
+            person_type=self.student_type,
+        )
+        order = RegistrationOrder.objects.create(
+            person=order_owner,
+            plan=plan,
+            plan_price=Decimal("250.00"),
+            total=Decimal("250.00"),
+        )
+        session = self.client.session
+        session["pending_checkout_order_id"] = order.pk
+        session.save()
+
+        response = self.client.get(
+            reverse("system:asaas-pix-create", kwargs={"order_id": order.pk}),
+            follow=True,
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("system:payment-checkout", kwargs={"order_id": order.pk}),
+        )
+        messages = [message.message for message in get_messages(response.wsgi_request)]
+        self.assertTrue(any("PIX indisponível" in message for message in messages))

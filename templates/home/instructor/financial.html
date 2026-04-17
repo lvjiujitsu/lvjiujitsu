@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Meu financeiro | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <div class="billing-screen__header">
+        <p class="panel-eyebrow">Professor</p>
+        <h1>Meu financeiro</h1>
+        <p>Consulte seu saldo e solicite saques antecipados.</p>
+    </div>
+
+    {% if messages %}
+        <ul class="billing-messages">
+            {% for msg in messages %}
+                <li class="{{ msg.tags }}">{{ msg }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if config %}
+        <div class="billing-summary">
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Salário base</span>
+                <strong>R$ {{ base_salary }}</strong>
+            </div>
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Já comprometido</span>
+                <strong>R$ {{ committed_total }}</strong>
+            </div>
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Disponível agora</span>
+                <strong>R$ {{ available_balance }}</strong>
+            </div>
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Dia do pagamento</span>
+                <strong>Dia {{ config.payment_day }}</strong>
+            </div>
+            {% if bank %}
+                <div class="billing-summary__item">
+                    <span class="billing-summary__label">Chave PIX</span>
+                    <strong>{{ bank.get_pix_key_type_display }}: <code>{{ bank.pix_key }}</code></strong>
+                </div>
+            {% else %}
+                <div class="billing-summary__item billing-summary__item--warning">
+                    <span class="billing-summary__label">Chave PIX</span>
+                    <strong>Não cadastrada — contate o admin</strong>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if bank %}
+        <section class="billing-block">
+            <h3>Solicitar saque antecipado</h3>
+            <form method="post" class="billing-inline-form">
+                {% csrf_token %}
+                <label>
+                    Valor (R$)
+                    {{ form.amount }}
+                </label>
+                <label style="flex:1;">
+                    Justificativa
+                    {{ form.notes }}
+                </label>
+                <button type="submit" class="btn btn--primary">Solicitar</button>
+            </form>
+            {% if form.errors %}
+                <ul class="billing-messages">
+                    {% for field, errors in form.errors.items %}
+                        {% for err in errors %}
+                            <li class="error">{{ field }}: {{ err }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+        {% endif %}
+    {% else %}
+        <div class="billing-alert billing-alert--warning">
+            Sua folha ainda não foi configurada. Procure o administrativo.
+        </div>
+    {% endif %}
+
+    <section class="billing-history">
+        <h3>Últimos pagamentos</h3>
+        {% if recent_payouts %}
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>Mês ref.</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Criado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_payouts %}
+                        <tr>
+                            <td>{{ p.reference_month|date:"m/Y" }}</td>
+                            <td>{{ p.get_kind_display }}</td>
+                            <td>R$ {{ p.amount }}</td>
+                            <td>
+                                <span class="billing-status billing-status--{{ p.status }}">
+                                    {{ p.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ p.created_at|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhum pagamento registrado.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

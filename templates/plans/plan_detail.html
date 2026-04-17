@@ -7,7 +7,7 @@
     <div>
         <p class="panel-eyebrow">Plano</p>
         <h1>{{ plan.display_name }}</h1>
-        <p>{{ plan.get_billing_cycle_display }} · R$ {{ plan.price }}</p>
+        <p>{{ plan.get_billing_cycle_display }} · {{ plan.get_payment_method_display }} · R$ {{ plan.price }}</p>
     </div>
 </section>
 
@@ -30,6 +30,20 @@
         <div class="record-card-row">
             <span class="record-card-label">Preço</span>
             <span class="record-card-val">R$ {{ plan.price }}</span>
+        </div>
+        {% if plan.monthly_reference_price %}
+        <div class="record-card-row">
+            <span class="record-card-label">Equivalente mensal</span>
+            <span class="record-card-val">R$ {{ plan.monthly_reference_price }}</span>
+        </div>
+        {% endif %}
+        <div class="record-card-row">
+            <span class="record-card-label">Meio de pagamento</span>
+            <span class="record-card-val">{{ plan.get_payment_method_display }}</span>
+        </div>
+        <div class="record-card-row">
+            <span class="record-card-label">Plano familiar</span>
+            <span class="record-card-val">{{ plan.is_family_plan|yesno:"Sim,Não" }}</span>
         </div>
         {% if plan.description %}
         <div class="record-card-row">

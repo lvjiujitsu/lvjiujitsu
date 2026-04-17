@@ -107,6 +107,18 @@ class Person(TimeStampedModel):
         blank=True,
     )
     is_active = models.BooleanField(default=True)
+    stripe_customer_id = models.CharField(
+        "Stripe Customer ID",
+        max_length=120,
+        blank=True,
+        default="",
+    )
+    asaas_customer_id = models.CharField(
+        "Asaas Customer ID",
+        max_length=120,
+        blank=True,
+        default="",
+    )
 
     class Meta:
         ordering = ("full_name",)

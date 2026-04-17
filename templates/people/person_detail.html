@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260414">
 {% endblock %}
 
 {% block content %}
@@ -42,6 +43,193 @@
                 <p>{{ person.is_active|yesno:"Ativo,Inativo" }} · {{ person.has_portal_access|yesno:"Com acesso,Sem acesso" }}</p>
             </div>
         </div>
+    </section>
+
+    <section class="form-card catalog-section-card catalog-section-card--full billing-block">
+        <div class="catalog-section-head">
+            <div>
+                <p class="panel-eyebrow">Financeiro</p>
+                <h2>Mensalidade e pagamentos</h2>
+            </div>
+        </div>
+        {% if billing_owner and billing_owner.pk != person.pk %}
+            <div class="billing-alert billing-alert--warning">
+                Financeiro vinculado ao responsável {{ billing_owner.full_name }}.
+            </div>
+        {% endif %}
+
+        {% if active_membership %}
+            <div class="billing-summary">
+                <div class="billing-summary__item">
+                    <span class="billing-summary__label">Plano</span>
+                    <strong>{{ active_membership.plan.display_name }}</strong>
+                </div>
+                <div class="billing-summary__item">
+                    <span class="billing-summary__label">Status</span>
+                    <strong class="billing-status billing-status--{{ active_membership.status }}">
+                        {{ active_membership.get_status_display }}
+                    </strong>
+                </div>
+                <div class="billing-summary__item">
+                    <span class="billing-summary__label">Valor</span>
+                    <strong>R$ {{ active_membership.plan.price }}</strong>
+                </div>
+                {% if active_membership.current_period_end %}
+                    <div class="billing-summary__item">
+                        <span class="billing-summary__label">Vencimento</span>
+                        <strong>{{ active_membership.current_period_end|date:"d/m/Y" }}</strong>
+                    </div>
+                {% endif %}
+                {% if active_membership.stripe_subscription_id %}
+                    <div class="billing-summary__item">
+                        <span class="billing-summary__label">Stripe</span>
+                        <code>{{ active_membership.stripe_subscription_id }}</code>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="billing-actions-row">
+                {% if active_membership.stripe_subscription_id %}
+                    <form method="post" action="{% url 'system:cancel-membership' active_membership.pk %}" class="billing-inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'system:person-detail' person.pk %}">
+                        <input type="hidden" name="at_period_end" value="1">
+                        <input type="text" name="reason" placeholder="Motivo (opcional)">
+                        <button type="submit" class="btn btn--warning">Cancelar ao fim do ciclo</button>
+                    </form>
+
+                    <form method="post" action="{% url 'system:change-plan' active_membership.pk %}" class="billing-inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'system:person-detail' person.pk %}">
+                        <select name="plan_id">
+                            {% for plan_opt in available_plans %}
+                                <option value="{{ plan_opt.pk }}">{{ plan_opt.display_name }} — R$ {{ plan_opt.price }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn--primary">Trocar plano</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="billing-empty">Este aluno ainda não possui assinatura ativa.</p>
+        {% endif %}
+
+        {% if pending_orders %}
+            <h3>Pedidos pendentes</h3>
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Plano</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Criado</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in pending_orders %}
+                            <tr>
+                                <td>{{ order.pk }}</td>
+                                <td>{{ order.plan.display_name|default:"—" }}</td>
+                                <td>R$ {{ order.total }}</td>
+                                <td>{{ order.get_payment_status_display }}</td>
+                                <td>{{ order.created_at|date:"d/m/Y" }}</td>
+                                <td class="billing-table__actions">
+                                    {% if order.total == 0 %}
+                                        <form method="post" action="{% url 'system:exempt-order' order.pk %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{% url 'system:person-detail' person.pk %}">
+                                            <button type="submit" class="btn btn--success">Isentar</button>
+                                        </form>
+                                    {% endif %}
+                                    <form method="post" action="{% url 'system:mark-order-paid' order.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{% url 'system:person-detail' person.pk %}">
+                                        <button type="submit" class="btn btn--primary">Marcar pago</button>
+                                    </form>
+                                    {% if order.stripe_payment_intent_id %}
+                                        <form method="post" action="{% url 'system:refund-order' order.pk %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{% url 'system:person-detail' person.pk %}">
+                                            <input type="text" name="amount" placeholder="Valor">
+                                            <button type="submit" class="btn btn--warning">Estornar</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        {% if person_invoices %}
+            <h3>Histórico de faturas</h3>
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>Pago em</th>
+                            <th>Valor</th>
+                            <th>Estornado</th>
+                            <th>Período</th>
+                            <th>Status</th>
+                            <th>Recibo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in person_invoices %}
+                            <tr>
+                                <td>{{ invoice.paid_at|date:"d/m/Y"|default:"—" }}</td>
+                                <td>R$ {{ invoice.amount_paid }}</td>
+                                <td>{% if invoice.amount_refunded %}R$ {{ invoice.amount_refunded }}{% else %}—{% endif %}</td>
+                                <td>
+                                    {% if invoice.period_start and invoice.period_end %}
+                                        {{ invoice.period_start|date:"d/m/Y" }} → {{ invoice.period_end|date:"d/m/Y" }}
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td>{{ invoice.status }}</td>
+                                <td>
+                                    {% if invoice.hosted_invoice_url %}
+                                        <a href="{{ invoice.hosted_invoice_url }}" target="_blank" rel="noopener">Abrir</a>
+                                    {% else %}—{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        {% if person_orders %}
+            <h3>Todos os pedidos</h3>
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Plano</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Criado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in person_orders %}
+                            <tr>
+                                <td>{{ order.pk }}</td>
+                                <td>{{ order.plan.display_name|default:"—" }}</td>
+                                <td>R$ {{ order.total }}</td>
+                                <td>{{ order.get_payment_status_display }}</td>
+                                <td>{{ order.created_at|date:"d/m/Y" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
     </section>
 
     <section class="form-card catalog-section-card">

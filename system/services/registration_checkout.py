@@ -6,6 +6,10 @@ from django.db import transaction
 from system.models.plan import SubscriptionPlan
 from system.models.product import Product
 from system.models.registration_order import RegistrationOrder, RegistrationOrderItem
+from system.services.financial_transactions import (
+    apply_order_financials,
+    resolve_payment_provider_for_plan,
+)
 
 
 def get_plan_catalog_payload():
@@ -13,9 +17,20 @@ def get_plan_catalog_payload():
     return [
         {
             "id": plan.pk,
+            "code": plan.code,
             "name": plan.display_name,
             "price": str(plan.price),
+            "monthly_reference_price": (
+                str(plan.monthly_reference_price)
+                if plan.monthly_reference_price is not None
+                else ""
+            ),
             "cycle": plan.get_billing_cycle_display(),
+            "billing_cycle": plan.billing_cycle,
+            "payment_method": plan.payment_method,
+            "payment_method_label": plan.get_payment_method_display(),
+            "is_family_plan": plan.is_family_plan,
+            "installment_label": "1x" if plan.payment_method == "credit_card" else "",
         }
         for plan in plans
     ]
@@ -60,6 +75,27 @@ def parse_selected_products(raw_payload):
     return result
 
 
+def get_registration_plan_multiplier(cleaned_data):
+    child_group_sets = []
+    profile = cleaned_data.get("registration_profile")
+    if profile == "guardian":
+        child_group_sets.append(cleaned_data.get("student_class_groups") or [])
+    if profile == "holder" and cleaned_data.get("include_dependent"):
+        child_group_sets.append(cleaned_data.get("dependent_class_groups") or [])
+    for dependent in cleaned_data.get("extra_dependents") or []:
+        child_group_sets.append(dependent.get("class_groups") or [])
+
+    for class_groups in child_group_sets:
+        audiences = {
+            class_group.class_category.audience
+            for class_group in class_groups
+            if class_group is not None and class_group.class_category_id
+        }
+        if {"kids", "juvenile"}.issubset(audiences):
+            return 2
+    return 1
+
+
 @transaction.atomic
 def create_registration_order(person, cleaned_data):
     plan_id = cleaned_data.get("selected_plan")
@@ -75,7 +111,7 @@ def create_registration_order(person, cleaned_data):
     if plan_id:
         try:
             plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-            plan_price = plan.price
+            plan_price = plan.price * Decimal(get_registration_plan_multiplier(cleaned_data))
         except SubscriptionPlan.DoesNotExist:
             pass
 
@@ -111,4 +147,8 @@ def create_registration_order(person, cleaned_data):
 
     order.total = plan_price + items_total
     order.save(update_fields=["total", "updated_at"])
+    apply_order_financials(
+        order,
+        payment_provider=resolve_payment_provider_for_plan(plan),
+    )
     return order

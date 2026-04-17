@@ -22,6 +22,8 @@ def get_class_group_eligibility_error(*, birth_date, biological_sex, class_group
         return "Informe a data de nascimento para validar a turma escolhida."
     if class_group.class_category.audience == CategoryAudience.WOMEN:
         return _get_women_group_error(audience, biological_sex)
+    if _is_child_cross_category_allowed(audience, class_group.class_category.audience):
+        return None
     if audience != class_group.class_category.audience:
         return "A turma escolhida não é compatível com a faixa etária da pessoa."
     return None
@@ -65,6 +67,11 @@ def _get_women_group_error(audience, biological_sex):
     if audience != CategoryAudience.ADULT:
         return "A turma feminina está liberada apenas para alunas adultas."
     return None
+
+
+def _is_child_cross_category_allowed(person_audience, group_audience):
+    child_audiences = {CategoryAudience.KIDS, CategoryAudience.JUVENILE}
+    return person_audience in child_audiences and group_audience in child_audiences
 
 
 class ClassInstructorAssignment(TimeStampedModel):

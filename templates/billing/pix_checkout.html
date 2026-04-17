@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pagamento PIX | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <div class="billing-screen__header">
+        <h1>Pagamento PIX</h1>
+        <p>Pedido #{{ order.pk }} — Total: <strong>R$ {{ order.total }}</strong></p>
+    </div>
+
+    <div class="billing-alert billing-alert--warning">
+        Aponte a câmera do app do seu banco para o QR Code ou use o código "copia e cola".
+        O PIX expira em {{ pix.expires_at|date:"d/m/Y H:i" }}.
+    </div>
+
+    {% if pix.qrcode %}
+    <div style="text-align:center; padding:1rem; background:#fff; border-radius:10px;">
+        <img
+            alt="QR Code PIX"
+            src="data:image/png;base64,{{ pix.qrcode }}"
+            style="max-width:280px; width:100%; height:auto;"
+        >
+    </div>
+    {% endif %}
+
+    <div class="billing-block">
+        <h3>Copia e cola</h3>
+        <textarea
+            readonly
+            rows="4"
+            style="width:100%; padding:0.5rem; font-family:monospace; font-size:0.8rem;"
+        >{{ pix.copy_paste }}</textarea>
+    </div>
+
+    <div class="billing-actions-row">
+        <a class="btn btn--primary" href="{% url 'system:dashboard-redirect' %}">Já paguei — ir ao painel</a>
+        <a class="btn btn--warning" href="{% url 'system:payment-cancel' %}">Cancelar</a>
+    </div>
+</section>
+{% endblock %}

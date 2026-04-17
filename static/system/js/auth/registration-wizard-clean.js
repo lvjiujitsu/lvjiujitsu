@@ -37,12 +37,21 @@
   
   var registrationCatalogNode = document.getElementById('registration-catalog');
   var registrationCatalog = registrationCatalogNode ? JSON.parse(registrationCatalogNode.textContent) : [];
+  var ibjjfAgeCategoriesNode = document.getElementById('ibjjf-age-categories');
+  var ibjjfAgeCategories = ibjjfAgeCategoriesNode ? JSON.parse(ibjjfAgeCategoriesNode.textContent) : [];
+  var stepValidateUrl = form.dataset.stepValidateUrl || '';
+  var csrfTokenInput = form.querySelector('[name="csrfmiddlewaretoken"]');
+  var csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
 
   var planCatalogNode = document.getElementById('plan-catalog');
   var planCatalog = planCatalogNode ? JSON.parse(planCatalogNode.textContent) : [];
 
   var productCatalogNode = document.getElementById('product-catalog');
   var productCatalog = productCatalogNode ? JSON.parse(productCatalogNode.textContent) : [];
+  var checkoutActionInput = document.getElementById('checkout-action');
+  var checkoutActionButtons = Array.from(form.querySelectorAll('[data-checkout-action]'));
+  var checkoutActionHelp = form.querySelector('[data-checkout-action-help]');
+  var checkoutDecision = form.querySelector('[data-checkout-decision]');
 
   // ============================================================================
   // State
@@ -50,9 +59,12 @@
   var currentStepIndex = 0;
   var selectedPlanId = null;
   var selectedProducts = {};
+  var checkoutTotal = 0;
+  var checkoutAction = normalizeCheckoutAction(checkoutActionInput ? checkoutActionInput.value : 'pay_later');
   var activeSteps = [];
   var extraDependents = [];
   var dependentSequence = 0;
+  var isAdvancing = false;
   
   var DRAFT_KEY = 'lv-register-draft-clean';
   var DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -328,6 +340,15 @@
     });
 
     // Render checkout panels when active
+    if (currentStep.key === 'holder_classes') {
+      renderClassGroupCards('holder');
+    }
+    if (currentStep.key === 'dependent_classes') {
+      renderClassGroupCards('dependent');
+    }
+    if (currentStep.key === 'student_classes') {
+      renderClassGroupCards('student');
+    }
     if (currentStep.key === 'plan') {
       renderPlanList();
     }
@@ -695,8 +716,23 @@
     scrollToTop();
   }
 
-  function nextStep() {
+  async function nextStep() {
+    if (isAdvancing) {
+      return;
+    }
     if (!validateCurrentStep()) {
+      return;
+    }
+    isAdvancing = true;
+    if (nextButton) {
+      nextButton.disabled = true;
+    }
+    var serverValidationPassed = await validateCurrentStepOnServer();
+    isAdvancing = false;
+    if (nextButton) {
+      nextButton.disabled = false;
+    }
+    if (!serverValidationPassed) {
       return;
     }
     
@@ -877,6 +913,54 @@
 
   function validateCurrentStep() {
     return validateStep(currentStepIndex);
+  }
+
+  async function validateCurrentStepOnServer() {
+    if (!stepValidateUrl) {
+      return true;
+    }
+    var step = activeSteps[currentStepIndex];
+    if (!step) {
+      return true;
+    }
+    persistStepDependentData(step);
+    syncCheckoutHiddenFields();
+    var payload = new FormData(form);
+    payload.set('step_key', step.key);
+    try {
+      var response = await fetch(stepValidateUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: payload,
+        credentials: 'same-origin'
+      });
+      if (!response.ok) {
+        return true;
+      }
+      var data = await response.json();
+      if (data.valid) {
+        return true;
+      }
+      return applyServerStepErrors(data.errors || {});
+    } catch (error) {
+      console.warn('Falha ao validar etapa no servidor:', error);
+      return true;
+    }
+  }
+
+  function applyServerStepErrors(errors) {
+    var names = Object.keys(errors);
+    if (names.length === 0) {
+      return true;
+    }
+    var firstName = names[0];
+    var field = form.querySelector('[name="' + firstName + '"]');
+    var message = errors[firstName];
+    if (field) {
+      return markInvalid(field, message);
+    }
+    alert(message);
+    return false;
   }
 
   // ============================================================================
@@ -1125,6 +1209,20 @@
     });
   });
 
+  checkoutActionButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (button.disabled) return;
+      setCheckoutAction(button.dataset.checkoutAction || 'pay_later');
+      var currentStep = activeSteps[currentStepIndex];
+      if (!currentStep || currentStep.key !== 'summary') return;
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit(submitButton || undefined);
+      } else {
+        form.submit();
+      }
+    });
+  });
+
   if (backButton) {
     backButton.addEventListener('click', prevStep);
   }
@@ -1180,12 +1278,322 @@
   });
 
   // ============================================================================
+  // Class selection
+  // ============================================================================
+  function renderClassGroupCards(prefix) {
+    var selectField = form.querySelector('select[name="' + prefix + '_class_groups"]');
+    var container = form.querySelector('[data-class-card-list="' + prefix + '"]');
+    var help = form.querySelector('[data-class-help="' + prefix + '"]');
+    if (!selectField || !container) {
+      return;
+    }
+
+    selectField.classList.add('enhanced-class-select');
+    selectField.setAttribute('aria-hidden', 'true');
+    selectField.tabIndex = -1;
+    var allowedOptions = getAllowedClassOptions(prefix);
+    syncAllowedClassOptions(selectField, allowedOptions);
+    syncAllowedClassSelection(prefix, allowedOptions, selectField);
+    container.innerHTML = '';
+
+    if (allowedOptions.length === 0) {
+      container.textContent = 'Informe data de nascimento e sexo biológico para liberar as turmas compatíveis.';
+      if (help) {
+        help.textContent = '';
+      }
+      return;
+    }
+
+    allowedOptions.forEach(function (option) {
+      container.appendChild(buildClassCard(prefix, option, selectField));
+    });
+    updateClassHelp(prefix, help);
+  }
+
+  function syncAllowedClassOptions(selectField, allowedOptions) {
+    var allowedValues = new Set(allowedOptions.map(function (option) {
+      return String(option.id);
+    }));
+    Array.from(selectField.options).forEach(function (option) {
+      var isAllowed = allowedValues.has(String(option.value));
+      option.disabled = !isAllowed;
+      option.hidden = !isAllowed;
+    });
+  }
+
+  function buildClassCard(prefix, option, selectField) {
+    var selectedValues = new Set(getSelectMultipleValues(prefix + '_class_groups').map(String));
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'class-option-card';
+    button.classList.toggle('is-selected', selectedValues.has(String(option.id)));
+    button.dataset.classOption = String(option.id);
+
+    var title = document.createElement('span');
+    title.className = 'class-option-title';
+    title.textContent = option.category_name + ' · ' + option.display_name;
+
+    var teacher = document.createElement('span');
+    teacher.className = 'class-option-meta';
+    teacher.textContent = option.teacher_label || 'Equipe docente não definida';
+
+    var schedules = document.createElement('span');
+    schedules.className = 'class-option-schedules';
+    schedules.textContent = buildClassScheduleText(option);
+
+    button.appendChild(title);
+    button.appendChild(teacher);
+    button.appendChild(schedules);
+    button.addEventListener('click', function () {
+      toggleClassSelection(selectField, option.id);
+      renderClassGroupCards(prefix);
+      renderPlanList();
+      renderSummary();
+      saveDraft();
+    });
+    return button;
+  }
+
+  function buildClassScheduleText(option) {
+    if (!option.schedules || option.schedules.length === 0) {
+      return 'Sem horários ativos.';
+    }
+    return option.schedules.map(function (schedule) {
+      return schedule.weekday_display + ' ' + schedule.start_time;
+    }).join(' · ');
+  }
+
+  function getAllowedClassOptions(prefix) {
+    var allowedAudiences = getAllowedClassAudiences(prefix);
+    return registrationCatalog.filter(function (option) {
+      return allowedAudiences.indexOf(option.category_audience) !== -1;
+    });
+  }
+
+  function getAllowedClassAudiences(prefix) {
+    var audience = resolveAudienceForPrefix(prefix);
+    var biologicalSex = getInputValue(prefix + '_biological_sex');
+    if (audience === 'adult') {
+      return biologicalSex === 'female' ? ['adult', 'women'] : ['adult'];
+    }
+    if (audience === 'kids' || audience === 'juvenile') {
+      return ['kids', 'juvenile'];
+    }
+    return [];
+  }
+
+  function getDefaultClassAudiences(prefix) {
+    var audience = resolveAudienceForPrefix(prefix);
+    if (audience === 'adult') {
+      return ['adult'];
+    }
+    if (audience === 'kids' || audience === 'juvenile') {
+      return [audience];
+    }
+    return [];
+  }
+
+  function syncAllowedClassSelection(prefix, allowedOptions, selectField) {
+    var allowedValues = new Set(allowedOptions.map(function (option) {
+      return String(option.id);
+    }));
+    var currentValues = getSelectMultipleValues(prefix + '_class_groups').filter(function (value) {
+      return allowedValues.has(String(value));
+    });
+    if (currentValues.length === 0) {
+      var defaults = getDefaultClassAudiences(prefix);
+      allowedOptions.forEach(function (option) {
+        if (currentValues.length === 0 && defaults.indexOf(option.category_audience) !== -1) {
+          currentValues.push(String(option.id));
+        }
+      });
+    }
+    setSelectMultipleValues(selectField.name, currentValues);
+    syncExtraDependentsPayload();
+  }
+
+  function toggleClassSelection(selectField, value) {
+    var selectedValues = new Set(getSelectMultipleValues(selectField.name).map(String));
+    var normalized = String(value);
+    if (selectedValues.has(normalized)) {
+      selectedValues.delete(normalized);
+    } else {
+      selectedValues.add(normalized);
+    }
+    setSelectMultipleValues(selectField.name, Array.from(selectedValues));
+  }
+
+  function updateClassHelp(prefix, help) {
+    if (!help) {
+      return;
+    }
+    var selectedAudiences = getSelectedAudiences(prefix + '_class_groups');
+    var audience = resolveAudienceForPrefix(prefix);
+    var biologicalSex = getInputValue(prefix + '_biological_sex');
+    if (audience === 'adult' && biologicalSex === 'female') {
+      help.textContent = 'A turma feminina é opcional e começa sem custo adicional; ela poderá ser cobrada futuramente.';
+      return;
+    }
+    if (audience === 'adult') {
+      help.textContent = 'Você pode treinar em todos os horários disponíveis da turma adulto.';
+      return;
+    }
+    if (selectedAudiences.indexOf('kids') !== -1 && selectedAudiences.indexOf('juvenile') !== -1) {
+      help.textContent = 'Kids e Juvenil selecionadas: o plano será cobrado em valor dobrado.';
+      return;
+    }
+    help.textContent = 'A turma ideal foi selecionada pela idade. Você pode trocar para Kids, Juvenil ou marcar as duas.';
+  }
+
+  function resolveAudienceForPrefix(prefix) {
+    var birthDate = parsePtDate(getInputValue(prefix + '_birthdate'));
+    if (!birthDate) {
+      return '';
+    }
+    var age = calculateAge(birthDate);
+    for (var i = 0; i < ibjjfAgeCategories.length; i++) {
+      var category = ibjjfAgeCategories[i];
+      var minAge = Number(category.minimum_age);
+      var maxAge = category.maximum_age === null ? null : Number(category.maximum_age);
+      if (age >= minAge && (maxAge === null || age <= maxAge)) {
+        return category.audience;
+      }
+    }
+    return '';
+  }
+
+  function parsePtDate(value) {
+    var match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
+    if (!match) {
+      return null;
+    }
+    var date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+    if (date.getFullYear() !== Number(match[3]) || date.getMonth() !== Number(match[2]) - 1 || date.getDate() !== Number(match[1])) {
+      return null;
+    }
+    return date;
+  }
+
+  function calculateAge(birthDate) {
+    var today = new Date();
+    var age = today.getFullYear() - birthDate.getFullYear();
+    var hadBirthday = today.getMonth() > birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+    return hadBirthday ? age : age - 1;
+  }
+
+  function getSelectedAudiences(fieldName) {
+    return getSelectMultipleValues(fieldName).map(function (value) {
+      var option = findClassCatalogOption(value);
+      return option ? option.category_audience : '';
+    }).filter(Boolean);
+  }
+
+  function findClassCatalogOption(value) {
+    var normalized = String(value);
+    return registrationCatalog.find(function (option) {
+      return String(option.id) === normalized || String(option.code) === normalized;
+    });
+  }
+
+  function getEnrollmentMultiplier() {
+    var childFieldNames = [];
+    if (getSelectedProfile() === 'guardian') {
+      childFieldNames.push('student_class_groups');
+    }
+    if (getSelectedProfile() === 'holder' && dependentToggle && dependentToggle.checked) {
+      childFieldNames.push('dependent_class_groups');
+    }
+    for (var i = 0; i < childFieldNames.length; i++) {
+      if (hasKidsAndJuvenile(getSelectedAudiences(childFieldNames[i]))) {
+        return 2;
+      }
+    }
+    for (var j = 0; j < extraDependents.length; j++) {
+      var audiences = (extraDependents[j].class_groups || []).map(function (value) {
+        var option = findClassCatalogOption(value);
+        return option ? option.category_audience : '';
+      });
+      if (hasKidsAndJuvenile(audiences)) {
+        return 2;
+      }
+    }
+    return 1;
+  }
+
+  function hasKidsAndJuvenile(audiences) {
+    return audiences.indexOf('kids') !== -1 && audiences.indexOf('juvenile') !== -1;
+  }
+
+  function isFamilyPlanEligible() {
+    var profile = getSelectedProfile();
+    if (profile === 'holder') {
+      return Boolean(dependentToggle && dependentToggle.checked);
+    }
+    if (profile === 'guardian') {
+      return getDependentCount() >= 2;
+    }
+    return false;
+  }
+
+  // ============================================================================
   // Checkout: Plan & Materials
   // ============================================================================
   function formatBRL(value) {
     var num = parseFloat(value);
     if (isNaN(num)) return 'R$ 0,00';
     return 'R$ ' + num.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function normalizeCheckoutAction(value) {
+    if (value === 'stripe' || value === 'pix' || value === 'pay_later') {
+      return value;
+    }
+    return 'pay_later';
+  }
+
+  function updateCheckoutActionUI() {
+    if (checkoutActionInput) {
+      checkoutActionInput.value = checkoutAction;
+    }
+    checkoutActionButtons.forEach(function (button) {
+      var isActive = button.dataset.checkoutAction === checkoutAction;
+      button.classList.toggle('is-selected', isActive);
+    });
+    if (!checkoutActionHelp) return;
+    if (checkoutTotal <= 0) {
+      checkoutActionHelp.textContent = 'Nenhuma cobrança selecionada. O cadastro será concluído sem pagamento.';
+      return;
+    }
+    if (checkoutAction === 'stripe') {
+      checkoutActionHelp.textContent = 'Após concluir, você será redirecionado para o checkout de cartão.';
+      return;
+    }
+    if (checkoutAction === 'pix') {
+      checkoutActionHelp.textContent = 'Após concluir, você verá o QR Code PIX para pagamento.';
+      return;
+    }
+    checkoutActionHelp.textContent = 'Cadastro concluído agora e pagamento adiado com 1 aula experimental liberada.';
+  }
+
+  function setCheckoutAction(action) {
+    checkoutAction = normalizeCheckoutAction(action);
+    updateCheckoutActionUI();
+    saveDraft();
+  }
+
+  function updateCheckoutDecisionAvailability(total) {
+    var hasCharge = total > 0;
+    var selectedPlan = getSelectedPlan();
+    checkoutActionButtons.forEach(function (button) {
+      var action = button.dataset.checkoutAction || '';
+      var mismatchedPlan = selectedPlan && action !== 'pay_later' && action !== getCheckoutActionForPlan(selectedPlan);
+      button.disabled = (!hasCharge && action !== 'pay_later') || mismatchedPlan;
+    });
+    if (!hasCharge) {
+      checkoutAction = 'pay_later';
+    }
+    updateCheckoutActionUI();
   }
 
   function renderPlanList() {
@@ -1198,7 +1606,17 @@
       return;
     }
 
-    planCatalog.forEach(function (plan) {
+    var visiblePlans = getVisiblePlanCatalog();
+    if (selectedPlanId && !visiblePlans.some(function (plan) { return plan.id === selectedPlanId; })) {
+      selectedPlanId = null;
+      syncCheckoutHiddenFields();
+    }
+    if (visiblePlans.length === 0) {
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum plano disponível para este cadastro.</p>';
+      return;
+    }
+
+    visiblePlans.forEach(function (plan) {
       var card = document.createElement('label');
       card.className = 'checkout-option-card' + (selectedPlanId === plan.id ? ' is-selected' : '');
 
@@ -1210,23 +1628,71 @@
       radio.checked = selectedPlanId === plan.id;
       radio.addEventListener('change', function () {
         selectedPlanId = plan.id;
+        setCheckoutAction(getCheckoutActionForPlan(plan));
         syncCheckoutHiddenFields();
         renderPlanList();
       });
 
+      var icon = document.createElement('span');
+      icon.className = 'checkout-payment-icon checkout-payment-icon--' + plan.payment_method;
+      icon.textContent = plan.payment_method === 'pix' ? 'PIX' : 'CARD';
+
       var info = document.createElement('div');
       info.className = 'checkout-option-info';
-      info.innerHTML = '<span class="checkout-option-name">' + plan.name + '</span><span class="checkout-option-meta">' + plan.cycle + '</span>';
+      var name = document.createElement('span');
+      name.className = 'checkout-option-name';
+      name.textContent = plan.name;
+      var meta = document.createElement('span');
+      meta.className = 'checkout-option-meta';
+      meta.textContent = buildPlanMeta(plan);
+      info.appendChild(name);
+      info.appendChild(meta);
 
       var price = document.createElement('span');
       price.className = 'checkout-option-price';
       price.textContent = formatBRL(plan.price);
 
       card.appendChild(radio);
+      card.appendChild(icon);
       card.appendChild(info);
       card.appendChild(price);
       container.appendChild(card);
     });
+  }
+
+  function getVisiblePlanCatalog() {
+    var familyEligible = isFamilyPlanEligible();
+    return planCatalog.filter(function (plan) {
+      return !plan.is_family_plan || familyEligible;
+    });
+  }
+
+  function buildPlanMeta(plan) {
+    var parts = [plan.cycle, plan.payment_method_label || ''];
+    if (plan.monthly_reference_price && parseFloat(plan.monthly_reference_price) !== parseFloat(plan.price)) {
+      parts.push(formatBRL(plan.monthly_reference_price) + ' o mês');
+    }
+    if (plan.installment_label) {
+      parts.push(plan.installment_label);
+    }
+    if (plan.is_family_plan) {
+      parts.push('Irmãos / Pais e Filhos');
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  function getCheckoutActionForPlan(plan) {
+    if (!plan) {
+      return 'pay_later';
+    }
+    return plan.payment_method === 'pix' ? 'pix' : 'stripe';
+  }
+
+  function getSelectedPlan() {
+    if (!selectedPlanId) {
+      return null;
+    }
+    return planCatalog.find(function (plan) { return plan.id === selectedPlanId; }) || null;
   }
 
   function renderProductList() {
@@ -1307,9 +1773,11 @@
     if (selectedPlanId) {
       var plan = planCatalog.find(function (p) { return p.id === selectedPlanId; });
       if (plan) {
-        var planPrice = parseFloat(plan.price);
+        var multiplier = getEnrollmentMultiplier();
+        var planPrice = parseFloat(plan.price) * multiplier;
         total += planPrice;
-        itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + plan.name + ' (' + plan.cycle + ')</span><span class="checkout-summary-row-value">' + formatBRL(plan.price) + '</span></div>';
+        var multiplierLabel = multiplier > 1 ? ' · Kids + Juvenil em valor dobrado' : '';
+        itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + plan.name + ' (' + plan.cycle + multiplierLabel + ')</span><span class="checkout-summary-row-value">' + formatBRL(planPrice) + '</span></div>';
       }
     }
 
@@ -1329,7 +1797,9 @@
       itemsContainer.innerHTML = '<p class="checkout-empty-note">Nenhum item selecionado.</p>';
     }
 
+    checkoutTotal = total;
     totalEl.textContent = formatBRL(total);
+    updateCheckoutDecisionAvailability(total);
   }
 
   function syncCheckoutHiddenFields() {
@@ -1347,6 +1817,9 @@
       }
       productsInput.value = JSON.stringify(items);
     }
+    if (checkoutActionInput) {
+      checkoutActionInput.value = checkoutAction;
+    }
   }
 
   // ============================================================================
@@ -1360,12 +1833,16 @@
     if (canRestoreDraft) {
       restoreDraft();
     }
+    checkoutAction = normalizeCheckoutAction(
+      checkoutActionInput ? checkoutActionInput.value : checkoutAction
+    );
     
     // Compute initial steps
     activeSteps = computeActiveSteps();
     
     // Initial UI update
     updateUI();
+    updateCheckoutActionUI();
     updateDraftNoteVisibility();
   }
 

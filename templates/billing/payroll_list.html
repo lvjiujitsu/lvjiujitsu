@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Folha de professores | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <div class="billing-screen__header">
+        <h1>Folha de professores</h1>
+        <p>Configurações ativas de pagamento mensal via PIX.</p>
+    </div>
+
+    {% if configs %}
+    <div class="billing-table-wrap">
+        <table class="billing-table">
+            <thead>
+                <tr>
+                    <th>Professor</th>
+                    <th>Salário</th>
+                    <th>Dia do pagamento</th>
+                    <th>Chave PIX</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for config in configs %}
+                <tr>
+                    <td>{{ config.person.full_name }}</td>
+                    <td>R$ {{ config.monthly_salary }}</td>
+                    <td>Dia {{ config.payment_day }}</td>
+                    <td>
+                        {% with bank=bank_accounts|dictsort:0 %}
+                            {% for person_id, ba in bank_accounts.items %}
+                                {% if person_id == config.person_id %}
+                                    {{ ba.get_pix_key_type_display }}: <code>{{ ba.pix_key }}</code>
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        <span class="billing-status billing-status--{{ config.is_active|yesno:'active,canceled' }}">
+                            {{ config.is_active|yesno:"Ativa,Inativa" }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p class="billing-empty">Nenhuma configuração cadastrada.</p>
+    {% endif %}
+
+    <div class="billing-actions-row">
+        <a class="btn btn--primary" href="{% url 'system:payout-queue' %}">Fila de pagamentos</a>
+    </div>
+</section>
+{% endblock %}

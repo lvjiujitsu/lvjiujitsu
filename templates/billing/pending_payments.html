@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Pagamentos pendentes · LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <header class="billing-screen__header">
+        <h1>Pagamentos pendentes</h1>
+        <p>Pedidos com valor em aberto, falhos ou cancelados aguardando ação.</p>
+    </header>
+
+    {% if messages %}
+        <ul class="billing-messages">
+            {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if orders %}
+        <div class="billing-table-wrap">
+            <table class="billing-table">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Aluno</th>
+                        <th>Plano</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td>#{{ order.pk }}</td>
+                            <td>{{ order.person.full_name }}</td>
+                            <td>{{ order.plan.display_name|default:"—" }}</td>
+                            <td>R$ {{ order.total }}</td>
+                            <td>{{ order.get_payment_status_display }}</td>
+                            <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                            <td class="billing-table__actions">
+                                <form method="post" action="{% url 'system:mark-order-paid' order.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'system:pending-payments' %}">
+                                    <button type="submit" class="btn btn--primary">Marcar pago</button>
+                                </form>
+                                {% if order.stripe_payment_intent_id %}
+                                    <form method="post" action="{% url 'system:refund-order' order.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{% url 'system:pending-payments' %}">
+                                        <input type="text" name="amount" placeholder="Valor (vazio = total)">
+                                        <input type="text" name="reason" placeholder="Motivo">
+                                        <button type="submit" class="btn btn--warning">Estornar</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+            <nav class="billing-pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="billing-empty">Nenhum pagamento pendente.</p>
+    {% endif %}
+</section>
+{% endblock %}

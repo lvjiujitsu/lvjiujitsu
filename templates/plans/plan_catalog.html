@@ -43,10 +43,17 @@
               <div class="record-card-head">
                 <div>
                   <span class="record-card-name">{{ plan.display_name }}</span>
-                  <div class="record-card-subtitle">{{ plan.get_billing_cycle_display }}</div>
+                  <div class="record-card-subtitle">
+                    {{ plan.get_billing_cycle_display }} · {{ plan.get_payment_method_display }}{% if plan.is_family_plan %} · Familiar{% endif %}
+                  </div>
                 </div>
                 <span class="record-card-badge">R$ {{ plan.price }}</span>
               </div>
+              {% if plan.monthly_reference_price and plan.monthly_reference_price != plan.price %}
+                <div class="record-card-row">
+                  <span class="record-card-val">Equivalente a R$ {{ plan.monthly_reference_price }} por mês.</span>
+                </div>
+              {% endif %}
               {% if plan.description %}
                 <div class="record-card-row">
                   <span class="record-card-val">{{ plan.description }}</span>

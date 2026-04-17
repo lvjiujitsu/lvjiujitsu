@@ -12,3 +12,4 @@ test_screenshots/
 .playwright-mcp/
 pytest-cache-files-*/
 .coverage
+limpar_asaas.py

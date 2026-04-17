@@ -2,7 +2,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import RedirectView, TemplateView
 
+from system.models.membership import MembershipInvoice
 from system.services.class_calendar import get_today_classes_for_person
+from system.services.membership import (
+    get_active_membership,
+    get_latest_open_order,
+    get_membership_owner,
+)
+from system.services.trial_access import get_active_trial_for_person
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
 
 
@@ -50,8 +57,26 @@ class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
         person = getattr(self.request, "portal_person", None)
         if person:
             context["today_classes"] = get_today_classes_for_person(person)
+            billing_owner = get_membership_owner(person)
+            active_membership = get_active_membership(person)
+            context["active_membership"] = active_membership
+            context["pending_order"] = get_latest_open_order(person)
+            context["billing_owner"] = billing_owner
+            context["active_trial_access"] = get_active_trial_for_person(person)
+            if active_membership is not None:
+                context["recent_invoices"] = list(
+                    MembershipInvoice.objects.filter(membership=active_membership)
+                    .order_by("-paid_at", "-created_at")[:5]
+                )
+            else:
+                context["recent_invoices"] = []
         else:
             context["today_classes"] = []
+            context["active_membership"] = None
+            context["pending_order"] = None
+            context["billing_owner"] = None
+            context["active_trial_access"] = None
+            context["recent_invoices"] = []
         today = timezone.localdate()
         weekdays_pt = {
             0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira",

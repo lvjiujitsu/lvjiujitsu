@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Fila de aprovações · LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <header class="billing-screen__header">
+        <h1>Fila de aprovações</h1>
+        <p>Pedidos sem valor aguardando liberação manual (isenção ou marcação como pago).</p>
+    </header>
+
+    {% if orders %}
+        <div class="billing-table-wrap">
+            <table class="billing-table">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Aluno</th>
+                        <th>Plano</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td>#{{ order.pk }}</td>
+                            <td>{{ order.person.full_name }}</td>
+                            <td>{{ order.plan.display_name|default:"—" }}</td>
+                            <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                            <td class="billing-table__actions">
+                                <form method="post" action="{% url 'system:exempt-order' order.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'system:approval-queue' %}">
+                                    <input type="text" name="notes" placeholder="Observação (opcional)">
+                                    <button type="submit" class="btn btn--success">Isentar</button>
+                                </form>
+                                <form method="post" action="{% url 'system:mark-order-paid' order.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'system:approval-queue' %}">
+                                    <button type="submit" class="btn btn--primary">Marcar pago</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+            <nav class="billing-pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="billing-empty">Nenhum pedido aguardando aprovação.</p>
+    {% endif %}
+</section>
+{% endblock %}

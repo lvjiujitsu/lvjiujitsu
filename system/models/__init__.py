@@ -27,16 +27,44 @@ from .person import (
     PersonRelationshipKind,
     PersonType,
 )
-from .plan import BillingCycle, SubscriptionPlan
+from .plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
 from .product import Product, ProductCategory, ProductVariant
+from .membership import (
+    Membership,
+    MembershipCreatedVia,
+    MembershipInvoice,
+    MembershipStatus,
+)
 from .registration_order import (
+    ApprovalType,
+    DepositStatus,
+    OrderKind,
+    PaymentProvider,
     PaymentStatus,
     RegistrationOrder,
     RegistrationOrderItem,
     StripeWebhookEvent,
 )
+from .asaas import (
+    AsaasWebhookEvent,
+    PayoutKind,
+    PayoutStatus,
+    PixKeyType,
+    TeacherBankAccount,
+    TeacherPayout,
+    TeacherPayrollConfig,
+)
+from .trial_access import TrialAccessGrant
 
 __all__ = [
+    "AsaasWebhookEvent",
+    "PayoutKind",
+    "PayoutStatus",
+    "PixKeyType",
+    "TeacherBankAccount",
+    "TeacherPayout",
+    "TeacherPayrollConfig",
+    "TrialAccessGrant",
     "BiologicalSex",
     "BillingCycle",
     "BloodType",
@@ -49,6 +77,7 @@ __all__ = [
     "ClassSchedule",
     "ClassSession",
     "EnrollmentStatus",
+    "DepositStatus",
     "Holiday",
     "IbjjfAgeCategory",
     "JiuJitsuBelt",
@@ -57,7 +86,15 @@ __all__ = [
     "PersonRelationship",
     "PersonRelationshipKind",
     "PersonType",
+    "ApprovalType",
+    "Membership",
+    "MembershipCreatedVia",
+    "MembershipInvoice",
+    "MembershipStatus",
+    "OrderKind",
+    "PaymentProvider",
     "PaymentStatus",
+    "PlanPaymentMethod",
     "PortalAccount",
     "PortalPasswordResetToken",
     "Product",

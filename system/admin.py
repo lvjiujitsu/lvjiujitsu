@@ -22,6 +22,7 @@ from system.models import (
     RegistrationOrder,
     RegistrationOrderItem,
     SubscriptionPlan,
+    TrialAccessGrant,
 )
 
 
@@ -234,8 +235,18 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
-    list_display = ("display_name", "code", "billing_cycle", "price", "display_order", "is_active")
-    list_filter = ("billing_cycle", "is_active")
+    list_display = (
+        "display_name",
+        "code",
+        "billing_cycle",
+        "payment_method",
+        "price",
+        "monthly_reference_price",
+        "is_family_plan",
+        "display_order",
+        "is_active",
+    )
+    list_filter = ("billing_cycle", "payment_method", "is_family_plan", "is_active")
     search_fields = ("display_name", "code")
 
 
@@ -248,11 +259,46 @@ class RegistrationOrderItemInline(admin.TabularInline):
 
 @admin.register(RegistrationOrder)
 class RegistrationOrderAdmin(admin.ModelAdmin):
-    list_display = ("pk", "person", "plan", "plan_price", "total", "created_at")
-    list_filter = ("plan",)
+    list_display = (
+        "pk",
+        "person",
+        "plan",
+        "payment_status",
+        "payment_provider",
+        "total",
+        "administrative_fee",
+        "net_amount",
+        "deposit_status",
+        "expected_deposit_date",
+        "created_at",
+    )
+    list_filter = ("payment_status", "payment_provider", "deposit_status", "plan")
     search_fields = ("person__full_name", "person__cpf")
     autocomplete_fields = ("person", "plan")
+    readonly_fields = (
+        "administrative_fee",
+        "net_amount",
+        "financial_transaction_id",
+        "created_at",
+        "updated_at",
+    )
     inlines = [RegistrationOrderItemInline]
+
+
+@admin.register(TrialAccessGrant)
+class TrialAccessGrantAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "person",
+        "order",
+        "granted_classes",
+        "consumed_classes",
+        "is_active",
+        "activated_at",
+    )
+    list_filter = ("is_active", "activated_at")
+    search_fields = ("person__full_name", "person__cpf", "order__pk")
+    autocomplete_fields = ("person", "order")
 
 
 @admin.register(Holiday)

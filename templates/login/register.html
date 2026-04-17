@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260413f">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260416a">
 </head>
 <body>
   <main class="screen-shell">
@@ -36,6 +36,7 @@
 
       <form class="form-stack form-wizard" id="client-registration-form" method="post" novalidate 
             data-initial-step="{{ registration_initial_step }}"
+            data-step-validate-url="{% url 'system:registration-step-validate' %}"
             data-can-restore-draft="{% if form.is_bound %}false{% else %}true{% endif %}">
         {% csrf_token %}
         <input type="hidden" id="extra-dependents-payload" name="extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default_if_none:'' }}">
@@ -394,6 +395,8 @@
                       {% endif %}
                     {% endfor %}
                   </select>
+                  <span class="class-selection-help" data-class-help="holder"></span>
+                  <div class="class-card-list" data-class-card-list="holder"></div>
                 </label>
               </div>
             </section>
@@ -477,6 +480,8 @@
                       {% endif %}
                     {% endfor %}
                   </select>
+                  <span class="class-selection-help" data-class-help="dependent"></span>
+                  <div class="class-card-list" data-class-card-list="dependent"></div>
                 </label>
               </div>
             </section>
@@ -560,6 +565,8 @@
                       {% endif %}
                     {% endfor %}
                   </select>
+                  <span class="class-selection-help" data-class-help="student"></span>
+                  <div class="class-card-list" data-class-card-list="student"></div>
                 </label>
               </div>
             </section>
@@ -688,7 +695,7 @@
               </div>
 
               <div class="checkout-section">
-                <p class="checkout-section-description">Selecione o plano de mensalidade desejado.</p>
+                <p class="checkout-section-description">Selecione o plano de mensalidade desejado. Planos familiares aparecem quando há dependente no cadastro.</p>
                 <div class="checkout-plan-list" data-plan-list>
                 </div>
                 <input type="hidden" name="selected_plan" id="selected-plan" value="">
@@ -727,6 +734,39 @@
                   <span class="checkout-total-label">Total</span>
                   <span class="checkout-total-value" data-summary-total>R$ 0,00</span>
                 </div>
+                <div class="checkout-decision" data-checkout-decision>
+                  <h4 class="checkout-section-title">Como deseja finalizar?</h4>
+                  <div class="checkout-action-grid">
+                    <button
+                      class="checkout-action-button"
+                      type="button"
+                      data-checkout-action="stripe"
+                    >
+                      Pagar com cartão
+                    </button>
+                    <button
+                      class="checkout-action-button"
+                      type="button"
+                      data-checkout-action="pix"
+                    >
+                      Pagar com PIX
+                    </button>
+                    <button
+                      class="checkout-action-button"
+                      type="button"
+                      data-checkout-action="pay_later"
+                    >
+                      Concluir e pagar depois (1 aula experimental)
+                    </button>
+                  </div>
+                  <input
+                    type="hidden"
+                    id="checkout-action"
+                    name="checkout_action"
+                    value="{{ form.checkout_action.value|default_if_none:'pay_later' }}"
+                  >
+                  <p class="checkout-action-help" data-checkout-action-help></p>
+                </div>
               </div>
             </section>
           </section>
@@ -749,6 +789,6 @@
   <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260410-11"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260416a"></script>
 </body>
 </html>

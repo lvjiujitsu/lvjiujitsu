@@ -1,7 +1,7 @@
 import json
 
 from django.contrib import messages
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.views import View
@@ -19,6 +19,8 @@ from system.services.class_overview import (
     get_registration_catalog_payload,
 )
 from system.services.registration_checkout import get_plan_catalog_payload, get_product_catalog_payload
+from system.services.registration_validation import validate_registration_step
+from system.services.trial_access import grant_trial_for_order
 from system.services import (
     authenticate_portal_identity,
     create_password_reset_token,
@@ -72,7 +74,23 @@ class PortalRegisterView(FormView):
             f"Cadastro registrado com sucesso para: {', '.join(unique_labels)}.",
         )
         if order is not None and order.total and order.total > 0:
-            return redirect("system:payment-checkout", order_id=order.pk)
+            self.request.session["pending_checkout_order_id"] = order.pk
+            checkout_action = form.cleaned_data.get("checkout_action") or "pay_later"
+            if checkout_action == "stripe":
+                return redirect("system:stripe-checkout", order_id=order.pk)
+            if checkout_action == "pix":
+                return redirect("system:asaas-pix-create", order_id=order.pk)
+
+            grant_trial_for_order(
+                order,
+                notes="Cadastro concluído sem pagamento imediato.",
+            )
+            messages.warning(
+                self.request,
+                "Cadastro concluído sem pagamento. Você tem 1 aula experimental "
+                "liberada e pode pagar depois para ativar sua mensalidade.",
+            )
+            return redirect("system:legacy-login-form")
         return super().form_valid(form)
 
     def _get_initial_step(self, form):
@@ -115,6 +133,12 @@ class PortalRegisterView(FormView):
         return 1
 
 
+class RegistrationStepValidationView(View):
+    def post(self, request, *args, **kwargs):
+        errors = validate_registration_step(request.POST)
+        return JsonResponse({"valid": not errors, "errors": errors})
+
+
 class PortalInfoView(TemplateView):
     template_name = "login/info.html"
 
@@ -146,6 +170,17 @@ class PortalLoginView(FormView):
             return self.form_invalid(form)
 
         if identity.get("blocked_reason") == "payment_pending":
+            pending_order = identity.get("pending_order")
+            if pending_order is not None:
+                self.request.session["pending_checkout_order_id"] = pending_order.pk
+                messages.info(
+                    self.request,
+                    "Seu cadastro está aguardando a confirmação do pagamento. "
+                    "Vamos redirecioná-lo para concluir agora.",
+                )
+                return redirect(
+                    "system:payment-checkout", order_id=pending_order.pk
+                )
             form.add_error(
                 None,
                 "Seu cadastro está aguardando a confirmação do pagamento. "

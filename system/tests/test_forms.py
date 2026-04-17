@@ -2,8 +2,9 @@ from datetime import date
 
 from django.test import TestCase
 
-from system.forms import ClassGroupForm, PersonForm
+from system.forms import ClassGroupForm, PersonForm, PortalRegistrationForm
 from system.models import BiologicalSex, ClassCategory, ClassEnrollment, Person, PersonType
+from system.models.plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
 from system.services.class_overview import build_class_group_filter_value
 from system.services.registration import sync_person_class_enrollments
 from system.services.seeding import seed_class_catalog, seed_class_categories, seed_person_types
@@ -94,3 +95,79 @@ class PersonFormTestCase(TestCase):
         form = PersonForm(instance=person)
 
         self.assertEqual(form["class_groups"].value(), [self.logical_adult_key])
+
+
+class PortalRegistrationFormPlanTestCase(TestCase):
+    def setUp(self):
+        seed_class_catalog()
+        seed_person_types()
+        self.family_plan = SubscriptionPlan.objects.create(
+            code="family-monthly-pix",
+            display_name="Plano mensal PIX família",
+            price="220.00",
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+            is_family_plan=True,
+            is_active=True,
+        )
+
+    def test_rejects_family_plan_for_holder_without_dependent(self):
+        form = PortalRegistrationForm(
+            data={
+                "registration_profile": "holder",
+                "holder_name": "Aluno Sem Dependente",
+                "holder_cpf": "12345678912",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": BiologicalSex.MALE,
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "holder_class_groups": [
+                    build_class_group_filter_value(
+                        ClassCategory.objects.get(code="adult").pk,
+                        "Jiu Jitsu",
+                    )
+                ],
+                "selected_plan": str(self.family_plan.pk),
+                "checkout_action": "pix",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("selected_plan", form.errors)
+
+    def test_accepts_family_plan_for_holder_with_dependent(self):
+        form = PortalRegistrationForm(
+            data={
+                "registration_profile": "holder",
+                "include_dependent": "on",
+                "holder_name": "Aluno Com Dependente",
+                "holder_cpf": "12345678913",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": BiologicalSex.MALE,
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+                "holder_class_groups": [
+                    build_class_group_filter_value(
+                        ClassCategory.objects.get(code="adult").pk,
+                        "Jiu Jitsu",
+                    )
+                ],
+                "dependent_name": "Dependente",
+                "dependent_cpf": "12345678914",
+                "dependent_birthdate": "01/04/2014",
+                "dependent_biological_sex": BiologicalSex.MALE,
+                "dependent_password": "123456",
+                "dependent_password_confirm": "123456",
+                "dependent_kinship_type": "father",
+                "dependent_class_groups": [
+                    build_class_group_filter_value(
+                        ClassCategory.objects.get(code="kids").pk,
+                        "Jiu Jitsu",
+                    )
+                ],
+                "selected_plan": str(self.family_plan.pk),
+                "checkout_action": "pix",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)

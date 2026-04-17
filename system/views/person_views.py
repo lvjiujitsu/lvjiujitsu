@@ -14,9 +14,13 @@ from system.models import (
     Person,
     PersonType,
 )
+from system.models.membership import Membership, MembershipInvoice
+from system.models.plan import SubscriptionPlan
+from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.selectors import get_person_queryset
 from system.services.class_catalog import prepare_class_group_for_display
 from system.services.class_overview import build_class_group_filter_value
+from system.services.membership import get_active_membership, get_membership_owner
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -89,6 +93,40 @@ class PersonDetailView(AdministrativeRequiredMixin, DetailView):
             )
         )
         _hydrate_person_relationships(context["person"], active_ibjjf_categories)
+        person = context["person"]
+        billing_person = get_membership_owner(person)
+        memberships = list(
+            Membership.objects.filter(person=billing_person)
+            .select_related("plan")
+            .order_by("-created_at")
+        )
+        context["memberships"] = memberships
+        active_membership = get_active_membership(person)
+        context["active_membership"] = active_membership
+        context["billing_owner"] = billing_person
+        if active_membership is not None:
+            context["person_invoices"] = list(
+                MembershipInvoice.objects.filter(membership=active_membership)
+                .order_by("-paid_at", "-created_at")[:10]
+            )
+        else:
+            context["person_invoices"] = []
+        context["person_orders"] = list(
+            RegistrationOrder.objects.filter(person=billing_person)
+            .select_related("plan")
+            .order_by("-created_at")[:15]
+        )
+        context["pending_orders"] = [
+            o for o in context["person_orders"]
+            if o.payment_status not in (
+                PaymentStatus.PAID,
+                PaymentStatus.EXEMPTED,
+                PaymentStatus.REFUNDED,
+            )
+        ]
+        context["available_plans"] = list(
+            SubscriptionPlan.objects.filter(is_active=True).order_by("display_name")
+        )
         return context
 
 

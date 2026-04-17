@@ -10,6 +10,7 @@ from system.models import (
     MartialArt,
     Person,
     PersonType,
+    SubscriptionPlan,
 )
 from system.models.class_membership import get_class_group_eligibility_error
 from system.services.class_overview import get_public_class_group_choice_options
@@ -19,6 +20,7 @@ from system.services.registration import (
     parse_extra_dependents_payload,
     resolve_class_groups,
 )
+from system.services.financial_transactions import resolve_checkout_action_for_plan
 from system.utils import ensure_formatted_cpf
 
 
@@ -148,6 +150,15 @@ class PortalRegistrationForm(forms.Form):
 
     selected_plan = forms.IntegerField(required=False)
     selected_products_payload = forms.CharField(required=False, widget=forms.HiddenInput)
+    checkout_action = forms.ChoiceField(
+        required=False,
+        choices=(
+            ("stripe", "Pagar com cartão"),
+            ("pix", "Pagar com PIX"),
+            ("pay_later", "Concluir e pagar depois"),
+        ),
+        initial="pay_later",
+    )
 
     other_name = forms.CharField(required=False, max_length=255)
     other_cpf = forms.CharField(required=False, max_length=14)
@@ -181,8 +192,11 @@ class PortalRegistrationForm(forms.Form):
         self._clean_other_type_code(profile)
         self._clean_passwords(profile, include_dependent, extra_dependents)
         self._clean_class_links(profile, include_dependent, extra_dependents)
+        self._clean_plan_selection(profile, include_dependent, extra_dependents)
         self._clean_kinship(profile, include_dependent, extra_dependents)
         self._clean_martial_background(profile, include_dependent, extra_dependents)
+        if not self.cleaned_data.get("checkout_action"):
+            self.cleaned_data["checkout_action"] = "pay_later"
         return cleaned_data
 
     def save(self):
@@ -392,6 +406,42 @@ class PortalRegistrationForm(forms.Form):
                 f"Dependente adicional {index}",
             )
             dependent["class_groups"] = groups
+
+    def _clean_plan_selection(self, profile, include_dependent, extra_dependents):
+        plan_id = self.cleaned_data.get("selected_plan")
+        if not plan_id:
+            return
+        try:
+            plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
+        except SubscriptionPlan.DoesNotExist:
+            self.add_error("selected_plan", "Selecione um plano válido.")
+            return
+
+        if plan.is_family_plan and not self._is_family_plan_allowed(
+            profile,
+            include_dependent,
+            extra_dependents,
+        ):
+            self.add_error(
+                "selected_plan",
+                "Plano familiar disponível apenas para titular com dependente ou responsável com 2 crianças.",
+            )
+            return
+
+        checkout_action = self.cleaned_data.get("checkout_action") or "pay_later"
+        expected_action = resolve_checkout_action_for_plan(plan)
+        if checkout_action != "pay_later" and checkout_action != expected_action:
+            self.add_error(
+                "checkout_action",
+                "O meio de pagamento escolhido não corresponde ao plano selecionado.",
+            )
+
+    def _is_family_plan_allowed(self, profile, include_dependent, extra_dependents):
+        if profile == "holder":
+            return bool(include_dependent)
+        if profile == "guardian":
+            return 1 + len(extra_dependents) >= 2
+        return False
 
     def _resolve_class_group_collection(self, prefix, required):
         field_name = f"{prefix}_class_groups"

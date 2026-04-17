@@ -13,7 +13,10 @@ from system.models import (
     Person,
     PersonType,
     PortalAccount,
+    RegistrationOrder,
+    SubscriptionPlan,
     TrainingStyle,
+    TrialAccessGrant,
     WeekdayCode,
 )
 from system.models.calendar import (
@@ -35,6 +38,7 @@ from system.services.class_calendar import (
     perform_special_class_checkin,
     toggle_session_cancel,
 )
+from system.services.trial_access import grant_trial_for_order
 
 User = get_user_model()
 
@@ -143,6 +147,31 @@ class CalendarServiceTestCase(TestCase):
         perform_checkin(self.person, self.schedule.pk)
         checkin, created = perform_checkin(self.person, self.schedule.pk)
         self.assertFalse(created)
+
+    def test_trial_is_consumed_on_first_checkin_only(self):
+        plan = SubscriptionPlan.objects.create(
+            code="mensal-calendar-trial",
+            display_name="Mensal Trial",
+            price=100,
+            billing_cycle="monthly",
+            is_active=True,
+        )
+        order = RegistrationOrder.objects.create(
+            person=self.person,
+            plan=plan,
+            plan_price=100,
+            total=100,
+        )
+        grant_trial_for_order(order)
+
+        perform_checkin(self.person, self.schedule.pk)
+        grant = TrialAccessGrant.objects.get(order=order)
+        self.assertEqual(grant.consumed_classes, 1)
+        self.assertFalse(grant.is_active)
+
+        perform_checkin(self.person, self.schedule.pk)
+        grant.refresh_from_db()
+        self.assertEqual(grant.consumed_classes, 1)
 
     def test_checkin_blocked_on_holiday(self):
         Holiday.objects.create(date=timezone.localdate(), name="Feriado")

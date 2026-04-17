@@ -15,6 +15,7 @@ from system.models.calendar import (
     SpecialClass,
     SpecialClassCheckin,
 )
+from system.services.trial_access import consume_trial_for_person
 
 
 PYTHON_WEEKDAY_TO_CODE = {
@@ -156,6 +157,8 @@ def perform_checkin(person, schedule_id):
         session=session,
         person=person,
     )
+    if created:
+        consume_trial_for_person(person)
     return checkin, created
 
 
@@ -316,6 +319,8 @@ def perform_special_class_checkin(person, special_id):
         special_class=special,
         person=person,
     )
+    if created:
+        consume_trial_for_person(person)
     return checkin, created
 
 

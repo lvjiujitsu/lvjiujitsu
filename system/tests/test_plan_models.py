@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from system.models.plan import BillingCycle, SubscriptionPlan
+from system.models.plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
 from system.services.seeding import seed_plans
 
 
@@ -47,18 +47,22 @@ class SubscriptionPlanModelTestCase(TestCase):
 class SeedPlansTestCase(TestCase):
     def test_seed_plans_count(self):
         result = seed_plans()
-        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result), 12)
 
     def test_seed_plans_idempotent(self):
         seed_plans()
         seed_plans()
-        self.assertEqual(SubscriptionPlan.objects.count(), 3)
+        self.assertEqual(SubscriptionPlan.objects.count(), 12)
 
     def test_seed_plans_prices(self):
         seed_plans()
-        mensal = SubscriptionPlan.objects.get(code="mensal")
-        self.assertEqual(mensal.price, Decimal("250.00"))
-        irmaos = SubscriptionPlan.objects.get(code="mensal-irmaos")
-        self.assertEqual(irmaos.price, Decimal("225.00"))
-        trimestral = SubscriptionPlan.objects.get(code="trimestral")
-        self.assertEqual(trimestral.price, Decimal("675.00"))
+        mensal_pix = SubscriptionPlan.objects.get(code="standard-monthly-pix")
+        self.assertEqual(mensal_pix.price, Decimal("240.00"))
+        self.assertEqual(mensal_pix.payment_method, PlanPaymentMethod.PIX)
+        mensal_credit = SubscriptionPlan.objects.get(code="standard-monthly-credit")
+        self.assertEqual(mensal_credit.price, Decimal("250.00"))
+        self.assertEqual(mensal_credit.payment_method, PlanPaymentMethod.CREDIT_CARD)
+        family_annual = SubscriptionPlan.objects.get(code="family-annual-pix")
+        self.assertEqual(family_annual.price, Decimal("2505.00"))
+        self.assertEqual(family_annual.monthly_reference_price, Decimal("205.00"))
+        self.assertTrue(family_annual.is_family_plan)

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fila de pagamentos | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <div class="billing-screen__header">
+        <h1>Fila de pagamentos a professores</h1>
+        <p>Aprove, recuse ou dispare pagamentos via PIX (Asaas).</p>
+    </div>
+
+    <form method="get" class="billing-inline-form">
+        <label for="status-filter">Status:</label>
+        <select name="status" id="status-filter" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if payouts %}
+    <div class="billing-table-wrap">
+        <table class="billing-table billing-table--compact">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Professor</th>
+                    <th>Ref.</th>
+                    <th>Valor</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payouts %}
+                <tr>
+                    <td>{{ p.pk }}</td>
+                    <td>{{ p.person.full_name }}</td>
+                    <td>{{ p.reference_month|date:"m/Y" }}</td>
+                    <td>R$ {{ p.amount }}</td>
+                    <td>{{ p.get_kind_display }}</td>
+                    <td>
+                        <span class="billing-status billing-status--{{ p.status }}">
+                            {{ p.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="billing-table__actions">
+                        {% if p.status == "pending" %}
+                            <form method="post" action="{% url 'system:payout-approve' p.pk %}">
+                                {% csrf_token %}
+                                <input type="text" name="notes" placeholder="Nota">
+                                <button type="submit" class="btn btn--success">Aprovar</button>
+                            </form>
+                            <form method="post" action="{% url 'system:payout-refuse' p.pk %}">
+                                {% csrf_token %}
+                                <input type="text" name="notes" placeholder="Motivo">
+                                <button type="submit" class="btn btn--danger">Recusar</button>
+                            </form>
+                        {% elif p.status == "approved" %}
+                            <form method="post" action="{% url 'system:payout-dispatch' p.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn--primary">Disparar PIX</button>
+                            </form>
+                        {% elif p.status == "failed" %}
+                            <small class="billing-empty">{{ p.failure_reason|truncatechars:80 }}</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="billing-pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">« Anterior</a>
+        {% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">Próxima »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+        <p class="billing-empty">Nenhum pagamento na fila.</p>
+    {% endif %}
+</section>
+{% endblock %}

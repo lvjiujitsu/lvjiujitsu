@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Escolha o método de pagamento | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415b">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <div class="billing-screen__header">
+        <h1>Pagamento</h1>
+        <p>Pedido #{{ order.pk }} — <strong>R$ {{ order.total }}</strong></p>
+        {% if order.plan %}
+            <p>{{ order.plan.display_name }}</p>
+        {% endif %}
+    </div>
+
+    <div class="payment-method-grid">
+        <a class="payment-method-card" href="{% url 'system:stripe-checkout' order.pk %}">
+            <span class="payment-method-icon">&#128179;</span>
+            <span class="payment-method-title">Cartão de crédito</span>
+            <span class="payment-method-desc">Visa, Mastercard, Elo, etc. Processado pela Stripe.</span>
+        </a>
+
+        <a class="payment-method-card" href="{% url 'system:asaas-pix-create' order.pk %}">
+            <span class="payment-method-icon">&#9889;</span>
+            <span class="payment-method-title">PIX</span>
+            <span class="payment-method-desc">Pagamento instantâneo via QR Code ou copia e cola.</span>
+        </a>
+    </div>
+
+    <div class="billing-actions-row" style="margin-top:1rem;">
+        <a class="btn btn--success" href="{% url 'system:payment-defer' order.pk %}">
+            Concluir e pagar depois (1 aula experimental)
+        </a>
+        <a class="btn btn--warning" href="{% url 'system:payment-cancel' %}">Cancelar</a>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Controle financeiro · LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260416b">
+{% endblock %}
+
+{% block content %}
+<section class="billing-screen">
+    <header class="billing-screen__header">
+        <h1>Controle financeiro</h1>
+        <p>Entradas de matrícula com taxas operacionais, líquido esperado e status de crédito.</p>
+    </header>
+
+    {% if orders %}
+        <div class="billing-table-wrap">
+            <table class="billing-table billing-table--financial">
+                <thead>
+                    <tr>
+                        <th>Aluno</th>
+                        <th>Plano contratado</th>
+                        <th>Status</th>
+                        <th>Gateway</th>
+                        <th>Bruto</th>
+                        <th>Taxa</th>
+                        <th>Líquido</th>
+                        <th>Crédito</th>
+                        <th>Previsão</th>
+                        <th>Transação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td>
+                                <strong>{{ order.person.full_name }}</strong>
+                                <small>#{{ order.pk }}</small>
+                            </td>
+                            <td>{{ order.plan.display_name|default:"—" }}</td>
+                            <td>{{ order.get_payment_status_display }}</td>
+                            <td>{{ order.get_payment_provider_display|default:"—" }}</td>
+                            <td>R$ {{ order.total|floatformat:2 }}</td>
+                            <td class="billing-money--fee">R$ {{ order.administrative_fee|floatformat:2 }}</td>
+                            <td class="billing-money--net">R$ {{ order.net_amount|floatformat:2 }}</td>
+                            <td>
+                                <span class="billing-status billing-status--{{ order.deposit_status }}">
+                                    {{ order.get_deposit_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.expected_deposit_date|date:"d/m/Y"|default:"—" }}</td>
+                            <td>{{ order.financial_transaction_id|default:order.stripe_payment_intent_id|default:order.asaas_payment_id|default:"—" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+            <nav class="billing-pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="billing-empty">Nenhuma entrada financeira encontrada.</p>
+    {% endif %}
+</section>
+{% endblock %}

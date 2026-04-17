@@ -39,6 +39,12 @@ ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
 STRIPE_PUBLIC_KEY = config("STRIPE_PUBLIC_KEY", default="")
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_PLAN_SYNC_ENABLED = config("STRIPE_PLAN_SYNC_ENABLED", default=False, cast=bool)
+
+ASAAS_API_KEY = config("ASAAS_API_KEY", default="")
+ASAAS_API_URL = config("ASAAS_API_URL", default="https://api-sandbox.asaas.com/v3")
+ASAAS_WEBHOOK_TOKEN = config("ASAAS_WEBHOOK_TOKEN", default="")
+ASAAS_PIX_EXPIRATION_MINUTES = config("ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int)
 
 
 # Application definition
