@@ -242,7 +242,12 @@
       } else {
         // ALUNO: fluxo completo da própria pessoa
         steps.push(STEP_DEFINITIONS.holder);
-        steps.push(STEP_DEFINITIONS.holder_classes);
+        steps.push(
+          Object.assign({}, STEP_DEFINITIONS.holder_classes, {
+            label: 'Jiu Jitsu',
+            title: 'Jiu Jitsu Adulto'
+          })
+        );
         steps.push(STEP_DEFINITIONS.holder_medical);
         trimExtraDependentsToCount(1);
       }
@@ -1286,8 +1291,14 @@
     var selectField = form.querySelector('select[name="' + prefix + '_class_groups"]');
     var container = form.querySelector('[data-class-card-list="' + prefix + '"]');
     var help = form.querySelector('[data-class-help="' + prefix + '"]');
+    var selectLabel = form.querySelector('[data-class-select-label="' + prefix + '"]');
     if (!selectField || !container) {
       return;
+    }
+    if (selectLabel) {
+      var shouldHideLabel = shouldHideClassSelectionLabel(prefix);
+      selectLabel.hidden = shouldHideLabel;
+      selectLabel.classList.toggle('is-hidden', shouldHideLabel);
     }
 
     selectField.classList.add('enhanced-class-select');
@@ -1325,27 +1336,103 @@
 
   function buildClassCard(prefix, option, selectField) {
     var selectedValues = new Set(getSelectMultipleValues(prefix + '_class_groups').map(String));
+    var teacherLines = buildTeacherLines(option.teacher_label);
+    var weekdaySections = buildClassScheduleSections(option);
+    var scheduleCount = countScheduleEntries(weekdaySections);
     var button = document.createElement('button');
     button.type = 'button';
-    button.className = 'class-option-card';
+    button.className = 'class-option-card class-option-card--catalog catalog-physical-card';
     button.classList.toggle('is-selected', selectedValues.has(String(option.id)));
     button.dataset.classOption = String(option.id);
 
+    var cardHead = document.createElement('div');
+    cardHead.className = 'catalog-physical-card-head';
+
     var title = document.createElement('span');
-    title.className = 'class-option-title';
-    title.textContent = option.category_name + ' · ' + option.display_name;
+    title.className = 'class-option-title catalog-chip-group-title catalog-activity-title';
+    title.textContent = buildClassCardTitle(prefix, option);
 
-    var teacher = document.createElement('span');
-    teacher.className = 'class-option-meta';
-    teacher.textContent = option.teacher_label || 'Equipe docente não definida';
+    var subtitle = document.createElement('span');
+    subtitle.className = 'record-card-subtitle';
+    subtitle.textContent = teacherLines.length + ' professor' + (teacherLines.length > 1 ? 'es' : '') + ' · ' + scheduleCount + ' horário' + (scheduleCount > 1 ? 's' : '');
 
-    var schedules = document.createElement('span');
-    schedules.className = 'class-option-schedules';
-    schedules.textContent = buildClassScheduleText(option);
+    cardHead.appendChild(title);
+    cardHead.appendChild(subtitle);
 
-    button.appendChild(title);
-    button.appendChild(teacher);
-    button.appendChild(schedules);
+    var teachersBlock = document.createElement('div');
+    teachersBlock.className = 'catalog-physical-card-block';
+
+    var teachersLabel = document.createElement('span');
+    teachersLabel.className = 'catalog-guidance-label';
+    teachersLabel.textContent = 'Professor';
+
+    var teachersList = document.createElement('div');
+    teachersList.className = 'catalog-chip-list';
+    teacherLines.forEach(function (line) {
+      var chip = document.createElement('span');
+      chip.className = 'catalog-chip';
+      chip.textContent = line;
+      teachersList.appendChild(chip);
+    });
+
+    teachersBlock.appendChild(teachersLabel);
+    teachersBlock.appendChild(teachersList);
+
+    var schedulesBlock = document.createElement('div');
+    schedulesBlock.className = 'catalog-physical-card-block';
+
+    var schedulesLabel = document.createElement('span');
+    schedulesLabel.className = 'catalog-guidance-label';
+    schedulesLabel.textContent = 'Horários';
+
+    var weekdayGrid = document.createElement('div');
+    weekdayGrid.className = 'catalog-weekday-grid';
+
+    if (weekdaySections.length === 0) {
+      var emptySchedule = document.createElement('span');
+      emptySchedule.className = 'catalog-empty-inline';
+      emptySchedule.textContent = 'Sem horários ativos.';
+      weekdayGrid.appendChild(emptySchedule);
+    } else {
+      weekdaySections.forEach(function (section) {
+        var weekdayBlock = document.createElement('div');
+        weekdayBlock.className = 'catalog-weekday-block';
+
+        var weekdayHeader = document.createElement('div');
+        weekdayHeader.className = 'catalog-weekday-header';
+
+        var weekdayTitle = document.createElement('span');
+        weekdayTitle.className = 'catalog-chip-group-title';
+        weekdayTitle.textContent = section.weekdayLabel;
+
+        var weekdayCount = document.createElement('span');
+        weekdayCount.className = 'catalog-relation-type';
+        weekdayCount.textContent = section.times.length + ' horário' + (section.times.length > 1 ? 's' : '');
+
+        weekdayHeader.appendChild(weekdayTitle);
+        weekdayHeader.appendChild(weekdayCount);
+
+        var timesList = document.createElement('div');
+        timesList.className = 'catalog-chip-list';
+        section.times.forEach(function (timeLabel) {
+          var timeChip = document.createElement('span');
+          timeChip.className = 'catalog-chip catalog-chip--schedule';
+          timeChip.textContent = timeLabel;
+          timesList.appendChild(timeChip);
+        });
+
+        weekdayBlock.appendChild(weekdayHeader);
+        weekdayBlock.appendChild(timesList);
+        weekdayGrid.appendChild(weekdayBlock);
+      });
+    }
+
+    schedulesBlock.appendChild(schedulesLabel);
+    schedulesBlock.appendChild(weekdayGrid);
+
+    button.appendChild(cardHead);
+    button.appendChild(teachersBlock);
+    button.appendChild(schedulesBlock);
     button.addEventListener('click', function () {
       toggleClassSelection(selectField, option.id);
       renderClassGroupCards(prefix);
@@ -1356,13 +1443,96 @@
     return button;
   }
 
-  function buildClassScheduleText(option) {
-    if (!option.schedules || option.schedules.length === 0) {
-      return 'Sem horários ativos.';
+  function buildTeacherLines(rawTeacherLabel) {
+    if (!rawTeacherLabel) {
+      return ['Equipe docente não definida'];
     }
-    return option.schedules.map(function (schedule) {
-      return schedule.weekday_display + ' ' + schedule.start_time;
-    }).join(' · ');
+    var uniqueNames = [];
+    rawTeacherLabel.split(',').forEach(function (name) {
+      var trimmed = (name || '').trim();
+      if (trimmed && uniqueNames.indexOf(trimmed) === -1) {
+        uniqueNames.push(trimmed);
+      }
+    });
+    return uniqueNames.length > 0 ? uniqueNames : ['Equipe docente não definida'];
+  }
+
+  function buildClassCardTitle(prefix, option) {
+    if (isSoloHolderFlow(prefix) && String(option.category_audience) === 'adult') {
+      return 'Jiu Jitsu Adulto';
+    }
+    return option.category_name + ' · ' + option.display_name;
+  }
+
+  function buildClassScheduleSections(option) {
+    if (!option.schedules || option.schedules.length === 0) {
+      return [];
+    }
+    var weekdayOrder = {
+      'Segunda-feira': 1,
+      'Terça-feira': 2,
+      'Quarta-feira': 3,
+      'Quinta-feira': 4,
+      'Sexta-feira': 5,
+      'Sábado': 6,
+      'Domingo': 7
+    };
+    var grouped = {};
+    option.schedules.forEach(function (schedule) {
+      var weekdayLabel = normalizeWeekdayLabel(schedule.weekday_display || 'Outro dia');
+      if (!grouped[weekdayLabel]) {
+        grouped[weekdayLabel] = [];
+      }
+      grouped[weekdayLabel].push(schedule.start_time || '');
+    });
+    return Object.keys(grouped)
+      .sort(function (a, b) {
+        var orderA = weekdayOrder[a] || 99;
+        var orderB = weekdayOrder[b] || 99;
+        return orderA - orderB;
+      })
+      .map(function (weekdayLabel) {
+        var times = grouped[weekdayLabel].slice().sort(function (a, b) {
+          return String(a).localeCompare(String(b));
+        });
+        return {
+          weekdayLabel: weekdayLabel,
+          times: times
+        };
+      });
+  }
+
+  function normalizeWeekdayLabel(weekdayDisplay) {
+    var value = String(weekdayDisplay || '').toLowerCase();
+    var map = {
+      'segunda-feira': 'Segunda-feira',
+      'terça-feira': 'Terça-feira',
+      'terca-feira': 'Terça-feira',
+      'quarta-feira': 'Quarta-feira',
+      'quinta-feira': 'Quinta-feira',
+      'sexta-feira': 'Sexta-feira',
+      'sábado': 'Sábado',
+      'sabado': 'Sábado',
+      'domingo': 'Domingo'
+    };
+    return map[value] || weekdayDisplay;
+  }
+
+  function countScheduleEntries(weekdaySections) {
+    return weekdaySections.reduce(function (total, section) {
+      return total + section.times.length;
+    }, 0);
+  }
+
+  function shouldHideClassSelectionLabel(prefix) {
+    if (prefix !== 'holder') {
+      return false;
+    }
+    return isSoloHolderFlow(prefix);
+  }
+
+  function isSoloHolderFlow(prefix) {
+    return prefix === 'holder' && getSelectedProfile() === 'holder' && !(dependentToggle && dependentToggle.checked);
   }
 
   function getAllowedClassOptions(prefix) {

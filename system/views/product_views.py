@@ -1,8 +1,11 @@
+from django.contrib import messages
 from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from system.forms.product_forms import ProductForm, get_product_variant_formset
+from system.forms.product_forms import ProductCartForm, ProductForm, get_product_variant_formset
 from system.models.product import Product
 from system.services.product_management import (
     get_product_card_by_pk,
@@ -10,7 +13,9 @@ from system.services.product_management import (
     get_public_product_cards,
     save_product_with_variants,
 )
+from system.services.registration_checkout import create_product_only_order
 from system.views.person_views import AdministrativeRequiredMixin
+from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
 class ProductVariantMixin:
@@ -88,3 +93,30 @@ class ProductCatalogView(ListView):
 
     def get_queryset(self):
         return get_public_product_cards()
+
+
+class ProductStoreView(PortalRoleRequiredMixin, ListView):
+    allowed_codes = ("student", "guardian", "dependent")
+    template_name = "products/product_store.html"
+    context_object_name = "products"
+
+    def get_queryset(self):
+        return get_public_product_cards()
+
+
+class CreateProductOrderView(PortalRoleRequiredMixin, View):
+    allowed_codes = ("student", "guardian", "dependent")
+
+    def post(self, request):
+        form = ProductCartForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Carrinho inválido.")
+            return redirect("system:product-store")
+
+        person = request.portal_person
+        order = create_product_only_order(person, form.cleaned_data["cart_payload"])
+        if order is None:
+            messages.error(request, "Nenhum produto válido selecionado.")
+            return redirect("system:product-store")
+
+        return redirect("system:payment-checkout", order_id=order.pk)

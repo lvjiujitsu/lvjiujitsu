@@ -176,6 +176,10 @@ class RegistrationOrder(TimeStampedModel):
         null=True,
         blank=True,
     )
+    is_plan_change = models.BooleanField(
+        "Troca de plano",
+        default=False,
+    )
 
     class Meta:
         ordering = ("-created_at",)

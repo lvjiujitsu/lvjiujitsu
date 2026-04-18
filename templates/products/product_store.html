@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Loja | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260418">
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="panel-card">
+        <p class="panel-eyebrow">Loja</p>
+        <h1>Materiais</h1>
+        <p>Kimonos, faixas, rashguards e acessórios.</p>
+    </div>
+
+    <section class="panel-card">
+        {% if products %}
+            <div class="record-list info-record-list">
+                {% for product in products %}
+                    <article class="record-card record-card-catalog" data-product-id="{{ product.pk }}" data-product-price="{{ product.unit_price }}">
+                        <div class="record-card-head">
+                            <div>
+                                <span class="record-card-name">{{ product.display_name }}</span>
+                                <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
+                            </div>
+                            {% if product.total_stock > 0 %}
+                                <div class="store-product-qty" data-qty-control>
+                                    <button type="button" data-qty-minus>-</button>
+                                    <span data-qty-value>0</span>
+                                    <button type="button" data-qty-plus>+</button>
+                                </div>
+                            {% else %}
+                                <span class="store-product-badge--out">Esgotado</span>
+                            {% endif %}
+                        </div>
+                        {% if product.description %}
+                            <div class="record-card-row">
+                                <span class="record-card-val">{{ product.description }}</span>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhum material disponível no momento.</p>
+        {% endif %}
+    </section>
+
+    <form method="post" action="{% url 'system:product-store-checkout' %}" id="store-form">
+        {% csrf_token %}
+        <input type="hidden" name="cart_payload" id="cart-payload" value="[]">
+        <div class="store-cart-bar store-cart-bar--empty" id="cart-bar">
+            <span id="cart-summary">0 itens · R$ 0,00</span>
+            <button type="submit" class="btn btn--primary">Finalizar compra</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+  var STORAGE_KEY = 'lv_store_cart';
+  var cart = {};
+
+  try {
+    var saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) cart = JSON.parse(saved);
+  } catch(e) {}
+
+  function persist() {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cart)); } catch(e) {}
+  }
+
+  function updateUI() {
+    var total = 0, count = 0;
+    document.querySelectorAll('[data-product-id]').forEach(function(card) {
+      var id = card.dataset.productId;
+      var qty = cart[id] || 0;
+      var display = card.querySelector('[data-qty-value]');
+      if (display) display.textContent = qty;
+      total += qty * parseFloat(card.dataset.productPrice || 0);
+      count += qty;
+    });
+    var bar = document.getElementById('cart-bar');
+    var summary = document.getElementById('cart-summary');
+    var payload = document.getElementById('cart-payload');
+    if (count > 0) {
+      bar.classList.remove('store-cart-bar--empty');
+      summary.textContent = count + ' ' + (count === 1 ? 'item' : 'itens') + ' \u00b7 R$ ' + total.toFixed(2).replace('.', ',');
+    } else {
+      bar.classList.add('store-cart-bar--empty');
+    }
+    var items = [];
+    for (var pid in cart) {
+      if (cart[pid] > 0) items.push({id: parseInt(pid), qty: cart[pid]});
+    }
+    payload.value = JSON.stringify(items);
+  }
+
+  document.querySelectorAll('[data-product-id]').forEach(function(card) {
+    var id = card.dataset.productId;
+    var plus = card.querySelector('[data-qty-plus]');
+    var minus = card.querySelector('[data-qty-minus]');
+    if (plus) plus.addEventListener('click', function() {
+      cart[id] = (cart[id] || 0) + 1;
+      persist(); updateUI();
+    });
+    if (minus) minus.addEventListener('click', function() {
+      cart[id] = Math.max(0, (cart[id] || 0) - 1);
+      if (cart[id] === 0) delete cart[id];
+      persist(); updateUI();
+    });
+  });
+
+  updateUI();
+
+  document.getElementById('store-form').addEventListener('submit', function() {
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  });
+})();
+</script>
+{% endblock %}

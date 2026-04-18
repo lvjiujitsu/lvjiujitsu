@@ -1028,8 +1028,8 @@ h1 {
 .class-option-card {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -1038,15 +1038,28 @@ h1 {
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
+.class-option-card--catalog {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  border-radius: 18px;
+  background: var(--panel-solid);
+}
+
 .class-option-card:hover {
   transform: translateY(-1px);
   border-color: var(--silver-strong);
 }
 
 .class-option-card.is-selected {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--panel-strong);
+  background: #165f63;
+  border-color: #165f63;
+  color: #ffffff;
+}
+
+.class-option-card--catalog.is-selected {
+  box-shadow: 0 0 0 2px rgba(22, 95, 99, 0.35);
 }
 
 .class-option-card input {
@@ -1076,6 +1089,61 @@ h1 {
   letter-spacing: -0.02em;
 }
 
+.class-option-teacher-title,
+.class-option-schedule-title {
+  color: var(--muted-text, #5f6673);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.class-option-teachers,
+.class-option-schedules {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--muted-text, #5f6673);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.class-option-teachers li + li,
+.class-option-schedules li + li {
+  margin-top: 2px;
+}
+
+.class-option-calendar {
+  display: grid;
+  gap: 4px;
+}
+
+.class-option-calendar-head,
+.class-option-calendar-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.class-option-calendar-head {
+  color: var(--muted-text, #5f6673);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.class-option-calendar-row {
+  color: var(--muted-text, #5f6673);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.class-option-calendar-empty {
+  grid-column: 1 / -1;
+}
+
 .class-option-description,
 .class-option-detail {
   color: var(--muted);
@@ -1095,6 +1163,37 @@ h1 {
 .class-option-card.is-selected .class-option-description,
 .class-option-card.is-selected .class-option-detail {
   color: rgba(255, 255, 255, 0.78);
+}
+
+.class-option-card.is-selected .class-option-teacher-title,
+.class-option-card.is-selected .class-option-schedule-title,
+.class-option-card.is-selected .class-option-teachers,
+.class-option-card.is-selected .class-option-schedules,
+.class-option-card.is-selected .class-option-calendar-head,
+.class-option-card.is-selected .class-option-calendar-row {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.class-option-card--catalog.is-selected .catalog-guidance-label,
+.class-option-card--catalog.is-selected .catalog-chip-group-title,
+.class-option-card--catalog.is-selected .catalog-relation-type,
+.class-option-card--catalog.is-selected .record-card-subtitle {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.class-option-card--catalog.is-selected .catalog-chip {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.class-option-card--catalog.is-selected .catalog-chip small {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.class-option-card--catalog.is-selected .catalog-chip--schedule {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .class-option-check {
@@ -2011,41 +2110,6 @@ h1 {
     display: grid;
     gap: 0.75rem;
     margin-top: 0.75rem;
-}
-
-.class-option-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    width: 100%;
-    padding: 0.85rem;
-    border: 1px solid var(--border-soft, #d8dee8);
-    border-radius: 8px;
-    background: var(--surface-soft, #ffffff);
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.class-option-card.is-selected {
-    border-color: #165f63;
-    box-shadow: 0 0 0 2px rgba(22, 95, 99, 0.14);
-}
-
-.class-option-card.is-selected .class-option-meta,
-.class-option-card.is-selected .class-option-schedules {
-    color: rgba(255, 255, 255, 0.78);
-}
-
-.class-option-title {
-    font-weight: 700;
-}
-
-.class-option-meta,
-.class-option-schedules {
-    color: var(--muted-text, #5f6673);
-    font-size: 0.85rem;
-    line-height: 1.35;
 }
 
 .checkout-payment-icon {

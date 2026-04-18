@@ -5,6 +5,35 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 from system.models.product import Product, ProductCategory, ProductVariant
 
 
+class ProductCartForm(forms.Form):
+    cart_payload = forms.CharField(widget=forms.HiddenInput)
+
+    def clean_cart_payload(self):
+        import json
+
+        raw = self.cleaned_data["cart_payload"]
+        try:
+            items = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            raise forms.ValidationError("Carrinho inválido.")
+        if not isinstance(items, list) or not items:
+            raise forms.ValidationError("Carrinho vazio.")
+        result = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            try:
+                product_id = int(item.get("id", 0))
+                quantity = int(item.get("qty", 0))
+            except (ValueError, TypeError):
+                continue
+            if product_id > 0 and 0 < quantity <= 99:
+                result.append({"product_id": product_id, "quantity": quantity})
+        if not result:
+            raise forms.ValidationError("Nenhum item válido no carrinho.")
+        return result
+
+
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product

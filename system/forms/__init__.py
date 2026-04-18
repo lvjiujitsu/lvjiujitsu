@@ -8,7 +8,7 @@ from .class_forms import ClassGroupForm, ClassScheduleForm
 from .person_forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from .plan_forms import PlanForm
 from .payroll_forms import WithdrawalRequestForm
-from .product_forms import ProductForm, ProductVariantForm
+from .product_forms import ProductCartForm, ProductForm, ProductVariantForm
 from .registration_forms import PortalRegistrationForm
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
     "PortalPasswordResetRequestForm",
     "PortalRegistrationForm",
     "PortalSetPasswordForm",
+    "ProductCartForm",
     "ProductForm",
     "ProductVariantForm",
     "WithdrawalRequestForm",

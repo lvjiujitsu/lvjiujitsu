@@ -56,11 +56,13 @@ from .plan_views import (
     PlanUpdateView,
 )
 from .product_views import (
+    CreateProductOrderView,
     ProductCatalogView,
     ProductCreateView,
     ProductDeleteView,
     ProductDetailView,
     ProductListView,
+    ProductStoreView,
     ProductUpdateView,
 )
 from .payment_views import (
@@ -91,6 +93,10 @@ from .billing_admin_views import (
     MarkOrderPaidActionView,
     PendingPaymentListView,
     RefundOrderActionView,
+)
+from .plan_change_views import (
+    PlanChangeConfirmView,
+    PlanChangeSelectView,
 )
 from .person_views import (
     PersonCreateView,
@@ -179,12 +185,16 @@ __all__ = [
     "PlanUpdateView",
     "PortalRegisterView",
     "RegistrationStepValidationView",
+    "CreateProductOrderView",
     "ProductCatalogView",
     "ProductCreateView",
     "ProductDeleteView",
     "ProductDetailView",
     "ProductListView",
+    "ProductStoreView",
     "ProductUpdateView",
+    "PlanChangeConfirmView",
+    "PlanChangeSelectView",
     "RootRedirectView",
     "StudentCheckinView",
     "StudentHomeView",

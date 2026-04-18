@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Trocar plano | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260418">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="panel-card">
+        <p class="panel-eyebrow">Financeiro</p>
+        <h1>Trocar plano</h1>
+        {% if membership %}
+            <p>Plano atual: <strong>{{ membership.plan.display_name }}</strong> — R$ {{ membership.plan.price }} ({{ membership.plan.get_billing_cycle_display }})</p>
+        {% endif %}
+    </div>
+
+    <section class="panel-card">
+        {% if plans_with_proration %}
+            <div class="plan-change-grid">
+                {% for entry in plans_with_proration %}
+                    <div class="plan-change-card {% if entry.proration.is_upgrade %}plan-change-card--upgrade{% elif entry.proration.is_downgrade %}plan-change-card--downgrade{% else %}plan-change-card--free{% endif %}">
+                        <div>
+                            <strong>{{ entry.plan.display_name }}</strong>
+                            <div style="color:var(--text-muted,#6b7280);font-size:0.85rem">
+                                R$ {{ entry.plan.price }} · {{ entry.plan.get_billing_cycle_display }}
+                            </div>
+                        </div>
+
+                        {% if entry.proration.is_upgrade %}
+                            <span class="plan-change-badge plan-change-badge--upgrade">Upgrade</span>
+                        {% elif entry.proration.is_downgrade %}
+                            <span class="plan-change-badge plan-change-badge--downgrade">Downgrade</span>
+                        {% else %}
+                            <span class="plan-change-badge plan-change-badge--free">Gratuito</span>
+                        {% endif %}
+
+                        <dl class="proration-breakdown">
+                            <dt>Crédito restante</dt>
+                            <dd>R$ {{ entry.proration.credit_unused_days }}</dd>
+                            <dt>Custo restante</dt>
+                            <dd>R$ {{ entry.proration.cost_remaining_days }}</dd>
+                            <dt class="proration-total">Diferença</dt>
+                            <dd class="proration-total">
+                                {% if entry.proration.is_upgrade %}
+                                    R$ {{ entry.proration.net_amount }}
+                                {% elif entry.proration.is_downgrade %}
+                                    Grátis
+                                {% else %}
+                                    R$ 0,00
+                                {% endif %}
+                            </dd>
+                        </dl>
+
+                        <a class="btn btn--primary" href="{% url 'system:plan-change-confirm' entry.plan.pk %}">
+                            Trocar para este plano
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="billing-empty">
+                {% if membership %}
+                    Não há outros planos disponíveis para troca no momento.
+                {% else %}
+                    Você não possui uma assinatura ativa.
+                {% endif %}
+            </p>
+        {% endif %}
+
+        <div style="margin-top:1rem">
+            <a href="{% url 'system:student-home' %}" class="btn btn--outline">Voltar ao painel</a>
+        </div>
+    </section>
+</section>
+{% endblock %}

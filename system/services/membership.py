@@ -476,6 +476,46 @@ def _ensure_active_membership_for_person(person):
     )
 
 
+def get_guardian_billing_tabs(guardian_person):
+    dependents_qs = (
+        PersonRelationship.objects.filter(
+            source_person=guardian_person,
+            relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+        )
+        .select_related("target_person")
+        .order_by("target_person__full_name")
+    )
+    tabs = [_build_billing_tab(guardian_person, is_active=True)]
+    for rel in dependents_qs:
+        tabs.append(_build_billing_tab(rel.target_person, is_active=False))
+    return tabs
+
+
+def _build_billing_tab(person, *, is_active=False):
+    active_membership = get_active_membership(person)
+    pending_order = get_latest_open_order(person)
+    recent_invoices = []
+    if active_membership is not None:
+        recent_invoices = list(
+            MembershipInvoice.objects.filter(membership=active_membership)
+            .order_by("-paid_at", "-created_at")[:5]
+        )
+    return {
+        "person": person,
+        "active_membership": active_membership,
+        "pending_order": pending_order,
+        "recent_invoices": recent_invoices,
+        "is_active_tab": is_active,
+    }
+
+
+def has_dependents(person):
+    return PersonRelationship.objects.filter(
+        source_person=person,
+        relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+    ).exists()
+
+
 def get_latest_open_order(person):
     billing_person = get_membership_owner(person)
     if billing_person is None:

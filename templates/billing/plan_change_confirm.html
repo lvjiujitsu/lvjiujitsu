@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Confirmar troca de plano | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260418">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="panel-card">
+        <p class="panel-eyebrow">Financeiro</p>
+        <h1>Confirmar troca de plano</h1>
+    </div>
+
+    <section class="panel-card">
+        <div class="billing-summary">
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Plano atual</span>
+                <strong>{{ proration.current_plan.display_name }} — R$ {{ proration.current_plan.price }}</strong>
+            </div>
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Novo plano</span>
+                <strong>{{ new_plan.display_name }} — R$ {{ new_plan.price }}</strong>
+            </div>
+        </div>
+
+        <dl class="proration-breakdown" style="margin-top:1rem">
+            <dt>Dias no ciclo atual</dt>
+            <dd>{{ proration.cycle_days }} dias</dd>
+            <dt>Dias utilizados</dt>
+            <dd>{{ proration.days_used }} dias</dd>
+            <dt>Dias restantes</dt>
+            <dd>{{ proration.days_remaining }} dias</dd>
+            <dt>Taxa diária atual</dt>
+            <dd>R$ {{ proration.current_daily_rate }}</dd>
+            <dt>Crédito dias não utilizados</dt>
+            <dd>R$ {{ proration.credit_unused_days }}</dd>
+            <dt>Taxa diária novo plano</dt>
+            <dd>R$ {{ proration.new_daily_rate }}</dd>
+            <dt>Custo dias restantes</dt>
+            <dd>R$ {{ proration.cost_remaining_days }}</dd>
+            <dt class="proration-total">
+                {% if proration.is_upgrade %}Valor a pagar{% elif proration.is_downgrade %}Economia{% else %}Diferença{% endif %}
+            </dt>
+            <dd class="proration-total">
+                {% if proration.is_upgrade %}
+                    R$ {{ proration.net_amount }}
+                {% elif proration.is_downgrade %}
+                    Troca gratuita
+                {% else %}
+                    R$ 0,00
+                {% endif %}
+            </dd>
+        </dl>
+
+        {% if proration.is_downgrade %}
+            <div class="billing-alert billing-alert--warning" style="margin-top:1rem">
+                Seu plano será alterado imediatamente. Não há valor a pagar.
+            </div>
+        {% endif %}
+
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
+            <form method="post" action="{% url 'system:plan-change-confirm' new_plan.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--primary">
+                    {% if proration.is_upgrade %}Confirmar e pagar{% else %}Confirmar troca{% endif %}
+                </button>
+            </form>
+            <a href="{% url 'system:plan-change-select' %}" class="btn btn--outline">Voltar</a>
+        </div>
+    </section>
+</section>
+{% endblock %}

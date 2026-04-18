@@ -254,6 +254,7 @@ class Migration(migrations.Migration):
                 ('deposit_status', models.CharField(choices=[('pending', 'A receber'), ('available', 'Disponível'), ('deposited', 'Depositado'), ('not_applicable', 'Não aplicável')], default='pending', max_length=20, verbose_name='Status de crédito')),
                 ('expected_deposit_date', models.DateField(blank=True, null=True, verbose_name='Previsão de crédito')),
                 ('deposited_at', models.DateTimeField(blank=True, null=True, verbose_name='Depositado em')),
+                ('is_plan_change', models.BooleanField(default=False, verbose_name='Troca de plano')),
                 ('approved_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approved_registration_orders', to=settings.AUTH_USER_MODEL, verbose_name='Aprovado por')),
                 ('person', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='registration_orders', to='system.person', verbose_name='Pessoa')),
             ],

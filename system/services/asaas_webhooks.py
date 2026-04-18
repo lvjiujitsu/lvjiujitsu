@@ -138,10 +138,25 @@ def _handle_payment_event(event_type, event):
             financial_transaction_id=asaas_payment_id,
             mark_available=True,
         )
-        activate_membership_from_paid_order(
-            order,
-            notes="Pagamento confirmado via Asaas.",
-        )
+        if order.is_plan_change and order.plan_id:
+            from system.models.membership import Membership, MembershipStatus
+            from system.services.plan_change import apply_plan_change
+
+            active = (
+                Membership.objects.filter(
+                    person=order.person,
+                    status__in=(MembershipStatus.ACTIVE, MembershipStatus.EXEMPTED),
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if active:
+                apply_plan_change(order, active, order.plan)
+        else:
+            activate_membership_from_paid_order(
+                order,
+                notes="Pagamento confirmado via Asaas.",
+            )
     elif event_type in PAYMENT_FAILURE_EVENTS:
         if order.payment_status == PaymentStatus.PENDING:
             order.payment_status = PaymentStatus.FAILED

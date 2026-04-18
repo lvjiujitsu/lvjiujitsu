@@ -1,20 +1,68 @@
 # CLAUDE.md
 
-> Contexto persistente **do repositório atual**. Leia `AGENTS.md` para o protocolo de execução.
+> Contexto persistente, específico e deliberadamente reforçado do projeto **LV Jiu Jitsu**.
+> Este arquivo define **o que o projeto é**, **como o agente deve se orientar dentro dele** e **quais controles locais são obrigatórios**.
+> O protocolo universal está em `AGENTS.md`.
+> As regras sempre ativas do Cursor ficam em `.cursor/rules/`.
+>
+> **Este projeto prefere controle, auditoria, previsibilidade e coerência a qualquer ganho de economia de tokens, custo ou velocidade.**
 
 ---
 
-## Perfil do projeto
+## 1. Política local do projeto
 
+Este projeto adota um regime de operação **control-first**.
+
+### Isso significa:
+- o agente deve priorizar comportamento previsível;
+- o agente deve operar sob auditoria explícita;
+- o agente deve minimizar alucinação por validação e evidência;
+- o agente deve ler arquivos completos do fluxo antes de decidir;
+- o agente deve usar MCPs relevantes como parte do processo padrão;
+- o agente não deve tentar "otimizar" removendo contexto importante;
+- o agente não deve trocar especificidade por generalização elegante.
+
+### Regra local principal
+Se uma instrução torna o comportamento mais rígido, mais auditável e menos sujeito a inferência vaga, essa instrução deve prevalecer no desenho operacional do projeto.
+
+---
+
+## 2. Identidade do projeto
+
+- **Nome:** LV Jiu Jitsu — sistema de gestão para academia de jiu-jitsu
 - **Stack:** Python 3.12 + Django 4.1.13
-- **Persistência / banco:** SQLite local (`db.sqlite3`) - banco local descartável em desenvolvimento
-- **Política de schema/migração:** banco local descartável - reset destrutivo permitido sob demanda
+- **Persistência / banco:** SQLite local (`db.sqlite3`) — banco local descartável em desenvolvimento
+- **Política de schema/migração:** banco local descartável — reset destrutivo permitido sob demanda
 - **Paradigmas:** SDD, TDD, MTV, Design Patterns
-- **Ambiente de execução:** `.venv` obrigatória — nada no global
+- **Padrão de interação web:** server-driven HTML com CSS/JS customizado (sem framework CSS externo)
+- **Ambiente operacional:** Windows + PowerShell; `.venv` obrigatória — nada no global
+- **Gateways de pagamento:** Stripe (cartão) + Asaas (PIX)
+- **Prioridade organizacional:** controle e governança do agente sobre economia de contexto
 
 ---
 
-## Preparação do ambiente
+## 3. Diretriz arquitetural central
+
+Este projeto é um **monólito Django com app única (`system`)** que segue o padrão MTV com camada de services.
+
+### Estrutura modular interna
+A app `system` organiza-se internamente em pacotes:
+- `models/` — persistência e invariantes
+- `forms/` — validação de entrada server-side
+- `services/` — lógica de negócio e orquestração transacional
+- `views/` — camada fina de HTTP
+- `tests/` — cobertura por camada
+
+### Regra de ownership
+- lógica de negócio fica em `services/`, **nunca** em views;
+- views são finas e delegam para services;
+- services recebem dados já validados pelo Form;
+- `@transaction.atomic` em múltiplas escritas;
+- exceção explícita em erro (nunca `None` silencioso).
+
+---
+
+## 4. Preparação do ambiente
 
 ### PowerShell (Windows)
 
@@ -31,21 +79,17 @@ chcp 65001
 ### `.venv`
 
 ```powershell
-# Criar (se não existir):
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# Verificar:
 Get-Command python   # deve apontar para .venv\Scripts\
 ```
 
 ### `.env`
 
-Credenciais e config sensível ficam em `.env` (fora do versionamento). Usar `python-decouple` ou `django-environ`:
+Credenciais e config sensível ficam em `.env` (fora do versionamento). Usar `python-decouple`:
 
 ```python
-# settings.py
 from decouple import config
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -53,15 +97,14 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ---
 
-## Arquitetura Django MTV
+## 5. Arquitetura Django MTV
 
 | Camada | Arquivo | Responsabilidade |
 |---|---|---|
-| Domínio | `models.py` | Persistência e regras de domínio simples |
-| Negócio | `services.py` | Lógica de negócio (**NUNCA** só na view) |
-| Leitura | `selectors.py` | Consultas (`select_related`/`prefetch_related`) |
-| HTTP | `views.py` | Orquestração — views finas |
-| Validação | `forms.py` | Entrada server-side |
+| Domínio | `models/` | Persistência e regras de domínio simples |
+| Negócio | `services/` | Lógica de negócio (**NUNCA** só na view) |
+| HTTP | `views/` | Orquestração — views finas |
+| Validação | `forms/` | Entrada server-side |
 | Rotas | `urls.py` | Namespace por app |
 | Apresentação | `templates/<app>/` | Herdam `base.html` |
 | Estilos/Scripts | `static/<app>/css/`, `static/<app>/js/` | Namespaced por app |
@@ -70,94 +113,89 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 **Ordem de implementação:** Models → Forms → Services → Views → URLs → Templates → Static → Tests
 
-**TDD (Red-Green-Refactor):** escrever teste que falha → código mínimo para passar → refatorar. Double-loop: Playwright (comportamento do usuário) como externo, unitários por camada como interno.
-
-**Estrutura de testes:**
-
-```
-<app_name>/tests/
-├── test_models.py
-├── test_services.py
-├── test_selectors.py
-├── test_views.py
-├── test_forms.py
-└── test_commands.py
-```
-
-**Patterns nos serviços:** `@transaction.atomic` em múltiplas escritas, exceção explícita em erro (nunca `None` silencioso), serviço recebe dados já validados pelo Form.
+**TDD (Red-Green-Refactor):** escrever teste que falha → código mínimo para passar → refatorar.
 
 ---
 
-## Configuração de estáticos e media no `settings.py`
+## 6. Configuração de estáticos e media
 
 ```python
-# Estáticos
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']        # onde os fontes ficam
+STATICFILES_DIRS = [BASE_DIR / 'static']        # fontes ficam aqui
 STATIC_ROOT = BASE_DIR / 'staticfiles'           # gerado pelo collectstatic (NÃO editar)
-
-# Media (uploads de usuário)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 ```
 
-```python
-# urls.py (desenvolvimento)
-from django.conf import settings
-from django.conf.urls.static import static
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-```
-
 **Regras:**
-- **Nunca** colocar arquivos fonte em `STATIC_ROOT` (`staticfiles/`) — é gerado automaticamente.
+- **Nunca** colocar arquivos fonte em `STATIC_ROOT` (`staticfiles/`).
 - Arquivos fonte ficam em `static/` (raiz) ou `<app>/static/<app>/` (namespaced).
 - Após alterar estáticos: `.\.venv\Scripts\python.exe manage.py collectstatic --noinput`.
 - `media/` e `staticfiles/` ficam no `.gitignore`.
 
 ---
 
-## Estrutura de templates e estáticos
+## 7. Estrutura de templates e estáticos
 
 ### Templates
 
 ```
 templates/
-├── base.html                         # {% block content %}, {% block extra_css %}, {% block extra_js %}
+├── base.html
 ├── includes/_navbar.html, _footer.html, _messages.html
-├── <app_name>/<entity>_list.html, _detail.html, _form.html, _confirm_delete.html
-└── registration/login.html
+├── home/student/dashboard.html, home/instructor/dashboard.html
+├── billing/payment_method_choice.html, pix_checkout.html, plan_change_*.html
+├── login/register.html, login/login.html
+├── plans/, products/, people/
 ```
 
 ### Estáticos (com namespacing)
 
 ```
 static/
-├── css/base.css                      # Globais
-├── js/base.js
-├── images/logo.svg
-└── <app_name>/                       # Namespace (evita colisão entre apps)
-    ├── css/<entity>_list.css
-    ├── js/<entity>_form.js
-    └── images/
+├── css/base.css, js/base.js, images/
+└── system/
+    ├── css/auth/, css/billing/, css/portal/
+    └── js/auth/, js/shared/
 ```
 
-Template usa: `{% load static %}` → `{% static '<app_name>/css/file.css' %}`
+---
+
+## 8. Política local de completude de contexto
+
+Neste projeto, **o agente deve ler o arquivo completo sempre que ele estiver envolvido no fluxo**.
+
+### Processo obrigatório
+Antes de responder, diagnosticar, planejar ou editar:
+1. identificar os arquivos do fluxo;
+2. ler integralmente cada arquivo do fluxo;
+3. ler contratos adjacentes;
+4. só então decidir.
+
+### Proibido localmente
+- decidir por snippet quando existe arquivo envolvido;
+- alterar código crítico com leitura parcial;
+- alegar entendimento total sem registro explícito.
 
 ---
 
-## Ferramentas de validação
+## 9. Política local de MCPs
 
-| Ferramenta | Instalação (dentro da `.venv`) |
-|---|---|
-| Playwright | `pip install playwright` → `playwright install chromium` → atualizar `requirements.txt` |
-| Context7 (MCP) | Verificar disponibilidade; se indisponível, buscar via web |
+### Princípio
+Neste projeto, MCPs **não são acessórios**. Eles são parte central do processo de operação do agente.
+
+### Inventário mínimo
+
+| MCP / Ferramenta | Obrigatório? | Uso principal |
+|---|---|---|
+| Context7 ou MCP documental | sim, quando envolver libs/frameworks | documentação atualizada |
+| Playwright / browser MCP | sim, quando houver UI, CSS, JS | validação visual |
 
 ---
 
-## PRD — estrutura obrigatória
+## 10. PRD — estrutura obrigatória
 
-Criar em `docs/prd/PRD-<NNN>-<slug>.md` (ver detalhes completos em `AGENTS.md` Fase 3):
+Criar em `docs/prd/PRD-<NNN>-<slug>.md`:
 
 ```md
 # PRD-<NNN>: <Título>
@@ -179,7 +217,7 @@ Criar em `docs/prd/PRD-<NNN>-<slug>.md` (ver detalhes completos em `AGENTS.md` F
 
 ---
 
-## Reset destrutivo local (somente sob pedido explícito)
+## 11. Reset destrutivo local (somente sob pedido explícito)
 
 ```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
@@ -193,11 +231,11 @@ Criar em `docs/prd/PRD-<NNN>-<slug>.md` (ver detalhes completos em `AGENTS.md` F
 
 ---
 
-## Validação — checklist (Fase 6 do AGENTS.md)
+## 12. Validação — checklist
 
 1. **Ambiente**: `.venv`, ExecutionPolicy, UTF-8, dependências
 2. **Visual**: Playwright/headless
-3. **Estáticos**: `collectstatic --noinput` OK, sem 404, `findstatic` confirma
+3. **Estáticos**: `collectstatic --noinput` OK, sem 404
 4. **Console browser**: sem erros JS
 5. **Testes**: 0 falhas, 0 erros
 6. **Terminal**: sem stack traces
@@ -207,28 +245,28 @@ Criar em `docs/prd/PRD-<NNN>-<slug>.md` (ver detalhes completos em `AGENTS.md` F
 
 ---
 
-## Estrutura esperada
+## 13. Estrutura esperada
 
 ```
-projeto/
+lvjiujitsu/
 ├── .env                    # Credenciais (fora do git)
-├── .gitignore              # inclui: .env, media/, staticfiles/, db.sqlite3, __pycache__/
+├── .gitignore
 ├── requirements.txt
 ├── manage.py
-├── <project_config>/       # settings.py, urls.py, wsgi.py
-├── <apps>/
-│   ├── models.py, views.py, forms.py, services.py, selectors.py
-│   ├── urls.py, tests.py
+├── lvjiujitsu/             # settings.py, urls.py, wsgi.py
+├── system/                 # App única de domínio
+│   ├── models/             # person, plan, membership, registration_order, product, asaas, trial_access
+│   ├── views/              # auth, home, payment, billing_admin, asaas, plan_change, product, person
+│   ├── forms/              # registration, plan, product, auth, person, payroll
+│   ├── services/           # membership, stripe_*, asaas_*, registration_*, plan_change, trial_access
+│   ├── tests/
 │   └── management/commands/
 ├── templates/
 │   ├── base.html
 │   ├── includes/
-│   └── <app_name>/
+│   ├── home/, billing/, login/, plans/, products/, people/
 ├── static/
-│   ├── css/base.css, js/base.js, images/
-│   └── <app_name>/css/, js/, images/
-├── media/                  # Uploads (fora do git)
-├── staticfiles/            # Gerado por collectstatic (fora do git)
+│   └── system/css/, system/js/
 ├── docs/prd/
 ├── CLAUDE.md
 └── AGENTS.md
@@ -236,7 +274,7 @@ projeto/
 
 ---
 
-## Critérios de falha
+## 14. Critérios de falha
 
 **NÃO CONCLUÍDA** quando: sem PRD, sem validação visual, sem console/logs, sem evidência, reset sem pedido, execução inventada, sem pesquisa de contexto, ferramentas não garantidas, lib sem requirements, pacote fora da `.venv`, credenciais hardcodadas, CSRF desabilitado, God Class, CSS/JS inline, `&&` usado no PowerShell, arquivos colocados em `STATIC_ROOT`.
 
@@ -245,5 +283,5 @@ projeto/
 ### Changelog da spec
 
 ```md
-- **[YYYY-MM-DD]** Descrição da decisão ou mudança.
+- **[2026-04-18]** CLAUDE.md adaptado: filosofia control-first integrada com stack real do lvjiujitsu.
 ```

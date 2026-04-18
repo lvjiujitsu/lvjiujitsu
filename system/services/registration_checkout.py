@@ -75,6 +75,52 @@ def parse_selected_products(raw_payload):
     return result
 
 
+@transaction.atomic
+def create_product_only_order(person, cart_items):
+    if not cart_items:
+        return None
+
+    product_ids = [item["product_id"] for item in cart_items]
+    products_by_id = {
+        p.pk: p for p in Product.objects.filter(pk__in=product_ids, is_active=True)
+    }
+
+    from system.models.registration_order import OrderKind
+
+    order = RegistrationOrder.objects.create(
+        person=person,
+        plan=None,
+        plan_price=Decimal("0"),
+        total=Decimal("0"),
+        kind=OrderKind.ONE_TIME,
+    )
+
+    items_total = Decimal("0")
+    for item in cart_items:
+        product = products_by_id.get(item["product_id"])
+        if not product:
+            continue
+        qty = item["quantity"]
+        subtotal = product.unit_price * qty
+        RegistrationOrderItem.objects.create(
+            order=order,
+            product=product,
+            product_name=product.display_name,
+            quantity=qty,
+            unit_price=product.unit_price,
+            subtotal=subtotal,
+        )
+        items_total += subtotal
+
+    if items_total <= 0:
+        order.delete()
+        return None
+
+    order.total = items_total
+    order.save(update_fields=["total", "updated_at"])
+    return order
+
+
 def get_registration_plan_multiplier(cleaned_data):
     child_group_sets = []
     profile = cleaned_data.get("registration_profile")

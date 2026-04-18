@@ -7,6 +7,7 @@
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
   <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260416a">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
 </head>
 <body>
   <main class="screen-shell">
@@ -389,7 +390,7 @@
               </div>
               <div class="field-grid">
                 <label class="field field-full" for="holder-class-groups">
-                  <span>Selecione as turmas</span>
+                  <span data-class-select-label="holder">Selecione as turmas</span>
                   <select id="holder-class-groups" name="holder_class_groups" multiple>
                     {% for choice_value, choice_label in form.holder_class_groups.field.choices %}
                       {% if choice_value %}
@@ -474,7 +475,7 @@
               </div>
               <div class="field-grid">
                 <label class="field field-full" for="dependent-class-groups">
-                  <span>Selecione as turmas</span>
+                  <span data-class-select-label="dependent">Selecione as turmas</span>
                   <select id="dependent-class-groups" name="dependent_class_groups" multiple>
                     {% for choice_value, choice_label in form.dependent_class_groups.field.choices %}
                       {% if choice_value %}
@@ -559,7 +560,7 @@
               </div>
               <div class="field-grid">
                 <label class="field field-full" for="student-class-groups">
-                  <span>Selecione as turmas</span>
+                  <span data-class-select-label="student">Selecione as turmas</span>
                   <select id="student-class-groups" name="student_class_groups" multiple>
                     {% for choice_value, choice_label in form.student_class_groups.field.choices %}
                       {% if choice_value %}

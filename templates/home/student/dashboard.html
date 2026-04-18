@@ -19,96 +19,119 @@
         <div class="dashboard-section-heading">
             <div>
                 <p class="panel-eyebrow">Financeiro</p>
-                <h2>Minha mensalidade</h2>
+                <h2>Mensalidades</h2>
             </div>
-            {% if pending_order %}
-                <a class="btn btn--primary" href="{% url 'system:payment-checkout' pending_order.pk %}">Concluir pagamento</a>
-            {% endif %}
         </div>
 
-        {% if active_membership %}
-            <div class="billing-summary">
-                <div class="billing-summary__item">
-                    <span class="billing-summary__label">Plano atual</span>
-                    <strong>{{ active_membership.plan.display_name }}</strong>
+        <div class="billing-tabs {% if billing_tabs|length <= 1 %}billing-tabs--single{% endif %}">
+            {% for tab in billing_tabs %}
+                <button class="billing-tab-btn {% if tab.is_active_tab %}billing-tab-btn--active{% endif %}"
+                        type="button" data-billing-tab="{{ forloop.counter0 }}">
+                    {{ tab.person.full_name|truncatewords:3 }}
+                </button>
+            {% endfor %}
+        </div>
+
+        {% for tab in billing_tabs %}
+        <div class="billing-tab-panel {% if tab.is_active_tab %}billing-tab-panel--active{% endif %}"
+             data-billing-panel="{{ forloop.counter0 }}">
+
+            {% if tab.pending_order %}
+                <div style="text-align:right;margin-bottom:0.5rem">
+                    <a class="btn btn--primary" href="{% url 'system:payment-checkout' tab.pending_order.pk %}">Concluir pagamento</a>
                 </div>
-                <div class="billing-summary__item">
-                    <span class="billing-summary__label">Status</span>
-                    <strong class="billing-status billing-status--{{ active_membership.status }}">
-                        {{ active_membership.get_status_display }}
-                    </strong>
-                </div>
-                <div class="billing-summary__item">
-                    <span class="billing-summary__label">Valor</span>
-                    <strong>R$ {{ active_membership.plan.price }}</strong>
-                </div>
-                {% if active_membership.current_period_end %}
+            {% endif %}
+
+            {% if tab.active_membership %}
+                <div class="billing-summary">
                     <div class="billing-summary__item">
-                        <span class="billing-summary__label">Próximo vencimento</span>
-                        <strong>{{ active_membership.current_period_end|date:"d/m/Y" }}</strong>
+                        <span class="billing-summary__label">Plano atual</span>
+                        <strong>{{ tab.active_membership.plan.display_name }}</strong>
+                    </div>
+                    <div class="billing-summary__item">
+                        <span class="billing-summary__label">Status</span>
+                        <strong class="billing-status billing-status--{{ tab.active_membership.status }}">
+                            {{ tab.active_membership.get_status_display }}
+                        </strong>
+                    </div>
+                    <div class="billing-summary__item">
+                        <span class="billing-summary__label">Valor</span>
+                        <strong>R$ {{ tab.active_membership.plan.price }}</strong>
+                    </div>
+                    {% if tab.active_membership.current_period_end %}
+                        <div class="billing-summary__item">
+                            <span class="billing-summary__label">Próximo vencimento</span>
+                            <strong>{{ tab.active_membership.current_period_end|date:"d/m/Y" }}</strong>
+                        </div>
+                    {% endif %}
+                    {% if tab.active_membership.cancel_at_period_end %}
+                        <div class="billing-summary__item billing-summary__item--warning">
+                            <span class="billing-summary__label">Aviso</span>
+                            <strong>Assinatura será cancelada ao fim do ciclo.</strong>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if tab.billing_owner and request.portal_person and tab.billing_owner.pk != request.portal_person.pk %}
+                    <div class="billing-alert billing-alert--warning">
+                        Esta mensalidade está vinculada ao responsável {{ tab.billing_owner.full_name }}.
                     </div>
                 {% endif %}
-                {% if active_membership.cancel_at_period_end %}
-                    <div class="billing-summary__item billing-summary__item--warning">
-                        <span class="billing-summary__label">Aviso</span>
-                        <strong>Assinatura será cancelada ao fim do ciclo.</strong>
+                {% if tab.active_membership.status == "active" %}
+                    <div style="margin-top:0.5rem">
+                        <a class="btn btn--outline" href="{% url 'system:plan-change-select' %}">Trocar plano</a>
                     </div>
                 {% endif %}
-            </div>
-            {% if billing_owner and request.portal_person and billing_owner.pk != request.portal_person.pk %}
-                <div class="billing-alert billing-alert--warning">
-                    Esta mensalidade está vinculada ao responsável {{ billing_owner.full_name }}.
-                </div>
+            {% else %}
+                <p class="billing-empty">{{ tab.person.full_name }} ainda não possui uma mensalidade ativa.</p>
             {% endif %}
-        {% else %}
-            <p class="billing-empty">Você ainda não possui uma mensalidade ativa.</p>
-        {% endif %}
 
-        {% if pending_order %}
-            <div class="billing-alert billing-alert--warning">
-                Pedido #{{ pending_order.pk }} em aberto — R$ {{ pending_order.total }}.
-            </div>
-            {% if active_trial_access %}
+            {% if tab.pending_order %}
                 <div class="billing-alert billing-alert--warning">
-                    Você está no período experimental: restam {{ active_trial_access.remaining_classes }}
-                    aula(s) antes de ser necessário concluir o pagamento.
+                    Pedido #{{ tab.pending_order.pk }} em aberto — R$ {{ tab.pending_order.total }}.
                 </div>
+                {% if active_trial_access %}
+                    <div class="billing-alert billing-alert--warning">
+                        Você está no período experimental: restam {{ active_trial_access.remaining_classes }}
+                        aula(s) antes de ser necessário concluir o pagamento.
+                    </div>
+                {% endif %}
             {% endif %}
-        {% endif %}
 
-        {% if recent_invoices %}
-            <div class="billing-history">
-                <h3>Histórico recente</h3>
-                <table class="billing-table billing-table--compact">
-                    <thead>
-                        <tr>
-                            <th>Pago em</th>
-                            <th>Valor</th>
-                            <th>Período</th>
-                            <th>Recibo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for invoice in recent_invoices %}
+            {% if tab.recent_invoices %}
+                <div class="billing-history">
+                    <h3>Histórico recente</h3>
+                    <table class="billing-table billing-table--compact">
+                        <thead>
                             <tr>
-                                <td>{{ invoice.paid_at|date:"d/m/Y"|default:"—" }}</td>
-                                <td>R$ {{ invoice.amount_paid }}</td>
-                                <td>
-                                    {% if invoice.period_start and invoice.period_end %}
-                                        {{ invoice.period_start|date:"d/m/Y" }} → {{ invoice.period_end|date:"d/m/Y" }}
-                                    {% else %}—{% endif %}
-                                </td>
-                                <td>
-                                    {% if invoice.hosted_invoice_url %}
-                                        <a href="{{ invoice.hosted_invoice_url }}" target="_blank" rel="noopener">Abrir</a>
-                                    {% else %}—{% endif %}
-                                </td>
+                                <th>Pago em</th>
+                                <th>Valor</th>
+                                <th>Período</th>
+                                <th>Recibo</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% endif %}
+                        </thead>
+                        <tbody>
+                            {% for invoice in tab.recent_invoices %}
+                                <tr>
+                                    <td>{{ invoice.paid_at|date:"d/m/Y"|default:"—" }}</td>
+                                    <td>R$ {{ invoice.amount_paid }}</td>
+                                    <td>
+                                        {% if invoice.period_start and invoice.period_end %}
+                                            {{ invoice.period_start|date:"d/m/Y" }} → {{ invoice.period_end|date:"d/m/Y" }}
+                                        {% else %}—{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if invoice.hosted_invoice_url %}
+                                            <a href="{{ invoice.hosted_invoice_url }}" target="_blank" rel="noopener">Abrir</a>
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
     </section>
 
     <section class="panel-card">
@@ -179,10 +202,10 @@
                 <span class="dashboard-action-title">Cronograma</span>
                 <span class="dashboard-action-description">Calendário de aulas, feriados e cancelamentos.</span>
             </a>
-            <a class="dashboard-action-card" href="{% url 'system:product-catalog' %}">
-                <span class="dashboard-action-meta">Estoque</span>
+            <a class="dashboard-action-card" href="{% url 'system:product-store' %}">
+                <span class="dashboard-action-meta">Loja</span>
                 <span class="dashboard-action-title">Materiais</span>
-                <span class="dashboard-action-description">Kimonos, faixas e acessórios disponíveis.</span>
+                <span class="dashboard-action-description">Kimonos, faixas e acessórios — compre online.</span>
             </a>
             <a class="dashboard-action-card" href="{% url 'system:plan-catalog' %}">
                 <span class="dashboard-action-meta">Comercial</span>
@@ -196,6 +219,21 @@
 
 {% block extra_scripts %}
 <script>
+(function() {
+  var tabBtns = document.querySelectorAll('[data-billing-tab]');
+  var tabPanels = document.querySelectorAll('[data-billing-panel]');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = btn.dataset.billingTab;
+      tabBtns.forEach(function(b) { b.classList.remove('billing-tab-btn--active'); });
+      tabPanels.forEach(function(p) { p.classList.remove('billing-tab-panel--active'); });
+      btn.classList.add('billing-tab-btn--active');
+      var target = document.querySelector('[data-billing-panel="' + idx + '"]');
+      if (target) target.classList.add('billing-tab-panel--active');
+    });
+  });
+})();
+
 (function() {
   var buttons = document.querySelectorAll('[data-checkin-btn]');
   buttons.forEach(function(btn) {
