@@ -56,36 +56,32 @@ def is_excluded(path: Path, root: Path) -> bool:
     return any(part in EXCLUDED_DIR_NAMES for part in relative_parts)
 
 
-def remove_path(path: Path) -> bool:
+def force_remove(path: Path) -> bool:
     if not path.exists():
         return False
-
     if path.is_dir():
         shutil.rmtree(path, ignore_errors=True)
-        return True
-
+        return not path.exists()
+    try:
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+    except OSError:
+        pass
     try:
         path.unlink()
         return True
-    except PermissionError as error:
-        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-        for _ in range(3):
-            try:
-                path.unlink()
-                return True
-            except PermissionError:
-                time.sleep(0.5)
-                continue
-            except FileNotFoundError:
-                return True
-        raise CleanupError(f"Arquivo bloqueado e nao removido: {path}") from error
     except FileNotFoundError:
+        return True
+    except PermissionError:
         return False
 
 
-def list_python_processes() -> list[dict[str, str]]:
+def kill_all_python_processes() -> int:
     if os.name != "nt":
-        return []
+        return 0
+
+    print_header("Encerrando todos os processos Python")
+    current_pid = os.getpid()
+    parent_pid = os.getppid()
 
     command = [
         "powershell.exe",
@@ -101,53 +97,110 @@ def list_python_processes() -> list[dict[str, str]]:
     ]
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not result.stdout.strip():
-        return []
+        print_warning("Nenhum processo Python encontrado.")
+        return 0
 
     payload = json.loads(result.stdout)
     if isinstance(payload, dict):
         payload = [payload]
-    return payload
 
-
-def stop_python_processes(root: Path, match_repo_only: bool) -> int:
-    scope_label = "do repositorio" if match_repo_only else "da maquina"
-    print_header(f"Encerrando processos Python {scope_label}")
-    current_pid = os.getpid()
-    repo_root = str(root).lower()
-    repo_python = str(root / ".venv" / "Scripts" / "python.exe").lower()
+    protected_pids = {current_pid, parent_pid}
     stopped = 0
 
-    for process in list_python_processes():
+    for process in payload:
         pid = int(process.get("ProcessId") or 0)
-        if pid == current_pid or pid == 0:
+        if pid == 0 or pid in protected_pids:
             continue
 
-        executable_path = str(process.get("ExecutablePath") or "").lower()
-        command_line = str(process.get("CommandLine") or "").lower()
-
-        belongs_to_repo = repo_root in command_line or executable_path == repo_python
-        if match_repo_only and not belongs_to_repo:
-            continue
-
-        result = subprocess.run(
-            ["taskkill", "/PID", str(pid), "/F", "/T"],
+        kill_result = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/F"],
             capture_output=True,
             text=True,
             check=False,
         )
-        if result.returncode == 0:
+        if kill_result.returncode == 0:
             stopped += 1
-            print_result(f"Processo Python finalizado: PID {pid}")
+            print_result(f"Finalizado: PID {pid}")
         else:
-            print_warning(f"Nao foi possivel finalizar o PID {pid}.")
+            stderr = (kill_result.stderr or "").strip().lower()
+            if "not found" in stderr or "n\xe3o" in stderr:
+                print_result(f"PID {pid} ja encerrado.")
+            else:
+                print_warning(f"Falha ao finalizar PID {pid}.")
 
     if stopped == 0:
-        if match_repo_only:
-            print_warning("Nenhum processo Python vinculado ao repositorio foi encontrado.")
-        else:
-            print_warning("Nenhum outro processo Python ativo foi encontrado.")
+        print_warning("Nenhum processo Python ativo para encerrar.")
 
     return stopped
+
+
+def wait_processes_exit(max_wait: float = 8.0) -> None:
+    print_header("Aguardando processos encerrarem")
+    current_pid = os.getpid()
+    parent_pid = os.getppid()
+    protected_pids = {current_pid, parent_pid}
+    interval = 1.0
+    elapsed = 0.0
+
+    while elapsed < max_wait:
+        time.sleep(interval)
+        elapsed += interval
+
+        result = subprocess.run(
+            [
+                "powershell.exe", "-NoProfile", "-Command",
+                (
+                    "$ErrorActionPreference='SilentlyContinue'; "
+                    "(Get-Process -Name python,pythonw,py -ErrorAction SilentlyContinue).Count"
+                ),
+            ],
+            capture_output=True, text=True, check=False,
+        )
+        count_str = (result.stdout or "").strip()
+        try:
+            remaining = int(count_str)
+        except ValueError:
+            remaining = 0
+
+        alive_others = max(0, remaining - len(protected_pids))
+        if alive_others == 0:
+            print_result(f"Todos os processos encerrados ({elapsed:.0f}s).")
+            return
+
+    print_warning(f"Timeout ({max_wait:.0f}s) — alguns processos podem ainda estar ativos.")
+
+
+def remove_database_files(root: Path) -> int:
+    print_header("Removendo banco SQLite")
+    removed = 0
+    failures: list[str] = []
+
+    for name in sorted(DATABASE_FILE_NAMES):
+        path = root / name
+        if not path.exists():
+            continue
+
+        for attempt in range(10):
+            if force_remove(path):
+                removed += 1
+                print_result(f"Removido: {name}")
+                break
+            time.sleep(1)
+        else:
+            if path.exists():
+                failures.append(name)
+                print_error(f"Nao foi possivel remover: {name}")
+
+    if removed == 0 and not failures:
+        print_warning("Nenhum arquivo SQLite encontrado.")
+
+    if failures:
+        raise CleanupError(
+            f"Arquivos SQLite bloqueados: {', '.join(failures)}. "
+            "Feche todas as aplicacoes que usam o banco e tente novamente."
+        )
+
+    return removed
 
 
 def remove_pycache_directories(root: Path) -> int:
@@ -157,9 +210,9 @@ def remove_pycache_directories(root: Path) -> int:
     for cache_dir in root.rglob("__pycache__"):
         if is_excluded(cache_dir, root):
             continue
-        if remove_path(cache_dir):
+        if force_remove(cache_dir):
             removed += 1
-            print_result(f"Diretorio removido: {cache_dir.relative_to(root)}")
+            print_result(f"Removido: {cache_dir.relative_to(root)}")
 
     if removed == 0:
         print_warning("Nenhum diretorio __pycache__ encontrado.")
@@ -178,9 +231,9 @@ def remove_migration_files(root: Path) -> int:
         for path in migrations_dir.iterdir():
             if path.name == "__init__.py":
                 continue
-            if remove_path(path):
+            if force_remove(path):
                 removed += 1
-                print_result(f"Migration removida: {path.relative_to(root)}")
+                print_result(f"Removido: {path.relative_to(root)}")
 
     if removed == 0:
         print_warning("Nenhuma migration adicional encontrada.")
@@ -194,15 +247,15 @@ def remove_runtime_artifacts(root: Path) -> int:
 
     for name in sorted(RUNTIME_DIR_NAMES):
         path = root / name
-        if remove_path(path):
+        if force_remove(path):
             removed += 1
-            print_result(f"Diretorio removido: {path.relative_to(root)}")
+            print_result(f"Removido: {path.relative_to(root)}")
 
     for name in sorted(RUNTIME_FILE_NAMES):
         path = root / name
-        if remove_path(path):
+        if force_remove(path):
             removed += 1
-            print_result(f"Arquivo removido: {path.relative_to(root)}")
+            print_result(f"Removido: {path.relative_to(root)}")
 
     if removed == 0:
         print_warning("Nenhum artefato local adicional encontrado.")
@@ -210,60 +263,27 @@ def remove_runtime_artifacts(root: Path) -> int:
     return removed
 
 
-def remove_database_files(root: Path) -> int:
-    print_header("Removendo banco SQLite")
-    removed = 0
-    failures: list[Path] = []
+def verify_cleanup(root: Path) -> None:
+    print_header("Verificando limpeza")
+    problems: list[str] = []
 
     for name in sorted(DATABASE_FILE_NAMES):
-        path = root / name
-        if not path.exists():
+        if (root / name).exists():
+            problems.append(f"Banco ainda existe: {name}")
+
+    for migrations_dir in root.rglob("migrations"):
+        if is_excluded(migrations_dir, root) or not migrations_dir.is_dir():
             continue
+        for path in migrations_dir.iterdir():
+            if path.name != "__init__.py":
+                problems.append(f"Migration restante: {path.relative_to(root)}")
 
-        try:
-            if remove_path(path):
-                removed += 1
-                print_result(f"Arquivo removido: {path.relative_to(root)}")
-                continue
-        except CleanupError:
-            print_warning(
-                f"Arquivo bloqueado detectado: {path.relative_to(root)}. "
-                "Tentando finalizar processos Python vinculados ao repositorio."
-            )
-            stop_python_processes(root, match_repo_only=True)
-            try:
-                if remove_path(path):
-                    removed += 1
-                    print_result(f"Arquivo removido apos desbloqueio: {path.relative_to(root)}")
-                    continue
-            except CleanupError:
-                print_warning(
-                    "Bloqueio persistente. Tentando finalizar todos os outros processos Python da maquina."
-                )
-                stop_python_processes(root, match_repo_only=False)
-                try:
-                    if remove_path(path):
-                        removed += 1
-                        print_result(
-                            f"Arquivo removido apos desbloqueio global: {path.relative_to(root)}"
-                        )
-                        continue
-                except CleanupError:
-                    failures.append(path)
-                    continue
+    if problems:
+        for problem in problems:
+            print_error(problem)
+        raise CleanupError("Limpeza incompleta. Veja os erros acima.")
 
-    if removed == 0 and not failures:
-        print_warning("Nenhum arquivo SQLite encontrado.")
-
-    if failures:
-        failure_list = ", ".join(str(path.relative_to(root)) for path in failures)
-        raise CleanupError(
-            "Nao foi possivel remover os arquivos SQLite bloqueados: "
-            f"{failure_list}. Feche o servidor Django, shells do SQLite ou processos que estejam "
-            "usando o banco e execute o comando novamente."
-        )
-
-    return removed
+    print_result("Ambiente limpo — banco deletado, migrations removidas.")
 
 
 def validate_root(root: Path) -> None:
@@ -277,20 +297,25 @@ def main() -> int:
     validate_root(root)
 
     print_header("Iniciando limpeza do ambiente")
-    print_result(f"Repositorio localizado em: {root}")
+    print_result(f"Repositorio: {root}")
 
-    stopped_processes = 0
-    removed_database = remove_database_files(root)
-    removed_pycache = remove_pycache_directories(root)
+    stopped = kill_all_python_processes()
+    if stopped > 0:
+        wait_processes_exit()
+
+    removed_db = remove_database_files(root)
+    removed_cache = remove_pycache_directories(root)
     removed_migrations = remove_migration_files(root)
-    removed_runtime_artifacts = remove_runtime_artifacts(root)
+    removed_artifacts = remove_runtime_artifacts(root)
+
+    verify_cleanup(root)
 
     print_header("Resumo final")
-    print_result(f"Processos Python finalizados: {stopped_processes}")
-    print_result(f"Diretorios __pycache__ removidos: {removed_pycache}")
-    print_result(f"Arquivos de migrations removidos: {removed_migrations}")
-    print_result(f"Artefatos locais removidos: {removed_runtime_artifacts}")
-    print_result(f"Arquivos SQLite removidos: {removed_database}")
+    print_result(f"Processos finalizados: {stopped}")
+    print_result(f"Arquivos SQLite removidos: {removed_db}")
+    print_result(f"Diretorios __pycache__: {removed_cache}")
+    print_result(f"Migrations removidas: {removed_migrations}")
+    print_result(f"Artefatos locais: {removed_artifacts}")
     print_result("Limpeza concluida com sucesso.")
     return 0
 

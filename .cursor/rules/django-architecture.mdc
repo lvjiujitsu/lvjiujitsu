@@ -1,0 +1,37 @@
+---
+description: Arquitetura Django MVT com services — ownership de cada camada
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Django MVT — ownership de camada
+
+## Regra central
+
+Lógica de negócio em `services/` — **nunca** concentrada na view ou template.
+
+## Camadas
+
+| Camada | Responsabilidade |
+|---|---|
+| `models/` | Persistência e invariantes de domínio |
+| `forms/` | Validação server-side (`clean_<field>`, `clean()`) |
+| `services/` | Regra de negócio, orquestração transacional |
+| `selectors/` | Leitura complexa e consultas reutilizáveis |
+| `views/` | HTTP fino — delega para services |
+| `templates/` | Apresentação — herda `base.html` |
+| `static/` | CSS/JS namespaced por app e por tela |
+| `tests/` | Cobertura por camada (test_models, test_services, test_views, test_forms) |
+
+## Ordem de implementação
+
+Models → Forms → Services → Selectors → Views → URLs → Templates → Static → Tests
+
+## Patterns obrigatórios
+
+- Services recebem dados já validados pelo Form
+- `@transaction.atomic` em fluxos com múltiplas escritas
+- Exceção explícita em erro — nunca `None` silencioso
+- `select_related()` / `prefetch_related()` para evitar N+1
+- Rotas, labels e mensagens ao usuário em pt-BR
+- Identificadores técnicos em inglês

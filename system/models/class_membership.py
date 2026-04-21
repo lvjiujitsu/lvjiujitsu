@@ -6,6 +6,7 @@ from .category import CategoryAudience, IbjjfAgeCategory
 from .class_group import ClassGroup
 from .common import TimeStampedModel
 from .person import BiologicalSex, Person
+from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES, CLASS_STAFF_PERSON_TYPE_CODES
 
 
 class EnrollmentStatus(models.TextChoices):
@@ -110,10 +111,7 @@ class ClassInstructorAssignment(TimeStampedModel):
                     )
                 }
             )
-        if self.person_id and not self.person.has_type_code(
-            "administrative-assistant",
-            "instructor",
-        ):
+        if self.person_id and not self.person.has_type_code(*CLASS_STAFF_PERSON_TYPE_CODES):
             raise ValidationError(
                 {
                     "person": (
@@ -167,7 +165,9 @@ class ClassEnrollment(TimeStampedModel):
         return super().save(*args, **kwargs)
 
     def _validate_student_type(self):
-        if self.person_id and not self.person.has_type_code("student", "dependent"):
+        if self.person_id and not self.person.has_type_code(
+            *CLASS_ENROLLMENT_PERSON_TYPE_CODES
+        ):
             raise ValidationError(
                 {"person": "A pessoa precisa possuir o tipo Aluno ou Dependente para entrar na turma."}
             )

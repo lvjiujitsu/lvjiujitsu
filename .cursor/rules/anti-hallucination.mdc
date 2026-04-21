@@ -1,0 +1,36 @@
+---
+description: Política anti-alucinação — impede decisões sem evidência ou leitura parcial
+globs:
+alwaysApply: true
+---
+
+# Anti-alucinação
+
+## Leitura integral obrigatória
+
+Antes de responder, diagnosticar, planejar ou editar:
+
+1. Identificar todos os arquivos envolvidos no fluxo
+2. Ler cada arquivo integralmente (não por grep/snippet)
+3. Ler contratos adjacentes (models, forms, services, views, urls, templates, tests)
+4. Só então produzir diagnóstico, plano ou código
+
+## Toda conclusão precisa de pilar
+
+Apoiar em pelo menos um:
+- Leitura integral do arquivo
+- Documentação oficial
+- Execução observável de comando
+- Teste automatizado
+- Validação visual (Playwright/browser)
+- Inspeção de console, terminal ou ORM
+
+## O agente nunca deve
+
+- Assumir que entendeu o fluxo por um trecho parcial
+- Assumir que README está correto sem conferir o código
+- Assumir que um comando existe sem verificar
+- Assumir que uma ferramenta funciona sem testá-la na sessão
+- Inventar comportamento, rota, seed, migração ou contrato
+- Pular arquivo porque "parece irrelevante"
+- Alegar entendimento sem registrar o que foi lido

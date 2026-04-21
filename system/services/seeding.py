@@ -1,5 +1,6 @@
 from datetime import date, time
 
+from django.conf import settings
 from django.db import transaction
 
 from system.models import (
@@ -16,13 +17,14 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
-from system.models.plan import SubscriptionPlan
+from system.models.plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
 from system.models.product import Product, ProductCategory, ProductVariant
+from system.constants import PersonTypeCode
 from system.services.registration import ensure_default_person_types, sync_person_class_enrollments
 from system.utils import ensure_formatted_cpf
 
 
-DEFAULT_TEST_PORTAL_PASSWORD = "123456"
+DEFAULT_TEST_PORTAL_PASSWORD = settings.SEED_TEST_PORTAL_PASSWORD
 OFFICIAL_INSTRUCTOR_PASSWORD = DEFAULT_TEST_PORTAL_PASSWORD
 
 CLASS_CATEGORY_DEFINITIONS = (
@@ -243,7 +245,7 @@ def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
             previous_injuries="",
             emergency_contact="Operação LV - (62) 98888-0000",
             password=password,
-            person_type=person_types["instructor"],
+            person_type=person_types[PersonTypeCode.INSTRUCTOR],
             class_category=class_categories[definition["class_category"]],
         )
         class_group = _upsert_class_group(
@@ -287,7 +289,7 @@ def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         previous_injuries="",
         emergency_contact="Mãe - (62) 99999-1001",
         password=password,
-        person_type=person_types["student"],
+        person_type=person_types[PersonTypeCode.STUDENT],
         class_category=categories["adult"],
         class_groups=[catalog["class_groups"]["adult-lauro"]],
     )
@@ -313,7 +315,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         previous_injuries="Lesão antiga no joelho esquerdo.",
         emergency_contact="Irmão - (62) 99999-1002",
         password=password,
-        person_type=person_types["student"],
+        person_type=person_types[PersonTypeCode.STUDENT],
         class_category=categories["adult"],
         class_groups=[holder_group],
     )
@@ -329,7 +331,7 @@ def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSW
         previous_injuries="",
         emergency_contact="Pai - (62) 99999-1003",
         password=password,
-        person_type=person_types["dependent"],
+        person_type=person_types[PersonTypeCode.DEPENDENT],
         class_category=categories["kids"],
         class_groups=[dependent_group],
     )
@@ -358,7 +360,7 @@ def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         previous_injuries="",
         emergency_contact="Cônjuge - (62) 99999-1004",
         password=password,
-        person_type=person_types["guardian"],
+        person_type=person_types[PersonTypeCode.GUARDIAN],
         class_category=categories["adult"],
     )
     return {"guardian": guardian}
@@ -382,7 +384,7 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         previous_injuries="",
         emergency_contact="Avó - (62) 99999-1005",
         password=password,
-        person_type=person_types["guardian"],
+        person_type=person_types[PersonTypeCode.GUARDIAN],
         class_category=categories["kids"],
     )
     dependent = _upsert_person_with_account(
@@ -397,7 +399,7 @@ def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASS
         previous_injuries="",
         emergency_contact="Responsável - (62) 99999-1006",
         password=password,
-        person_type=person_types["dependent"],
+        person_type=person_types[PersonTypeCode.DEPENDENT],
         class_category=categories["kids"],
         class_groups=[dependent_group],
     )
@@ -426,7 +428,7 @@ def seed_person_administrative(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
         previous_injuries="",
         emergency_contact="Operação - (62) 99999-1007",
         password=password,
-        person_type=person_types["administrative-assistant"],
+        person_type=person_types[PersonTypeCode.ADMINISTRATIVE_ASSISTANT],
         class_category=categories["adult"],
     )
     return {"administrative": administrative}
@@ -564,7 +566,7 @@ def _upsert_class_schedule(
         training_style=training_style,
         start_time=start_time,
         defaults={
-            "duration_minutes": 60,
+            "duration_minutes": settings.CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES,
             "display_order": display_order,
             "is_active": True,
         },
@@ -588,6 +590,20 @@ BELT_COLORS = (
     "Azul", "Roxa", "Marrom", "Preta",
 )
 
+SIZES_ADULT_MALE = ("A0", "A1", "A2", "A3", "A4", "A5")
+SIZES_ADULT_FEMALE = ("F1", "F2", "F3", "F4")
+SIZES_KIDS = ("M0", "M1", "M2", "M3", "M4")
+SIZES_RASHGUARD = ("PP", "P", "M", "G", "GG", "XGG")
+
+
+def _gi_variants(color, sizes, stock=3):
+    return [{"color": color, "size": s, "stock": stock} for s in sizes]
+
+
+def _rash_variants(color, stock=5):
+    return [{"color": color, "size": s, "stock": stock} for s in SIZES_RASHGUARD]
+
+
 PRODUCT_DEFINITIONS = (
     {
         "sku": "belt-lv",
@@ -595,71 +611,71 @@ PRODUCT_DEFINITIONS = (
         "category": "belts",
         "unit_price": "75.00",
         "description": "Faixa oficial LV Jiu Jitsu. Disponível em todas as cores de graduação.",
-        "variants": [{"color": c, "size": "", "stock": 1} for c in BELT_COLORS],
+        "variants": [{"color": c, "size": "", "stock": 5} for c in BELT_COLORS],
     },
     {
         "sku": "gi-premium-comp",
         "display_name": "Kimono Premium Competition LV",
         "category": "kimonos",
         "unit_price": "520.00",
-        "description": "Kimono premium de competição LV. Tecido leve e resistente.",
-        "variants": [{"color": "Preto", "size": "A1", "stock": 1}],
+        "description": "Kimono premium de competição LV. Tecido leve e resistente, corte masculino.",
+        "variants": _gi_variants("Preto", SIZES_ADULT_MALE),
     },
     {
         "sku": "gi-trad-white",
         "display_name": "Kimono Tradicional Trançado LV Branco",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono tradicional trançado branco masculino.",
-        "variants": [{"color": "Branco", "size": "A2", "stock": 1}],
+        "description": "Kimono tradicional trançado branco masculino. Tamanhos IBJJF A0–A5.",
+        "variants": _gi_variants("Branco", SIZES_ADULT_MALE),
     },
     {
         "sku": "gi-trad-white-fem",
         "display_name": "Kimono Tradicional Trançado LV Branco Feminino",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono tradicional trançado branco feminino.",
-        "variants": [{"color": "Branco", "size": "F3", "stock": 1}],
+        "description": "Kimono tradicional trançado branco feminino. Tamanhos IBJJF F1–F4.",
+        "variants": _gi_variants("Branco", SIZES_ADULT_FEMALE),
     },
     {
         "sku": "gi-trad-black-fem",
         "display_name": "Kimono Tradicional Trançado LV Preto Feminino",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono tradicional trançado preto feminino.",
-        "variants": [{"color": "Preto", "size": "F3", "stock": 1}],
+        "description": "Kimono tradicional trançado preto feminino. Tamanhos IBJJF F1–F4.",
+        "variants": _gi_variants("Preto", SIZES_ADULT_FEMALE),
     },
     {
         "sku": "gi-comp-black-red",
         "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono trançado de competição preto com detalhes em vermelho.",
-        "variants": [{"color": "Preto c/ Vermelho", "size": "A2", "stock": 1}],
+        "description": "Kimono trançado de competição preto com detalhes em vermelho. Tamanhos IBJJF A0–A5.",
+        "variants": _gi_variants("Preto c/ Vermelho", SIZES_ADULT_MALE),
     },
     {
         "sku": "gi-comp-black-red-fem",
         "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Feminino",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono trançado de competição preto com vermelho feminino.",
-        "variants": [{"color": "Preto c/ Vermelho", "size": "F3", "stock": 1}],
+        "description": "Kimono trançado de competição preto com vermelho feminino. Tamanhos IBJJF F1–F4.",
+        "variants": _gi_variants("Preto c/ Vermelho", SIZES_ADULT_FEMALE),
     },
     {
         "sku": "gi-comp-black-red-kids",
         "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Infantil",
         "category": "kimonos",
         "unit_price": "450.00",
-        "description": "Kimono trançado de competição infantil preto com vermelho.",
-        "variants": [{"color": "Preto c/ Vermelho", "size": "M1", "stock": 1}],
+        "description": "Kimono trançado de competição infantil preto com vermelho. Tamanhos IBJJF M0–M4.",
+        "variants": _gi_variants("Preto c/ Vermelho", SIZES_KIDS),
     },
     {
         "sku": "rash-lv",
         "display_name": "Rash Guard LV",
         "category": "rashguards",
         "unit_price": "150.00",
-        "description": "Rash guard oficial LV Jiu Jitsu.",
-        "variants": [{"color": "Preto", "size": "M", "stock": 1}],
+        "description": "Rash guard oficial LV Jiu Jitsu. Tamanhos PP ao XGG.",
+        "variants": _rash_variants("Preto"),
     },
     {
         "sku": "patch-kit-3",
@@ -667,7 +683,7 @@ PRODUCT_DEFINITIONS = (
         "category": "patches",
         "unit_price": "45.00",
         "description": "Kit com 3 patches oficiais LV para kimono.",
-        "variants": [{"color": "", "size": "", "stock": 1}],
+        "variants": [{"color": "", "size": "", "stock": 10}],
     },
 )
 
@@ -717,8 +733,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-monthly-pix",
         "display_name": "Plano mensal PIX",
-        "billing_cycle": "monthly",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.MONTHLY,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "240.00",
         "monthly_reference_price": "240.00",
         "is_family_plan": False,
@@ -728,8 +744,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-monthly-credit",
         "display_name": "Plano mensal Crédito",
-        "billing_cycle": "monthly",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.MONTHLY,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "250.00",
         "monthly_reference_price": "250.00",
         "is_family_plan": False,
@@ -739,8 +755,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-quarterly-pix",
         "display_name": "Plano Trimestral PIX",
-        "billing_cycle": "quarterly",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.QUARTERLY,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "660.00",
         "monthly_reference_price": "220.00",
         "is_family_plan": False,
@@ -750,8 +766,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-quarterly-credit",
         "display_name": "Plano Trimestral Crédito",
-        "billing_cycle": "quarterly",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.QUARTERLY,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "675.00",
         "monthly_reference_price": "225.00",
         "is_family_plan": False,
@@ -761,8 +777,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-annual-pix",
         "display_name": "Plano Anual PIX",
-        "billing_cycle": "annual",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.ANNUAL,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "2580.00",
         "monthly_reference_price": "215.00",
         "is_family_plan": False,
@@ -772,8 +788,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "standard-annual-credit",
         "display_name": "Plano Anual Crédito",
-        "billing_cycle": "annual",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.ANNUAL,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "2580.00",
         "monthly_reference_price": "215.00",
         "is_family_plan": False,
@@ -783,8 +799,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-monthly-pix",
         "display_name": "Plano mensal PIX Irmãos / Pais e Filhos",
-        "billing_cycle": "monthly",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.MONTHLY,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "220.00",
         "monthly_reference_price": "220.00",
         "is_family_plan": True,
@@ -794,8 +810,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-monthly-credit",
         "display_name": "Plano mensal Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": "monthly",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.MONTHLY,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "225.00",
         "monthly_reference_price": "225.00",
         "is_family_plan": True,
@@ -805,8 +821,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-quarterly-pix",
         "display_name": "Plano Trimestral PIX Irmãos / Pais e Filhos",
-        "billing_cycle": "quarterly",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.QUARTERLY,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "645.00",
         "monthly_reference_price": "215.00",
         "is_family_plan": True,
@@ -816,8 +832,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-quarterly-credit",
         "display_name": "Plano Trimestral Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": "quarterly",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.QUARTERLY,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "660.00",
         "monthly_reference_price": "220.00",
         "is_family_plan": True,
@@ -827,8 +843,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-annual-pix",
         "display_name": "Plano Anual PIX Irmãos / Pais e Filhos",
-        "billing_cycle": "annual",
-        "payment_method": "pix",
+        "billing_cycle": BillingCycle.ANNUAL,
+        "payment_method": PlanPaymentMethod.PIX,
         "price": "2505.00",
         "monthly_reference_price": "205.00",
         "is_family_plan": True,
@@ -838,8 +854,8 @@ SUBSCRIPTION_PLAN_DEFINITIONS = (
     {
         "code": "family-annual-credit",
         "display_name": "Plano Anual Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": "annual",
-        "payment_method": "credit_card",
+        "billing_cycle": BillingCycle.ANNUAL,
+        "payment_method": PlanPaymentMethod.CREDIT_CARD,
         "price": "2505.00",
         "monthly_reference_price": "205.00",
         "is_family_plan": True,

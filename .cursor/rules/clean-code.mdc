@@ -1,0 +1,34 @@
+---
+description: Clean Code — código limpo sem hardcode, sem mascaramento, sem comentários desnecessários
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Clean Code
+
+## Obrigatório
+
+- Funções pequenas e focadas
+- Guard clauses em vez de cascatas de `if/else` — máx. 2 níveis de aninhamento
+- Nomes claros e auto-explicativos (dispensam comentário)
+- Composição antes de herança quando fizer sentido
+- Configuração vinda de `settings`, `.env` ou banco — nunca hardcode
+- Exceções específicas com mensagem clara
+- DRY: lógica repetida extraída para funções, decorators ou mixins
+
+## Proibido
+
+- `except: pass`
+- `except Exception` genérico sem critério técnico explícito
+- Hardcode de segredo, token, credencial ou valor configurável
+- Condicionais longas e quebradiças
+- Mascarar erro para forçar funcionamento aparente
+- God Class (uma classe fazendo tudo)
+- Arquivo monolítico misturando responsabilidades
+- `.all()` sem paginação ou justificativa
+- Queries em loop (N+1)
+
+## Comentários e docstrings
+
+Evitar por padrão. Código bem escrito é auto-explicativo.
+Aceitável apenas para: contrato público não trivial, integração externa, decisão arquitetural não inferível, risco real de ambiguidade.

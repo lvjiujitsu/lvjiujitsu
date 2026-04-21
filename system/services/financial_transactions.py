@@ -1,15 +1,14 @@
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from system.constants import CheckoutAction
 from system.models.plan import PlanPaymentMethod
 from system.models.registration_order import DepositStatus, PaymentProvider
 
 
-ASAAS_PIX_FIXED_FEE = Decimal("1.99")
-STRIPE_CREDIT_PERCENT_FEE = Decimal("0.0399")
-STRIPE_CREDIT_FIXED_FEE = Decimal("0.39")
 ZERO = Decimal("0.00")
 CENT = Decimal("0.01")
 
@@ -27,10 +26,10 @@ def resolve_payment_provider_for_plan(plan):
 def resolve_checkout_action_for_plan(plan):
     provider = resolve_payment_provider_for_plan(plan)
     if provider == PaymentProvider.ASAAS:
-        return "pix"
+        return CheckoutAction.PIX
     if provider == PaymentProvider.STRIPE:
-        return "stripe"
-    return "pay_later"
+        return CheckoutAction.STRIPE
+    return CheckoutAction.PAY_LATER
 
 
 def calculate_financial_amounts(gross_amount, payment_provider):
@@ -88,11 +87,18 @@ def _calculate_fee(gross, payment_provider):
     if gross <= ZERO:
         return ZERO
     if payment_provider == PaymentProvider.ASAAS:
-        return _money(min(ASAAS_PIX_FIXED_FEE, gross))
+        return _money(min(_decimal_setting("ASAAS_PIX_FIXED_FEE"), gross))
     if payment_provider == PaymentProvider.STRIPE:
-        return _money((gross * STRIPE_CREDIT_PERCENT_FEE) + STRIPE_CREDIT_FIXED_FEE)
+        return _money(
+            (gross * _decimal_setting("STRIPE_CREDIT_PERCENT_FEE"))
+            + _decimal_setting("STRIPE_CREDIT_FIXED_FEE")
+        )
     return ZERO
 
 
 def _money(value):
     return Decimal(value or ZERO).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def _decimal_setting(name):
+    return Decimal(str(getattr(settings, name)))

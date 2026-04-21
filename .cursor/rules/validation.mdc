@@ -1,0 +1,41 @@
+---
+description: Checklist de validação obrigatória antes de declarar tarefa concluída
+globs:
+alwaysApply: false
+---
+
+# Validação obrigatória
+
+Nenhuma mudança relevante pode ser declarada pronta sem validação.
+
+## Técnica
+
+- `manage.py test --verbosity 2` → 0 falhas, 0 erros
+- `manage.py check` sem erros
+- `manage.py collectstatic --noinput` sem erros (quando houver estáticos)
+- `manage.py showmigrations` coerente com política do projeto
+- Shell checks via ORM quando tocar em persistência
+- Terminal sem stack traces
+
+## Visual (quando houver impacto em UI)
+
+- Servidor na porta canônica do projeto
+- Abrir tela real (Playwright / browser headless)
+- Validar fluxo crítico: navegação, formulários, botões, rotas
+- Console do navegador sem erros JS críticos
+- Validar desktop e mobile
+- Seletores semânticos: `getByRole`, `getByLabel`, `getByText`
+
+## Qualidade
+
+- Sem hardcode introduzido
+- Sem mascaramento de erro
+- Sem `except: pass`
+- Sem comentários temporários
+- Sem prints ou logs de depuração
+
+## Limpeza final
+
+- Remover arquivos temporários, prints, logs provisórios
+- Remover fixtures improvisadas e scripts descartáveis
+- Sistema limpo e pronto para validação do desenvolvedor

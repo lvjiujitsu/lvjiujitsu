@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Materiais | LV JIU JITSU</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260413f">
-  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260419">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260419">
 </head>
 <body>
   <main class="screen-shell">
@@ -36,45 +36,55 @@
         </div>
       </section>
 
-      {% if products %}
+      {% if product_groups %}
         <div class="record-list info-record-list">
-          {% for product in products %}
+          {% for group in product_groups %}
             <article class="record-card record-card-catalog">
               <div class="record-card-head">
                 <div>
-                  <span class="record-card-name">{{ product.display_name }}</span>
-                  <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
+                  <span class="record-card-name">{{ group.title }}</span>
+                  <div class="record-card-subtitle">{{ group.products|length }} produto{{ group.products|length|pluralize:"s" }}</div>
                 </div>
-                <span class="record-card-badge">
-                  {% if product.total_stock > 0 %}Disponível{% else %}Esgotado{% endif %}
-                </span>
+                <span class="record-card-badge">{{ group.badge }}</span>
               </div>
-              {% if product.description %}
-                <div class="record-card-row">
-                  <span class="record-card-val">{{ product.description }}</span>
-                </div>
-              {% endif %}
-              {% with active_variants=product.variants.all %}
-                {% if active_variants|length > 1 %}
-                  <details class="catalog-dropdown">
-                    <summary class="catalog-dropdown-summary">Ver opções disponíveis</summary>
-                    <div class="catalog-dropdown-content">
-                      <div class="catalog-chip-list">
-                        {% for variant in active_variants %}
-                          {% if variant.is_active %}
-                            <span class="catalog-chip">
-                              {% if variant.color %}{{ variant.color }}{% endif %}
-                              {% if variant.size %} {{ variant.size }}{% endif %}
-                              {% if not variant.color and not variant.size %}Padrão{% endif %}
-                              <small>{% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} un.{% else %}Esgotado{% endif %}</small>
-                            </span>
-                          {% endif %}
-                        {% endfor %}
+              <details class="catalog-dropdown">
+                <summary class="catalog-dropdown-summary">Ver produtos</summary>
+                <div class="catalog-dropdown-content">
+                  {% for product in group.products %}
+                    <article class="catalog-physical-card">
+                      <div class="catalog-physical-card-head">
+                        <span class="catalog-chip-group-title catalog-activity-title">{{ product.display_name }}</span>
+                        <span class="catalog-relation-type">R$ {{ product.unit_price }}</span>
                       </div>
-                    </div>
-                  </details>
-                {% endif %}
-              {% endwith %}
+                      {% if product.description %}
+                        <div class="catalog-physical-card-block">
+                          <span class="catalog-guidance-label">Descrição</span>
+                          <p class="catalog-empty-inline" style="margin:0">{{ product.description }}</p>
+                        </div>
+                      {% endif %}
+                      {% with active_variants=product.variants.all %}
+                        {% if active_variants %}
+                          <div class="catalog-physical-card-block">
+                            <span class="catalog-guidance-label">Opções disponíveis</span>
+                            <div class="catalog-chip-list">
+                              {% for variant in active_variants %}
+                                {% if variant.is_active %}
+                                  <span class="catalog-chip{% if variant.stock_quantity <= 0 %} catalog-chip--schedule{% endif %}">
+                                    {% if variant.color %}{{ variant.color }}{% endif %}
+                                    {% if variant.size %} {{ variant.size }}{% endif %}
+                                    {% if not variant.color and not variant.size %}Padrão{% endif %}
+                                    <small>{% if variant.stock_quantity > 0 %}{{ variant.stock_quantity }} un.{% else %}Esgotado{% endif %}</small>
+                                  </span>
+                                {% endif %}
+                              {% endfor %}
+                            </div>
+                          </div>
+                        {% endif %}
+                      {% endwith %}
+                    </article>
+                  {% endfor %}
+                </div>
+              </details>
             </article>
           {% endfor %}
         </div>

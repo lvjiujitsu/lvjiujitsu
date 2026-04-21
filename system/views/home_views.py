@@ -1,7 +1,14 @@
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 from django.views.generic import RedirectView, TemplateView
 
+from system.constants import (
+    ADMINISTRATIVE_PERSON_TYPE_CODES,
+    INSTRUCTOR_PERSON_TYPE_CODES,
+    STUDENT_PORTAL_PERSON_TYPE_CODES,
+    PersonTypeCode,
+)
 from system.models.membership import MembershipInvoice
 from system.services.class_calendar import get_today_classes_for_person
 from system.services.membership import (
@@ -28,30 +35,30 @@ class DashboardRedirectView(PortalLoginRequiredMixin, RedirectView):
         if self.request.portal_person is None:
             return reverse("system:login")
         person_type_code = next(iter(self.request.portal_type_codes), "")
-        if person_type_code == "administrative-assistant":
+        if person_type_code == PersonTypeCode.ADMINISTRATIVE_ASSISTANT:
             return reverse("system:administrative-home")
-        if person_type_code == "instructor":
+        if person_type_code == PersonTypeCode.INSTRUCTOR:
             return reverse("system:instructor-home")
         return reverse("system:student-home")
 
 
 class AdminHomeView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("administrative-assistant",)
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
     template_name = "home/admin/dashboard.html"
 
 
 class AdministrativeHomeView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("administrative-assistant",)
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
     template_name = "home/administrative/dashboard.html"
 
 
 class InstructorHomeView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("instructor",)
+    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES
     template_name = "home/instructor/dashboard.html"
 
 
 class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
     template_name = "home/student/dashboard.html"
 
     def get_context_data(self, **kwargs):
@@ -86,10 +93,6 @@ class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
             context["billing_tabs"] = []
             context["active_trial_access"] = None
         today = timezone.localdate()
-        weekdays_pt = {
-            0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira",
-            3: "Quinta-feira", 4: "Sexta-feira", 5: "Sábado", 6: "Domingo",
-        }
-        context["today_weekday"] = weekdays_pt.get(today.weekday(), "")
-        context["today_date"] = today.strftime("%d/%m/%Y")
+        context["today_weekday"] = date_format(today, "l")
+        context["today_date"] = date_format(today, "SHORT_DATE_FORMAT")
         return context

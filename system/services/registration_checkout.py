@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from django.db import transaction
 
+from system.constants import RegistrationProfile
+from system.models.category import CategoryAudience
 from system.models.plan import SubscriptionPlan
 from system.models.product import Product
 from system.models.registration_order import RegistrationOrder, RegistrationOrderItem
@@ -124,9 +126,9 @@ def create_product_only_order(person, cart_items):
 def get_registration_plan_multiplier(cleaned_data):
     child_group_sets = []
     profile = cleaned_data.get("registration_profile")
-    if profile == "guardian":
+    if profile == RegistrationProfile.GUARDIAN:
         child_group_sets.append(cleaned_data.get("student_class_groups") or [])
-    if profile == "holder" and cleaned_data.get("include_dependent"):
+    if profile == RegistrationProfile.HOLDER and cleaned_data.get("include_dependent"):
         child_group_sets.append(cleaned_data.get("dependent_class_groups") or [])
     for dependent in cleaned_data.get("extra_dependents") or []:
         child_group_sets.append(dependent.get("class_groups") or [])
@@ -137,7 +139,7 @@ def get_registration_plan_multiplier(cleaned_data):
             for class_group in class_groups
             if class_group is not None and class_group.class_category_id
         }
-        if {"kids", "juvenile"}.issubset(audiences):
+        if {CategoryAudience.KIDS, CategoryAudience.JUVENILE}.issubset(audiences):
             return 2
     return 1
 

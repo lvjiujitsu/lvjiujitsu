@@ -13,6 +13,11 @@ from system.models import (
     SubscriptionPlan,
 )
 from system.models.class_membership import get_class_group_eligibility_error
+from system.constants import (
+    CheckoutAction,
+    RegistrationProfile,
+    STUDENT_PORTAL_PERSON_TYPE_CODES,
+)
 from system.services.class_overview import get_public_class_group_choice_options
 from system.services.registration import (
     create_portal_registration,
@@ -27,11 +32,11 @@ from system.utils import ensure_formatted_cpf
 class PortalRegistrationForm(forms.Form):
     registration_profile = forms.ChoiceField(
         choices=(
-            ("holder", "Aluno titular"),
-            ("guardian", "Responsável"),
-            ("other", "Outro"),
+            (RegistrationProfile.HOLDER, "Aluno titular"),
+            (RegistrationProfile.GUARDIAN, "Responsável"),
+            (RegistrationProfile.OTHER, "Outro"),
         ),
-        initial="holder",
+        initial=RegistrationProfile.HOLDER,
     )
     include_dependent = forms.BooleanField(required=False)
     other_type_code = forms.ChoiceField(required=False)
@@ -153,11 +158,11 @@ class PortalRegistrationForm(forms.Form):
     checkout_action = forms.ChoiceField(
         required=False,
         choices=(
-            ("stripe", "Pagar com cartão"),
-            ("pix", "Pagar com PIX"),
-            ("pay_later", "Concluir e pagar depois"),
+            (CheckoutAction.STRIPE, "Pagar com cartão"),
+            (CheckoutAction.PIX, "Pagar com PIX"),
+            (CheckoutAction.PAY_LATER, "Concluir e pagar depois"),
         ),
-        initial="pay_later",
+        initial=CheckoutAction.PAY_LATER,
     )
 
     other_name = forms.CharField(required=False, max_length=255)
@@ -180,10 +185,12 @@ class PortalRegistrationForm(forms.Form):
 
     def clean(self):
         cleaned_data = super().clean()
-        profile = cleaned_data.get("registration_profile") or "holder"
+        profile = cleaned_data.get("registration_profile") or RegistrationProfile.HOLDER
         include_dependent = cleaned_data.get("include_dependent", False)
         extra_dependents = self._clean_extra_dependents_payload()
-        if profile == "other" or (profile == "holder" and not include_dependent):
+        if profile == RegistrationProfile.OTHER or (
+            profile == RegistrationProfile.HOLDER and not include_dependent
+        ):
             extra_dependents = []
         cleaned_data["extra_dependents"] = extra_dependents
 
@@ -196,7 +203,7 @@ class PortalRegistrationForm(forms.Form):
         self._clean_kinship(profile, include_dependent, extra_dependents)
         self._clean_martial_background(profile, include_dependent, extra_dependents)
         if not self.cleaned_data.get("checkout_action"):
-            self.cleaned_data["checkout_action"] = "pay_later"
+            self.cleaned_data["checkout_action"] = CheckoutAction.PAY_LATER
         return cleaned_data
 
     def save(self):
@@ -205,7 +212,7 @@ class PortalRegistrationForm(forms.Form):
     def _configure_other_type_choices(self):
         choices = [("", "Selecione")]
         queryset = PersonType.objects.filter(is_active=True).exclude(
-            code__in=("student", "guardian", "dependent")
+            code__in=STUDENT_PORTAL_PERSON_TYPE_CODES
         )
         choices.extend((item.code, item.display_name) for item in queryset.order_by("display_name"))
         self.fields["other_type_code"].choices = choices
@@ -216,7 +223,7 @@ class PortalRegistrationForm(forms.Form):
             self.fields[f"{prefix}_class_groups"].choices = group_choices
 
     def _clean_required_fields(self, profile, include_dependent):
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             self._require_fields(
                 "holder_name",
                 "holder_cpf",
@@ -237,7 +244,7 @@ class PortalRegistrationForm(forms.Form):
                 )
             return
 
-        if profile == "guardian":
+        if profile == RegistrationProfile.GUARDIAN:
             self._require_fields(
                 "guardian_name",
                 "guardian_cpf",
@@ -319,7 +326,7 @@ class PortalRegistrationForm(forms.Form):
     def _clean_other_type_code(self, profile):
         selected_code = self.cleaned_data.get("other_type_code") or ""
         available_codes = {code for code, _label in self.fields["other_type_code"].choices if code}
-        if profile != "other":
+        if profile != RegistrationProfile.OTHER:
             self.cleaned_data["other_type_code"] = ""
             return
         if not available_codes:
@@ -335,11 +342,11 @@ class PortalRegistrationForm(forms.Form):
 
     def _clean_passwords(self, profile, include_dependent, extra_dependents):
         groups = []
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             groups.append(("holder_password", "holder_password_confirm", "aluno titular"))
             if include_dependent:
                 groups.append(("dependent_password", "dependent_password_confirm", "dependente"))
-        elif profile == "guardian":
+        elif profile == RegistrationProfile.GUARDIAN:
             groups.append(("guardian_password", "guardian_password_confirm", "responsável"))
             groups.append(("student_password", "student_password_confirm", "dependente"))
         else:
@@ -372,14 +379,14 @@ class PortalRegistrationForm(forms.Form):
                 self.add_error(None, message)
 
     def _clean_class_links(self, profile, include_dependent, extra_dependents):
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             self._resolve_class_group_collection("holder", required=self.catalog_is_available)
             if include_dependent:
                 self._resolve_class_group_collection(
                     "dependent",
                     required=self.catalog_is_available,
                 )
-        elif profile == "guardian":
+        elif profile == RegistrationProfile.GUARDIAN:
             self._resolve_class_group_collection("student", required=self.catalog_is_available)
 
         for index, dependent in enumerate(extra_dependents, start=1):
@@ -428,18 +435,18 @@ class PortalRegistrationForm(forms.Form):
             )
             return
 
-        checkout_action = self.cleaned_data.get("checkout_action") or "pay_later"
+        checkout_action = self.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
         expected_action = resolve_checkout_action_for_plan(plan)
-        if checkout_action != "pay_later" and checkout_action != expected_action:
+        if checkout_action != CheckoutAction.PAY_LATER and checkout_action != expected_action:
             self.add_error(
                 "checkout_action",
                 "O meio de pagamento escolhido não corresponde ao plano selecionado.",
             )
 
     def _is_family_plan_allowed(self, profile, include_dependent, extra_dependents):
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             return bool(include_dependent)
-        if profile == "guardian":
+        if profile == RegistrationProfile.GUARDIAN:
             return 1 + len(extra_dependents) >= 2
         return False
 
@@ -503,9 +510,9 @@ class PortalRegistrationForm(forms.Form):
 
     def _clean_kinship(self, profile, include_dependent, extra_dependents):
         prefixes = []
-        if profile == "holder" and include_dependent:
+        if profile == RegistrationProfile.HOLDER and include_dependent:
             prefixes.append("dependent")
-        if profile == "guardian":
+        if profile == RegistrationProfile.GUARDIAN:
             prefixes.append("student")
 
         for prefix in prefixes:
@@ -523,11 +530,11 @@ class PortalRegistrationForm(forms.Form):
 
     def _clean_martial_background(self, profile, include_dependent, extra_dependents):
         prefixes = []
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             prefixes.append("holder")
             if include_dependent:
                 prefixes.append("dependent")
-        elif profile == "guardian":
+        elif profile == RegistrationProfile.GUARDIAN:
             prefixes.append("student")
 
         for prefix in prefixes:

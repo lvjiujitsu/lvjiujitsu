@@ -13,6 +13,7 @@ from system.models.registration_order import (
     PaymentStatus,
     RegistrationOrder,
 )
+from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.services.membership import (
     exempt_order,
     mark_order_manually_paid,
@@ -27,7 +28,7 @@ from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
 class _BillingAdminMixin(PortalRoleRequiredMixin):
-    allowed_codes = ("administrative-assistant",)
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
 class ApprovalQueueView(_BillingAdminMixin, ListView):

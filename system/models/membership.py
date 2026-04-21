@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+from system.runtime_config import payment_currency
+
 from .common import TimeStampedModel
 
 
@@ -150,7 +152,7 @@ class MembershipInvoice(TimeStampedModel):
         decimal_places=2,
         default=0,
     )
-    currency = models.CharField("Moeda", max_length=8, default="brl")
+    currency = models.CharField("Moeda", max_length=8, default=payment_currency)
     status = models.CharField("Status", max_length=32, default="paid")
     period_start = models.DateTimeField(
         "Início do período",

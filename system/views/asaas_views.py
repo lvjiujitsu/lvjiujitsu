@@ -17,6 +17,7 @@ from system.models.asaas import (
     TeacherPayrollConfig,
 )
 from system.models.registration_order import PaymentStatus, RegistrationOrder
+from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES, INSTRUCTOR_PERSON_TYPE_CODES
 from system.services.asaas_checkout import (
     AsaasCheckoutError,
     create_pix_charge_for_order,
@@ -138,7 +139,7 @@ class AsaasWebhookView(View):
 
 
 class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ("administrative-assistant",)
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
 class PayrollListView(AdministrativeRequiredMixin, ListView):
@@ -215,7 +216,7 @@ class PayoutRefuseView(AdministrativeRequiredMixin, View):
 
 
 class InstructorRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ("instructor",)
+    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES
 
 
 class TeacherFinancialView(InstructorRequiredMixin, View):

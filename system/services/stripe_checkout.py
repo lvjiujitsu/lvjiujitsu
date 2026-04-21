@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from system.models.registration_order import OrderKind, RegistrationOrder
 from system.models.registration_order import PaymentProvider
+from system.runtime_config import payment_currency
 from system.services.financial_transactions import apply_order_financials
 from system.services.stripe_sync import ensure_stripe_customer
 
@@ -104,7 +105,7 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
         line_items.append(
             {
                 "price_data": {
-                    "currency": "brl",
+                    "currency": payment_currency(),
                     "unit_amount": _to_cents(order.plan_price),
                     "product_data": {
                         "name": f"Plano: {order.plan.display_name}",
@@ -117,7 +118,7 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
         line_items.append(
             {
                 "price_data": {
-                    "currency": "brl",
+                    "currency": payment_currency(),
                     "unit_amount": _to_cents(item.unit_price),
                     "product_data": {"name": item.product_name},
                 },

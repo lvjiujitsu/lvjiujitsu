@@ -10,6 +10,7 @@ from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services import asaas_client
 from system.services.financial_transactions import apply_order_financials
 from system.models.registration_order import PaymentProvider
+from system.runtime_config import site_name
 
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,8 @@ def create_pix_charge_for_order(order: RegistrationOrder):
             }
 
     customer_id = ensure_asaas_customer(order.person)
-    due_date = timezone.localdate() + timedelta(days=1)
-    description = f"Pedido #{order.pk} — LV Jiu Jitsu"
+    due_date = timezone.localdate() + timedelta(days=settings.ASAAS_PIX_DUE_DAYS)
+    description = f"Pedido #{order.pk} — {site_name()}"
 
     try:
         payment = asaas_client.create_pix_payment(

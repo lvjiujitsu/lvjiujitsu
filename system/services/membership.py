@@ -1,5 +1,5 @@
+import calendar
 import logging
-from datetime import timedelta
 from datetime import datetime, timezone as dt_timezone
 from decimal import Decimal
 
@@ -22,6 +22,7 @@ from system.models.registration_order import (
     RegistrationOrder,
 )
 from system.services.financial_transactions import apply_order_financials
+from system.runtime_config import payment_currency
 
 
 logger = logging.getLogger(__name__)
@@ -49,14 +50,30 @@ def _from_unix(value):
         return None
 
 
-def _cycle_duration(billing_cycle):
-    if billing_cycle == BillingCycle.QUARTERLY:
-        return timedelta(days=90)
-    if billing_cycle == BillingCycle.SEMIANNUAL:
-        return timedelta(days=182)
-    if billing_cycle == BillingCycle.ANNUAL:
-        return timedelta(days=365)
-    return timedelta(days=30)
+MONTHS_BY_BILLING_CYCLE = {
+    BillingCycle.MONTHLY: 1,
+    BillingCycle.QUARTERLY: 3,
+    BillingCycle.SEMIANNUAL: 6,
+    BillingCycle.ANNUAL: 12,
+}
+
+
+def add_billing_cycle(start, billing_cycle):
+    months = MONTHS_BY_BILLING_CYCLE.get(billing_cycle, 1)
+    return _add_months(start, months)
+
+
+def get_billing_cycle_day_count(start, billing_cycle):
+    end = add_billing_cycle(start, billing_cycle)
+    return max((end - start).days, 1)
+
+
+def _add_months(value, months):
+    month_index = value.month - 1 + months
+    target_year = value.year + month_index // 12
+    target_month = month_index % 12 + 1
+    target_day = min(value.day, calendar.monthrange(target_year, target_month)[1])
+    return value.replace(year=target_year, month=target_month, day=target_day)
 
 
 @transaction.atomic
@@ -125,7 +142,7 @@ def activate_membership_from_paid_order(order, *, notes=""):
         return None
 
     now = order.paid_at or timezone.now()
-    period_end = now + _cycle_duration(plan.billing_cycle)
+    period_end = add_billing_cycle(now, plan.billing_cycle)
     defaults = {
         "plan": plan,
         "status": MembershipStatus.ACTIVE,
@@ -223,7 +240,7 @@ def record_invoice_from_stripe(stripe_invoice):
     defaults = {
         "membership": membership,
         "amount_paid": amount_paid,
-        "currency": _sget(stripe_invoice, "currency", "brl") or "brl",
+        "currency": _sget(stripe_invoice, "currency", payment_currency()) or payment_currency(),
         "status": _sget(stripe_invoice, "status", "paid") or "paid",
         "period_start": period_start,
         "period_end": period_end,

@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Planos | LV JIU JITSU</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260413f">
-  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260419">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260419">
 </head>
 <body>
   <main class="screen-shell">
@@ -36,29 +36,45 @@
         </div>
       </section>
 
-      {% if plans %}
+      {% if plan_groups %}
         <div class="record-list info-record-list">
-          {% for plan in plans %}
+          {% for group in plan_groups %}
             <article class="record-card record-card-catalog">
               <div class="record-card-head">
                 <div>
-                  <span class="record-card-name">{{ plan.display_name }}</span>
-                  <div class="record-card-subtitle">
-                    {{ plan.get_billing_cycle_display }} · {{ plan.get_payment_method_display }}{% if plan.is_family_plan %} · Familiar{% endif %}
-                  </div>
+                  <span class="record-card-name">{{ group.title }}</span>
+                  <div class="record-card-subtitle">{{ group.plans|length }} opç{{ group.plans|length|pluralize:"ão,ões" }} de pagamento</div>
                 </div>
-                <span class="record-card-badge">R$ {{ plan.price }}</span>
+                <span class="record-card-badge">{{ group.badge }}</span>
               </div>
-              {% if plan.monthly_reference_price and plan.monthly_reference_price != plan.price %}
-                <div class="record-card-row">
-                  <span class="record-card-val">Equivalente a R$ {{ plan.monthly_reference_price }} por mês.</span>
+              <details class="catalog-dropdown">
+                <summary class="catalog-dropdown-summary">Ver opções de pagamento</summary>
+                <div class="catalog-dropdown-content">
+                  {% for plan in group.plans %}
+                    <article class="catalog-physical-card">
+                      <div class="catalog-physical-card-head">
+                        <span class="catalog-chip-group-title catalog-activity-title">{{ plan.display_name }}</span>
+                        <span class="catalog-relation-type">{{ plan.get_payment_method_display }}</span>
+                      </div>
+                      <div class="catalog-physical-card-block">
+                        <span class="catalog-guidance-label">Valor</span>
+                        <div class="catalog-chip-list">
+                          <span class="catalog-chip">R$ {{ plan.price }}</span>
+                          {% if plan.monthly_reference_price and plan.monthly_reference_price != plan.price %}
+                            <span class="catalog-chip catalog-chip--schedule">Equivale a R$ {{ plan.monthly_reference_price }}/mês</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      {% if plan.description %}
+                        <div class="catalog-physical-card-block">
+                          <span class="catalog-guidance-label">Detalhes</span>
+                          <p class="catalog-empty-inline" style="margin:0">{{ plan.description }}</p>
+                        </div>
+                      {% endif %}
+                    </article>
+                  {% endfor %}
                 </div>
-              {% endif %}
-              {% if plan.description %}
-                <div class="record-card-row">
-                  <span class="record-card-val">{{ plan.description }}</span>
-                </div>
-              {% endif %}
+              </details>
             </article>
           {% endfor %}
         </div>

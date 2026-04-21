@@ -1,40 +1,106 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 
 from system.models.calendar import Holiday
 
 
-NATIONAL_HOLIDAYS_2026 = (
-    (date(2026, 1, 1), "Confraternização Universal"),
-    (date(2026, 2, 16), "Carnaval"),
-    (date(2026, 2, 17), "Carnaval"),
-    (date(2026, 4, 3), "Sexta-feira Santa"),
-    (date(2026, 4, 21), "Tiradentes"),
-    (date(2026, 5, 1), "Dia do Trabalho"),
-    (date(2026, 6, 4), "Corpus Christi"),
-    (date(2026, 9, 7), "Independência do Brasil"),
-    (date(2026, 10, 12), "Nossa Senhora Aparecida"),
-    (date(2026, 11, 2), "Finados"),
-    (date(2026, 11, 15), "Proclamação da República"),
-    (date(2026, 12, 25), "Natal"),
+FIXED_NATIONAL_HOLIDAYS = (
+    (1, 1, "Confraternização Universal"),
+    (4, 21, "Tiradentes"),
+    (5, 1, "Dia Mundial do Trabalho"),
+    (9, 7, "Independência do Brasil"),
+    (10, 12, "Nossa Senhora Aparecida"),
+    (11, 2, "Finados"),
+    (11, 15, "Proclamação da República"),
+    (11, 20, "Dia Nacional de Zumbi e da Consciência Negra"),
+    (12, 25, "Natal"),
 )
 
 
 class Command(BaseCommand):
-    help = "Seed national holidays for 2026."
+    help = "Seed Brazilian calendar closure dates for a configurable year."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--year",
+            type=int,
+            default=timezone.localdate().year,
+            help="Year to seed. Defaults to the current local year.",
+        )
+        parser.add_argument(
+            "--without-optional",
+            action="store_true",
+            help="Do not seed common optional closure dates such as Carnival and Corpus Christi.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
+        year = options["year"]
+        include_optional = not options["without_optional"]
+        closure_dates = get_brazilian_closure_dates(year, include_optional=include_optional)
+
         count = 0
-        for holiday_date, name in NATIONAL_HOLIDAYS_2026:
+        for holiday_date, name in closure_dates:
             _, created = Holiday.objects.update_or_create(
                 date=holiday_date,
                 defaults={"name": name, "is_active": True},
             )
             if created:
                 count += 1
+
         self.stdout.write(
-            self.style.SUCCESS(f"Seeded {count} new holidays ({len(NATIONAL_HOLIDAYS_2026)} total).")
+            self.style.SUCCESS(
+                f"Seeded {count} new holidays ({len(closure_dates)} total) for {year}."
+            )
         )
+
+
+def get_brazilian_closure_dates(year, *, include_optional=True):
+    easter = calculate_easter_date(year)
+    holidays = [
+        (date(year, month, day), name)
+        for month, day, name in FIXED_NATIONAL_HOLIDAYS
+    ]
+    holidays.append((easter - timedelta(days=2), "Paixão de Cristo"))
+
+    if include_optional:
+        holidays.extend(
+            (
+                (easter - timedelta(days=48), "Carnaval"),
+                (easter - timedelta(days=47), "Carnaval"),
+                (easter + timedelta(days=60), "Corpus Christi"),
+            )
+        )
+
+    return sorted(holidays, key=lambda item: item[0])
+
+
+def calculate_easter_date(year):
+    century = year // 100
+    year_remainder = year % 100
+    golden_number = year % 19
+    leap_correction = century // 4
+    century_remainder = century % 4
+    epact_adjustment = (century + 8) // 25
+    moon_correction = (century - epact_adjustment + 1) // 3
+    epact = (
+        19 * golden_number
+        + century
+        - leap_correction
+        - moon_correction
+        + 15
+    ) % 30
+    weekday_correction = (
+        32
+        + 2 * century_remainder
+        + 2 * (year_remainder // 4)
+        - epact
+        - year_remainder % 4
+    ) % 7
+    month_offset = (golden_number + 11 * epact + 22 * weekday_correction) // 451
+    month = (epact + weekday_correction - 7 * month_offset + 114) // 31
+    day = ((epact + weekday_correction - 7 * month_offset + 114) % 31) + 1
+    return date(year, month, day)

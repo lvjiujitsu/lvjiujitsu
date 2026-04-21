@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 from .class_group import ClassGroup
 from .common import TimeStampedModel
@@ -20,6 +21,10 @@ class TrainingStyle(models.TextChoices):
     MIXED = "mixed", "Misto"
 
 
+def default_class_schedule_duration_minutes():
+    return settings.CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES
+
+
 class ClassSchedule(TimeStampedModel):
     class_group = models.ForeignKey(
         ClassGroup,
@@ -33,7 +38,9 @@ class ClassSchedule(TimeStampedModel):
         default=TrainingStyle.MIXED,
     )
     start_time = models.TimeField()
-    duration_minutes = models.PositiveIntegerField(default=60)
+    duration_minutes = models.PositiveIntegerField(
+        default=default_class_schedule_duration_minutes
+    )
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 

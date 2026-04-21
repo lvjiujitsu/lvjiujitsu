@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from system.models import (
     BiologicalSex,
@@ -18,6 +19,7 @@ from system.services.financial_transactions import (
     apply_order_financials,
     calculate_financial_amounts,
 )
+from system.services.membership import add_billing_cycle
 from system.services.registration_checkout import get_registration_plan_multiplier
 from system.services.seeding import seed_class_catalog
 
@@ -50,6 +52,23 @@ class FinancialTransactionServiceTestCase(TestCase):
         self.assertEqual(result["administrative_fee"], Decimal("10.37"))
         self.assertEqual(result["net_amount"], Decimal("239.63"))
 
+    @override_settings(ASAAS_PIX_FIXED_FEE="2.50")
+    def test_calculates_asaas_pix_fee_from_settings(self):
+        result = calculate_financial_amounts(Decimal("240.00"), PaymentProvider.ASAAS)
+
+        self.assertEqual(result["administrative_fee"], Decimal("2.50"))
+        self.assertEqual(result["net_amount"], Decimal("237.50"))
+
+    @override_settings(
+        STRIPE_CREDIT_PERCENT_FEE="0.05",
+        STRIPE_CREDIT_FIXED_FEE="1.00",
+    )
+    def test_calculates_stripe_credit_fee_from_settings(self):
+        result = calculate_financial_amounts(Decimal("250.00"), PaymentProvider.STRIPE)
+
+        self.assertEqual(result["administrative_fee"], Decimal("13.50"))
+        self.assertEqual(result["net_amount"], Decimal("236.50"))
+
     def test_apply_order_financials_sets_transaction_fields(self):
         order = RegistrationOrder.objects.create(
             person=self.person,
@@ -72,6 +91,15 @@ class FinancialTransactionServiceTestCase(TestCase):
         self.assertEqual(order.net_amount, Decimal("238.01"))
         self.assertEqual(order.deposit_status, DepositStatus.AVAILABLE)
         self.assertIsNotNone(order.expected_deposit_date)
+
+
+class MembershipBillingCycleTestCase(TestCase):
+    def test_add_billing_cycle_uses_calendar_month_boundaries(self):
+        start = timezone.make_aware(datetime(2026, 1, 31, 12, 0))
+
+        result = add_billing_cycle(start, BillingCycle.MONTHLY)
+
+        self.assertEqual(result.date(), date(2026, 2, 28))
 
 
 class RegistrationCheckoutServiceTestCase(TestCase):

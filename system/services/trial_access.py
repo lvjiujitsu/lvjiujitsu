@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -19,7 +20,9 @@ def has_active_trial_for_person(person):
 
 
 @transaction.atomic
-def grant_trial_for_order(order, *, classes=1, notes=""):
+def grant_trial_for_order(order, *, classes=None, notes=""):
+    if classes is None:
+        classes = settings.TRIAL_ACCESS_DEFAULT_CLASSES
     if classes < 1:
         raise ValueError("Quantidade de aulas experimentais deve ser maior que zero.")
 

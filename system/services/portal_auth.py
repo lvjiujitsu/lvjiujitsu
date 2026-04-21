@@ -8,6 +8,7 @@ from system.models import PortalAccount, PortalPasswordResetToken
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.membership import get_latest_open_order
 from system.services.trial_access import has_active_trial_for_person
+from system.runtime_config import site_name_upper
 from system.utils import ensure_formatted_cpf, only_digits
 
 
@@ -125,12 +126,12 @@ def create_password_reset_token(cpf: str, request) -> None:
     )
     message = (
         f"Olá, {access_account.person.full_name}.\n\n"
-        f"Use o link abaixo para redefinir sua senha do portal LV JIU JITSU:\n\n"
+        f"Use o link abaixo para redefinir sua senha do portal {site_name_upper()}:\n\n"
         f"{reset_url}\n\n"
         "Se você não solicitou esta alteração, ignore este e-mail."
     )
     send_mail(
-        subject="Redefinição de senha - LV JIU JITSU",
+        subject=f"Redefinição de senha - {site_name_upper()}",
         message=message,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[access_account.person.email],

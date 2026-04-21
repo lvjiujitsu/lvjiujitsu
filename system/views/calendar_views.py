@@ -1,11 +1,13 @@
 import json
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from system.forms.class_forms import SpecialClassForm
+from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
 from system.models import SpecialClass
 from system.services.class_calendar import (
     create_special_class,
@@ -60,7 +62,7 @@ class AdminToggleSessionView(AdministrativeRequiredMixin, View):
 
 
 class StudentScheduleView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
     template_name = "calendar/student_schedule.html"
 
     def get_context_data(self, **kwargs):
@@ -120,7 +122,10 @@ class AdminSpecialClassCreateView(AdministrativeRequiredMixin, View):
             title=form.cleaned_data["title"],
             date=form.cleaned_data["date"],
             start_time=form.cleaned_data["start_time"],
-            duration_minutes=form.cleaned_data.get("duration_minutes") or 90,
+            duration_minutes=(
+                form.cleaned_data.get("duration_minutes")
+                or settings.SPECIAL_CLASS_DEFAULT_DURATION_MINUTES
+            ),
             teacher=form.cleaned_data.get("teacher"),
             notes=form.cleaned_data.get("notes") or "",
         )

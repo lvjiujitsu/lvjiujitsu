@@ -5,6 +5,8 @@ import stripe
 from django.conf import settings
 from django.utils import timezone
 
+from system.runtime_config import payment_currency
+
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +97,7 @@ def _price_matches(price_obj, plan):
         return False
     return (
         price_obj["unit_amount"] == unit_amount
-        and price_obj["currency"] == "brl"
+        and price_obj["currency"] == payment_currency()
         and recurring["interval"] == interval[0]
         and recurring["interval_count"] == interval[1]
         and price_obj["active"]
@@ -126,7 +128,7 @@ def _ensure_price(client, plan, product):
     interval_name, interval_count = interval
     new_price = client.Price.create(
         product=product["id"],
-        currency="brl",
+        currency=payment_currency(),
         unit_amount=_to_cents(plan.price),
         recurring={"interval": interval_name, "interval_count": interval_count},
         metadata={"plan_id": str(plan.pk), "plan_code": plan.code},

@@ -74,7 +74,7 @@
 
 .catalog-aside-card {
   background:
-    radial-gradient(circle at top right, rgba(177, 38, 23, 0.08), transparent 36%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 36%),
     var(--panel);
 }
 
@@ -158,7 +158,7 @@
   border: 1px solid var(--border);
   border-radius: 18px;
   background:
-    radial-gradient(circle at top right, rgba(177, 38, 23, 0.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 32%),
     var(--panel-solid);
   box-shadow: 0 10px 24px rgba(15, 15, 18, 0.06);
   gap: 18px;
@@ -182,9 +182,9 @@
   min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(177, 38, 23, 0.24);
-  background: rgba(177, 38, 23, 0.10);
-  color: #8b1f14;
+  border: 1px solid var(--silver-strong);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -224,9 +224,9 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px solid rgba(177, 38, 23, 0.12);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(177, 38, 23, 0.06);
+  background: var(--surface-soft);
   color: var(--text);
   font-size: 0.85rem;
   font-weight: 600;
@@ -264,7 +264,7 @@
 }
 
 .catalog-physical-card + .catalog-physical-card {
-  border-top: 2px solid rgba(177, 38, 23, 0.2);
+  border-top: 2px solid var(--border);
 }
 
 .catalog-physical-card-head {
@@ -272,9 +272,9 @@
   gap: 8px;
   padding: 10px 12px 12px;
   margin: -2px -2px 0;
-  border: 1px solid rgba(177, 38, 23, 0.2);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(177, 38, 23, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   border-bottom: 1px dashed var(--border);
 }
 
@@ -350,7 +350,7 @@
   display: grid;
   gap: 16px;
   background:
-    radial-gradient(circle at top left, rgba(177, 38, 23, 0.12), transparent 26%),
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 26%),
     radial-gradient(circle at bottom right, rgba(196, 112, 40, 0.10), transparent 24%),
     var(--panel);
 }
@@ -457,7 +457,7 @@
 
 .catalog-dropdown[open] .catalog-dropdown-summary {
   background: var(--panel-solid);
-  border-color: rgba(177, 38, 23, 0.42);
+  border-color: var(--text);
 }
 
 .catalog-dropdown[open] .catalog-dropdown-summary::after {

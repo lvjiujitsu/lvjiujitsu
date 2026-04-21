@@ -7,17 +7,17 @@ from system.models import (
     ClassInstructorAssignment,
     ClassSchedule,
     IbjjfAgeCategory,
+    WeekdayCode,
 )
 
 
 WEEKDAY_ORDER = {
-    "monday": 1,
-    "tuesday": 2,
-    "wednesday": 3,
-    "thursday": 4,
-    "friday": 5,
-    "saturday": 6,
-    "sunday": 7,
+    code: index
+    for index, (code, _label) in enumerate(WeekdayCode.choices, start=1)
+}
+WEEKDAY_LABEL_ORDER = {
+    label: index
+    for index, (_code, label) in enumerate(WeekdayCode.choices, start=1)
 }
 
 
@@ -377,13 +377,5 @@ def _build_schedule_day_summary(schedule_cards):
 
 def _schedule_label_sort_key(label):
     weekday_name = label.split(" · ", 1)[0]
-    weekday_position = {
-        "Segunda-feira": 1,
-        "Terça-feira": 2,
-        "Quarta-feira": 3,
-        "Quinta-feira": 4,
-        "Sexta-feira": 5,
-        "Sábado": 6,
-        "Domingo": 7,
-    }.get(weekday_name, 99)
+    weekday_position = WEEKDAY_LABEL_ORDER.get(weekday_name, 99)
     return (weekday_position, label)

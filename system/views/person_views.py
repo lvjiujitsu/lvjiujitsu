@@ -21,11 +21,12 @@ from system.selectors import get_person_queryset
 from system.services.class_catalog import prepare_class_group_for_display
 from system.services.class_overview import build_class_group_filter_value
 from system.services.membership import get_active_membership, get_membership_owner
+from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
 class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ("administrative-assistant",)
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
 class PersonListView(AdministrativeRequiredMixin, ListView):

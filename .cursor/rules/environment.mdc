@@ -1,0 +1,37 @@
+---
+description: Ambiente Windows + PowerShell — armadilhas e regras de execução
+globs:
+alwaysApply: false
+---
+
+# Ambiente Windows + PowerShell
+
+## Armadilhas que o agente deve evitar
+
+- `&&` **não funciona** no PowerShell — usar `;` ou um comando por vez
+- `source` **não existe** — usar `.\.venv\Scripts\Activate.ps1`
+- Caminhos usam `\`, não `/`
+- Preferir sempre `.\.venv\Scripts\python.exe` e `.\.venv\Scripts\pip.exe`
+- Nunca instalar no global — sempre na `.venv`
+- Nunca criar scripts wrapper (.ps1, .bat, .sh) como fuga do protocolo
+
+## Baseline obrigatório
+
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001
+```
+
+## Gestão de dependências
+
+- Instalar: `pip install <pacote>` → `pip show` → atualizar `requirements.txt`
+- `ModuleNotFoundError`: instalar → atualizar requirements → re-executar
+- Nunca `pip install --user`
+- Nunca adicionar lib sem atualizar requirements
+
+## Migrações
+
+- Nunca criar migrações por padrão
+- Alteração de schema = bloqueio ou exceção explícita do projeto

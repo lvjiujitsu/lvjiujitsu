@@ -2,6 +2,7 @@ import json
 
 from django.db import transaction
 
+from system.constants import DEFAULT_PERSON_TYPE_DEFINITIONS, PersonTypeCode, RegistrationProfile
 from system.services.class_overview import resolve_class_group_selection
 from system.services.registration_checkout import create_registration_order
 from system.models import (
@@ -14,29 +15,6 @@ from system.models import (
     PortalAccount,
 )
 
-
-DEFAULT_PERSON_TYPE_DEFINITIONS = {
-    "student": {
-        "display_name": "Aluno",
-        "description": "Pessoa com matrícula ativa como aluno.",
-    },
-    "guardian": {
-        "display_name": "Responsável",
-        "description": "Pessoa responsável por um aluno ou dependente.",
-    },
-    "dependent": {
-        "display_name": "Dependente",
-        "description": "Pessoa vinculada a um titular ou responsável.",
-    },
-    "instructor": {
-        "display_name": "Professor",
-        "description": "Pessoa vinculada ao corpo docente.",
-    },
-    "administrative-assistant": {
-        "display_name": "Administrativo",
-        "description": "Pessoa vinculada ao apoio administrativo.",
-    },
-}
 
 KINSHIP_TYPE_CHOICES = (
     ("father", "Pai"),
@@ -51,11 +29,11 @@ def create_portal_registration(cleaned_data):
     with transaction.atomic():
         person_types = ensure_default_person_types()
         profile = cleaned_data["registration_profile"]
-        if profile == "holder":
+        if profile == RegistrationProfile.HOLDER:
             result = _create_holder_registration(cleaned_data, person_types)
             result["order"] = create_registration_order(result["holder"], cleaned_data)
             return result
-        if profile == "guardian":
+        if profile == RegistrationProfile.GUARDIAN:
             result = _create_guardian_registration(cleaned_data, person_types)
             result["order"] = create_registration_order(result["guardian"], cleaned_data)
             return result
@@ -134,7 +112,7 @@ def _create_holder_registration(cleaned_data, person_types):
         birth_date=cleaned_data.get("holder_birthdate"),
         biological_sex=cleaned_data.get("holder_biological_sex", ""),
         password=cleaned_data["holder_password"],
-        person_type=person_types["student"],
+        person_type=person_types[PersonTypeCode.STUDENT],
         blood_type=cleaned_data.get("holder_blood_type", ""),
         allergies=cleaned_data.get("holder_allergies", ""),
         previous_injuries=cleaned_data.get("holder_injuries", ""),
@@ -150,7 +128,7 @@ def _create_holder_registration(cleaned_data, person_types):
     if not cleaned_data.get("include_dependent"):
         return created_people
 
-    dependents = _build_primary_dependent_payload(cleaned_data, "dependent")
+    dependents = _build_primary_dependent_payload(cleaned_data, PersonTypeCode.DEPENDENT)
     dependents.extend(cleaned_data.get("extra_dependents", []))
 
     created_dependents = []
@@ -163,7 +141,7 @@ def _create_holder_registration(cleaned_data, person_types):
             birth_date=dependent_payload.get("birth_date"),
             biological_sex=dependent_payload.get("biological_sex", ""),
             password=dependent_payload["password"],
-            person_type=person_types["dependent"],
+            person_type=person_types[PersonTypeCode.DEPENDENT],
             blood_type=dependent_payload.get("blood_type", ""),
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),
@@ -196,7 +174,7 @@ def _create_guardian_registration(cleaned_data, person_types):
         phone=cleaned_data.get("guardian_phone", ""),
         biological_sex=cleaned_data.get("guardian_biological_sex", ""),
         password=cleaned_data["guardian_password"],
-        person_type=person_types["guardian"],
+        person_type=person_types[PersonTypeCode.GUARDIAN],
     )
 
     dependents = _build_primary_dependent_payload(cleaned_data, "student")
@@ -213,7 +191,7 @@ def _create_guardian_registration(cleaned_data, person_types):
             birth_date=dependent_payload.get("birth_date"),
             biological_sex=dependent_payload.get("biological_sex", ""),
             password=dependent_payload["password"],
-            person_type=person_types["dependent"],
+            person_type=person_types[PersonTypeCode.DEPENDENT],
             blood_type=dependent_payload.get("blood_type", ""),
             allergies=dependent_payload.get("allergies", ""),
             previous_injuries=dependent_payload.get("previous_injuries", ""),

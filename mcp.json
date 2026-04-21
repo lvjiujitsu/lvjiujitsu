@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "Documentação atualizada de libs e frameworks — usar antes de docs oficiais"
+    },
+    "playwright": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest", "--headless"],
+      "description": "Validação visual e E2E — abrir navegador, inspecionar telas, console e fluxos"
+    }
+  }
+}

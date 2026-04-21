@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
@@ -161,7 +162,8 @@ class DeferPaymentView(View):
         request.session["pending_checkout_order_id"] = order.pk
         messages.warning(
             request,
-            "Cadastro concluído sem pagamento. Você tem 1 aula experimental "
+            "Cadastro concluído sem pagamento. "
+            f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
             "liberada e pode pagar depois para ativar sua mensalidade.",
         )
         return redirect("system:legacy-login-form")

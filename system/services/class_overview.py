@@ -125,9 +125,35 @@ def get_registration_catalog_payload():
                     }
                     for entry in card.schedule_entries
                 ],
+                "physical_groups": [
+                    _serialize_physical_group(pg)
+                    for pg in card.physical_groups
+                ],
             }
         )
     return payload
+
+
+def _serialize_physical_group(class_group):
+    return {
+        "display_name": class_group.display_name,
+        "category_name": class_group.class_category.display_name,
+        "code": class_group.code,
+        "teaching_team": [
+            {
+                "full_name": member["full_name"],
+                "role_label": member["role_label"],
+            }
+            for member in class_group.teaching_team
+        ],
+        "schedule_day_summary": [
+            {
+                "weekday_label": day.get("weekday_label", ""),
+                "time_labels": day.get("time_labels", []),
+            }
+            for day in class_group.schedule_day_summary
+        ],
+    }
 
 
 def get_weekday_filter_choices():

@@ -1336,111 +1336,201 @@
 
   function buildClassCard(prefix, option, selectField) {
     var selectedValues = new Set(getSelectMultipleValues(prefix + '_class_groups').map(String));
+    var isSelected = selectedValues.has(String(option.id));
     var teacherLines = buildTeacherLines(option.teacher_label);
     var weekdaySections = buildClassScheduleSections(option);
     var scheduleCount = countScheduleEntries(weekdaySections);
-    var button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'class-option-card class-option-card--catalog catalog-physical-card';
-    button.classList.toggle('is-selected', selectedValues.has(String(option.id)));
-    button.dataset.classOption = String(option.id);
 
-    var cardHead = document.createElement('div');
-    cardHead.className = 'catalog-physical-card-head';
+    var article = document.createElement('article');
+    article.className = 'record-card record-card-catalog class-option-card--record';
+    article.classList.toggle('is-selected', isSelected);
+    article.dataset.classOption = String(option.id);
 
-    var title = document.createElement('span');
-    title.className = 'class-option-title catalog-chip-group-title catalog-activity-title';
-    title.textContent = buildClassCardTitle(prefix, option);
+    var head = document.createElement('div');
+    head.className = 'record-card-head';
 
-    var subtitle = document.createElement('span');
+    var headInfo = document.createElement('div');
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'record-card-name';
+    nameSpan.textContent = buildClassCardTitle(prefix, option);
+    var subtitle = document.createElement('div');
     subtitle.className = 'record-card-subtitle';
-    subtitle.textContent = teacherLines.length + ' professor' + (teacherLines.length > 1 ? 'es' : '') + ' · ' + scheduleCount + ' horário' + (scheduleCount > 1 ? 's' : '');
+    subtitle.textContent = teacherLines.length + ' professor' + (teacherLines.length > 1 ? 'es' : '') + ' \u00b7 ' + scheduleCount + ' hor\u00e1rio' + (scheduleCount > 1 ? 's' : '');
+    headInfo.appendChild(nameSpan);
+    headInfo.appendChild(subtitle);
 
-    cardHead.appendChild(title);
-    cardHead.appendChild(subtitle);
-
-    var teachersBlock = document.createElement('div');
-    teachersBlock.className = 'catalog-physical-card-block';
-
-    var teachersLabel = document.createElement('span');
-    teachersLabel.className = 'catalog-guidance-label';
-    teachersLabel.textContent = 'Professor';
-
-    var teachersList = document.createElement('div');
-    teachersList.className = 'catalog-chip-list';
-    teacherLines.forEach(function (line) {
-      var chip = document.createElement('span');
-      chip.className = 'catalog-chip';
-      chip.textContent = line;
-      teachersList.appendChild(chip);
-    });
-
-    teachersBlock.appendChild(teachersLabel);
-    teachersBlock.appendChild(teachersList);
-
-    var schedulesBlock = document.createElement('div');
-    schedulesBlock.className = 'catalog-physical-card-block';
-
-    var schedulesLabel = document.createElement('span');
-    schedulesLabel.className = 'catalog-guidance-label';
-    schedulesLabel.textContent = 'Horários';
-
-    var weekdayGrid = document.createElement('div');
-    weekdayGrid.className = 'catalog-weekday-grid';
-
-    if (weekdaySections.length === 0) {
-      var emptySchedule = document.createElement('span');
-      emptySchedule.className = 'catalog-empty-inline';
-      emptySchedule.textContent = 'Sem horários ativos.';
-      weekdayGrid.appendChild(emptySchedule);
-    } else {
-      weekdaySections.forEach(function (section) {
-        var weekdayBlock = document.createElement('div');
-        weekdayBlock.className = 'catalog-weekday-block';
-
-        var weekdayHeader = document.createElement('div');
-        weekdayHeader.className = 'catalog-weekday-header';
-
-        var weekdayTitle = document.createElement('span');
-        weekdayTitle.className = 'catalog-chip-group-title';
-        weekdayTitle.textContent = section.weekdayLabel;
-
-        var weekdayCount = document.createElement('span');
-        weekdayCount.className = 'catalog-relation-type';
-        weekdayCount.textContent = section.times.length + ' horário' + (section.times.length > 1 ? 's' : '');
-
-        weekdayHeader.appendChild(weekdayTitle);
-        weekdayHeader.appendChild(weekdayCount);
-
-        var timesList = document.createElement('div');
-        timesList.className = 'catalog-chip-list';
-        section.times.forEach(function (timeLabel) {
-          var timeChip = document.createElement('span');
-          timeChip.className = 'catalog-chip catalog-chip--schedule';
-          timeChip.textContent = timeLabel;
-          timesList.appendChild(timeChip);
-        });
-
-        weekdayBlock.appendChild(weekdayHeader);
-        weekdayBlock.appendChild(timesList);
-        weekdayGrid.appendChild(weekdayBlock);
-      });
-    }
-
-    schedulesBlock.appendChild(schedulesLabel);
-    schedulesBlock.appendChild(weekdayGrid);
-
-    button.appendChild(cardHead);
-    button.appendChild(teachersBlock);
-    button.appendChild(schedulesBlock);
-    button.addEventListener('click', function () {
+    var badge = document.createElement('button');
+    badge.type = 'button';
+    badge.className = 'record-card-badge record-card-badge--toggle';
+    badge.textContent = isSelected ? 'Selecionada' : 'Selecionar';
+    badge.addEventListener('click', function (e) {
+      e.stopPropagation();
       toggleClassSelection(selectField, option.id);
       renderClassGroupCards(prefix);
       renderPlanList();
       renderSummary();
       saveDraft();
     });
-    return button;
+
+    head.appendChild(headInfo);
+    head.appendChild(badge);
+
+    var details = document.createElement('details');
+    details.className = 'catalog-dropdown class-schedule-dropdown';
+    details.open = isSelected;
+    var summary = document.createElement('summary');
+    summary.className = 'catalog-dropdown-summary';
+    summary.textContent = 'Grade por dia e professor';
+    details.appendChild(summary);
+
+    var content = document.createElement('div');
+    content.className = 'catalog-dropdown-content class-schedule-dropdown-content';
+    content.appendChild(buildScheduleFirstClassOverview(option, teacherLines, weekdaySections));
+
+    details.appendChild(content);
+    article.appendChild(head);
+    article.appendChild(details);
+    return article;
+  }
+
+  function buildScheduleFirstClassOverview(option, teacherLines, weekdaySections) {
+    var overview = document.createElement('div');
+    overview.className = 'class-schedule-overview';
+    var sections = buildScheduleFirstSections(option, teacherLines, weekdaySections);
+
+    if (sections.length === 0) {
+      var emptySchedule = document.createElement('p');
+      emptySchedule.className = 'class-schedule-empty';
+      emptySchedule.textContent = 'Sem horários ativos.';
+      overview.appendChild(emptySchedule);
+      return overview;
+    }
+
+    sections.forEach(function (section) {
+      var dayCard = document.createElement('section');
+      dayCard.className = 'class-schedule-day';
+
+      var title = document.createElement('h3');
+      title.className = 'class-schedule-day-title';
+      title.textContent = section.weekdayLabel;
+
+      var tableHead = document.createElement('div');
+      tableHead.className = 'class-schedule-table-head';
+      var timeLabel = document.createElement('span');
+      timeLabel.textContent = 'Horário';
+      var teacherLabel = document.createElement('span');
+      teacherLabel.textContent = 'Professor';
+      tableHead.appendChild(timeLabel);
+      tableHead.appendChild(teacherLabel);
+
+      var rows = document.createElement('div');
+      rows.className = 'class-schedule-rows';
+      section.entries.forEach(function (entry) {
+        var row = document.createElement('div');
+        row.className = 'class-schedule-row';
+
+        var time = document.createElement('span');
+        time.className = 'class-schedule-time';
+        time.textContent = entry.timeLabel;
+
+        var teacher = document.createElement('span');
+        teacher.className = 'class-schedule-teacher';
+        teacher.textContent = entry.teacherLabel;
+
+        row.appendChild(time);
+        row.appendChild(teacher);
+        rows.appendChild(row);
+      });
+
+      dayCard.appendChild(title);
+      dayCard.appendChild(tableHead);
+      dayCard.appendChild(rows);
+      overview.appendChild(dayCard);
+    });
+
+    return overview;
+  }
+
+  function buildScheduleFirstSections(option, teacherLines, weekdaySections) {
+    var grouped = {};
+
+    function addEntry(weekdayLabel, timeLabel, teacherLabel) {
+      var normalizedWeekday = normalizeWeekdayLabel(weekdayLabel || 'Outro dia');
+      var normalizedTime = String(timeLabel || '').trim();
+      var normalizedTeacher = String(teacherLabel || '').trim() || 'Equipe docente não definida';
+      if (!normalizedTime) {
+        return;
+      }
+      if (!grouped[normalizedWeekday]) {
+        grouped[normalizedWeekday] = {
+          weekdayLabel: normalizedWeekday,
+          entries: [],
+          seen: {}
+        };
+      }
+      var key = normalizedTime + '::' + normalizedTeacher;
+      if (grouped[normalizedWeekday].seen[key]) {
+        return;
+      }
+      grouped[normalizedWeekday].seen[key] = true;
+      grouped[normalizedWeekday].entries.push({
+        timeLabel: normalizedTime,
+        teacherLabel: normalizedTeacher
+      });
+    }
+
+    var physicalGroups = option.physical_groups || [];
+    if (physicalGroups.length > 0) {
+      physicalGroups.forEach(function (pg) {
+        var professorLabel = buildPhysicalGroupProfessorLabel(pg, teacherLines);
+        var daySummary = pg.schedule_day_summary || [];
+        daySummary.forEach(function (section) {
+          (section.time_labels || []).forEach(function (timeLabel) {
+            addEntry(section.weekday_label, timeLabel, professorLabel);
+          });
+        });
+      });
+    } else {
+      var fallbackTeacherLabel = teacherLines.join(', ');
+      weekdaySections.forEach(function (section) {
+        section.times.forEach(function (timeLabel) {
+          addEntry(section.weekdayLabel, timeLabel, fallbackTeacherLabel);
+        });
+      });
+    }
+
+    return Object.keys(grouped)
+      .sort(function (a, b) {
+        var orderA = getWeekdaySortValue(a);
+        var orderB = getWeekdaySortValue(b);
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.localeCompare(b);
+      })
+      .map(function (weekdayLabel) {
+        var section = grouped[weekdayLabel];
+        section.entries.sort(function (a, b) {
+          return String(a.timeLabel).localeCompare(String(b.timeLabel));
+        });
+        delete section.seen;
+        return section;
+      });
+  }
+
+  function buildPhysicalGroupProfessorLabel(pg, fallbackTeacherLines) {
+    var team = pg.teaching_team || [];
+    var names = [];
+    team.forEach(function (member) {
+      var name = String(member.full_name || '').trim();
+      if (name && names.indexOf(name) === -1) {
+        names.push(name);
+      }
+    });
+    if (names.length > 0) {
+      return names.join(', ');
+    }
+    return fallbackTeacherLines.join(', ') || 'Equipe docente não definida';
   }
 
   function buildTeacherLines(rawTeacherLabel) {
@@ -1516,6 +1606,20 @@
       'domingo': 'Domingo'
     };
     return map[value] || weekdayDisplay;
+  }
+
+  function getWeekdaySortValue(weekdayDisplay) {
+    var normalized = normalizeWeekdayLabel(weekdayDisplay);
+    var weekdayOrder = {
+      'Segunda-feira': 1,
+      'Terça-feira': 2,
+      'Quarta-feira': 3,
+      'Quinta-feira': 4,
+      'Sexta-feira': 5,
+      'Sábado': 6,
+      'Domingo': 7
+    };
+    return weekdayOrder[normalized] || 99;
   }
 
   function countScheduleEntries(weekdaySections) {
@@ -1774,7 +1878,7 @@
     container.innerHTML = '';
 
     if (planCatalog.length === 0) {
-      container.innerHTML = '<p class="checkout-empty-note">Nenhum plano disponível no momento.</p>';
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum plano dispon\u00edvel no momento.</p>';
       return;
     }
 
@@ -1784,53 +1888,82 @@
       syncCheckoutHiddenFields();
     }
     if (visiblePlans.length === 0) {
-      container.innerHTML = '<p class="checkout-empty-note">Nenhum plano disponível para este cadastro.</p>';
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum plano dispon\u00edvel para este cadastro.</p>';
       return;
     }
 
     var groupedPlans = groupPlansForDropdown(visiblePlans);
-    groupedPlans.forEach(function (group, index) {
-      var dropdown = document.createElement('details');
-      dropdown.className = 'checkout-dropdown';
-      if (index === 0 || group.hasSelection) {
-        dropdown.open = true;
-      }
-
-      var summary = document.createElement('summary');
-      summary.className = 'checkout-dropdown-summary';
-
-      var summaryTitle = document.createElement('span');
-      summaryTitle.className = 'checkout-dropdown-title';
-      summaryTitle.textContent = group.title;
-
-      var summaryMeta = document.createElement('span');
-      summaryMeta.className = 'checkout-dropdown-meta';
-      summaryMeta.textContent = group.plans.length + (group.plans.length === 1 ? ' opção' : ' opções');
-
-      summary.appendChild(summaryTitle);
-      summary.appendChild(summaryMeta);
-      dropdown.appendChild(summary);
-
-      var content = document.createElement('div');
-      content.className = 'checkout-dropdown-content';
-      group.plans.forEach(function (plan) {
-        content.appendChild(buildPlanCard(plan));
-      });
-      dropdown.appendChild(content);
-      container.appendChild(dropdown);
+    groupedPlans.forEach(function (group) {
+      container.appendChild(buildPlanGroupCard(group));
     });
   }
 
+  function buildPlanGroupCard(group) {
+    var article = document.createElement('article');
+    article.className = 'record-card record-card-catalog class-option-card--record';
+    if (group.hasSelection) {
+      article.classList.add('is-selected');
+    }
+
+    var head = document.createElement('div');
+    head.className = 'record-card-head';
+    var headInfo = document.createElement('div');
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'record-card-name';
+    nameSpan.textContent = group.title;
+    var subtitle = document.createElement('div');
+    subtitle.className = 'record-card-subtitle';
+    subtitle.textContent = group.plans.length + (group.plans.length === 1 ? ' op\u00e7\u00e3o' : ' op\u00e7\u00f5es') + ' de pagamento';
+    headInfo.appendChild(nameSpan);
+    headInfo.appendChild(subtitle);
+
+    var badge = document.createElement('span');
+    badge.className = 'record-card-badge';
+    if (group.section === 'family') {
+      badge.textContent = 'Fam\u00edlia';
+    } else {
+      badge.textContent = group.cycle === 'monthly' ? 'Mensal' : group.cycle === 'quarterly' ? 'Trimestral' : group.cycle === 'semiannual' ? 'Semestral' : group.cycle === 'annual' ? 'Anual' : 'Plano';
+    }
+
+    head.appendChild(headInfo);
+    head.appendChild(badge);
+
+    var details = document.createElement('details');
+    details.className = 'catalog-dropdown';
+    if (group.hasSelection) {
+      details.open = true;
+    }
+    var summary = document.createElement('summary');
+    summary.className = 'catalog-dropdown-summary';
+    summary.textContent = 'Ver op\u00e7\u00f5es de pagamento';
+    details.appendChild(summary);
+
+    var content = document.createElement('div');
+    content.className = 'catalog-dropdown-content';
+    var optionsList = document.createElement('div');
+    optionsList.className = 'catalog-plan-options';
+    group.plans.forEach(function (plan) {
+      optionsList.appendChild(buildPlanCard(plan));
+    });
+    content.appendChild(optionsList);
+    details.appendChild(content);
+
+    article.appendChild(head);
+    article.appendChild(details);
+    return article;
+  }
+
   function buildPlanCard(plan) {
+    var isSelected = selectedPlanId === plan.id;
     var card = document.createElement('label');
-    card.className = 'checkout-option-card' + (selectedPlanId === plan.id ? ' is-selected' : '');
+    card.className = 'catalog-plan-option' + (isSelected ? ' is-selected' : '');
 
     var radio = document.createElement('input');
     radio.type = 'radio';
     radio.name = '_plan_radio';
-    radio.className = 'checkout-option-radio';
+    radio.className = 'catalog-plan-option-radio';
     radio.value = String(plan.id);
-    radio.checked = selectedPlanId === plan.id;
+    radio.checked = isSelected;
     radio.addEventListener('change', function () {
       selectedPlanId = plan.id;
       setCheckoutAction(getCheckoutActionForPlan(plan));
@@ -1841,18 +1974,18 @@
     var icon = createPaymentIcon(plan.payment_method);
 
     var info = document.createElement('div');
-    info.className = 'checkout-option-info';
+    info.className = 'catalog-plan-option-info';
     var name = document.createElement('span');
-    name.className = 'checkout-option-name';
+    name.className = 'catalog-plan-option-name';
     name.textContent = plan.name;
     var meta = document.createElement('span');
-    meta.className = 'checkout-option-meta';
+    meta.className = 'catalog-plan-option-meta';
     meta.textContent = buildPlanMeta(plan);
     info.appendChild(name);
     info.appendChild(meta);
 
     var price = document.createElement('span');
-    price.className = 'checkout-option-price';
+    price.className = 'catalog-plan-option-price';
     price.textContent = formatBRL(plan.price);
 
     card.appendChild(radio);
@@ -1887,12 +2020,12 @@
     plans.forEach(function (plan) {
       var section = plan.is_family_plan ? 'family' : 'standard';
       var cycle = plan.billing_cycle || 'other';
-      var key = section + ':' + cycle;
+      var key = section === 'family' ? 'family' : section + ':' + cycle;
       if (!grouped[key]) {
         grouped[key] = {
           section: section,
-          cycle: cycle,
-          title: buildPlanGroupTitle(plan),
+          cycle: section === 'family' ? null : cycle,
+          title: buildPlanGroupTitle(plan, section === 'family'),
           plans: [],
           hasSelection: false
         };
@@ -1918,11 +2051,11 @@
       });
   }
 
-  function buildPlanGroupTitle(plan) {
-    var cycleLabel = plan.cycle || 'Plano';
-    if (plan.is_family_plan) {
-      return 'Plano família - ' + cycleLabel;
+  function buildPlanGroupTitle(plan, isFamilyGroup) {
+    if (isFamilyGroup) {
+      return 'Plano família';
     }
+    var cycleLabel = plan.cycle || 'Plano';
     return 'Plano ' + cycleLabel.toLowerCase();
   }
 
@@ -1967,42 +2100,70 @@
     container.innerHTML = '';
 
     if (productCatalog.length === 0) {
-      container.innerHTML = '<p class="checkout-empty-note">Nenhum material disponível no momento.</p>';
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum material dispon\u00edvel no momento.</p>';
       return;
     }
 
     var groupedProducts = groupProductsForDropdown(productCatalog);
-    groupedProducts.forEach(function (group, index) {
-      var dropdown = document.createElement('details');
-      dropdown.className = 'checkout-dropdown';
-      if (index === 0 || group.hasSelection) {
-        dropdown.open = true;
-      }
-
-      var summary = document.createElement('summary');
-      summary.className = 'checkout-dropdown-summary';
-
-      var summaryTitle = document.createElement('span');
-      summaryTitle.className = 'checkout-dropdown-title';
-      summaryTitle.textContent = group.title;
-
-      var summaryMeta = document.createElement('span');
-      summaryMeta.className = 'checkout-dropdown-meta';
-      summaryMeta.textContent = group.products.length + (group.products.length === 1 ? ' item' : ' itens');
-
-      summary.appendChild(summaryTitle);
-      summary.appendChild(summaryMeta);
-      dropdown.appendChild(summary);
-
-      var content = document.createElement('div');
-      content.className = 'checkout-dropdown-content';
-      group.products.forEach(function (product) {
-        content.appendChild(buildProductCard(product));
-      });
-
-      dropdown.appendChild(content);
-      container.appendChild(dropdown);
+    groupedProducts.forEach(function (group) {
+      container.appendChild(buildProductGroupCard(group));
     });
+  }
+
+  function buildProductGroupCard(group) {
+    var totalSelected = 0;
+    group.products.forEach(function (product) {
+      totalSelected += (selectedProducts[product.id] || 0);
+    });
+
+    var article = document.createElement('article');
+    article.className = 'record-card record-card-catalog class-option-card--record';
+    if (totalSelected > 0) {
+      article.classList.add('is-selected');
+    }
+
+    var head = document.createElement('div');
+    head.className = 'record-card-head';
+    var headInfo = document.createElement('div');
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'record-card-name';
+    nameSpan.textContent = group.title;
+    var subtitle = document.createElement('div');
+    subtitle.className = 'record-card-subtitle';
+    subtitle.textContent = group.products.length + (group.products.length === 1 ? ' produto' : ' produtos') + (totalSelected > 0 ? ' \u00b7 ' + totalSelected + ' selecionado' + (totalSelected > 1 ? 's' : '') : '');
+    headInfo.appendChild(nameSpan);
+    headInfo.appendChild(subtitle);
+
+    var badge = document.createElement('span');
+    badge.className = 'record-card-badge';
+    badge.textContent = group.title;
+
+    head.appendChild(headInfo);
+    head.appendChild(badge);
+
+    var details = document.createElement('details');
+    details.className = 'catalog-dropdown';
+    if (group.hasSelection) {
+      details.open = true;
+    }
+    var summary = document.createElement('summary');
+    summary.className = 'catalog-dropdown-summary';
+    summary.textContent = 'Ver produtos';
+    details.appendChild(summary);
+
+    var content = document.createElement('div');
+    content.className = 'catalog-dropdown-content';
+    var optionsList = document.createElement('div');
+    optionsList.className = 'catalog-product-options';
+    group.products.forEach(function (product) {
+      optionsList.appendChild(buildProductCard(product));
+    });
+    content.appendChild(optionsList);
+    details.appendChild(content);
+
+    article.appendChild(head);
+    article.appendChild(details);
+    return article;
   }
 
   function groupProductsForDropdown(products) {
@@ -2030,32 +2191,32 @@
     var qty = selectedProducts[product.id] || 0;
 
     var card = document.createElement('div');
-    card.className = 'checkout-option-card' + (qty > 0 ? ' is-selected' : '');
+    card.className = 'catalog-product-item' + (qty > 0 ? ' is-selected' : '');
 
     var info = document.createElement('div');
-    info.className = 'checkout-option-info';
+    info.className = 'catalog-product-item-info';
 
     var name = document.createElement('span');
-    name.className = 'checkout-option-name';
+    name.className = 'catalog-product-item-name';
     name.textContent = product.name;
 
     var meta = document.createElement('span');
-    meta.className = 'checkout-option-meta';
-    meta.textContent = product.category;
+    meta.className = 'catalog-product-item-meta';
+    meta.textContent = product.description || product.category;
 
     info.appendChild(name);
     info.appendChild(meta);
 
     var price = document.createElement('span');
-    price.className = 'checkout-option-price';
+    price.className = 'catalog-product-item-price';
     price.textContent = formatBRL(product.price);
 
     var qtyControl = document.createElement('div');
-    qtyControl.className = 'checkout-qty-control';
+    qtyControl.className = 'catalog-product-qty';
 
     var minusBtn = document.createElement('button');
     minusBtn.type = 'button';
-    minusBtn.className = 'checkout-qty-btn';
+    minusBtn.className = 'catalog-product-qty-btn';
     minusBtn.textContent = '\u2212';
     minusBtn.addEventListener('click', function () {
       var current = selectedProducts[product.id] || 0;
@@ -2068,12 +2229,12 @@
     });
 
     var qtySpan = document.createElement('span');
-    qtySpan.className = 'checkout-qty-value';
+    qtySpan.className = 'catalog-product-qty-value';
     qtySpan.textContent = String(qty);
 
     var plusBtn = document.createElement('button');
     plusBtn.type = 'button';
-    plusBtn.className = 'checkout-qty-btn';
+    plusBtn.className = 'catalog-product-qty-btn';
     plusBtn.textContent = '+';
     plusBtn.addEventListener('click', function () {
       var current = selectedProducts[product.id] || 0;

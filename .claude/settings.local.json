@@ -1,23 +1,9 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(.venv/Scripts/python.exe:*)",
-      "Bash(echo \"EXIT: $?\")",
-      "WebFetch(domain:lvjiujitsu.sumupstore.com)",
-      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py makemigrations system)",
-      "Bash(curl:*)",
-      "Bash(.\\\\.venv\\\\Scripts\\\\pip.exe show:*)",
-      "Bash(./.venv/Scripts/pip.exe show:*)",
-      "Bash(./.venv/Scripts/pip.exe install:*)",
-      "Bash(ls lv*/)",
-      "Bash(grep:*)",
-      "Bash(./.venv/Scripts/python.exe manage.py check)",
-      "Bash(./.venv/Scripts/python.exe manage.py test system.tests -v 0)",
-      "Bash(ls:*)",
-      "Bash(./.venv/Scripts/python.exe manage.py makemigrations system)",
-      "Bash(./.venv/Scripts/python.exe manage.py migrate)",
-      "Bash(./.venv/Scripts/python.exe manage.py test system)",
-      "Bash(./.venv/Scripts/python.exe *)"
-    ]
+  "_comment": "Configurações locais pessoais — NÃO commitar no git. Claude Code adiciona ao .gitignore automaticamente.",
+  "model": "claude-sonnet-4-6",
+  "language": "pt-BR",
+  "env": {
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1"
   }
 }

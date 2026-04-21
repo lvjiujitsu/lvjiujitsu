@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.db.models import Q
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
@@ -10,6 +11,7 @@ from system.models import (
     Person,
     SpecialClass,
 )
+from system.constants import CLASS_STAFF_PERSON_TYPE_CODES, PersonTypeCode
 
 
 class ClassGroupForm(forms.ModelForm):
@@ -133,7 +135,7 @@ class ClassGroupForm(forms.ModelForm):
         current_teacher_id = getattr(self.instance, "main_teacher_id", None)
         return (
             Person.objects.filter(
-                Q(person_type__code="instructor", is_active=True)
+                Q(person_type__code=PersonTypeCode.INSTRUCTOR, is_active=True)
                 | Q(pk=current_teacher_id),
             )
             .distinct()
@@ -148,7 +150,7 @@ class ClassGroupForm(forms.ModelForm):
             )
         return (
             Person.objects.filter(
-                Q(person_type__code__in=("administrative-assistant", "instructor"), is_active=True)
+                Q(person_type__code__in=CLASS_STAFF_PERSON_TYPE_CODES, is_active=True)
                 | Q(pk__in=current_ids),
             )
             .distinct()
@@ -322,10 +324,10 @@ class SpecialClassForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["teacher"].queryset = (
-            Person.objects.filter(person_type__code="instructor", is_active=True)
+            Person.objects.filter(person_type__code=PersonTypeCode.INSTRUCTOR, is_active=True)
             .order_by("full_name")
         )
         self.fields["teacher"].required = False
         self.fields["notes"].required = False
         if not self.initial.get("title"):
-            self.initial["title"] = "Aulão"
+            self.initial["title"] = settings.SPECIAL_CLASS_DEFAULT_TITLE

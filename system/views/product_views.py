@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
@@ -7,6 +9,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from system.forms.product_forms import ProductCartForm, ProductForm, get_product_variant_formset
 from system.models.product import Product
+from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
 from system.services.product_management import (
     get_product_card_by_pk,
     get_product_list_cards,
@@ -94,9 +97,14 @@ class ProductCatalogView(ListView):
     def get_queryset(self):
         return get_public_product_cards()
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["product_groups"] = _build_product_groups(context["products"])
+        return context
+
 
 class ProductStoreView(PortalRoleRequiredMixin, ListView):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
     template_name = "products/product_store.html"
     context_object_name = "products"
 
@@ -105,7 +113,7 @@ class ProductStoreView(PortalRoleRequiredMixin, ListView):
 
 
 class CreateProductOrderView(PortalRoleRequiredMixin, View):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
 
     def post(self, request):
         form = ProductCartForm(request.POST)
@@ -120,3 +128,23 @@ class CreateProductOrderView(PortalRoleRequiredMixin, View):
             return redirect("system:product-store")
 
         return redirect("system:payment-checkout", order_id=order.pk)
+
+
+def _build_product_groups(products):
+    grouped = OrderedDict()
+    for product in products:
+        category = product.category
+        key = category.pk
+        if key not in grouped:
+            total_products = sum(
+                1 for p in products if p.category_id == category.pk
+            )
+            grouped[key] = {
+                "category": category,
+                "title": category.display_name,
+                "badge": category.display_name,
+                "product_count": total_products,
+                "products": [],
+            }
+        grouped[key]["products"].append(product)
+    return list(grouped.values())

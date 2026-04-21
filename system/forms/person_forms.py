@@ -10,6 +10,7 @@ from system.models import (
     PersonType,
 )
 from system.models.class_membership import get_class_group_eligibility_error
+from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES
 from system.services.class_overview import (
     build_class_group_filter_value,
     get_class_group_filter_choices,
@@ -189,7 +190,9 @@ class PersonForm(forms.ModelForm):
         class_group_values = cleaned_data.get("class_groups") or []
         class_groups = resolve_class_group_selection(class_group_values)
         person_type = cleaned_data.get("person_type")
-        if class_groups and not (person_type and person_type.code in ("student", "dependent")):
+        if class_groups and not (
+            person_type and person_type.code in CLASS_ENROLLMENT_PERSON_TYPE_CODES
+        ):
             self.add_error(
                 "class_groups",
                 "Apenas aluno titular ou dependente pode receber turmas liberadas.",

@@ -8,6 +8,7 @@ from system.models import (
     Person,
 )
 from system.services.class_overview import parse_class_group_filter_value
+from system.constants import PersonTypeCode
 
 
 def get_person_queryset(*, filters=None):
@@ -101,7 +102,7 @@ def _apply_filters(queryset, filters):
         queryset = queryset.filter(cpf__icontains=cpf)
     if filters.get("is_teacher"):
         queryset = queryset.filter(
-            Q(person_type__code="instructor")
+            Q(person_type__code=PersonTypeCode.INSTRUCTOR)
             | Q(primary_class_groups__isnull=False)
             | Q(class_instructor_assignments__isnull=False)
         )

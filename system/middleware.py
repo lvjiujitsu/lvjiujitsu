@@ -1,3 +1,9 @@
+from system.constants import (
+    ADMINISTRATIVE_PERSON_TYPE_CODES,
+    INSTRUCTOR_PERSON_TYPE_CODES,
+    STUDENT_PORTAL_PERSON_TYPE_CODES,
+    TECHNICAL_ADMIN_PERSON_TYPE_CODES,
+)
 from system.services import resolve_portal_account_from_session, resolve_technical_admin_from_session
 
 
@@ -23,12 +29,7 @@ class PortalSessionMiddleware:
             request.portal_is_administrative = True
             request.portal_is_instructor = True
             request.portal_is_student = True
-            request.portal_type_codes = {
-                "administrative-assistant",
-                "instructor",
-                "student",
-                "guardian",
-            }
+            request.portal_type_codes = set(TECHNICAL_ADMIN_PERSON_TYPE_CODES)
 
         if access_account is not None:
             request.portal_account = access_account
@@ -39,10 +40,14 @@ class PortalSessionMiddleware:
                 else ""
             )
             request.portal_type_codes = {person_type_code} if person_type_code else set()
-            request.portal_is_administrative = "administrative-assistant" in request.portal_type_codes
-            request.portal_is_instructor = "instructor" in request.portal_type_codes
+            request.portal_is_administrative = bool(
+                set(ADMINISTRATIVE_PERSON_TYPE_CODES) & request.portal_type_codes
+            )
+            request.portal_is_instructor = bool(
+                set(INSTRUCTOR_PERSON_TYPE_CODES) & request.portal_type_codes
+            )
             request.portal_is_student = bool(
-                {"student", "guardian", "dependent"} & request.portal_type_codes
+                set(STUDENT_PORTAL_PERSON_TYPE_CODES) & request.portal_type_codes
             )
 
         return self.get_response(request)

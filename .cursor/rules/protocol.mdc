@@ -1,0 +1,39 @@
+---
+description: Protocolo central de governança do agente — aplica-se a toda interação
+globs:
+alwaysApply: true
+---
+
+# Protocolo do agente
+
+Fonte de verdade: `@AGENTS.md` (como trabalhar) e `@CLAUDE.md` (o que é o projeto).
+
+## Precedência
+
+1. Solicitação atual do usuário
+2. Segurança, integridade e rastreabilidade
+3. AGENTS.md → CLAUDE.md → regras locais
+
+## Obrigatório antes de agir
+
+- Ler integralmente os arquivos do fluxo impactado — nunca decidir por snippet
+- Buscar contexto externo quando envolver lib, framework ou comportamento de ferramenta
+- Classificar a demanda antes de executar
+- Criar PRD em `docs/prd/` para mudança relevante
+- Validar antes de declarar sucesso — evidência observável obrigatória
+- Responder ao desenvolvedor em pt-BR
+
+## Nunca
+
+- Inventar comando, rota, integração ou comportamento
+- Declarar sucesso sem evidência
+- Assumir que implementado = validado
+- Criar migrações sem autorização explícita
+- Hardcodar segredo, token ou valor configurável
+- Mascarar erro para forçar funcionamento aparente
+
+## Ao finalizar
+
+- Reportar: o que foi feito, evidências, pendências, desvios, status real
+- Limpar: remover prints, logs, comentários e arquivos temporários
+- Status: concluída | concluída com limitações | não concluída

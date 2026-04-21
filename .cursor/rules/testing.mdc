@@ -1,0 +1,37 @@
+---
+description: TDD Red-Green-Refactor — regras para escrita e organização de testes Django
+globs: "**/tests/**/*.py"
+alwaysApply: false
+---
+
+# TDD — Red-Green-Refactor
+
+## Ciclo obrigatório
+
+1. **Red**: escrever teste que falha (comportamento esperado ainda não existe)
+2. **Green**: implementar código mínimo para o teste passar
+3. **Refactor**: limpar mantendo todos os testes verdes
+
+## Double-loop (fluxos com interface)
+
+- Loop externo: teste funcional / E2E (Playwright — comportamento do usuário)
+- Loop interno: testes unitários (models, forms, services, selectors, views)
+
+## Estrutura por camada
+
+```
+tests/
+├── test_models.py      # invariantes, constraints, propriedades
+├── test_forms.py       # validação de entrada, clean_*
+├── test_services.py    # regra de negócio, fluxo feliz e de erro
+├── test_selectors.py   # queries, filtros
+├── test_views.py       # status codes, redirects, contexto, permissões
+└── test_commands.py    # management commands
+```
+
+## Regras
+
+- `setUp` / `setUpTestData` para dados — nunca hardcodar dados repetidos
+- Nomear testes descrevendo o comportamento: `test_<acao>_<condicao>_<resultado>`
+- Cobrir: fluxo feliz, fluxo de erro, edge cases
+- `manage.py test --verbosity 2` deve fechar com 0 falhas, 0 erros

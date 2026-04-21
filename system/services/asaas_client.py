@@ -21,16 +21,20 @@ def _headers():
     return {
         "access_token": settings.ASAAS_API_KEY,
         "Content-Type": "application/json",
-        "User-Agent": "lvjiujitsu-django/1.0",
+        "User-Agent": settings.ASAAS_USER_AGENT,
     }
 
 
 def _base_url():
+    if not settings.ASAAS_API_URL:
+        raise AsaasClientError("ASAAS_API_URL não configurada no .env")
     return settings.ASAAS_API_URL.rstrip("/")
 
 
-def _request(method, path, *, json_body=None, params=None, timeout=20):
+def _request(method, path, *, json_body=None, params=None, timeout=None):
     url = f"{_base_url()}{path}"
+    if timeout is None:
+        timeout = settings.ASAAS_API_TIMEOUT_SECONDS
     try:
         response = requests.request(
             method,

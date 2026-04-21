@@ -4,6 +4,7 @@ from django.db import models
 from .category import ClassCategory
 from .common import TimeStampedModel
 from .person import Person
+from system.constants import PersonTypeCode
 
 
 class ClassGroup(TimeStampedModel):
@@ -32,7 +33,7 @@ class ClassGroup(TimeStampedModel):
         return f"{self.display_name} - {self.class_category.display_name}"
 
     def clean(self):
-        if self.main_teacher_id and not self.main_teacher.has_type_code("instructor"):
+        if self.main_teacher_id and not self.main_teacher.has_type_code(PersonTypeCode.INSTRUCTOR):
             raise ValidationError(
                 {
                     "main_teacher": (

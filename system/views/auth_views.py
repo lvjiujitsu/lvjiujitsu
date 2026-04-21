@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
@@ -13,6 +14,7 @@ from system.forms import (
     PortalRegistrationForm,
     PortalSetPasswordForm,
 )
+from system.constants import CheckoutAction
 from system.services.class_catalog import get_ibjjf_age_category_payload
 from system.services.class_overview import (
     get_public_class_group_cards,
@@ -75,10 +77,10 @@ class PortalRegisterView(FormView):
         )
         if order is not None and order.total and order.total > 0:
             self.request.session["pending_checkout_order_id"] = order.pk
-            checkout_action = form.cleaned_data.get("checkout_action") or "pay_later"
-            if checkout_action == "stripe":
+            checkout_action = form.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
+            if checkout_action == CheckoutAction.STRIPE:
                 return redirect("system:stripe-checkout", order_id=order.pk)
-            if checkout_action == "pix":
+            if checkout_action == CheckoutAction.PIX:
                 return redirect("system:asaas-pix-create", order_id=order.pk)
 
             grant_trial_for_order(
@@ -87,7 +89,8 @@ class PortalRegisterView(FormView):
             )
             messages.warning(
                 self.request,
-                "Cadastro concluído sem pagamento. Você tem 1 aula experimental "
+                "Cadastro concluído sem pagamento. "
+                f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
                 "liberada e pode pagar depois para ativar sua mensalidade.",
             )
             return redirect("system:legacy-login-form")

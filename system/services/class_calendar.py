@@ -3,7 +3,9 @@ from collections import OrderedDict
 from datetime import date, timedelta
 from types import SimpleNamespace
 
+from django.conf import settings
 from django.db import transaction
+from django.utils.formats import date_format
 from django.utils import timezone
 
 from system.models import ClassSchedule, WeekdayCode
@@ -290,14 +292,22 @@ def toggle_session_cancel(schedule_id, session_date, reason=""):
 
 
 @transaction.atomic
-def create_special_class(*, title, date, start_time, duration_minutes=90, teacher=None, notes=""):
+def create_special_class(
+    *,
+    title,
+    date,
+    start_time,
+    duration_minutes=None,
+    teacher=None,
+    notes="",
+):
     if not title:
-        title = "Aulão"
+        title = settings.SPECIAL_CLASS_DEFAULT_TITLE
     special = SpecialClass.objects.create(
         title=title,
         date=date,
         start_time=start_time,
-        duration_minutes=duration_minutes or 90,
+        duration_minutes=duration_minutes or settings.SPECIAL_CLASS_DEFAULT_DURATION_MINUTES,
         teacher=teacher,
         notes=notes or "",
     )
@@ -325,9 +335,4 @@ def perform_special_class_checkin(person, special_id):
 
 
 def _get_month_name(month):
-    names = {
-        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
-        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
-        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
-    }
-    return names.get(month, "")
+    return date_format(date(2000, month, 1), "F")

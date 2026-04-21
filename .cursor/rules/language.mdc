@@ -1,0 +1,14 @@
+---
+description: Política de idioma — inglês para código, pt-BR para interface e respostas
+globs:
+alwaysApply: true
+---
+
+# Política de idioma
+
+- Identificadores técnicos (classes, funções, variáveis, arquivos, comandos): **inglês**
+- Texto visível ao usuário final (labels, mensagens, botões, títulos): **pt-BR**
+- Rotas URL visíveis ao usuário: **pt-BR**
+- Nomes de views e endpoints internos: **inglês**
+- Respostas ao desenvolvedor: **pt-BR**
+- Código limpo: evitar comentários — usar apenas quando decisão não é inferível pela estrutura

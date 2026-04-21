@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 
 from .common import TimeStampedModel
@@ -21,6 +22,14 @@ class Holiday(TimeStampedModel):
 class SessionStatus(models.TextChoices):
     SCHEDULED = "scheduled", "Agendada"
     CANCELLED = "cancelled", "Cancelada"
+
+
+def default_special_class_title():
+    return settings.SPECIAL_CLASS_DEFAULT_TITLE
+
+
+def default_special_class_duration_minutes():
+    return settings.SPECIAL_CLASS_DEFAULT_DURATION_MINUTES
 
 
 class ClassSession(TimeStampedModel):
@@ -94,10 +103,17 @@ class ClassCheckin(TimeStampedModel):
 
 
 class SpecialClass(TimeStampedModel):
-    title = models.CharField("Título", max_length=120, default="Aulão")
+    title = models.CharField(
+        "Título",
+        max_length=120,
+        default=default_special_class_title,
+    )
     date = models.DateField("Data")
     start_time = models.TimeField("Horário de início")
-    duration_minutes = models.PositiveIntegerField("Duração (min)", default=90)
+    duration_minutes = models.PositiveIntegerField(
+        "Duração (min)",
+        default=default_special_class_duration_minutes,
+    )
     teacher = models.ForeignKey(
         "system.Person",
         on_delete=models.PROTECT,

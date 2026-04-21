@@ -1,0 +1,61 @@
+---
+description: Estrutura obrigatória de PRD com prompt de execução embutido (SDD)
+globs:
+alwaysApply: false
+---
+
+# PRD — Spec-Driven Development
+
+Toda mudança relevante começa com PRD em `docs/prd/PRD-<NNN>-<slug>.md`.
+
+## Estrutura mínima
+
+```md
+# PRD-<NNN>: <Título>
+
+## Resumo
+## Tipo de demanda
+## Problema atual
+## Objetivo
+
+## Context Ledger
+### Arquivos lidos integralmente
+### Arquivos adjacentes consultados
+### Internet / documentação oficial
+### MCPs / ferramentas verificadas
+### Limitações encontradas
+
+## Prompt de execução
+### Persona
+### Ação
+### Contexto
+### Restrições
+### Critérios de aceite
+### Evidências esperadas
+### Formato de saída
+
+## Escopo / Fora do escopo
+## Arquivos impactados
+## Riscos e edge cases
+
+## Plano
+- [ ] 1. Contexto e leitura integral
+- [ ] 2. Contratos e modelagem
+- [ ] 3. Testes (Red)
+- [ ] 4. Implementação (Green)
+- [ ] 5. Refatoração (Refactor)
+- [ ] 6. Validação completa
+- [ ] 7. Limpeza final
+- [ ] 8. Atualização documental
+
+## Evidências
+## Implementado
+## Desvios do plano
+## Pendências
+```
+
+## Regras
+
+- Sem PRD em mudança relevante = tarefa não concluída
+- Critérios de aceite escritos como assertions testáveis
+- Prompt de execução no formato Persona → Ação → Contexto → Restrições → Critérios

@@ -6,7 +6,7 @@ from django.utils import timezone
 from system.models.membership import Membership, MembershipStatus
 from system.models.plan import SubscriptionPlan
 from system.models.registration_order import OrderKind, RegistrationOrder
-from system.services.membership import _cycle_duration
+from system.services.membership import get_billing_cycle_day_count
 
 
 class PlanChangeError(Exception):
@@ -37,7 +37,7 @@ def calculate_plan_change(membership, new_plan):
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
 
-    new_cycle_days = _cycle_duration(new_plan.billing_cycle).days
+    new_cycle_days = get_billing_cycle_day_count(now, new_plan.billing_cycle)
     new_daily_rate = (new_plan.price / Decimal(new_cycle_days)).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )

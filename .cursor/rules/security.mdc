@@ -1,0 +1,27 @@
+---
+description: Segurança Django — CSRF, validação server-side, sem credenciais expostas
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Segurança
+
+## Obrigatório
+
+- `{% csrf_token %}` em todo formulário POST — nunca desabilitar sem justificativa formal
+- Validação server-side obrigatória — frontend bloqueia para UX, backend por segurança
+- Segredos em `.env` + `python-decouple` — nunca no código
+- Views protegidas com `@login_required` / `@permission_required`
+- Nunca confiar em esconder botões como mecanismo de permissão
+- Upload: validar MIME, extensão e tamanho no backend
+- `DEBUG` nunca `True` em produção — ler de `.env`
+
+## Proibido
+
+- Hardcodar `SECRET_KEY`, senhas, tokens ou chaves de API
+- Concatenar strings em queries — usar ORM ou queries parametrizadas
+- `|safe` ou `mark_safe()` em dados do usuário sem sanitização
+- Credenciais em JS/HTML
+- `innerHTML` com dados do usuário
+- SQL injection via raw queries não parametrizadas
+- XSS via template sem escape

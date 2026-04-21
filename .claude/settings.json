@@ -1,0 +1,77 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(.\\*)",
+      "Bash(cd *)",
+      "Bash(dir *)",
+      "Bash(Get-*)",
+      "Bash(Set-ExecutionPolicy *)",
+      "Bash(chcp *)",
+      "Bash(cat *)",
+      "Bash(type *)",
+      "Bash(echo *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(playwright *)",
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(del /s /q *)",
+      "Bash(git push *)",
+      "Bash(git checkout main)",
+      "Bash(git checkout master)",
+      "Bash(pip install --user *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,json; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); bad=['makemigrations','migrate','clear_migrations','--user']; hit=[b for b in bad if b in cmd]; sys.exit(2) if hit and '--check' not in cmd else sys.exit(0)\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo POST_EDIT: arquivo modificado — verificar alinhamento com AGENTS.md e CLAUDE.md",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo STOP: verificar se validacao foi executada, limpeza final realizada e status reportado",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1"
+  }
+}

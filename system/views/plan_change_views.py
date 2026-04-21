@@ -5,6 +5,7 @@ from django.views.generic import TemplateView
 
 from system.models.membership import MembershipStatus
 from system.models.plan import SubscriptionPlan
+from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
 from system.services.membership import get_active_membership, get_membership_owner
 from system.services.plan_change import (
     PlanChangeError,
@@ -16,7 +17,7 @@ from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
 class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
     template_name = "billing/plan_change_select.html"
 
     def get_context_data(self, **kwargs):
@@ -47,7 +48,7 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
 
 
 class PlanChangeConfirmView(PortalRoleRequiredMixin, View):
-    allowed_codes = ("student", "guardian", "dependent")
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
 
     def get(self, request, plan_id):
         person = request.portal_person

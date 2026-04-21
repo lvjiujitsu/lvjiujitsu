@@ -2,6 +2,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 from django.contrib.auth.hashers import check_password, make_password
+from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
@@ -258,7 +259,9 @@ class PortalPasswordResetToken(TimeStampedModel):
         if not self.token:
             self.token = uuid4().hex
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(hours=2)
+            self.expires_at = timezone.now() + timedelta(
+                hours=settings.PORTAL_PASSWORD_RESET_TOKEN_HOURS
+            )
         super().save(*args, **kwargs)
 
     def is_valid(self) -> bool:

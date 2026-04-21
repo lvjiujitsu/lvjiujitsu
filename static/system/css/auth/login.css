@@ -774,7 +774,7 @@ h1 {
 }
 
 .field select[multiple] option:checked {
-  background: linear-gradient(0deg, rgba(177, 38, 23, 0.18), rgba(177, 38, 23, 0.18)), var(--surface);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08)), var(--surface);
 }
 
 .field textarea {
@@ -1060,6 +1060,79 @@ h1 {
 
 .class-option-card--catalog.is-selected {
   box-shadow: 0 0 0 2px rgba(22, 95, 99, 0.35);
+}
+
+.class-option-card--record {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 32%),
+    var(--panel-solid);
+  box-shadow: 0 10px 24px rgba(15, 15, 18, 0.06);
+  gap: 18px;
+  cursor: default;
+  transition: border-color 0.18s ease;
+}
+
+.class-option-card--record .record-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.class-option-card--record .record-card-head > div {
+  min-width: 0;
+}
+
+.class-option-card--record .record-card-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.class-option-card--record .record-card-badge--toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.class-option-card--record .record-card-badge--toggle:hover {
+  border-color: var(--silver-strong);
+  color: var(--text);
+}
+
+.class-option-card--record.is-selected {
+  border-color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.10), transparent 32%),
+    var(--panel-solid);
+  color: var(--text);
+}
+
+.class-option-card--record.is-selected .record-card-badge--toggle {
+  border: 1px solid var(--silver-strong);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.class-option-card--record .catalog-dropdown {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .class-option-card input {
@@ -2108,8 +2181,134 @@ h1 {
 
 .class-card-list {
     display: grid;
-    gap: 0.75rem;
+    grid-template-columns: 1fr;
+    gap: 20px;
     margin-top: 0.75rem;
+}
+
+.class-schedule-dropdown .catalog-dropdown-summary {
+  border-radius: 8px;
+}
+
+.class-schedule-dropdown-content {
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.class-schedule-overview {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.class-schedule-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.class-schedule-day {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-solid);
+}
+
+.class-schedule-day-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.class-schedule-table-head,
+.class-schedule-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.class-schedule-table-head {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.class-schedule-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.class-schedule-row {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.class-schedule-time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 58px;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.class-schedule-teacher {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .class-option-card--record .record-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .class-option-card--record .record-card-badge--toggle {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 380px) {
+  .class-schedule-day {
+    padding: 10px;
+  }
+
+  .class-schedule-table-head,
+  .class-schedule-row {
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .class-schedule-row {
+    padding: 8px;
+  }
 }
 
 .checkout-payment-icon {
@@ -2262,6 +2461,154 @@ h1 {
   color: var(--muted);
   font-style: italic;
   padding: 0.5rem 0;
+}
+
+.checkout-plan-list,
+.checkout-product-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.catalog-plan-options,
+.catalog-product-options {
+  display: grid;
+  gap: 10px;
+}
+
+.catalog-plan-option {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-solid);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.catalog-plan-option:hover {
+  border-color: var(--silver-strong);
+}
+
+.catalog-plan-option.is-selected {
+  border-color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 50%),
+    var(--panel-solid);
+}
+
+.catalog-plan-option-radio {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--text);
+}
+
+.catalog-plan-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-plan-option-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.catalog-plan-option-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.catalog-plan-option-price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.catalog-product-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-solid);
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.catalog-product-item.is-selected {
+  border-color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 50%),
+    var(--panel-solid);
+}
+
+.catalog-product-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-product-item-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.catalog-product-item-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.catalog-product-item-price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.catalog-product-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.catalog-product-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.catalog-product-qty-btn:hover {
+  background: var(--surface);
+  border-color: var(--silver-strong);
+}
+
+.catalog-product-qty-value {
+  min-width: 1.5rem;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .checkout-decision {

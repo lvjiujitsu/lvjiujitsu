@@ -1,0 +1,32 @@
+---
+description: Templates Django e arquivos estáticos — herança, namespacing e proibições
+globs: "**/templates/**/*.html"
+alwaysApply: false
+---
+
+# Templates e estáticos
+
+## Templates
+
+- Herança obrigatória de `base.html`
+- Usar blocos: `content`, `extra_css`, `extra_js`
+- `{% csrf_token %}` em todo formulário POST
+- Nenhuma lógica de negócio em template — apenas apresentação
+- Texto visível ao usuário em pt-BR
+- Includes reutilizáveis com prefixo `_` (ex: `_navbar.html`, `_messages.html`)
+
+## Estáticos
+
+- Namespacing por app: `static/<app>/css/`, `static/<app>/js/`
+- Carregar via `{% load static %}` e `{% static '<app>/css/file.css' %}`
+- Cada tela com comportamento específico tem seu próprio CSS/JS
+- Após alterar estáticos: `manage.py collectstatic --noinput`
+
+## Proibido
+
+- CSS/JS inline no template
+- Arquivo monolítico com tudo junto
+- Colocar arquivos fonte em `STATIC_ROOT` (`staticfiles/`)
+- `|safe` ou `mark_safe()` em dados do usuário sem sanitização
+- `innerHTML` com dados do usuário em JavaScript
+- Lógica de negócio central em JavaScript de interface
