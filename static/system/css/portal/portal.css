@@ -625,6 +625,62 @@ html[data-theme="dark"] .theme-btn::before {
   color: var(--muted);
 }
 
+.today-class-attendance {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.today-class-attendance strong {
+  color: var(--text);
+}
+
+.today-class-attendance span {
+  color: var(--muted);
+}
+
+.attendance-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.attendance-history-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.attendance-history-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.attendance-history-head strong {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.attendance-history-head span {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.attendance-history-meta,
+.attendance-history-attendees {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 
 /* ========== Calendar (mobile-first: mini-calendar + detail panel) ========== */
 

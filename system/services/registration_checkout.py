@@ -1,12 +1,11 @@
 import json
+import re
 from decimal import Decimal
 
 from django.db import transaction
 
-from system.constants import RegistrationProfile
-from system.models.category import CategoryAudience
 from system.models.plan import SubscriptionPlan
-from system.models.product import Product
+from system.models.product import Product, ProductVariant
 from system.models.registration_order import RegistrationOrder, RegistrationOrderItem
 from system.services.financial_transactions import (
     apply_order_financials,
@@ -14,8 +13,48 @@ from system.services.financial_transactions import (
 )
 
 
+ORDER_STOCK_APPLIED_MARKER = "[stock_applied]"
+ORDER_ITEM_COLOR_PREFIX = "Cor: "
+ORDER_ITEM_SIZE_PREFIX = "Tamanho: "
+
+SIZE_SORT_ORDER = {
+    "A0": 10,
+    "A1": 11,
+    "A2": 12,
+    "A3": 13,
+    "A4": 14,
+    "A5": 15,
+    "A6": 16,
+    "F1": 21,
+    "F2": 22,
+    "F3": 23,
+    "F4": 24,
+    "M0": 31,
+    "M1": 32,
+    "M2": 33,
+    "M3": 34,
+    "M4": 35,
+}
+
+COLOR_SORT_ORDER = {
+    "Branca": 10,
+    "Branco": 10,
+    "Cinza": 20,
+    "Amarelo": 30,
+    "Amarela": 30,
+    "Laranja": 40,
+    "Verde": 50,
+    "Azul": 60,
+    "Roxa": 70,
+    "Marrom": 80,
+    "Preto": 90,
+}
+
+
 def get_plan_catalog_payload():
-    plans = SubscriptionPlan.objects.filter(is_active=True)
+    plans = SubscriptionPlan.objects.filter(is_active=True).exclude(
+        requires_special_authorization=True
+    )
     return [
         {
             "id": plan.pk,
@@ -32,6 +71,12 @@ def get_plan_catalog_payload():
             "payment_method": plan.payment_method,
             "payment_method_label": plan.get_payment_method_display(),
             "is_family_plan": plan.is_family_plan,
+            "audience": plan.audience,
+            "audience_label": plan.get_audience_display(),
+            "weekly_frequency": plan.weekly_frequency,
+            "weekly_frequency_label": plan.get_weekly_frequency_display(),
+            "teacher_commission_percentage": str(plan.teacher_commission_percentage),
+            "requires_special_authorization": plan.requires_special_authorization,
             "installment_label": "1x" if plan.payment_method == "credit_card" else "",
         }
         for plan in plans
@@ -39,19 +84,79 @@ def get_plan_catalog_payload():
 
 
 def get_product_catalog_payload():
-    products = Product.objects.filter(
-        is_active=True,
-        category__is_active=True,
-    ).select_related("category")
-    return [
-        {
-            "id": product.pk,
-            "name": product.display_name,
-            "price": str(product.unit_price),
-            "category": str(product.category),
-        }
-        for product in products
-    ]
+    products = (
+        Product.objects.filter(
+            is_active=True,
+            category__is_active=True,
+        )
+        .select_related("category")
+        .prefetch_related("variants")
+    )
+    payload = []
+    for product in products:
+        variants = [
+            _build_product_variant_payload(product, variant)
+            for variant in _get_active_variants(product)
+        ]
+        payload.append(
+            {
+                "id": product.pk,
+                "sku": product.sku,
+                "name": product.display_name,
+                "price": str(product.unit_price),
+                "category": str(product.category),
+                "category_code": product.category.code,
+                "category_order": product.category.display_order,
+                "description": product.description or "",
+                "variant_count": len(variants),
+                "total_stock": sum(variant["stock_quantity"] for variant in variants),
+                "variants": variants,
+            }
+        )
+    return payload
+
+
+def _build_product_variant_payload(product, variant):
+    return {
+        "id": variant.pk,
+        "product_id": product.pk,
+        "product_name": product.display_name,
+        "label": _build_variant_option_label(variant),
+        "snapshot_name": build_order_item_product_name(product, variant),
+        "color": variant.color,
+        "size": variant.size,
+        "stock_quantity": variant.stock_quantity,
+        "is_in_stock": variant.stock_quantity > 0,
+    }
+
+
+def _build_variant_option_label(variant):
+    parts = []
+    if variant.color:
+        parts.append(variant.color)
+    if variant.size:
+        parts.append(variant.size)
+    if not parts:
+        parts.append("Padrão")
+    if variant.stock_quantity > 0:
+        parts.append(f"{variant.stock_quantity} un.")
+    else:
+        parts.append("Esgotado")
+    return " · ".join(parts)
+
+
+def _get_active_variants(product):
+    variants = [variant for variant in product.variants.all() if variant.is_active]
+    return sorted(
+        variants,
+        key=lambda variant: (
+            COLOR_SORT_ORDER.get(variant.color, 999),
+            variant.color or "",
+            SIZE_SORT_ORDER.get(variant.size, 999),
+            variant.size or "",
+            variant.pk,
+        ),
+    )
 
 
 def parse_selected_products(raw_payload):
@@ -68,24 +173,90 @@ def parse_selected_products(raw_payload):
         if not isinstance(item, dict):
             continue
         try:
-            product_id = int(item.get("id", 0))
-            quantity = int(item.get("qty", 0))
+            variant_id = int(item.get("variant_id") or item.get("id") or 0)
+            quantity = int(item.get("qty") or item.get("quantity") or 0)
         except (ValueError, TypeError):
             continue
-        if product_id > 0 and quantity > 0:
-            result.append({"id": product_id, "qty": quantity})
+        if variant_id > 0 and 0 < quantity <= 99:
+            result.append({"variant_id": variant_id, "quantity": quantity})
     return result
+
+
+def resolve_selected_product_items(raw_items):
+    if not raw_items:
+        return []
+
+    quantities_by_variant = {}
+    ordered_variant_ids = []
+    for item in raw_items:
+        variant_id = int(item.get("variant_id") or 0)
+        quantity = int(item.get("quantity") or 0)
+        if variant_id <= 0 or quantity <= 0:
+            continue
+        if variant_id not in quantities_by_variant:
+            ordered_variant_ids.append(variant_id)
+            quantities_by_variant[variant_id] = 0
+        quantities_by_variant[variant_id] += quantity
+
+    if not ordered_variant_ids:
+        return []
+
+    variants_by_id = {
+        variant.pk: variant
+        for variant in ProductVariant.objects.select_related("product", "product__category")
+        .filter(
+            pk__in=ordered_variant_ids,
+            is_active=True,
+            product__is_active=True,
+            product__category__is_active=True,
+        )
+    }
+
+    selections = []
+    for variant_id in ordered_variant_ids:
+        variant = variants_by_id.get(variant_id)
+        if variant is None:
+            raise ValueError("Selecione apenas materiais válidos.")
+        quantity = quantities_by_variant[variant_id]
+        if quantity > variant.stock_quantity:
+            raise ValueError(
+                f"Estoque insuficiente para {build_order_item_product_name(variant.product, variant)}."
+            )
+        selections.append(
+            {
+                "variant_id": variant.pk,
+                "variant": variant,
+                "product": variant.product,
+                "quantity": quantity,
+            }
+        )
+    return selections
+
+
+def build_order_item_product_name(product, variant):
+    details = []
+    if variant.color:
+        details.append(f"{ORDER_ITEM_COLOR_PREFIX}{variant.color}")
+    if variant.size:
+        details.append(f"{ORDER_ITEM_SIZE_PREFIX}{variant.size}")
+    if not details:
+        return product.display_name
+    return f"{product.display_name} ({', '.join(details)})"
+
+
+def normalize_selected_product_items(selected_products):
+    if not selected_products:
+        return []
+    if selected_products and selected_products[0].get("variant") is not None:
+        return selected_products
+    return resolve_selected_product_items(selected_products)
 
 
 @transaction.atomic
 def create_product_only_order(person, cart_items):
-    if not cart_items:
+    selections = normalize_selected_product_items(cart_items)
+    if not selections:
         return None
-
-    product_ids = [item["product_id"] for item in cart_items]
-    products_by_id = {
-        p.pk: p for p in Product.objects.filter(pk__in=product_ids, is_active=True)
-    }
 
     from system.models.registration_order import OrderKind
 
@@ -98,20 +269,8 @@ def create_product_only_order(person, cart_items):
     )
 
     items_total = Decimal("0")
-    for item in cart_items:
-        product = products_by_id.get(item["product_id"])
-        if not product:
-            continue
-        qty = item["quantity"]
-        subtotal = product.unit_price * qty
-        RegistrationOrderItem.objects.create(
-            order=order,
-            product=product,
-            product_name=product.display_name,
-            quantity=qty,
-            unit_price=product.unit_price,
-            subtotal=subtotal,
-        )
+    for selection in selections:
+        subtotal = _create_product_order_item(order, selection)
         items_total += subtotal
 
     if items_total <= 0:
@@ -123,35 +282,48 @@ def create_product_only_order(person, cart_items):
     return order
 
 
-def get_registration_plan_multiplier(cleaned_data):
-    child_group_sets = []
-    profile = cleaned_data.get("registration_profile")
-    if profile == RegistrationProfile.GUARDIAN:
-        child_group_sets.append(cleaned_data.get("student_class_groups") or [])
-    if profile == RegistrationProfile.HOLDER and cleaned_data.get("include_dependent"):
-        child_group_sets.append(cleaned_data.get("dependent_class_groups") or [])
-    for dependent in cleaned_data.get("extra_dependents") or []:
-        child_group_sets.append(dependent.get("class_groups") or [])
+def _create_product_order_item(order, selection):
+    variant = selection["variant"]
+    product = selection["product"]
+    quantity = selection["quantity"]
+    subtotal = product.unit_price * quantity
+    RegistrationOrderItem.objects.create(
+        order=order,
+        product=product,
+        product_name=build_order_item_product_name(product, variant),
+        quantity=quantity,
+        unit_price=product.unit_price,
+        subtotal=subtotal,
+    )
+    return subtotal
 
-    for class_groups in child_group_sets:
-        audiences = {
-            class_group.class_category.audience
-            for class_group in class_groups
-            if class_group is not None and class_group.class_category_id
-        }
-        if {CategoryAudience.KIDS, CategoryAudience.JUVENILE}.issubset(audiences):
-            return 2
+
+def _count_group_members(cleaned_data):
+    """
+    Return number of participants for pricing calculations in family plans.
+    Includes holder + dependent (if present) + any extra dependents.
+    """
+    count = 1
+    if cleaned_data.get("dependent_name") or cleaned_data.get("dependent_cpf"):
+        count += 1
+    extras = cleaned_data.get("extra_dependents") or []
+    if isinstance(extras, list):
+        count += len(extras)
+    return max(count, 1)
+
+
+def get_registration_plan_multiplier(cleaned_data):
     return 1
 
 
 @transaction.atomic
 def create_registration_order(person, cleaned_data):
     plan_id = cleaned_data.get("selected_plan")
-    products_payload = parse_selected_products(
-        cleaned_data.get("selected_products_payload")
+    selected_products = normalize_selected_product_items(
+        cleaned_data.get("selected_products") or []
     )
 
-    if not plan_id and not products_payload:
+    if not plan_id and not selected_products:
         return None
 
     plan = None
@@ -159,7 +331,10 @@ def create_registration_order(person, cleaned_data):
     if plan_id:
         try:
             plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-            plan_price = plan.price * Decimal(get_registration_plan_multiplier(cleaned_data))
+            multiplier = 1
+            if getattr(plan, "is_family_plan", False):
+                multiplier = _count_group_members(cleaned_data)
+            plan_price = plan.price * Decimal(multiplier)
         except SubscriptionPlan.DoesNotExist:
             pass
 
@@ -171,27 +346,8 @@ def create_registration_order(person, cleaned_data):
     )
 
     items_total = Decimal("0")
-    if products_payload:
-        product_ids = [item["id"] for item in products_payload]
-        products_by_id = {
-            p.pk: p
-            for p in Product.objects.filter(pk__in=product_ids, is_active=True)
-        }
-        for item in products_payload:
-            product = products_by_id.get(item["id"])
-            if not product:
-                continue
-            qty = item["qty"]
-            subtotal = product.unit_price * qty
-            RegistrationOrderItem.objects.create(
-                order=order,
-                product=product,
-                product_name=product.display_name,
-                quantity=qty,
-                unit_price=product.unit_price,
-                subtotal=subtotal,
-            )
-            items_total += subtotal
+    for selection in selected_products:
+        items_total += _create_product_order_item(order, selection)
 
     order.total = plan_price + items_total
     order.save(update_fields=["total", "updated_at"])
@@ -200,3 +356,85 @@ def create_registration_order(person, cleaned_data):
         payment_provider=resolve_payment_provider_for_plan(plan),
     )
     return order
+
+
+@transaction.atomic
+def apply_order_variant_stock(order):
+    if order is None or _has_order_stock_applied(order):
+        return order
+
+    order_items = list(order.items.select_related("product"))
+    if not order_items:
+        return order
+
+    deductions = []
+    for item in order_items:
+        variant = resolve_order_item_variant(item, lock=True)
+        if variant is None:
+            raise ValueError(f"Variante do pedido não encontrada para '{item.product_name}'.")
+        if item.quantity > variant.stock_quantity:
+            raise ValueError(
+                f"Estoque insuficiente para {build_order_item_product_name(item.product, variant)}."
+            )
+        deductions.append((variant, item.quantity))
+
+    for variant, quantity in deductions:
+        variant.stock_quantity -= quantity
+        variant.save(update_fields=["stock_quantity", "updated_at"])
+
+    _mark_order_stock_applied(order)
+    return order
+
+
+def resolve_order_item_variant(order_item, *, lock=False):
+    product = order_item.product
+    if product is None:
+        return None
+
+    snapshot = _parse_order_item_variant_snapshot(order_item.product_name)
+    queryset = ProductVariant.objects.filter(product=product, is_active=True)
+    if lock:
+        queryset = queryset.select_for_update()
+    if snapshot["color"]:
+        queryset = queryset.filter(color=snapshot["color"])
+    if snapshot["size"]:
+        queryset = queryset.filter(size=snapshot["size"])
+
+    variants = list(queryset[:2])
+    if len(variants) == 1:
+        return variants[0]
+    if not snapshot["color"] and not snapshot["size"] and len(variants) == 1:
+        return variants[0]
+    return None
+
+
+def _parse_order_item_variant_snapshot(product_name):
+    match = re.search(r"\((?P<details>[^()]*)\)$", product_name or "")
+    if not match:
+        return {"color": "", "size": ""}
+
+    color = ""
+    size = ""
+    for raw_part in match.group("details").split(","):
+        part = raw_part.strip()
+        if part.startswith(ORDER_ITEM_COLOR_PREFIX):
+            color = part[len(ORDER_ITEM_COLOR_PREFIX) :]
+        elif part.startswith(ORDER_ITEM_SIZE_PREFIX):
+            size = part[len(ORDER_ITEM_SIZE_PREFIX) :]
+    return {"color": color, "size": size}
+
+
+def _has_order_stock_applied(order):
+    return ORDER_STOCK_APPLIED_MARKER in _get_order_note_lines(order)
+
+
+def _mark_order_stock_applied(order):
+    notes = _get_order_note_lines(order)
+    if ORDER_STOCK_APPLIED_MARKER not in notes:
+        notes.append(ORDER_STOCK_APPLIED_MARKER)
+        order.notes = "\n".join(notes)
+        order.save(update_fields=["notes", "updated_at"])
+
+
+def _get_order_note_lines(order):
+    return [line.strip() for line in (order.notes or "").splitlines() if line.strip()]

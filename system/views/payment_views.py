@@ -166,7 +166,7 @@ class DeferPaymentView(View):
             f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
             "liberada e pode pagar depois para ativar sua mensalidade.",
         )
-        return redirect("system:legacy-login-form")
+        return redirect("system:login")
 
 
 class RetryPendingOrderView(View):
@@ -197,7 +197,7 @@ class PaymentSuccessView(View):
             request,
             "Pagamento confirmado! Seu cadastro foi finalizado. Faça login para acessar o sistema.",
         )
-        return redirect("system:legacy-login-form")
+        return redirect("system:login")
 
 
 class PaymentCancelView(View):
@@ -206,7 +206,7 @@ class PaymentCancelView(View):
             request,
             "Pagamento cancelado. Seu cadastro foi registrado mas ainda não está ativo — refaça o pagamento para concluir.",
         )
-        return redirect("system:legacy-login-form")
+        return redirect("system:login")
 
 
 @method_decorator(csrf_exempt, name="dispatch")

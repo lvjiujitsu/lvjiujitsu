@@ -4,7 +4,7 @@
 {% block title %}Painel do aluno | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260414">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260425a">
 {% endblock %}
 
 {% block content %}
@@ -23,6 +23,7 @@
             </div>
         </div>
 
+        {% if billing_tabs %}
         <div class="billing-tabs {% if billing_tabs|length <= 1 %}billing-tabs--single{% endif %}">
             {% for tab in billing_tabs %}
                 <button class="billing-tab-btn {% if tab.is_active_tab %}billing-tab-btn--active{% endif %}"
@@ -83,6 +84,13 @@
                 {% endif %}
             {% else %}
                 <p class="billing-empty">{{ tab.person.full_name }} ainda não possui uma mensalidade ativa.</p>
+                <div class="billing-alert billing-alert--warning">
+                    Para começar, acesse o menu de planos e escolha a mensalidade ideal para você.
+                </div>
+                <div class="billing-actions-row">
+                    <a class="btn btn--primary" href="{% url 'system:plan-change-select' %}">Escolher plano</a>
+                    <a class="btn btn--outline" href="https://wa.me/5562999876471" target="_blank" rel="noopener noreferrer">Falar com a LV</a>
+                </div>
             {% endif %}
 
             {% if tab.pending_order %}
@@ -132,6 +140,16 @@
             {% endif %}
         </div>
         {% endfor %}
+        {% else %}
+            <p class="billing-empty">Você ainda não possui plano cadastrado.</p>
+            <div class="billing-alert billing-alert--warning">
+                Acesse o menu de planos para adquirir uma mensalidade ou alterar um plano existente.
+            </div>
+            <div class="billing-actions-row">
+                <a class="btn btn--primary" href="{% url 'system:plan-change-select' %}">Escolher plano</a>
+                <a class="btn btn--outline" href="https://wa.me/5562999876471" target="_blank" rel="noopener noreferrer">Falar com a LV</a>
+            </div>
+        {% endif %}
     </section>
 
     <section class="panel-card">
@@ -188,31 +206,30 @@
         {% endif %}
     </section>
 
-    <section class="panel-card dashboard-shortcuts">
+    <section class="panel-card">
         <div class="dashboard-section-heading">
             <div>
-                <p class="panel-eyebrow">Atalhos</p>
-                <h2>Acesso rápido</h2>
+                <p class="panel-eyebrow">Presença</p>
+                <h2>Histórico de aulas com check-in confirmado</h2>
             </div>
         </div>
 
-        <div class="dashboard-actions-grid">
-            <a class="dashboard-action-card" href="{% url 'system:student-schedule' %}">
-                <span class="dashboard-action-meta">Agenda</span>
-                <span class="dashboard-action-title">Cronograma</span>
-                <span class="dashboard-action-description">Calendário de aulas, feriados e cancelamentos.</span>
-            </a>
-            <a class="dashboard-action-card" href="{% url 'system:product-store' %}">
-                <span class="dashboard-action-meta">Loja</span>
-                <span class="dashboard-action-title">Materiais</span>
-                <span class="dashboard-action-description">Kimonos, faixas e acessórios — compre online.</span>
-            </a>
-            <a class="dashboard-action-card" href="{% url 'system:plan-catalog' %}">
-                <span class="dashboard-action-meta">Comercial</span>
-                <span class="dashboard-action-title">Planos</span>
-                <span class="dashboard-action-description">Mensalidades e pacotes disponíveis.</span>
-            </a>
-        </div>
+        {% if attendance_history %}
+            <div class="attendance-history-list">
+                {% for entry in attendance_history %}
+                    <article class="attendance-history-card">
+                        <div class="attendance-history-head">
+                            <strong>{{ entry.date|date:"d/m/Y" }} · {{ entry.start_time_label }}</strong>
+                            <span>{{ entry.group_name }}{% if entry.is_special %} (Aulão){% endif %}</span>
+                        </div>
+                        <p class="attendance-history-meta">{{ entry.category_name }}{% if entry.teacher_name %} · Prof. {{ entry.teacher_name }}{% endif %}</p>
+                        <p class="attendance-history-attendees">Check-in confirmado em {{ entry.checked_in_at|date:"d/m/Y H:i" }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted-text">Você ainda não possui presença confirmada em aulas.</p>
+        {% endif %}
     </section>
 </section>
 {% endblock %}

@@ -12,6 +12,7 @@ from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.asaas_payroll import mark_payout_failed, mark_payout_paid
 from system.services.financial_transactions import apply_order_financials
 from system.services.membership import activate_membership_from_paid_order
+from system.services.registration_checkout import apply_order_variant_stock
 
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,10 @@ def _handle_payment_event(event_type, event):
         return None
 
     if event_type in PAYMENT_RECEIVED_EVENTS:
+        was_paid = order.payment_status in (
+            PaymentStatus.PAID,
+            PaymentStatus.EXEMPTED,
+        )
         if order.payment_status not in (
             PaymentStatus.PAID,
             PaymentStatus.EXEMPTED,
@@ -133,6 +138,8 @@ def _handle_payment_event(event_type, event):
             order.save(
                 update_fields=["payment_status", "paid_at", "updated_at"]
             )
+        if not was_paid:
+            apply_order_variant_stock(order)
         apply_order_financials(
             order,
             financial_transaction_id=asaas_payment_id,

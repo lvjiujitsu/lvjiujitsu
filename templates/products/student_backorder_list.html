@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Meus pré-pedidos | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260427a">
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="catalog-page-header">
+        <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Loja</p>
+            <h1>Meus pré-pedidos</h1>
+            <p>Acompanhe pré-pedidos pendentes e confirme reservas disponíveis.</p>
+        </div>
+    </div>
+
+    <section class="panel-card">
+        {% if backorders %}
+            <div class="catalog-stack">
+                {% for backorder in backorders %}
+                    <article class="record-card record-card-catalog">
+                        <div class="record-card-head">
+                            <div>
+                                <span class="record-card-name">{{ backorder.variant.product.display_name }}</span>
+                                <div class="record-card-subtitle">
+                                    {% if backorder.variant.color %}{{ backorder.variant.color }}{% endif %}
+                                    {% if backorder.variant.size %} · {{ backorder.variant.size }}{% endif %}
+                                    {% if backorder.variant.product.unit_price %} · R$ {{ backorder.variant.product.unit_price }}{% endif %}
+                                </div>
+                            </div>
+                            <span class="record-card-badge">{{ backorder.get_status_display }}</span>
+                        </div>
+
+                        {% if backorder.is_ready %}
+                            <div class="billing-alert billing-alert--success">
+                                Produto disponível! Confirme até {{ backorder.expires_at|date:"d/m/Y H:i" }}.
+                            </div>
+                            <div class="billing-actions-row">
+                                <form method="post" action="{% url 'system:student-backorder-confirm' backorder.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn--primary">Confirmar e pagar</button>
+                                </form>
+                                <form method="post" action="{% url 'system:student-backorder-cancel' backorder.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn--outline">Não quero mais</button>
+                                </form>
+                            </div>
+                        {% elif backorder.status == "pending" %}
+                            <div class="billing-alert billing-alert--warning">
+                                Aguardando reposição de estoque. Avisaremos por aqui quando chegar.
+                            </div>
+                            <div class="billing-actions-row">
+                                <form method="post" action="{% url 'system:student-backorder-cancel' backorder.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn--outline">Cancelar pré-pedido</button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <div class="billing-empty">
+                                {% if backorder.confirmed_at %}Confirmado em {{ backorder.confirmed_at|date:"d/m/Y" }}.
+                                {% elif backorder.canceled_at %}Cancelado em {{ backorder.canceled_at|date:"d/m/Y" }}.
+                                {% else %}Status: {{ backorder.get_status_display }}.{% endif %}
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="billing-empty">Você ainda não fez nenhum pré-pedido. Entre na <a href="{% url 'system:product-store' %}">loja</a> para ver os materiais disponíveis.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

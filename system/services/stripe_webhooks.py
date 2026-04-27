@@ -21,6 +21,7 @@ from system.services.membership import (
     upsert_membership_from_stripe_subscription,
 )
 from system.services.financial_transactions import apply_order_financials
+from system.services.registration_checkout import apply_order_variant_stock
 from system.services.stripe_checkout import resolve_order_from_session
 
 
@@ -102,6 +103,7 @@ def _handle_checkout_session_completed(event):
     mode = session["mode"] if "mode" in session else "payment"
 
     if mode == "subscription":
+        was_paid = order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED)
         stripe_subscription = None
         subscription_id = session["subscription"] if "subscription" in session else None
         if subscription_id:
@@ -126,11 +128,14 @@ def _handle_checkout_session_completed(event):
                 "updated_at",
             ]
         )
+        if not was_paid:
+            apply_order_variant_stock(order)
         membership = activate_membership_from_session(
             order, session, stripe_subscription=stripe_subscription
         )
         return order, membership
 
+    was_paid = order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED)
     order.payment_status = PaymentStatus.PAID
     order.paid_at = timezone.now()
     order.stripe_session_id = session["id"]
@@ -145,6 +150,8 @@ def _handle_checkout_session_completed(event):
             "updated_at",
         ]
     )
+    if not was_paid:
+        apply_order_variant_stock(order)
     apply_order_financials(
         order,
         financial_transaction_id=order.stripe_payment_intent_id or session["id"],

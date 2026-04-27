@@ -7,7 +7,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from system.forms.class_forms import SpecialClassForm
-from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
+from system.constants import INSTRUCTOR_PERSON_TYPE_CODES, STUDENT_PORTAL_PERSON_TYPE_CODES
 from system.models import SpecialClass
 from system.services.class_calendar import (
     create_special_class,
@@ -62,7 +62,7 @@ class AdminToggleSessionView(AdministrativeRequiredMixin, View):
 
 
 class StudentScheduleView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES + INSTRUCTOR_PERSON_TYPE_CODES
     template_name = "calendar/student_schedule.html"
 
     def get_context_data(self, **kwargs):

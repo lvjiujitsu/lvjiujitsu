@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fila de pré-pedidos | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260427a">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="catalog-page-header">
+        <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Loja</p>
+            <h1>Fila de pré-pedidos</h1>
+            <p>Pré-pedidos ativos por variante. Reposições de estoque promovem automaticamente.</p>
+        </div>
+    </div>
+
+    <section class="panel-card">
+        {% if backorders %}
+            <div class="billing-history">
+                <table class="billing-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Aluno</th>
+                            <th>Produto</th>
+                            <th>Variante</th>
+                            <th>Status</th>
+                            <th>Criado em</th>
+                            <th>Expira em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for backorder in backorders %}
+                            <tr>
+                                <td>{{ backorder.pk }}</td>
+                                <td>{{ backorder.person.full_name }}</td>
+                                <td>{{ backorder.variant.product.display_name }}</td>
+                                <td>
+                                    {% if backorder.variant.color %}{{ backorder.variant.color }}{% endif %}
+                                    {% if backorder.variant.size %} · {{ backorder.variant.size }}{% endif %}
+                                </td>
+                                <td>{{ backorder.get_status_display }}</td>
+                                <td>{{ backorder.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ backorder.expires_at|date:"d/m/Y H:i"|default:"—" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhum pré-pedido ativo no momento.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

@@ -7,39 +7,79 @@
     <div class="panel-card">
         <p class="panel-eyebrow">Área do professor</p>
         <h1>Painel do professor</h1>
-        <p>Área inicial reservada para docentes vinculados à academia.</p>
+        <p>{{ today_weekday }}, {{ today_date }}</p>
+        <div style="margin-top:0.75rem">
+            <a class="btn btn--primary" href="{% url 'system:teacher-financial' %}">Meu financeiro</a>
+        </div>
     </div>
 
-    <section class="panel-card dashboard-shortcuts">
+    <section class="panel-card">
         <div class="dashboard-section-heading">
             <div>
-                <p class="panel-eyebrow">Consultas</p>
-                <h2>Informações da academia</h2>
+                <p class="panel-eyebrow">Hoje</p>
+                <h2>Aulas do dia</h2>
+            </div>
+            <a class="ghost-button" href="{% url 'system:student-schedule' %}">Ver cronograma</a>
+        </div>
+
+        {% if today_classes %}
+            <div class="today-class-list">
+                {% for entry in today_classes %}
+                    <div class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %} {% if entry.is_special %}today-class-card--special{% endif %}">
+                        <div class="today-class-time">
+                            <span class="today-class-hour">{{ entry.start_time }}</span>
+                            <span class="today-class-duration">{{ entry.duration_minutes }} min</span>
+                        </div>
+                        <div class="today-class-info">
+                            <span class="today-class-name">{{ entry.group_name }}{% if entry.is_special %} <span class="today-class-special-tag">Aulão</span>{% endif %}</span>
+                            <span class="today-class-meta">{{ entry.category_name }}</span>
+                            {% if entry.is_cancelled %}
+                                <span class="today-class-cancelled-badge">Cancelada{% if entry.cancellation_reason %} — {{ entry.cancellation_reason }}{% endif %}</span>
+                            {% endif %}
+                            <div class="today-class-attendance">
+                                <strong>{{ entry.checked_count }} check-in(s)</strong>
+                                {% if entry.checked_students %}
+                                    <span>{{ entry.checked_students|join:", " }}</span>
+                                {% else %}
+                                    <span>Nenhum aluno com presença confirmada ainda.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="today-class-empty">
+                <p>Nenhuma aula vinculada para hoje.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="panel-card">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Presença</p>
+                <h2>Histórico de check-ins</h2>
             </div>
         </div>
 
-        <div class="dashboard-actions-grid">
-            <a class="dashboard-action-card" href="{% url 'system:info' %}">
-                <span class="dashboard-action-meta">Consulta</span>
-                <span class="dashboard-action-title">Turmas e Horários</span>
-                <span class="dashboard-action-description">Grade de turmas, horários e professores.</span>
-            </a>
-            <a class="dashboard-action-card" href="{% url 'system:product-catalog' %}">
-                <span class="dashboard-action-meta">Estoque</span>
-                <span class="dashboard-action-title">Materiais</span>
-                <span class="dashboard-action-description">Kimonos, faixas e acessórios disponíveis.</span>
-            </a>
-            <a class="dashboard-action-card" href="{% url 'system:plan-catalog' %}">
-                <span class="dashboard-action-meta">Comercial</span>
-                <span class="dashboard-action-title">Planos</span>
-                <span class="dashboard-action-description">Mensalidades e pacotes disponíveis.</span>
-            </a>
-            <a class="dashboard-action-card" href="{% url 'system:teacher-financial' %}">
-                <span class="dashboard-action-meta">Financeiro</span>
-                <span class="dashboard-action-title">Meu financeiro</span>
-                <span class="dashboard-action-description">Saldo, histórico e solicitação de saque antecipado.</span>
-            </a>
-        </div>
+        {% if attendance_history %}
+            <div class="attendance-history-list">
+                {% for entry in attendance_history %}
+                    <article class="attendance-history-card">
+                        <div class="attendance-history-head">
+                            <strong>{{ entry.date|date:"d/m/Y" }} · {{ entry.start_time_label }}</strong>
+                            <span>{{ entry.group_name }}{% if entry.is_special %} (Aulão){% endif %}</span>
+                        </div>
+                        <p class="attendance-history-meta">{{ entry.category_name }} · {{ entry.attendees|length }} presença(s)</p>
+                        <p class="attendance-history-attendees">{{ entry.attendees|join:", " }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted-text">Ainda não há histórico de presença para suas aulas.</p>
+        {% endif %}
     </section>
+
 </section>
 {% endblock %}

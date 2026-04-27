@@ -16,6 +16,16 @@ class PlanPaymentMethod(models.TextChoices):
     CREDIT_CARD = "credit_card", "Cartão de crédito"
 
 
+class PlanAudience(models.TextChoices):
+    ADULT = "adult", "Adulto"
+    KIDS_JUVENILE = "kids_juvenile", "Kids/Juvenil"
+
+
+class PlanWeeklyFrequency(models.IntegerChoices):
+    TWICE = 2, "2x por semana"
+    FIVE_TIMES = 5, "5x por semana"
+
+
 STRIPE_INTERVAL_BY_CYCLE = {
     BillingCycle.MONTHLY: ("month", 1),
     BillingCycle.QUARTERLY: ("month", 3),
@@ -23,10 +33,28 @@ STRIPE_INTERVAL_BY_CYCLE = {
     BillingCycle.ANNUAL: ("year", 1),
 }
 
+CYCLE_MONTHS = {
+    BillingCycle.MONTHLY: 1,
+    BillingCycle.QUARTERLY: 3,
+    BillingCycle.SEMIANNUAL: 6,
+    BillingCycle.ANNUAL: 12,
+}
+
 
 class SubscriptionPlan(TimeStampedModel):
-    code = models.CharField("Código", max_length=60, unique=True)
+    code = models.CharField("Código", max_length=80, unique=True)
     display_name = models.CharField("Nome", max_length=200)
+    audience = models.CharField(
+        "Público",
+        max_length=20,
+        choices=PlanAudience.choices,
+        default=PlanAudience.ADULT,
+    )
+    weekly_frequency = models.PositiveSmallIntegerField(
+        "Frequência semanal",
+        choices=PlanWeeklyFrequency.choices,
+        default=PlanWeeklyFrequency.FIVE_TIMES,
+    )
     billing_cycle = models.CharField(
         "Ciclo de cobrança",
         max_length=20,
@@ -54,6 +82,17 @@ class SubscriptionPlan(TimeStampedModel):
         default=PlanPaymentMethod.CREDIT_CARD,
     )
     is_family_plan = models.BooleanField("Plano familiar", default=False)
+    teacher_commission_percentage = models.DecimalField(
+        "Repasse do professor (%)",
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    requires_special_authorization = models.BooleanField(
+        "Exige autorização especial",
+        default=False,
+    )
     description = models.TextField("Descrição", blank=True, default="")
     display_order = models.PositiveSmallIntegerField("Ordem", default=0)
     is_active = models.BooleanField("Ativo", default=True)

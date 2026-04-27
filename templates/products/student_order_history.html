@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Meus pedidos | LV JIU JITSU{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260427a">
+{% endblock %}
+
+{% block content %}
+<section class="panel-grid">
+    <div class="catalog-page-header">
+        <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Loja</p>
+            <h1>Histórico de pedidos</h1>
+            <p>Pedidos pagos e isentos vinculados ao seu cadastro.</p>
+        </div>
+    </div>
+
+    <section class="panel-card">
+        {% if orders %}
+            <div class="billing-history">
+                <table class="billing-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Pago em</th>
+                            <th>Itens</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            <tr>
+                                <td>{{ order.pk }}</td>
+                                <td>{{ order.paid_at|date:"d/m/Y"|default:"—" }}</td>
+                                <td>
+                                    {% for item in order.items.all %}
+                                        {{ item.product_name }} ({{ item.quantity }}){% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        {% if order.plan %}{{ order.plan.display_name }}{% else %}—{% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>R$ {{ order.total }}</td>
+                                <td>{{ order.get_payment_status_display }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Você ainda não tem pedidos pagos no histórico.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

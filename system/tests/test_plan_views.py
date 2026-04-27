@@ -87,29 +87,12 @@ class PlanViewTestCase(TestCase):
         )
         self.assertFalse(SubscriptionPlan.objects.filter(pk=self.plan.pk).exists())
 
-    def test_plan_catalog_public_page_loads(self):
-        response = self.client.get(reverse("system:plan-catalog"))
+    def test_root_landing_serves_login(self):
+        response = self.client.get(reverse("system:root"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Planos disponíveis")
-        self.assertContains(response, "Plano Mensal Teste")
-
-    def test_plan_catalog_hides_inactive(self):
-        self.plan.is_active = False
-        self.plan.save()
-        response = self.client.get(reverse("system:plan-catalog"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Plano Mensal Teste")
-
-    def test_home_page_has_planos_button(self):
-        response = self.client.get(reverse("system:legacy-home"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Planos")
-
-    def test_info_page_does_not_show_plans(self):
-        response = self.client.get(reverse("system:info"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Plano Mensal Teste")
-        self.assertNotContains(response, "Planos disponíveis")
+        self.assertContains(response, "Entrar")
+        self.assertContains(response, "Criar conta")
+        self.assertContains(response, "Falar com a LV")
 
     def test_update_redirects_to_detail(self):
         self._login_as_admin()
@@ -118,8 +101,11 @@ class PlanViewTestCase(TestCase):
             {
                 "code": "mensal-test",
                 "display_name": "Plano Editado",
+                "audience": "adult",
+                "weekly_frequency": "5",
                 "billing_cycle": "monthly",
                 "price": "250.00",
+                "teacher_commission_percentage": "0",
                 "display_order": "0",
                 "is_active": "on",
             },

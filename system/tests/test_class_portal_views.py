@@ -161,31 +161,6 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Cadastre ao menos um horário ativo para a turma ativa.")
         self.assertFalse(ClassGroup.objects.filter(code="adult-without-schedule").exists())
 
-    def test_public_info_page_reads_catalog_dynamically(self):
-        seed_class_catalog()
-
-        response = self.client.get(reverse("system:info"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Turmas ativas")
-        self.assertContains(response, "Adulto")
-        self.assertContains(response, "Jiu Jitsu - Adulto")
-        self.assertContains(response, "13 horários")
-        self.assertContains(response, "3 professores")
-
-    def test_public_info_page_exposes_dropdown_with_schedule_and_teaching_team(self):
-        seed_class_catalog()
-
-        response = self.client.get(reverse("system:info"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Ver horários e professores")
-        self.assertContains(response, "Equipe docente")
-        self.assertContains(response, "Segunda-feira")
-        self.assertContains(response, "06:30")
-        self.assertContains(response, "Professor principal")
-        self.assertContains(response, "Jiu Jitsu - Adulto")
-
     def test_class_group_list_groups_logical_classes_once(self):
         seed_class_catalog()
         self._login_as_technical_admin()

@@ -141,10 +141,22 @@ def _validate_martial_background(data, step_key, errors):
     prefix = STEP_PREFIX.get(step_key)
     if step_key not in ("holder_medical", "dependent_medical", "student_medical"):
         return
+    has_martial_art = _normalize_martial_art_answer(
+        _get(data, f"{prefix}_has_martial_art"),
+        _get(data, f"{prefix}_martial_art"),
+    )
     martial_art = _get(data, f"{prefix}_martial_art")
     graduation = _get(data, f"{prefix}_martial_art_graduation")
     belt = _get(data, f"{prefix}_jiu_jitsu_belt")
-    if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
+    if has_martial_art != "yes":
+        return
+    if not martial_art:
+        errors.setdefault(
+            f"{prefix}_martial_art",
+            "Selecione a arte marcial praticada.",
+        )
+        return
+    if martial_art != MartialArt.JIU_JITSU and not graduation:
         errors.setdefault(
             f"{prefix}_martial_art_graduation",
             "Informe a graduação/nível na arte marcial.",
@@ -196,3 +208,9 @@ def _getlist(data, key):
         return data.getlist(key)
     value = data.get(key, [])
     return value if isinstance(value, list) else [value]
+
+
+def _normalize_martial_art_answer(answer, martial_art):
+    if answer:
+        return answer
+    return "yes" if martial_art else ""

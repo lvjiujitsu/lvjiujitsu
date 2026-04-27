@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
     {% include "includes/_favicon.html" %}
-    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260413e">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260427a">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -18,13 +18,14 @@
                         <span></span><span></span><span></span>
                     </button>
                 {% endif %}
-                <a
-                    class="topbar-back-link"
-                    href="{% url 'system:root' %}"
-                    onclick="if (window.history.length > 1) { window.history.back(); return false; }"
-                >
-                    Voltar
-                </a>
+                {% if show_back_button|default_if_none:True %}
+                    <a
+                        class="topbar-back-link"
+                        href="{% if back_url %}{{ back_url }}{% elif request.portal_account or request.portal_is_technical_admin %}{% url 'system:dashboard-redirect' %}{% else %}{% url 'system:root' %}{% endif %}"
+                    >
+                        Voltar
+                    </a>
+                {% endif %}
                 <a class="brand" href="{% url 'system:root' %}">
                     <img src="{% static 'system/img/logo-lv-bjj-vetorizada.png' %}" alt="LV BJJ" width="40" height="40">
                     <b>LV JIU JITSU</b>
@@ -44,6 +45,15 @@
                 </div>
                 <div class="drawer-nav">
                     <a class="drawer-item" href="{% url 'system:dashboard-redirect' %}">Início</a>
+                    <div class="drawer-sep">Loja</div>
+                    <a class="drawer-item" href="{% url 'system:product-store' %}">Loja</a>
+                    <a class="drawer-item" href="{% url 'system:student-backorders' %}">
+                        Meus pré-pedidos
+                        {% if pending_backorder_count %}
+                            <span class="drawer-badge" aria-label="{{ pending_backorder_count }} disponíveis">{{ pending_backorder_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a class="drawer-item" href="{% url 'system:student-order-history' %}">Histórico</a>
                     {% if request.portal_is_administrative or request.portal_is_technical_admin %}
                         <div class="drawer-sep">Gestão</div>
                         <a class="drawer-item" href="{% url 'system:person-list' %}">Pessoas</a>
@@ -52,6 +62,7 @@
                         <a class="drawer-item" href="{% url 'system:class-group-list' %}">Turmas</a>
                         <a class="drawer-item" href="{% url 'system:class-schedule-list' %}">Horários</a>
                         <a class="drawer-item" href="{% url 'system:product-list' %}">Materiais</a>
+                        <a class="drawer-item" href="{% url 'system:admin-backorder-queue' %}">Pré-pedidos</a>
                         <a class="drawer-item" href="{% url 'system:plan-list' %}">Planos</a>
                         <a class="drawer-item" href="{% url 'system:admin-calendar' %}">Cronograma</a>
                         <div class="drawer-sep">Financeiro</div>

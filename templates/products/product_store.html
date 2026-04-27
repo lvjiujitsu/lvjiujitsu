@@ -4,8 +4,8 @@
 {% block title %}Loja | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260418">
-<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260409">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260427a">
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 {% endblock %}
 
 {% block content %}
@@ -14,113 +14,70 @@
         <p class="panel-eyebrow">Loja</p>
         <h1>Materiais</h1>
         <p>Kimonos, faixas, rashguards e acessórios.</p>
+        <div class="store-quick-links">
+            <a class="text-link" href="{% url 'system:student-backorders' %}">Meus pré-pedidos</a>
+            <span aria-hidden="true">·</span>
+            <a class="text-link" href="{% url 'system:student-order-history' %}">Histórico</a>
+        </div>
     </div>
 
     <section class="panel-card">
         {% if products %}
-            <div class="record-list info-record-list">
-                {% for product in products %}
-                    <article class="record-card record-card-catalog" data-product-id="{{ product.pk }}" data-product-price="{{ product.unit_price }}">
-                        <div class="record-card-head">
-                            <div>
-                                <span class="record-card-name">{{ product.display_name }}</span>
-                                <div class="record-card-subtitle">{{ product.category }} · R$ {{ product.unit_price }}</div>
-                            </div>
-                            {% if product.total_stock > 0 %}
-                                <div class="store-product-qty" data-qty-control>
-                                    <button type="button" data-qty-minus>-</button>
-                                    <span data-qty-value>0</span>
-                                    <button type="button" data-qty-plus>+</button>
-                                </div>
-                            {% else %}
-                                <span class="store-product-badge--out">Esgotado</span>
-                            {% endif %}
-                        </div>
-                        {% if product.description %}
-                            <div class="record-card-row">
-                                <span class="record-card-val">{{ product.description }}</span>
-                            </div>
-                        {% endif %}
-                    </article>
-                {% endfor %}
-            </div>
+            <div class="record-list info-record-list" data-store-product-list></div>
+            <div data-store-cart-preview></div>
         {% else %}
             <p class="billing-empty">Nenhum material disponível no momento.</p>
         {% endif %}
     </section>
 
+    {% if out_of_stock_variants %}
+        <section class="panel-card">
+            <h2 class="checkout-section-title">Em falta — pedir aviso quando chegar</h2>
+            <p class="checkout-section-description">Estes materiais estão sem estoque. Avisaremos pelo portal quando chegarem; quem pediu primeiro tem prioridade.</p>
+            <div class="record-list info-record-list">
+                {% for row in out_of_stock_variants %}
+                    <article class="record-card record-card-catalog">
+                        <div class="record-card-head">
+                            <div>
+                                <span class="record-card-name">{{ row.variant.product.display_name }}</span>
+                                <div class="record-card-subtitle">
+                                    {% if row.variant.color %}{{ row.variant.color }}{% endif %}
+                                    {% if row.variant.size %} · {{ row.variant.size }}{% endif %}
+                                    · R$ {{ row.variant.product.unit_price }}
+                                </div>
+                            </div>
+                            <span class="record-card-badge">Esgotado</span>
+                        </div>
+                        {% if row.already_requested %}
+                            <p class="billing-empty">Você já está na fila para este item.</p>
+                        {% else %}
+                            <form method="post" action="{% url 'system:product-backorder-create' %}" class="billing-actions-row">
+                                {% csrf_token %}
+                                <input type="hidden" name="variant_id" value="{{ row.variant.pk }}">
+                                <button type="submit" class="btn btn--outline">Avise-me quando chegar</button>
+                            </form>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
     <form method="post" action="{% url 'system:product-store-checkout' %}" id="store-form">
         {% csrf_token %}
         <input type="hidden" name="cart_payload" id="cart-payload" value="[]">
         <div class="store-cart-bar store-cart-bar--empty" id="cart-bar">
-            <span id="cart-summary">0 itens · R$ 0,00</span>
-            <button type="submit" class="btn btn--primary">Finalizar compra</button>
+            <div class="store-cart-bar-copy">
+                <span id="cart-summary">0 itens · R$ 0,00</span>
+                <span class="store-cart-bar-caption" id="cart-caption">Selecione a categoria, escolha cor e tamanho e adicione ao carrinho.</span>
+            </div>
+            <button type="submit" class="btn btn--primary" id="store-submit" disabled>Finalizar compra</button>
         </div>
     </form>
+    <script id="product-store-catalog" type="application/json">{{ product_catalog_json|safe }}</script>
 </section>
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-(function() {
-  var STORAGE_KEY = 'lv_store_cart';
-  var cart = {};
-
-  try {
-    var saved = sessionStorage.getItem(STORAGE_KEY);
-    if (saved) cart = JSON.parse(saved);
-  } catch(e) {}
-
-  function persist() {
-    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cart)); } catch(e) {}
-  }
-
-  function updateUI() {
-    var total = 0, count = 0;
-    document.querySelectorAll('[data-product-id]').forEach(function(card) {
-      var id = card.dataset.productId;
-      var qty = cart[id] || 0;
-      var display = card.querySelector('[data-qty-value]');
-      if (display) display.textContent = qty;
-      total += qty * parseFloat(card.dataset.productPrice || 0);
-      count += qty;
-    });
-    var bar = document.getElementById('cart-bar');
-    var summary = document.getElementById('cart-summary');
-    var payload = document.getElementById('cart-payload');
-    if (count > 0) {
-      bar.classList.remove('store-cart-bar--empty');
-      summary.textContent = count + ' ' + (count === 1 ? 'item' : 'itens') + ' \u00b7 R$ ' + total.toFixed(2).replace('.', ',');
-    } else {
-      bar.classList.add('store-cart-bar--empty');
-    }
-    var items = [];
-    for (var pid in cart) {
-      if (cart[pid] > 0) items.push({id: parseInt(pid), qty: cart[pid]});
-    }
-    payload.value = JSON.stringify(items);
-  }
-
-  document.querySelectorAll('[data-product-id]').forEach(function(card) {
-    var id = card.dataset.productId;
-    var plus = card.querySelector('[data-qty-plus]');
-    var minus = card.querySelector('[data-qty-minus]');
-    if (plus) plus.addEventListener('click', function() {
-      cart[id] = (cart[id] || 0) + 1;
-      persist(); updateUI();
-    });
-    if (minus) minus.addEventListener('click', function() {
-      cart[id] = Math.max(0, (cart[id] || 0) - 1);
-      if (cart[id] === 0) delete cart[id];
-      persist(); updateUI();
-    });
-  });
-
-  updateUI();
-
-  document.getElementById('store-form').addEventListener('submit', function() {
-    try { sessionStorage.removeItem(STORAGE_KEY); } catch(e) {}
-  });
-})();
-</script>
+<script src="{% static 'system/js/products/product-store.js' %}?v=20260421a"></script>
 {% endblock %}

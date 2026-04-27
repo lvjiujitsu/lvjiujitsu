@@ -1,4 +1,5 @@
 from datetime import date, time
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import transaction
@@ -17,7 +18,14 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
-from system.models.plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
+from system.models.plan import (
+    CYCLE_MONTHS,
+    BillingCycle,
+    PlanAudience,
+    PlanPaymentMethod,
+    PlanWeeklyFrequency,
+    SubscriptionPlan,
+)
 from system.models.product import Product, ProductCategory, ProductVariant
 from system.constants import PersonTypeCode
 from system.services.registration import ensure_default_person_types, sync_person_class_enrollments
@@ -585,22 +593,46 @@ PRODUCT_CATEGORY_DEFINITIONS = (
     {"code": "patches", "display_name": "Patches", "display_order": 4},
 )
 
-BELT_COLORS = (
-    "Branca", "Cinza", "Amarela", "Laranja", "Verde",
-    "Azul", "Roxa", "Marrom", "Preta",
+BELT_COLORS_ADULT = (
+    "Branca",
+    "Azul",
+    "Roxa",
+    "Marrom",
+    "Preta",
 )
+BELT_COLORS_KIDS = (
+    "Branca",
+    "Cinza",
+    "Amarela",
+    "Laranja",
+    "Verde",
+)
+GI_COLORS = ("Branco", "Azul", "Preto")
 
-SIZES_ADULT_MALE = ("A0", "A1", "A2", "A3", "A4", "A5")
-SIZES_ADULT_FEMALE = ("F1", "F2", "F3", "F4")
-SIZES_KIDS = ("M0", "M1", "M2", "M3", "M4")
-SIZES_RASHGUARD = ("PP", "P", "M", "G", "GG", "XGG")
+SIZES_BELT_ADULT = ("A1", "A2", "A3", "A4")
+SIZES_BELT_KIDS = ("M1", "M2", "M3")
+SIZES_GI_ADULT = ("A1", "A2", "A3", "A4")
+SIZES_GI_KIDS = ("M1", "M2", "M3")
+SIZES_RASHGUARD = ("PP", "P", "M", "G", "GG")
+
+LEGACY_SEED_PRODUCT_SKUS = {
+    "gi-trad-white-fem",
+    "gi-trad-black-fem",
+    "gi-comp-black-red",
+    "gi-comp-black-red-fem",
+    "gi-comp-black-red-kids",
+}
 
 
-def _gi_variants(color, sizes, stock=3):
-    return [{"color": color, "size": s, "stock": stock} for s in sizes]
+def _variant_matrix(colors, sizes, stock=2):
+    return [
+        {"color": color, "size": size, "stock": stock}
+        for color in colors
+        for size in sizes
+    ]
 
 
-def _rash_variants(color, stock=5):
+def _rash_variants(color, stock=2):
     return [{"color": color, "size": s, "stock": stock} for s in SIZES_RASHGUARD]
 
 
@@ -610,71 +642,34 @@ PRODUCT_DEFINITIONS = (
         "display_name": "Faixa LV",
         "category": "belts",
         "unit_price": "75.00",
-        "description": "Faixa oficial LV Jiu Jitsu. Disponível em todas as cores de graduação.",
-        "variants": [{"color": c, "size": "", "stock": 5} for c in BELT_COLORS],
+        "description": "Faixa oficial LV Jiu Jitsu com graduação IBJJF: adulto A1-A4 e infantil M1-M3.",
+        "variants": (
+            _variant_matrix(BELT_COLORS_ADULT, SIZES_BELT_ADULT)
+            + _variant_matrix(BELT_COLORS_KIDS, SIZES_BELT_KIDS)
+        ),
     },
     {
-        "sku": "gi-premium-comp",
-        "display_name": "Kimono Premium Competition LV",
-        "category": "kimonos",
-        "unit_price": "520.00",
-        "description": "Kimono premium de competição LV. Tecido leve e resistente, corte masculino.",
-        "variants": _gi_variants("Preto", SIZES_ADULT_MALE),
-    },
-    {
-        "sku": "gi-trad-white",
-        "display_name": "Kimono Tradicional Trançado LV Branco",
+        "sku": "gi-lv-adulto",
+        "display_name": "Kimono LV Tradicional Adulto",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono tradicional trançado branco masculino. Tamanhos IBJJF A0–A5.",
-        "variants": _gi_variants("Branco", SIZES_ADULT_MALE),
+        "description": "Kimono LV adulto nas cores tradicionais Branco, Azul e Preto, com tamanhos A1 a A4.",
+        "variants": _variant_matrix(GI_COLORS, SIZES_GI_ADULT),
     },
     {
-        "sku": "gi-trad-white-fem",
-        "display_name": "Kimono Tradicional Trançado LV Branco Feminino",
+        "sku": "gi-lv-infantil",
+        "display_name": "Kimono LV Tradicional Infantil",
         "category": "kimonos",
         "unit_price": "480.00",
-        "description": "Kimono tradicional trançado branco feminino. Tamanhos IBJJF F1–F4.",
-        "variants": _gi_variants("Branco", SIZES_ADULT_FEMALE),
-    },
-    {
-        "sku": "gi-trad-black-fem",
-        "display_name": "Kimono Tradicional Trançado LV Preto Feminino",
-        "category": "kimonos",
-        "unit_price": "480.00",
-        "description": "Kimono tradicional trançado preto feminino. Tamanhos IBJJF F1–F4.",
-        "variants": _gi_variants("Preto", SIZES_ADULT_FEMALE),
-    },
-    {
-        "sku": "gi-comp-black-red",
-        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho",
-        "category": "kimonos",
-        "unit_price": "480.00",
-        "description": "Kimono trançado de competição preto com detalhes em vermelho. Tamanhos IBJJF A0–A5.",
-        "variants": _gi_variants("Preto c/ Vermelho", SIZES_ADULT_MALE),
-    },
-    {
-        "sku": "gi-comp-black-red-fem",
-        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Feminino",
-        "category": "kimonos",
-        "unit_price": "480.00",
-        "description": "Kimono trançado de competição preto com vermelho feminino. Tamanhos IBJJF F1–F4.",
-        "variants": _gi_variants("Preto c/ Vermelho", SIZES_ADULT_FEMALE),
-    },
-    {
-        "sku": "gi-comp-black-red-kids",
-        "display_name": "Kimono Trançado Competition LV Preto c/ Vermelho Infantil",
-        "category": "kimonos",
-        "unit_price": "450.00",
-        "description": "Kimono trançado de competição infantil preto com vermelho. Tamanhos IBJJF M0–M4.",
-        "variants": _gi_variants("Preto c/ Vermelho", SIZES_KIDS),
+        "description": "Kimono LV infantil nas cores tradicionais Branco, Azul e Preto, com tamanhos M1 a M3.",
+        "variants": _variant_matrix(GI_COLORS, SIZES_GI_KIDS),
     },
     {
         "sku": "rash-lv",
         "display_name": "Rash Guard LV",
         "category": "rashguards",
         "unit_price": "150.00",
-        "description": "Rash guard oficial LV Jiu Jitsu. Tamanhos PP ao XGG.",
+        "description": "Rash guard oficial LV Jiu Jitsu. Tamanhos PP ao GG.",
         "variants": _rash_variants("Preto"),
     },
     {
@@ -683,7 +678,7 @@ PRODUCT_DEFINITIONS = (
         "category": "patches",
         "unit_price": "45.00",
         "description": "Kit com 3 patches oficiais LV para kimono.",
-        "variants": [{"color": "", "size": "", "stock": 10}],
+        "variants": [{"color": "", "size": "", "stock": 2}],
     },
 )
 
@@ -702,6 +697,11 @@ def seed_products():
         )
         categories[cat.code] = cat
 
+    Product.objects.filter(sku__in=LEGACY_SEED_PRODUCT_SKUS).update(is_active=False)
+    ProductVariant.objects.filter(product__sku__in=LEGACY_SEED_PRODUCT_SKUS).update(
+        is_active=False
+    )
+
     products = {}
     for definition in PRODUCT_DEFINITIONS:
         product, _ = Product.objects.update_or_create(
@@ -714,8 +714,9 @@ def seed_products():
                 "is_active": True,
             },
         )
+        active_variant_ids = []
         for v in definition["variants"]:
-            ProductVariant.objects.update_or_create(
+            variant, _ = ProductVariant.objects.update_or_create(
                 product=product,
                 color=v["color"],
                 size=v["size"],
@@ -724,167 +725,171 @@ def seed_products():
                     "is_active": True,
                 },
             )
+            active_variant_ids.append(variant.pk)
+        ProductVariant.objects.filter(product=product).exclude(
+            pk__in=active_variant_ids
+        ).update(is_active=False)
         products[product.sku] = product
 
     return {"categories": categories, "products": products}
 
 
-SUBSCRIPTION_PLAN_DEFINITIONS = (
-    {
-        "code": "standard-monthly-pix",
-        "display_name": "Plano mensal PIX",
-        "billing_cycle": BillingCycle.MONTHLY,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "240.00",
-        "monthly_reference_price": "240.00",
-        "is_family_plan": False,
-        "description": "Pagamento mensal via PIX.",
-        "display_order": 1,
-    },
-    {
-        "code": "standard-monthly-credit",
-        "display_name": "Plano mensal Crédito",
-        "billing_cycle": BillingCycle.MONTHLY,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "250.00",
-        "monthly_reference_price": "250.00",
-        "is_family_plan": False,
-        "description": "Pagamento mensal no cartão de crédito em 1x.",
-        "display_order": 2,
-    },
-    {
-        "code": "standard-quarterly-pix",
-        "display_name": "Plano Trimestral PIX",
-        "billing_cycle": BillingCycle.QUARTERLY,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "660.00",
-        "monthly_reference_price": "220.00",
-        "is_family_plan": False,
-        "description": "Pagamento trimestral via PIX, equivalente a R$ 220,00 por mês.",
-        "display_order": 3,
-    },
-    {
-        "code": "standard-quarterly-credit",
-        "display_name": "Plano Trimestral Crédito",
-        "billing_cycle": BillingCycle.QUARTERLY,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "675.00",
-        "monthly_reference_price": "225.00",
-        "is_family_plan": False,
-        "description": "Pagamento trimestral no cartão de crédito em 1x, equivalente a R$ 225,00 por mês.",
-        "display_order": 4,
-    },
-    {
-        "code": "standard-annual-pix",
-        "display_name": "Plano Anual PIX",
-        "billing_cycle": BillingCycle.ANNUAL,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "2580.00",
-        "monthly_reference_price": "215.00",
-        "is_family_plan": False,
-        "description": "Pagamento anual via PIX, equivalente a R$ 215,00 por mês.",
-        "display_order": 5,
-    },
-    {
-        "code": "standard-annual-credit",
-        "display_name": "Plano Anual Crédito",
-        "billing_cycle": BillingCycle.ANNUAL,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "2580.00",
-        "monthly_reference_price": "215.00",
-        "is_family_plan": False,
-        "description": "Pagamento anual no cartão de crédito em 1x, equivalente a R$ 215,00 por mês.",
-        "display_order": 6,
-    },
-    {
-        "code": "family-monthly-pix",
-        "display_name": "Plano mensal PIX Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.MONTHLY,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "220.00",
-        "monthly_reference_price": "220.00",
-        "is_family_plan": True,
-        "description": "Plano familiar mensal via PIX.",
-        "display_order": 7,
-    },
-    {
-        "code": "family-monthly-credit",
-        "display_name": "Plano mensal Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.MONTHLY,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "225.00",
-        "monthly_reference_price": "225.00",
-        "is_family_plan": True,
-        "description": "Plano familiar mensal no cartão de crédito em 1x.",
-        "display_order": 8,
-    },
-    {
-        "code": "family-quarterly-pix",
-        "display_name": "Plano Trimestral PIX Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.QUARTERLY,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "645.00",
-        "monthly_reference_price": "215.00",
-        "is_family_plan": True,
-        "description": "Plano familiar trimestral via PIX, equivalente a R$ 215,00 por mês.",
-        "display_order": 9,
-    },
-    {
-        "code": "family-quarterly-credit",
-        "display_name": "Plano Trimestral Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.QUARTERLY,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "660.00",
-        "monthly_reference_price": "220.00",
-        "is_family_plan": True,
-        "description": "Plano familiar trimestral no cartão de crédito em 1x, equivalente a R$ 220,00 por mês.",
-        "display_order": 10,
-    },
-    {
-        "code": "family-annual-pix",
-        "display_name": "Plano Anual PIX Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.ANNUAL,
-        "payment_method": PlanPaymentMethod.PIX,
-        "price": "2505.00",
-        "monthly_reference_price": "205.00",
-        "is_family_plan": True,
-        "description": "Plano familiar anual via PIX, equivalente a R$ 205,00 por mês.",
-        "display_order": 11,
-    },
-    {
-        "code": "family-annual-credit",
-        "display_name": "Plano Anual Crédito Irmãos / Pais e Filhos",
-        "billing_cycle": BillingCycle.ANNUAL,
-        "payment_method": PlanPaymentMethod.CREDIT_CARD,
-        "price": "2505.00",
-        "monthly_reference_price": "205.00",
-        "is_family_plan": True,
-        "description": "Plano familiar anual no cartão de crédito em 1x, equivalente a R$ 205,00 por mês.",
-        "display_order": 12,
-    },
-)
+PLAN_BASE_MONTHLY_PRICES = {
+    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, True, PlanPaymentMethod.PIX): "212.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, True, PlanPaymentMethod.CREDIT_CARD): "220.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, False, PlanPaymentMethod.PIX): "222.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, False, PlanPaymentMethod.CREDIT_CARD): "230.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, True, PlanPaymentMethod.PIX): "237.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, True, PlanPaymentMethod.CREDIT_CARD): "246.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, False, PlanPaymentMethod.PIX): "257.00",
+    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, False, PlanPaymentMethod.CREDIT_CARD): "267.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, True, PlanPaymentMethod.PIX): "404.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, True, PlanPaymentMethod.CREDIT_CARD): "436.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, False, PlanPaymentMethod.PIX): "424.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, False, PlanPaymentMethod.CREDIT_CARD): "458.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, True, PlanPaymentMethod.PIX): "454.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, True, PlanPaymentMethod.CREDIT_CARD): "490.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, False, PlanPaymentMethod.PIX): "484.00",
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, False, PlanPaymentMethod.CREDIT_CARD): "523.00",
+}
+
+PLAN_TEACHER_COMMISSION = {
+    PlanAudience.ADULT: Decimal("0.00"),
+    PlanAudience.KIDS_JUVENILE: Decimal("50.00"),
+}
+
+AUDIENCE_LABELS = {
+    PlanAudience.ADULT: "Adulto",
+    PlanAudience.KIDS_JUVENILE: "Kids/Juvenil",
+}
+
+PLAN_TYPE_LABELS = {True: "Família", False: "Individual"}
+
+PAYMENT_METHOD_LABELS = {
+    PlanPaymentMethod.PIX: "PIX",
+    PlanPaymentMethod.CREDIT_CARD: "Cartão",
+}
+
+CYCLE_LABELS = {
+    BillingCycle.MONTHLY: "Mensal",
+    BillingCycle.QUARTERLY: "Trimestral",
+    BillingCycle.SEMIANNUAL: "Semestral",
+    BillingCycle.ANNUAL: "Anual",
+}
+
+AUDIENCE_DISPLAY_ORDER = {PlanAudience.ADULT: 0, PlanAudience.KIDS_JUVENILE: 100}
+FREQUENCY_DISPLAY_ORDER = {
+    PlanWeeklyFrequency.FIVE_TIMES: 0,
+    PlanWeeklyFrequency.TWICE: 25,
+}
+PLAN_TYPE_DISPLAY_ORDER = {False: 0, True: 10}
+CYCLE_DISPLAY_ORDER = {
+    BillingCycle.MONTHLY: 0,
+    BillingCycle.QUARTERLY: 1,
+    BillingCycle.SEMIANNUAL: 2,
+    BillingCycle.ANNUAL: 3,
+}
+PAYMENT_DISPLAY_ORDER = {PlanPaymentMethod.PIX: 0, PlanPaymentMethod.CREDIT_CARD: 5}
+
+
+def _build_plan_code(audience, frequency, is_family, billing_cycle, payment_method):
+    plan_type = "family" if is_family else "individual"
+    method = "credit-card" if payment_method == PlanPaymentMethod.CREDIT_CARD else payment_method
+    return f"{audience}-{int(frequency)}x-{plan_type}-{billing_cycle}-{method}"
+
+
+def _build_plan_display_name(audience, frequency, is_family, billing_cycle, payment_method):
+    return (
+        f"Plano {AUDIENCE_LABELS[audience]} {int(frequency)}x "
+        f"{PLAN_TYPE_LABELS[is_family]} {CYCLE_LABELS[billing_cycle]} "
+        f"{PAYMENT_METHOD_LABELS[payment_method]}"
+    )
+
+
+def _build_plan_description(audience, frequency, is_family, billing_cycle, payment_method, monthly_price):
+    method_label = PAYMENT_METHOD_LABELS[payment_method]
+    cycle_label = CYCLE_LABELS[billing_cycle].lower()
+    audience_label = AUDIENCE_LABELS[audience]
+    plan_type_label = PLAN_TYPE_LABELS[is_family].lower()
+    return (
+        f"Plano {audience_label} {int(frequency)}x semanal "
+        f"({plan_type_label}) {cycle_label} via {method_label}, "
+        f"equivalente a R$ {monthly_price} por mês."
+    )
+
+
+def _build_plan_display_order(audience, frequency, is_family, billing_cycle, payment_method):
+    return (
+        AUDIENCE_DISPLAY_ORDER[audience]
+        + FREQUENCY_DISPLAY_ORDER[frequency]
+        + PLAN_TYPE_DISPLAY_ORDER[is_family]
+        + CYCLE_DISPLAY_ORDER[billing_cycle]
+        + PAYMENT_DISPLAY_ORDER[payment_method]
+    )
+
+
+def _generate_plan_definitions():
+    definitions = []
+    for (audience, frequency, is_family, payment_method), monthly_price_str in PLAN_BASE_MONTHLY_PRICES.items():
+        monthly_price = Decimal(monthly_price_str)
+        for billing_cycle, months in CYCLE_MONTHS.items():
+            cycle_price = (monthly_price * months).quantize(Decimal("0.01"))
+            definitions.append(
+                {
+                    "code": _build_plan_code(audience, frequency, is_family, billing_cycle, payment_method),
+                    "display_name": _build_plan_display_name(
+                        audience, frequency, is_family, billing_cycle, payment_method
+                    ),
+                    "audience": audience,
+                    "weekly_frequency": int(frequency),
+                    "billing_cycle": billing_cycle,
+                    "payment_method": payment_method,
+                    "price": cycle_price,
+                    "monthly_reference_price": monthly_price,
+                    "is_family_plan": is_family,
+                    "teacher_commission_percentage": PLAN_TEACHER_COMMISSION[audience],
+                    "requires_special_authorization": (
+                        audience == PlanAudience.KIDS_JUVENILE
+                        and frequency == PlanWeeklyFrequency.FIVE_TIMES
+                    ),
+                    "description": _build_plan_description(
+                        audience, frequency, is_family, billing_cycle, payment_method, monthly_price
+                    ),
+                    "display_order": _build_plan_display_order(
+                        audience, frequency, is_family, billing_cycle, payment_method
+                    ),
+                }
+            )
+    return tuple(definitions)
+
+
+SUBSCRIPTION_PLAN_DEFINITIONS = _generate_plan_definitions()
 
 
 @transaction.atomic
 def seed_plans():
     plans = {}
+    seeded_codes = []
     for definition in SUBSCRIPTION_PLAN_DEFINITIONS:
         plan, _ = SubscriptionPlan.objects.update_or_create(
             code=definition["code"],
             defaults={
                 "display_name": definition["display_name"],
+                "audience": definition["audience"],
+                "weekly_frequency": definition["weekly_frequency"],
                 "billing_cycle": definition["billing_cycle"],
                 "payment_method": definition["payment_method"],
                 "price": definition["price"],
                 "monthly_reference_price": definition["monthly_reference_price"],
                 "is_family_plan": definition["is_family_plan"],
+                "teacher_commission_percentage": definition["teacher_commission_percentage"],
+                "requires_special_authorization": definition["requires_special_authorization"],
                 "description": definition["description"],
                 "display_order": definition["display_order"],
                 "is_active": True,
             },
         )
         plans[plan.code] = plan
-    SubscriptionPlan.objects.filter(
-        code__in=("mensal", "mensal-irmaos", "trimestral")
-    ).update(is_active=False)
+        seeded_codes.append(plan.code)
+    SubscriptionPlan.objects.exclude(code__in=seeded_codes).update(is_active=False)
     return plans

@@ -2,86 +2,81 @@
 
 @AGENTS.md
 
-> Contexto persistente, específico e reutilizável do projeto atual.
-> Este arquivo define **o que o projeto é**, **como ele deve ser tratado** e **quais restrições locais prevalecem**.
-> O protocolo universal está em `AGENTS.md`.
-> Este arquivo deve conter apenas contexto **real** do projeto — nunca regras genéricas duplicadas do `AGENTS.md`.
+> Contexto factual, específico e verificável do projeto `lvjiujitsu`.
+> Este arquivo descreve o sistema real, sem repetir o protocolo universal do `AGENTS.md`.
 
 ---
 
 ## 1. Identidade do projeto
 
-- **Nome:** `<PROJECT_NAME>`
-- **Objetivo:** `<SYSTEM_GOAL>`
-- **Tipo de produto:** `<PRODUCT_TYPE>`
-- **Stack:** Python + Django `<VERSION>`
-- **Frontend:** server-rendered com templates Django + CSS/JS por tela
-- **Banco local:** SQLite (descartável em dev)
-- **Banco produção:** `<DB_PROD>`
-- **Integrações externas:** `<INTEGRATIONS>`
-- **Ambiente operacional:** Windows + PowerShell (`.venv` obrigatória)
+- **Nome:** LV JIU JITSU
+- **Objetivo:** operar o portal público e as rotinas internas da academia, cobrindo cadastro, turmas, calendário, materiais e cobrança
+- **Tipo de produto:** monólito web com área pública + áreas autenticadas operacionais
+- **Stack:** Python + Django 4.1.13
+- **Frontend:** templates Django server-rendered com CSS/JS por fluxo em `static/system/`
+- **Banco local:** SQLite em `db.sqlite3`
+- **Banco produção:** não documentado no repositório
+- **Integrações externas reais no código:** Stripe, Asaas
+- **Ambiente operacional padrão:** Windows + PowerShell com `.venv`
 - **Idioma técnico:** inglês
 - **Idioma da interface:** português pt-BR
-- **Criticidade:** `<LOW | MEDIUM | HIGH>`
+- **Criticidade operacional:** média
 
 ---
 
 ## 2. Política local do projeto
 
-Este projeto adota um regime de operação **`<MODE>`**.
+Este repositório opera em modo **control-first com validação visual obrigatória para UI**.
 
-> Exemplos de modo: `control-first`, `MVP destrutivo local`, `alta rastreabilidade`, `validação visual obrigatória`
+### Isso implica
+- mudanças com impacto relevante devem nascer de PRD em `docs/prd/`
+- telas públicas e autenticadas devem ser validadas em navegador quando houver alteração visual ou de fluxo
+- o projeto usa cache-busting manual em alguns assets de template; ao alterar JS/CSS referenciado com `?v=...`, atualizar a versão faz parte da entrega
 
-### Isso significa:
-- `<DESCREVER O QUE O MODO IMPLICA>`
-- `<DESCREVER RESTRIÇÕES ESPECÍFICAS>`
-
-### Regra local principal:
-- `<REGRA MAIS IMPORTANTE DO PROJETO>`
+### Regra local principal
+- todo o domínio principal vive no app único `system/`, e o fluxo HTTP deve continuar fino, empurrando regra de negócio para `services/`
 
 ---
 
 ## 3. Estrutura real do repositório
 
-> Descrever a estrutura **real**, não a idealizada.
-
-```
-<project_root>/
+```text
+lvjiujitsu/
 ├── AGENTS.md
 ├── CLAUDE.md
 ├── README.md
 ├── requirements.txt
-├── .env                    # credenciais (fora do git)
+├── .env
 ├── manage.py
-├── clear_migrations.py     # reset destrutivo local
-├── db.sqlite3              # dev (fora do git)
-├── <config_package>/       # settings.py, urls.py, wsgi.py
-├── <app>/                  # app principal de domínio
-│   ├── models/
-│   ├── views/
+├── clear_migrations.py
+├── db.sqlite3
+├── docs/
+│   └── prd/
+├── lvjiujitsu/
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── system/
 │   ├── forms/
-│   ├── services/
-│   ├── selectors/
-│   ├── tests/
 │   ├── management/commands/
 │   ├── migrations/
-│   └── urls.py
+│   ├── models/
+│   ├── selectors/
+│   ├── services/
+│   ├── tests/
+│   ├── utils/
+│   └── views/
 ├── templates/
-│   ├── base.html
-│   ├── includes/
-│   └── <fluxos>/
 ├── static/
-│   ├── css/base.css
-│   ├── js/base.js
-│   └── <app>/css/, <app>/js/
-├── staticfiles/            # collectstatic (fora do git)
-├── media/                  # uploads (fora do git)
-└── docs/prd/
+└── staticfiles/
 ```
 
 ### Fatos estruturais importantes
-- `<FATO_1>` (ex: "todo o domínio vive em `system/`")
-- `<FATO_2>` (ex: "seeds JSON ficam em `static/<namespace>_ini/`")
+- todo o domínio aplicacional está concentrado em `system/`
+- `templates/login/` concentra home pública, login, cadastro e telas relacionadas ao portal
+- `static/system/js/auth/registration-wizard-clean.js` é a implementação ativa do wizard de cadastro
+- `staticfiles/` é saída gerada por `collectstatic`; fonte editável fica em `static/`
 
 ---
 
@@ -89,25 +84,26 @@ Este projeto adota um regime de operação **`<MODE>`**.
 
 ### Diretriz arquitetural central
 
-`<DESCREVER>` (ex: "Monólito Django com app única seguindo padrão MVT com camada de services")
+Monólito Django com app única (`system`) seguindo MVT com camada explícita de `services/` para negócio e `selectors/` para leitura reutilizável.
 
 ### Ownership
 
 | Responsabilidade | Onde fica |
 |---|---|
-| Persistência e invariantes | `models/` |
-| Validação de entrada | `forms/` |
-| Lógica de negócio | `services/` (**nunca** só na view) |
-| Leitura complexa | `selectors/` |
-| Orquestração HTTP | `views/` (finas) |
-| Apresentação | `templates/` |
-| Estilos e scripts | `static/<app>/css/`, `static/<app>/js/` |
-| Testes | `tests/` por camada |
+| Persistência e invariantes | `system/models/` |
+| Validação de entrada | `system/forms/` |
+| Lógica de negócio | `system/services/` |
+| Leituras e catálogos | `system/selectors/` e alguns serviços de overview |
+| Orquestração HTTP | `system/views/` |
+| Rotas | `system/urls.py`, `lvjiujitsu/urls.py` |
+| Templates | `templates/` |
+| Estilos e scripts | `static/system/css/`, `static/system/js/` |
+| Testes | `system/tests/` |
 
 ### Proibições locais
-- lógica de negócio em template ou JavaScript de interface
-- lógica de negócio concentrada só na view
-- `<PROIBIÇÃO_ESPECÍFICA_DO_PROJETO>`
+- não colocar regra de negócio central em template ou JS de interface
+- não editar arquivos-fonte em `staticfiles/`
+- não introduzir migrações por padrão sem autorização explícita
 
 ---
 
@@ -115,32 +111,26 @@ Este projeto adota um regime de operação **`<MODE>`**.
 
 ### Obrigatório
 - identificadores técnicos em inglês
-- interface em pt-BR
-- configurações variáveis vindas de `.env`, `settings` ou banco
-- tratamento de erro específico
-- CSS e JS separados por tela e namespace
+- UI em pt-BR
+- configurações variáveis vindas de `.env` via `python-decouple`
+- CSS/JS separados por fluxo em `static/system/`
+- quando o template usa query string de versão em asset estático, atualizar o `?v=` ao alterar o arquivo correspondente
 
 ### Proibido
-- hardcode de segredo, token, credencial ou valor configurável
-- `except: pass` ou `except Exception` genérico
-- condicionais longas e quebradiças
-- comentários redundantes explicando o óbvio
-- docstrings desnecessárias
-- CSS/JS inline sem justificativa
-- `<PROIBIÇÃO_ESPECÍFICA>`
+- hardcode de segredo ou chave externa
+- `except: pass`
+- colocar artefatos permanentes em `staticfiles/`
+- tratar `README.md` como fonte de verdade do projeto; o código prevalece
 
 ---
 
 ## 6. Comandos reais do projeto
 
-> Listar **apenas** comandos que existem de fato no projeto.
-> Nunca confiar só no README se o código divergir.
-
 ### Ambiente
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-.\.venv\Scripts\python.exe manage.py runserver <HOST:PORT>
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
 ### Testes e checks
@@ -148,7 +138,6 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ```powershell
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py check --deploy
 .\.venv\Scripts\python.exe manage.py collectstatic --noinput
 .\.venv\Scripts\python.exe manage.py showmigrations
 .\.venv\Scripts\python.exe manage.py shell -c "<CHECK>"
@@ -157,22 +146,30 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ### Seeds e setup
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py <comando_superuser>
-.\.venv\Scripts\python.exe manage.py <comando_seed_agregador>
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py inicial_seed
+.\.venv\Scripts\python.exe manage.py inicial_seed_test
+.\.venv\Scripts\python.exe manage.py seed_person_type
+.\.venv\Scripts\python.exe manage.py seed_class_catalog
+.\.venv\Scripts\python.exe manage.py seed_plans
+.\.venv\Scripts\python.exe manage.py seed_products
+.\.venv\Scripts\python.exe manage.py seed_holidays --year <ANO>
 ```
 
-### Comandos individuais de seed
+### Comandos individuais de seed presentes no repositório
 
 | Comando | Função |
 |---|---|
-| `<COMANDO_1>` | `<FUNÇÃO_1>` |
-| `<COMANDO_2>` | `<FUNÇÃO_2>` |
+| `seed_person_guardian` | cria responsável de teste |
+| `seed_person_guardian_with_dependent` | cria responsável com dependente |
+| `seed_person_student` | cria aluno individual |
+| `seed_person_student_with_dependent` | cria titular com dependente |
+| `seed_person_administrative` | cria perfil administrativo |
+| `schedule_monthly_payouts` | agenda pagamentos mensais de professores |
 
-### Comandos legados (NÃO usar)
+### Comandos legados
 
-| Comando legado | Substituído por |
-|---|---|
-| `<LEGADO_1>` | `<NOVO_1>` |
+- não há lista formal de comandos legados documentada no repositório
 
 ---
 
@@ -181,136 +178,89 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ### Shell padrão
 - Windows + PowerShell
 
-### Baseline
-
-```powershell
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-chcp 65001
-```
-
 ### Ferramentas obrigatórias quando aplicável
 
 | Ferramenta | Obrigatória? | Uso principal |
 |---|---|---|
-| Playwright / browser MCP | sim, quando houver UI | validação visual e E2E |
-| Context7 ou MCP documental | sim, quando envolver libs | documentação atualizada |
-| `<FERRAMENTA>` | `<SIM/NÃO>` | `<USO>` |
+| Playwright / browser MCP | sim, para UI | validação visual e console |
+| Context7 / docs oficiais | sim, quando houver dúvida de biblioteca | referência atualizada |
+| `.venv` local | sim | execução isolada do projeto |
 
 ### Configuração de estáticos
 
 ```python
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']        # fontes ficam aqui
-STATIC_ROOT = BASE_DIR / 'staticfiles'           # gerado pelo collectstatic (NÃO editar)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 ```
-
-**Regras:**
-- **nunca** colocar arquivos fonte em `STATIC_ROOT` (`staticfiles/`)
-- arquivos fonte ficam em `static/` (raiz) ou `<app>/static/<app>/` (namespaced)
-- após alterar estáticos: `collectstatic --noinput`
-- `media/` e `staticfiles/` ficam no `.gitignore`
 
 ---
 
 ## 8. Política local de banco, seeds e schema
 
 ### Banco local
-- `<DESCREVER>` (ex: "SQLite descartável — reset destrutivo permitido sob demanda")
+- SQLite descartável em `db.sqlite3`
 
 ### Seeds
-- comando agregador: `manage.py <SEED_COMMAND>`
-- comandos individuais: `<LISTA>`
-- ordem de execução respeita dependências entre apps
-- cada seed registra claramente o que fez
+- o projeto possui seeds granulares e também agregadores (`inicial_seed`, `inicial_seed_test`)
+- `seed_class_catalog`, `seed_plans` e `seed_products` são centrais para fluxos públicos e de checkout
 
 ### Schema
-- migrações: **proibidas por padrão**
-- reset destrutivo: `<PERMITIDO_SOB_PEDIDO | PROIBIDO>`
-- condições para exceção: `<DESCREVER>`
+- existe apenas `system/migrations/0001_initial.py`
+- migrações novas continuam proibidas por padrão
+- reset destrutivo local é permitido **somente sob pedido explícito**
 
-### Reset destrutivo local (somente sob pedido explícito)
+### Reset destrutivo local
 
 ```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
 .\.venv\Scripts\python.exe manage.py makemigrations
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py <comando_superuser>
-.\.venv\Scripts\python.exe manage.py <comando_seed>
-.\.venv\Scripts\python.exe manage.py runserver <HOST:PORT>
 ```
 
 ---
 
 ## 9. Política local de validação
 
-Uma tarefa só está pronta quando:
+Uma entrega com impacto relevante deve, quando aplicável:
 
-1. PRD foi criado ou atualizado (quando aplicável)
-2. fluxo impactado foi lido integralmente
-3. testes passaram (`manage.py test --verbosity 2` — 0 falhas, 0 erros)
-4. `manage.py check` sem erros
-5. `collectstatic --noinput` sem erros (quando houver estáticos)
-6. `showmigrations` coerente com a política do projeto
-7. shell checks do ORM validando persistência
-8. validação visual executada (quando houver impacto em UI)
-9. console do navegador sem erros JS críticos
-10. terminal sem stack traces
-11. sem hardcode, sem mascaramento de erro
-12. limpeza final realizada
-13. documentação alinhada ao novo estado
+1. atualizar ou criar PRD
+2. passar em `manage.py test --verbosity 2`
+3. passar em `manage.py check`
+4. executar `collectstatic --noinput` quando houver alteração de estático
+5. manter `showmigrations` coerente com a política sem novas migrações
+6. validar em navegador quando houver UI
+7. inspecionar console do navegador
+8. deixar o workspace sem artefatos temporários da validação
 
 ---
 
 ## 10. Critérios locais de falha
 
-Marcar como **NÃO CONCLUÍDA** quando:
+Marcar como não concluída quando houver:
 
-- sem PRD (quando necessário)
-- sem validação visual (quando houver UI)
-- sem console/logs inspecionados
-- sem evidência de validação
-- reset destrutivo sem pedido explícito
-- execução inventada
-- sem pesquisa de contexto quando necessária
-- ferramentas obrigatórias não garantidas
-- lib adicionada sem atualizar requirements
-- pacote instalado fora da `.venv`
-- credenciais hardcodadas
-- CSRF desabilitado
-- God Class introduzida
-- CSS/JS inline sem justificativa
-- `&&` usado no PowerShell
-- arquivos colocados em `STATIC_ROOT`
-- comando legado usado em vez do atual
-- `<CRITÉRIO_ESPECÍFICO_DO_PROJETO>`
+- alteração visual sem validação em navegador
+- mudança em asset versionado sem atualizar o `?v=` correspondente
+- nova migração sem autorização
+- artefato temporário deixado no repositório
+- evidência insuficiente de teste/check
 
 ---
 
 ## 11. Regra final de manutenção
 
-Sempre atualizar `CLAUDE.md` quando houver:
+Atualizar este arquivo quando houver:
 
-- mudança de stack
-- mudança de arquitetura
-- novo comando real
-- nova integração
-- nova ferramenta obrigatória
-- novo risco recorrente
-- divergência entre README e código
-- mudança relevante no workflow operacional
-
-Este arquivo deve ser: **factual, enxuto, específico, verificável** e livre de duplicação desnecessária do `AGENTS.md`.
-
----
+- novo comando real de setup/seed/check
+- nova integração externa
+- mudança na estrutura principal do app `system/`
+- mudança no padrão de assets estáticos versionados manualmente
 
 ### Changelog da spec
 
 ```md
-- **[<DATA>]** CLAUDE.md criado: <DESCRIÇÃO>.
+- **[2026-04-21]** CLAUDE.md reescrito com contexto factual do projeto LV JIU JITSU.
 ```

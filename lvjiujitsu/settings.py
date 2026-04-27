@@ -80,6 +80,11 @@ TRIAL_ACCESS_DEFAULT_CLASSES = config(
     default=1,
     cast=int,
 )
+BACKORDER_RESERVATION_DAYS = config(
+    "BACKORDER_RESERVATION_DAYS",
+    default=7,
+    cast=int,
+)
 CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config(
     "CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES",
     default=60,
@@ -130,6 +135,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'system.context_processors.portal_navigation',
             ],
         },
     },

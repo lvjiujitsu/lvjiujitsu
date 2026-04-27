@@ -27,8 +27,20 @@ from .person import (
     PersonRelationshipKind,
     PersonType,
 )
-from .plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
+from .plan import (
+    BillingCycle,
+    CYCLE_MONTHS,
+    PlanAudience,
+    PlanPaymentMethod,
+    PlanWeeklyFrequency,
+    SubscriptionPlan,
+)
 from .product import Product, ProductCategory, ProductVariant
+from .product_backorder import (
+    ACTIVE_BACKORDER_STATUSES,
+    ProductBackorder,
+    ProductBackorderStatus,
+)
 from .membership import (
     Membership,
     MembershipCreatedVia,
@@ -94,10 +106,15 @@ __all__ = [
     "OrderKind",
     "PaymentProvider",
     "PaymentStatus",
+    "PlanAudience",
     "PlanPaymentMethod",
+    "PlanWeeklyFrequency",
     "PortalAccount",
     "PortalPasswordResetToken",
+    "ACTIVE_BACKORDER_STATUSES",
     "Product",
+    "ProductBackorder",
+    "ProductBackorderStatus",
     "ProductCategory",
     "ProductVariant",
     "RegistrationOrder",

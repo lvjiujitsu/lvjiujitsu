@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -129,19 +130,6 @@ class ProductViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Materiais")
 
-    def test_info_page_does_not_show_products(self):
-        response = self.client.get(reverse("system:info"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Kimono View Test")
-        self.assertNotContains(response, "Produtos disponíveis")
-
-    def test_info_page_hides_inactive_products(self):
-        self.product.is_active = False
-        self.product.save()
-        response = self.client.get(reverse("system:info"))
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Kimono View Test")
-
     def test_student_dashboard_shows_materiais_link(self):
         student_account = self._create_portal_account(
             full_name="Aluno Teste",
@@ -153,16 +141,23 @@ class ProductViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Materiais")
 
-    def test_product_catalog_public_page_loads(self):
-        response = self.client.get(reverse("system:product-catalog"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Produtos disponíveis")
-        self.assertContains(response, "Kimono View Test")
+    def test_product_store_exposes_variant_catalog_json(self):
+        student_account = self._create_portal_account(
+            full_name="Aluno Loja",
+            cpf="333.222.111-00",
+            person_type=self.student_type,
+        )
+        self._login_as_portal(student_account)
 
-    def test_home_page_has_materiais_button(self):
-        response = self.client.get(reverse("system:legacy-home"))
+        response = self.client.get(reverse("system:product-store"))
+
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Materiais")
+        catalog = json.loads(response.context["product_catalog_json"])
+        product = next(item for item in catalog if item["sku"] == "gi-view-test")
+        self.assertEqual(product["category"], "Kimonos")
+        self.assertGreater(product["variant_count"], 0)
+        self.assertEqual(product["variants"][0]["color"], "Branco")
+        self.assertIn("snapshot_name", product["variants"][0])
 
     def test_update_redirects_to_detail(self):
         self._login_as_admin()

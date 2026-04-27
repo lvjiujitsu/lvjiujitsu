@@ -1,3 +1,4 @@
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -12,8 +13,10 @@ from django.utils import timezone
 from system.models import (
     BiologicalSex,
     ClassCategory,
+    ClassCheckin,
     ClassGroup,
     ClassSchedule,
+    ClassSession,
     DepositStatus,
     Membership,
     MembershipStatus,
@@ -23,13 +26,16 @@ from system.models import (
     PersonType,
     PortalAccount,
     RegistrationOrder,
+    SpecialClass,
+    SpecialClassCheckin,
     SubscriptionPlan,
     TrialAccessGrant,
+    WeekdayCode,
 )
 from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.services.class_overview import build_class_group_filter_value
 from system.services.registration import sync_person_class_enrollments
-from system.services.seeding import seed_class_catalog
+from system.services.seeding import seed_class_catalog, seed_products
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -101,25 +107,44 @@ class PortalViewTestCase(TestCase):
             f"{settings.STATIC_URL}system/img/favicon-lv.svg",
         )
 
-    def test_legacy_login_form_route_returns_portal_login_page(self):
-        response = self.client.get(reverse("system:legacy-login-form"))
+    def test_login_route_returns_portal_login_page(self):
+        response = self.client.get(reverse("system:login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Entre com seu CPF e senha.")
+        self.assertContains(response, "Use seu CPF e senha para acessar o portal.")
         self.assertContains(response, "Esqueci minha senha")
         self.assertContains(response, "Mostrar")
+        self.assertContains(response, "Criar conta")
+        self.assertContains(response, "Falar com a LV")
 
     def test_register_route_renders_class_group_selection_copy(self):
-        response = self.client.get(reverse("system:legacy-register"))
+        response = self.client.get(reverse("system:register"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sexo biológico")
         self.assertContains(response, "Rascunho salvo")
 
+    def test_register_route_exposes_binary_martial_art_question_choices(self):
+        response = self.client.get(reverse("system:register"))
+
+        self.assertEqual(response.status_code, 200)
+        question_choices = response.context["form"].fields["holder_has_martial_art"].choices
+        self.assertEqual(
+            question_choices,
+            [
+                ("", "Selecione"),
+                ("yes", "Sim"),
+                ("no", "Não"),
+            ],
+        )
+        modality_choices = response.context["form"].fields["holder_martial_art"].choices
+        self.assertEqual(modality_choices[0], ("", "Selecione"))
+        self.assertNotContains(response, "Não possui")
+
     def test_register_route_exposes_logical_class_choices_once(self):
         seed_class_catalog()
 
-        response = self.client.get(reverse("system:legacy-register"))
+        response = self.client.get(reverse("system:register"))
 
         self.assertEqual(response.status_code, 200)
         choices = [
@@ -131,6 +156,44 @@ class PortalViewTestCase(TestCase):
             sum(label.startswith("Adulto · Jiu Jitsu") for label in choices),
             1,
         )
+
+    def test_register_route_exposes_compact_schedule_sections_for_wizard(self):
+        seed_class_catalog()
+
+        response = self.client.get(reverse("system:register"))
+
+        self.assertEqual(response.status_code, 200)
+        catalog = json.loads(response.context["registration_catalog_json"])
+        adult_option = next(
+            item for item in catalog if item["category_audience"] == "adult"
+        )
+
+        self.assertIn("compact_schedule_sections", adult_option)
+        monday_section = adult_option["compact_schedule_sections"][0]
+        self.assertEqual(monday_section["weekday_label"], "Segunda-feira")
+        self.assertIn(
+            {
+                "time_label": "06:30",
+                "teacher_label": "Layon Quirino",
+                "line_label": "06:30 - Layon Quirino",
+            },
+            monday_section["entries"],
+        )
+
+    def test_register_route_exposes_product_variants_in_material_catalog(self):
+        seed_products()
+
+        response = self.client.get(reverse("system:register"))
+
+        self.assertEqual(response.status_code, 200)
+        catalog = json.loads(response.context["product_catalog_json"])
+        belt = next(item for item in catalog if item["sku"] == "belt-lv")
+
+        self.assertIn("variants", belt)
+        self.assertGreater(len(belt["variants"]), 0)
+        self.assertEqual(belt["variants"][0]["product_id"], belt["id"])
+        self.assertIn("label", belt["variants"][0])
+        self.assertIn("snapshot_name", belt["variants"][0])
 
     def test_registration_step_validation_blocks_existing_cpf(self):
         Person.objects.create(
@@ -165,6 +228,7 @@ class PortalViewTestCase(TestCase):
             {
                 "step_key": "holder_medical",
                 "registration_profile": "holder",
+                "holder_has_martial_art": "yes",
                 "holder_martial_art": "jiu_jitsu",
             },
         )
@@ -179,7 +243,7 @@ class PortalViewTestCase(TestCase):
 
     def test_login_with_invalid_numeric_identifier_returns_form_error(self):
         response = self.client.post(
-            reverse("system:legacy-login-form"),
+            reverse("system:login"),
             {"identifier": "123", "password": "x"},
         )
 
@@ -203,7 +267,7 @@ class PortalViewTestCase(TestCase):
             follow=True,
         )
 
-        self.assertRedirects(response, reverse("system:legacy-login-form"))
+        self.assertRedirects(response, reverse("system:login"))
         person = Person.objects.get(cpf="123.456.789-03")
         self.assertTrue(hasattr(person, "access_account"))
         self.assertEqual(person.person_type.code, "student")
@@ -227,7 +291,7 @@ class PortalViewTestCase(TestCase):
             follow=True,
         )
 
-        self.assertRedirects(response, reverse("system:legacy-login-form"))
+        self.assertRedirects(response, reverse("system:login"))
         person = Person.objects.get(cpf="123.456.789-04")
         self.assertTrue(hasattr(person, "access_account"))
         self.assertEqual(person.person_type.code, "instructor")
@@ -717,6 +781,148 @@ class PortalViewTestCase(TestCase):
 
         self.assertRedirects(response, reverse("system:instructor-home"))
 
+    def test_instructor_dashboard_shows_today_classes_checkins_and_history(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Dashboard",
+            cpf="321.654.987-33",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-instructor-dashboard",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-instructor-group",
+            display_name="Turma Professor",
+            class_category=adult_category,
+            main_teacher=instructor_account.person,
+        )
+        weekday_map = {
+            0: WeekdayCode.MONDAY,
+            1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY,
+            3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY,
+            5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=weekday_map[timezone.localdate().weekday()],
+            training_style="gi",
+            start_time="19:00",
+            duration_minutes=60,
+        )
+        student_person = Person.objects.create(
+            full_name="Aluno Presente",
+            cpf="321.654.987-34",
+            person_type=self.student_type,
+            birth_date=date(2000, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=timezone.localdate(),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=student_person,
+        )
+        special_class = SpecialClass.objects.create(
+            title="Aulão do Professor",
+            date=timezone.localdate(),
+            start_time="20:00",
+            duration_minutes=90,
+            teacher=instructor_account.person,
+        )
+        SpecialClassCheckin.objects.create(
+            special_class=special_class,
+            person=student_person,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.get(reverse("system:instructor-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Aulas do dia")
+        self.assertContains(response, "Ver cronograma")
+        self.assertContains(response, "Turma Professor")
+        self.assertContains(response, "Aluno Presente")
+        self.assertContains(response, "Histórico de check-ins")
+        self.assertContains(response, "Aulão do Professor")
+
+    def test_instructor_can_access_schedule_route(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Agenda",
+            cpf="321.654.987-35",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.get(reverse("system:student-schedule"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cronograma de Aulas")
+
+    def test_student_dashboard_shows_checkin_attendance_history(self):
+        student_account = self._create_portal_account(
+            full_name="Aluno Histórico",
+            cpf="321.654.987-36",
+            password="123456",
+            person_type=self.student_type,
+        )
+        instructor = Person.objects.create(
+            full_name="Professor Histórico",
+            cpf="321.654.987-37",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-student-history",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-student-history-group",
+            display_name="Turma Histórico",
+            class_category=adult_category,
+            main_teacher=instructor,
+        )
+        weekday_map = {
+            0: WeekdayCode.MONDAY,
+            1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY,
+            3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY,
+            5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=weekday_map[timezone.localdate().weekday()],
+            training_style="gi",
+            start_time="18:00",
+            duration_minutes=60,
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=timezone.localdate(),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=student_account.person,
+        )
+        self._login_portal_account(student_account)
+
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Histórico de aulas com check-in confirmado")
+        self.assertContains(response, "Turma Histórico")
+        self.assertContains(response, "Professor Histórico")
+
     def test_portal_logout_clears_local_and_technical_sessions(self):
         student_account = self._create_portal_account(
             full_name="Aluno LV",
@@ -889,7 +1095,7 @@ class PortalViewTestCase(TestCase):
             follow=True,
         )
 
-        self.assertRedirects(response, reverse("system:legacy-login-form"))
+        self.assertRedirects(response, reverse("system:login"))
         order = RegistrationOrder.objects.get(person__cpf="123.456.789-12")
         grant = TrialAccessGrant.objects.get(order=order)
         self.assertEqual(grant.granted_classes, 1)
@@ -1136,3 +1342,107 @@ class PortalViewTestCase(TestCase):
         )
         messages = [message.message for message in get_messages(response.wsgi_request)]
         self.assertTrue(any("PIX indisponível" in message for message in messages))
+
+
+class PlanChangeSelectViewGroupingTest(TestCase):
+    def setUp(self):
+        self.student_type = PersonType.objects.create(
+            code="student",
+            display_name="Aluno",
+        )
+        self.current_plan = SubscriptionPlan.objects.create(
+            code="mensal-pix-individual",
+            display_name="Plano Mensal PIX",
+            price=Decimal("240.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+            is_active=True,
+            is_family_plan=False,
+        )
+        self.individual_plan = SubscriptionPlan.objects.create(
+            code="mensal-credito-individual",
+            display_name="Plano Mensal Crédito",
+            price=Decimal("250.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            is_active=True,
+            is_family_plan=False,
+        )
+        self.family_plan = SubscriptionPlan.objects.create(
+            code="mensal-pix-familia",
+            display_name="Plano Mensal PIX Família",
+            price=Decimal("220.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+            is_active=True,
+            is_family_plan=True,
+        )
+        person = Person.objects.create(
+            full_name="Aluno Teste",
+            cpf="123.456.789-00",
+            email="aluno@example.com",
+            person_type=self.student_type,
+        )
+        self.membership = Membership.objects.create(
+            person=person,
+            plan=self.current_plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_start=timezone.now() - timedelta(days=5),
+            current_period_end=timezone.now() + timedelta(days=25),
+        )
+        self.portal_account = PortalAccount(person=person)
+        self.portal_account.set_password("senha123")
+        self.portal_account.save()
+
+    def _login(self):
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = self.portal_account.pk
+        session.save()
+
+    def test_plan_groups_context_contains_individual_and_family(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+
+        self.assertEqual(response.status_code, 200)
+        plan_groups = response.context["plan_groups"]
+        labels = [g["label"] for g in plan_groups]
+        self.assertIn("Planos Individuais", labels)
+        self.assertIn("Planos Família", labels)
+
+    def test_individual_group_excludes_family_plans(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+
+        plan_groups = response.context["plan_groups"]
+        individual_group = next(g for g in plan_groups if g["label"] == "Planos Individuais")
+        family_flags = [e["plan"].is_family_plan for e in individual_group["entries"]]
+        self.assertFalse(any(family_flags))
+
+    def test_family_group_contains_only_family_plans(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+
+        plan_groups = response.context["plan_groups"]
+        family_group = next(g for g in plan_groups if g["label"] == "Planos Família")
+        family_flags = [e["plan"].is_family_plan for e in family_group["entries"]]
+        self.assertTrue(all(family_flags))
+
+    def test_empty_group_is_omitted_from_plan_groups(self):
+        self.family_plan.delete()
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+
+        plan_groups = response.context["plan_groups"]
+        labels = [g["label"] for g in plan_groups]
+        self.assertNotIn("Planos Família", labels)
+
+    def test_template_renders_group_labels(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+
+        self.assertContains(response, "Planos Individuais")
+        self.assertContains(response, "Planos Família")
+
+    def test_unauthenticated_access_redirected(self):
+        response = self.client.get(reverse("system:plan-change-select"))
+        self.assertNotEqual(response.status_code, 200)

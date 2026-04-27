@@ -4,59 +4,87 @@
 {% block title %}Trocar plano | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260418">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260425a">
+<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 {% endblock %}
 
 {% block content %}
 <section class="panel-grid">
-    <div class="panel-card">
-        <p class="panel-eyebrow">Financeiro</p>
-        <h1>Trocar plano</h1>
-        {% if membership %}
-            <p>Plano atual: <strong>{{ membership.plan.display_name }}</strong> — R$ {{ membership.plan.price }} ({{ membership.plan.get_billing_cycle_display }})</p>
-        {% endif %}
+    <div class="catalog-page-header">
+        <div class="catalog-hero-copy">
+            <p class="panel-eyebrow">Financeiro</p>
+            <h1>Trocar plano</h1>
+            {% if membership %}
+                <p>Plano atual: <strong>{{ membership.plan.display_name }}</strong> — R$ {{ membership.plan.price }} ({{ membership.plan.get_billing_cycle_display }})</p>
+            {% endif %}
+        </div>
     </div>
 
     <section class="panel-card">
-        {% if plans_with_proration %}
-            <div class="plan-change-grid">
-                {% for entry in plans_with_proration %}
-                    <div class="plan-change-card {% if entry.proration.is_upgrade %}plan-change-card--upgrade{% elif entry.proration.is_downgrade %}plan-change-card--downgrade{% else %}plan-change-card--free{% endif %}">
-                        <div>
-                            <strong>{{ entry.plan.display_name }}</strong>
-                            <div style="color:var(--text-muted,#6b7280);font-size:0.85rem">
-                                R$ {{ entry.plan.price }} · {{ entry.plan.get_billing_cycle_display }}
-                            </div>
+        {% if plan_groups %}
+            <div class="catalog-stack">
+                {% for group in plan_groups %}
+                    <div class="catalog-cluster-card">
+                        <div class="catalog-cluster-head">
+                            <h3>{{ group.label }}</h3>
+                            <span class="catalog-cluster-meta">{{ group.entries|length }} plano{{ group.entries|length|pluralize:"s" }}</span>
                         </div>
 
-                        {% if entry.proration.is_upgrade %}
-                            <span class="plan-change-badge plan-change-badge--upgrade">Upgrade</span>
-                        {% elif entry.proration.is_downgrade %}
-                            <span class="plan-change-badge plan-change-badge--downgrade">Downgrade</span>
-                        {% else %}
-                            <span class="plan-change-badge plan-change-badge--free">Gratuito</span>
-                        {% endif %}
+                        <div class="info-record-list">
+                            {% for entry in group.entries %}
+                                <div class="record-card-catalog">
+                                    <div class="record-card-head">
+                                        <div>
+                                            <span class="record-card-name">{{ entry.plan.display_name }}</span>
+                                            <span class="record-card-subtitle">
+                                                R$ {{ entry.plan.price }} · {{ entry.plan.get_billing_cycle_display }} · {{ entry.plan.get_payment_method_display }}
+                                                {% if entry.plan.is_family_plan %} · Família{% else %} · Individual{% endif %}
+                                                {% if entry.plan.monthly_reference_price and entry.plan.billing_cycle != "monthly" %}
+                                                    · R$ {{ entry.plan.monthly_reference_price }} ao mês
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        {% if entry.proration.is_upgrade %}
+                                            <span class="record-card-badge plan-change-badge--upgrade">Upgrade</span>
+                                        {% elif entry.proration.is_downgrade %}
+                                            <span class="record-card-badge plan-change-badge--downgrade">Downgrade</span>
+                                        {% else %}
+                                            <span class="record-card-badge plan-change-badge--free">Gratuito</span>
+                                        {% endif %}
+                                    </div>
 
-                        <dl class="proration-breakdown">
-                            <dt>Crédito restante</dt>
-                            <dd>R$ {{ entry.proration.credit_unused_days }}</dd>
-                            <dt>Custo restante</dt>
-                            <dd>R$ {{ entry.proration.cost_remaining_days }}</dd>
-                            <dt class="proration-total">Diferença</dt>
-                            <dd class="proration-total">
-                                {% if entry.proration.is_upgrade %}
-                                    R$ {{ entry.proration.net_amount }}
-                                {% elif entry.proration.is_downgrade %}
-                                    Grátis
-                                {% else %}
-                                    R$ 0,00
-                                {% endif %}
-                            </dd>
-                        </dl>
+                                    <div class="plan-change-action-row">
+                                        <div class="plan-change-net">
+                                            <span class="plan-change-net-label">
+                                                {% if entry.proration.is_upgrade %}Diferença a pagar{% else %}Sem custo adicional{% endif %}
+                                            </span>
+                                            <strong class="plan-change-net-value">
+                                                {% if entry.proration.is_upgrade %}R$ {{ entry.proration.net_amount }}{% else %}Grátis{% endif %}
+                                            </strong>
+                                        </div>
+                                        <a class="btn btn--primary" href="{% url 'system:plan-change-confirm' entry.plan.pk %}">
+                                            Trocar para este plano
+                                        </a>
+                                    </div>
 
-                        <a class="btn btn--primary" href="{% url 'system:plan-change-confirm' entry.plan.pk %}">
-                            Trocar para este plano
-                        </a>
+                                    <details class="catalog-dropdown">
+                                        <summary class="catalog-dropdown-summary">Ver cálculo da troca</summary>
+                                        <div class="catalog-dropdown-content">
+                                            <dl class="proration-breakdown">
+                                                <dt>Crédito restante</dt>
+                                                <dd>R$ {{ entry.proration.credit_unused_days }}</dd>
+                                                <dt>Custo proporcional</dt>
+                                                <dd>R$ {{ entry.proration.cost_remaining_days }}</dd>
+                                                <dt class="proration-total">Diferença</dt>
+                                                <dd class="proration-total">
+                                                    {% if entry.proration.is_upgrade %}R$ {{ entry.proration.net_amount }}{% else %}Grátis{% endif %}
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                    </details>
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 {% endfor %}
             </div>
@@ -70,8 +98,8 @@
             </p>
         {% endif %}
 
-        <div style="margin-top:1rem">
-            <a href="{% url 'system:student-home' %}" class="btn btn--outline">Voltar ao painel</a>
+        <div style="margin-top:1.5rem">
+            <a href="{{ back_url|default:'' }}{% if not back_url %}{% url 'system:student-home' %}{% endif %}" class="btn btn--outline">Voltar ao painel</a>
         </div>
     </section>
 </section>

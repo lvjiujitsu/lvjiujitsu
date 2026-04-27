@@ -25,8 +25,26 @@ from system.services.registration import (
     parse_extra_dependents_payload,
     resolve_class_groups,
 )
+from system.selectors.plan_eligibility import (
+    build_eligibility_context_for_registration,
+    is_plan_eligible,
+)
+from system.services.registration_checkout import (
+    parse_selected_products,
+    resolve_selected_product_items,
+)
 from system.services.financial_transactions import resolve_checkout_action_for_plan
 from system.utils import ensure_formatted_cpf
+
+
+MARTIAL_ART_EXPERIENCE_YES = "yes"
+MARTIAL_ART_EXPERIENCE_NO = "no"
+MARTIAL_ART_EXPERIENCE_CHOICES = [
+    ("", "Selecione"),
+    (MARTIAL_ART_EXPERIENCE_YES, "Sim"),
+    (MARTIAL_ART_EXPERIENCE_NO, "Não"),
+]
+MARTIAL_ART_MODALITY_CHOICES = [("", "Selecione")] + list(MartialArt.choices)
 
 
 class PortalRegistrationForm(forms.Form):
@@ -61,9 +79,13 @@ class PortalRegistrationForm(forms.Form):
     holder_allergies = forms.CharField(required=False)
     holder_injuries = forms.CharField(required=False)
     holder_emergency_contact = forms.CharField(required=False, max_length=255)
+    holder_has_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_EXPERIENCE_CHOICES,
+    )
     holder_martial_art = forms.ChoiceField(
         required=False,
-        choices=[("", "Não possui")] + list(MartialArt.choices),
+        choices=MARTIAL_ART_MODALITY_CHOICES,
     )
     holder_martial_art_graduation = forms.CharField(required=False, max_length=120)
     holder_jiu_jitsu_belt = forms.ChoiceField(
@@ -96,9 +118,13 @@ class PortalRegistrationForm(forms.Form):
     dependent_allergies = forms.CharField(required=False)
     dependent_injuries = forms.CharField(required=False)
     dependent_emergency_contact = forms.CharField(required=False, max_length=255)
+    dependent_has_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_EXPERIENCE_CHOICES,
+    )
     dependent_martial_art = forms.ChoiceField(
         required=False,
-        choices=[("", "Não possui")] + list(MartialArt.choices),
+        choices=MARTIAL_ART_MODALITY_CHOICES,
     )
     dependent_martial_art_graduation = forms.CharField(required=False, max_length=120)
     dependent_jiu_jitsu_belt = forms.ChoiceField(
@@ -142,9 +168,13 @@ class PortalRegistrationForm(forms.Form):
     student_allergies = forms.CharField(required=False)
     student_injuries = forms.CharField(required=False)
     student_emergency_contact = forms.CharField(required=False, max_length=255)
+    student_has_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_EXPERIENCE_CHOICES,
+    )
     student_martial_art = forms.ChoiceField(
         required=False,
-        choices=[("", "Não possui")] + list(MartialArt.choices),
+        choices=MARTIAL_ART_MODALITY_CHOICES,
     )
     student_martial_art_graduation = forms.CharField(required=False, max_length=120)
     student_jiu_jitsu_belt = forms.ChoiceField(
@@ -200,6 +230,7 @@ class PortalRegistrationForm(forms.Form):
         self._clean_passwords(profile, include_dependent, extra_dependents)
         self._clean_class_links(profile, include_dependent, extra_dependents)
         self._clean_plan_selection(profile, include_dependent, extra_dependents)
+        self._clean_selected_products_payload()
         self._clean_kinship(profile, include_dependent, extra_dependents)
         self._clean_martial_background(profile, include_dependent, extra_dependents)
         if not self.cleaned_data.get("checkout_action"):
@@ -424,14 +455,11 @@ class PortalRegistrationForm(forms.Form):
             self.add_error("selected_plan", "Selecione um plano válido.")
             return
 
-        if plan.is_family_plan and not self._is_family_plan_allowed(
-            profile,
-            include_dependent,
-            extra_dependents,
-        ):
+        context = build_eligibility_context_for_registration(self.cleaned_data)
+        if not is_plan_eligible(plan, context):
             self.add_error(
                 "selected_plan",
-                "Plano familiar disponível apenas para titular com dependente ou responsável com 2 crianças.",
+                self._build_plan_ineligible_message(plan, context),
             )
             return
 
@@ -443,12 +471,36 @@ class PortalRegistrationForm(forms.Form):
                 "O meio de pagamento escolhido não corresponde ao plano selecionado.",
             )
 
-    def _is_family_plan_allowed(self, profile, include_dependent, extra_dependents):
-        if profile == RegistrationProfile.HOLDER:
-            return bool(include_dependent)
-        if profile == RegistrationProfile.GUARDIAN:
-            return 1 + len(extra_dependents) >= 2
-        return False
+    def _build_plan_ineligible_message(self, plan, context):
+        if plan.requires_special_authorization:
+            return "Este plano exige autorização especial da academia."
+        if plan.is_family_plan:
+            return (
+                "Plano familiar disponível apenas quando há ao menos dois alunos "
+                "ativos no grupo familiar com a mesma faixa etária do plano."
+            )
+        from system.models.plan import PlanAudience
+
+        if plan.audience == PlanAudience.KIDS_JUVENILE and context.kids_juvenile_active_count < 1:
+            return "Plano Kids/Juvenil exige aluno menor cadastrado."
+        if plan.audience == PlanAudience.ADULT and not context.adult_active:
+            return "Plano Adulto exige aluno adulto cadastrado."
+        return "Plano não disponível para o perfil selecionado."
+
+    def _clean_selected_products_payload(self):
+        selected_products = parse_selected_products(
+            self.cleaned_data.get("selected_products_payload")
+        )
+        if not selected_products:
+            self.cleaned_data["selected_products"] = []
+            return
+        try:
+            self.cleaned_data["selected_products"] = resolve_selected_product_items(
+                selected_products
+            )
+        except ValueError as error:
+            self.cleaned_data["selected_products"] = []
+            self.add_error("selected_products_payload", str(error))
 
     def _resolve_class_group_collection(self, prefix, required):
         field_name = f"{prefix}_class_groups"
@@ -538,10 +590,27 @@ class PortalRegistrationForm(forms.Form):
             prefixes.append("student")
 
         for prefix in prefixes:
+            has_martial_art = self._normalize_martial_art_answer(
+                self.cleaned_data.get(f"{prefix}_has_martial_art") or "",
+                self.cleaned_data.get(f"{prefix}_martial_art") or "",
+            )
+            self.cleaned_data[f"{prefix}_has_martial_art"] = has_martial_art
             martial_art = self.cleaned_data.get(f"{prefix}_martial_art") or ""
             graduation = (self.cleaned_data.get(f"{prefix}_martial_art_graduation") or "").strip()
             belt = self.cleaned_data.get(f"{prefix}_jiu_jitsu_belt") or ""
-            if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
+            if has_martial_art != MARTIAL_ART_EXPERIENCE_YES:
+                self._clear_martial_background_fields(prefix)
+                continue
+            if not martial_art:
+                self.add_error(
+                    f"{prefix}_martial_art",
+                    "Selecione a arte marcial praticada.",
+                )
+                self.cleaned_data[f"{prefix}_martial_art_graduation"] = ""
+                self.cleaned_data[f"{prefix}_jiu_jitsu_belt"] = ""
+                self.cleaned_data[f"{prefix}_jiu_jitsu_stripes"] = None
+                continue
+            if martial_art != MartialArt.JIU_JITSU and not graduation:
                 self.add_error(
                     f"{prefix}_martial_art_graduation",
                     "Informe a graduação/nível na arte marcial.",
@@ -558,10 +627,27 @@ class PortalRegistrationForm(forms.Form):
                 self.cleaned_data[f"{prefix}_martial_art_graduation"] = ""
 
         for index, dependent in enumerate(extra_dependents, start=1):
+            has_martial_art = self._normalize_martial_art_answer(
+                dependent.get("has_martial_art") or "",
+                dependent.get("martial_art") or "",
+            )
+            dependent["has_martial_art"] = has_martial_art
             martial_art = dependent.get("martial_art") or ""
             graduation = (dependent.get("martial_art_graduation") or "").strip()
             belt = dependent.get("jiu_jitsu_belt") or ""
-            if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
+            if has_martial_art != MARTIAL_ART_EXPERIENCE_YES:
+                self._clear_extra_dependent_martial_background(dependent)
+                continue
+            if not martial_art:
+                self.add_error(
+                    None,
+                    f"Dependente adicional {index}: selecione a arte marcial praticada.",
+                )
+                dependent["martial_art_graduation"] = ""
+                dependent["jiu_jitsu_belt"] = ""
+                dependent["jiu_jitsu_stripes"] = None
+                continue
+            if martial_art != MartialArt.JIU_JITSU and not graduation:
                 self.add_error(None, f"Dependente adicional {index}: informe a graduação na arte marcial.")
             if martial_art == MartialArt.JIU_JITSU and not belt:
                 self.add_error(None, f"Dependente adicional {index}: informe a faixa de Jiu Jitsu.")
@@ -614,6 +700,10 @@ class PortalRegistrationForm(forms.Form):
                     "allergies": dependent.get("allergies") or "",
                     "previous_injuries": dependent.get("injuries") or dependent.get("previous_injuries") or "",
                     "emergency_contact": dependent.get("emergency_contact") or "",
+                    "has_martial_art": self._normalize_martial_art_answer(
+                        dependent.get("has_martial_art") or "",
+                        dependent.get("martial_art") or "",
+                    ),
                     "martial_art": dependent.get("martial_art") or "",
                     "martial_art_graduation": dependent.get("martial_art_graduation") or "",
                     "jiu_jitsu_belt": dependent.get("jiu_jitsu_belt") or "",
@@ -621,3 +711,20 @@ class PortalRegistrationForm(forms.Form):
                 }
             )
         return cleaned_dependents
+
+    def _normalize_martial_art_answer(self, answer, martial_art):
+        if answer:
+            return answer
+        return MARTIAL_ART_EXPERIENCE_YES if martial_art else ""
+
+    def _clear_martial_background_fields(self, prefix):
+        self.cleaned_data[f"{prefix}_martial_art"] = ""
+        self.cleaned_data[f"{prefix}_martial_art_graduation"] = ""
+        self.cleaned_data[f"{prefix}_jiu_jitsu_belt"] = ""
+        self.cleaned_data[f"{prefix}_jiu_jitsu_stripes"] = None
+
+    def _clear_extra_dependent_martial_background(self, dependent):
+        dependent["martial_art"] = ""
+        dependent["martial_art_graduation"] = ""
+        dependent["jiu_jitsu_belt"] = ""
+        dependent["jiu_jitsu_stripes"] = None

@@ -17,6 +17,7 @@ from system.models import (
     ClassSession,
     Holiday,
     Product,
+    ProductBackorder,
     ProductCategory,
     ProductVariant,
     RegistrationOrder,
@@ -233,20 +234,53 @@ class ProductVariantAdmin(admin.ModelAdmin):
     autocomplete_fields = ("product",)
 
 
+@admin.register(ProductBackorder)
+class ProductBackorderAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "person",
+        "variant",
+        "status",
+        "created_at",
+        "notified_at",
+        "expires_at",
+    )
+    list_filter = ("status", "variant__product__category")
+    search_fields = (
+        "person__full_name",
+        "person__cpf",
+        "variant__product__display_name",
+    )
+    autocomplete_fields = ("person", "variant", "confirmed_order")
+    readonly_fields = ("notified_at", "confirmed_at", "canceled_at", "expires_at")
+
+
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
     list_display = (
         "display_name",
         "code",
+        "audience",
+        "weekly_frequency",
         "billing_cycle",
         "payment_method",
         "price",
         "monthly_reference_price",
         "is_family_plan",
+        "teacher_commission_percentage",
+        "requires_special_authorization",
         "display_order",
         "is_active",
     )
-    list_filter = ("billing_cycle", "payment_method", "is_family_plan", "is_active")
+    list_filter = (
+        "audience",
+        "weekly_frequency",
+        "billing_cycle",
+        "payment_method",
+        "is_family_plan",
+        "requires_special_authorization",
+        "is_active",
+    )
     search_fields = ("display_name", "code")
 
 

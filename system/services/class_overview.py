@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from system.services.class_catalog import (
     WEEKDAY_ORDER,
+    WEEKDAY_LABEL_ORDER,
     get_admin_class_group_queryset,
     get_admin_class_schedule_queryset,
     get_info_class_group_queryset,
@@ -129,6 +130,7 @@ def get_registration_catalog_payload():
                     _serialize_physical_group(pg)
                     for pg in card.physical_groups
                 ],
+                "compact_schedule_sections": _build_compact_schedule_sections(card),
             }
         )
     return payload
@@ -302,6 +304,76 @@ def _build_class_group_choice_label(card):
         f"Professores: {teacher_label} | "
         f"Horários: {schedule_label}"
     )
+
+
+def _build_compact_schedule_sections(card):
+    grouped_map = OrderedDict()
+
+    def add_entry(weekday_label, time_label, teacher_label):
+        normalized_weekday = (weekday_label or "").strip() or "Outro dia"
+        normalized_time = (time_label or "").strip()
+        normalized_teacher = (teacher_label or "").strip() or "Equipe docente não definida"
+        if not normalized_time:
+            return
+        if normalized_weekday not in grouped_map:
+            grouped_map[normalized_weekday] = []
+        entry_key = (normalized_time, normalized_teacher)
+        if entry_key in grouped_map[normalized_weekday]:
+            return
+        grouped_map[normalized_weekday].append(entry_key)
+
+    fallback_teacher_label = ", ".join(
+        member["full_name"] for member in card.teaching_team
+    ) or "Equipe docente não definida"
+
+    if card.physical_groups:
+        for class_group in card.physical_groups:
+            teacher_label = _build_physical_group_teacher_label(
+                class_group,
+                fallback_teacher_label,
+            )
+            for day in class_group.schedule_day_summary:
+                for time_label in day.get("time_labels", []):
+                    add_entry(day.get("weekday_label", ""), time_label, teacher_label)
+    else:
+        for entry in card.schedule_entries:
+            teacher_label = ", ".join(entry.teacher_names) or fallback_teacher_label
+            add_entry(entry.weekday_display, entry.time_label, teacher_label)
+
+    sections = []
+    for weekday_label, entries in sorted(
+        grouped_map.items(),
+        key=lambda item: (
+            WEEKDAY_LABEL_ORDER.get(item[0], 99),
+            item[0],
+        ),
+    ):
+        sorted_entries = sorted(entries, key=lambda item: item[0])
+        sections.append(
+            {
+                "weekday_label": weekday_label,
+                "entries": [
+                    {
+                        "time_label": time_label,
+                        "teacher_label": teacher_label,
+                        "line_label": f"{time_label} - {teacher_label}",
+                    }
+                    for time_label, teacher_label in sorted_entries
+                ],
+            }
+        )
+    return sections
+
+
+def _build_physical_group_teacher_label(class_group, fallback_teacher_label):
+    names = []
+    for member in class_group.teaching_team:
+        full_name = member["full_name"].strip()
+        if full_name and full_name not in names:
+            names.append(full_name)
+    if names:
+        return ", ".join(names)
+    return fallback_teacher_label
 
 
 def _get_class_group_key(class_group):

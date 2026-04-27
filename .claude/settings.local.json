@@ -1,9 +1,20 @@
 {
-  "_comment": "Configurações locais pessoais — NÃO commitar no git. Claude Code adiciona ao .gitignore automaticamente.",
-  "model": "claude-sonnet-4-6",
-  "language": "pt-BR",
   "env": {
     "PYTHONIOENCODING": "utf-8",
     "PYTHONUTF8": "1"
-  }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_views.PlanChangeSelectViewGroupingTest --verbosity 2)",
+      "Bash(.venv/Scripts/python.exe *)",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py makemigrations --check --dry-run)",
+      "Bash(./.venv/Scripts/python.exe -c \"import system.models.plan as m; import system.services.seeding as s; import system.selectors.plan_eligibility as e; import system.forms.registration_forms as f; import system.views.plan_change_views as v; import system.views.plan_views as pv; import system.forms.plan_forms as pf; print\\('imports ok'\\)\")",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/models/plan.py system/services/seeding.py system/selectors/plan_eligibility.py system/forms/registration_forms.py system/views/plan_change_views.py system/views/plan_views.py system/forms/plan_forms.py system/services/registration_checkout.py system/admin.py system/tests/test_plan_models.py system/tests/test_plan_eligibility.py system/tests/test_plan_views.py system/tests/test_services.py)",
+      "Bash(./.venv/Scripts/python.exe manage.py check)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/urls.py system/views/__init__.py system/views/auth_views.py system/views/plan_views.py system/views/product_views.py system/views/payment_views.py system/tests/test_views.py system/tests/test_plan_views.py system/tests/test_product_views.py system/tests/test_class_portal_views.py)"
+    ]
+  },
+  "model": "claude-sonnet-4-6",
+  "language": "pt-BR",
+  "_comment": "Configurações locais pessoais — NÃO commitar no git. Claude Code adiciona ao .gitignore automaticamente."
 }

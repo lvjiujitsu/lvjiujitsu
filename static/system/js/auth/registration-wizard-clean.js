@@ -31,6 +31,7 @@
   var submitButton = form.querySelector('[data-step-submit]');
   var dateInputs = Array.from(form.querySelectorAll('[data-date-mask]'));
   var kinshipSelects = Array.from(form.querySelectorAll('[data-kinship-select]'));
+  var martialArtPresenceSelects = Array.from(form.querySelectorAll('[data-martial-art-presence-select]'));
   var martialArtSelects = Array.from(form.querySelectorAll('[data-martial-art-select]'));
   
   var draftNote = document.querySelector('[data-registration-draft-note]');
@@ -502,23 +503,52 @@
   }
 
   function syncMartialFields() {
-    martialArtSelects.forEach(function (selectField) {
-      updateMartialFields(selectField);
+    getMartialArtPrefixes().forEach(function (prefix) {
+      updateMartialFields(prefix);
     });
   }
 
-  function updateMartialFields(selectField) {
-    if (!selectField) {
-      return;
-    }
-    var prefix = selectField.dataset.martialPrefix;
+  function getMartialArtPrefixes() {
+    var prefixes = {};
+    martialArtPresenceSelects.forEach(function (selectField) {
+      if (selectField.dataset.martialPrefix) {
+        prefixes[selectField.dataset.martialPrefix] = true;
+      }
+    });
+    martialArtSelects.forEach(function (selectField) {
+      if (selectField.dataset.martialPrefix) {
+        prefixes[selectField.dataset.martialPrefix] = true;
+      }
+    });
+    return Object.keys(prefixes);
+  }
+
+  function updateMartialFields(prefix) {
     if (!prefix) {
       return;
     }
+    var presenceField = form.querySelector('[name="' + prefix + '_has_martial_art"]');
+    var martialArtField = form.querySelector('[name="' + prefix + '_martial_art"]');
+    var detailsWrapper = form.querySelector('[data-martial-art-details-wrapper="' + prefix + '"]');
+    var hasMartialArt = Boolean(
+      (presenceField && presenceField.value === 'yes') ||
+      (!presenceField || !presenceField.value) && martialArtField && martialArtField.value
+    );
+    if (detailsWrapper) {
+      detailsWrapper.classList.toggle('is-hidden', !hasMartialArt);
+      detailsWrapper.hidden = !hasMartialArt;
+      if (martialArtField) {
+        martialArtField.disabled = !hasMartialArt;
+        if (!hasMartialArt) {
+          martialArtField.value = '';
+        }
+      }
+    }
     var jiuWrappers = form.querySelectorAll('[data-jiu-jitsu-only-wrapper="' + prefix + '"]');
     var nonJiuWrappers = form.querySelectorAll('[data-non-jiu-jitsu-only-wrapper="' + prefix + '"]');
-    var shouldShowJiu = selectField.value === 'jiu_jitsu';
-    var shouldShowNonJiu = !!selectField.value && selectField.value !== 'jiu_jitsu';
+    var martialArtValue = martialArtField ? martialArtField.value : '';
+    var shouldShowJiu = hasMartialArt && martialArtValue === 'jiu_jitsu';
+    var shouldShowNonJiu = hasMartialArt && !!martialArtValue && martialArtValue !== 'jiu_jitsu';
     jiuWrappers.forEach(function (wrapper) {
       wrapper.classList.toggle('is-hidden', !shouldShowJiu);
       wrapper.hidden = !shouldShowJiu;
@@ -575,6 +605,7 @@
       allergies: '',
       injuries: '',
       emergency_contact: '',
+      has_martial_art: '',
       martial_art: '',
       martial_art_graduation: '',
       jiu_jitsu_belt: '',
@@ -652,6 +683,7 @@
       allergies: getInputValue(prefix + '_allergies'),
       injuries: getInputValue(prefix + '_injuries'),
       emergency_contact: getInputValue(prefix + '_emergency_contact'),
+      has_martial_art: getInputValue(prefix + '_has_martial_art'),
       martial_art: getInputValue(prefix + '_martial_art'),
       martial_art_graduation: getInputValue(prefix + '_martial_art_graduation'),
       jiu_jitsu_belt: getInputValue(prefix + '_jiu_jitsu_belt'),
@@ -676,6 +708,7 @@
     setInputValue(prefix + '_allergies', payload.allergies);
     setInputValue(prefix + '_injuries', payload.injuries);
     setInputValue(prefix + '_emergency_contact', payload.emergency_contact);
+    setInputValue(prefix + '_has_martial_art', payload.has_martial_art);
     setInputValue(prefix + '_martial_art', payload.martial_art);
     setInputValue(prefix + '_martial_art_graduation', payload.martial_art_graduation);
     setInputValue(prefix + '_jiu_jitsu_belt', payload.jiu_jitsu_belt);
@@ -1209,9 +1242,16 @@
     });
   });
 
+  martialArtPresenceSelects.forEach(function (selectField) {
+    selectField.addEventListener('change', function () {
+      updateMartialFields(selectField.dataset.martialPrefix || '');
+      saveDraft();
+    });
+  });
+
   martialArtSelects.forEach(function (selectField) {
     selectField.addEventListener('change', function () {
-      updateMartialFields(selectField);
+      updateMartialFields(selectField.dataset.martialPrefix || '');
       saveDraft();
     });
   });
@@ -1318,7 +1358,7 @@
     }
 
     allowedOptions.forEach(function (option) {
-      container.appendChild(buildClassCard(prefix, option, selectField));
+      container.appendChild(buildClassCard(prefix, option, selectField, allowedOptions.length));
     });
     updateClassHelp(prefix, help);
   }
@@ -1334,12 +1374,12 @@
     });
   }
 
-  function buildClassCard(prefix, option, selectField) {
+  function buildClassCard(prefix, option, selectField, optionCount) {
     var selectedValues = new Set(getSelectMultipleValues(prefix + '_class_groups').map(String));
     var isSelected = selectedValues.has(String(option.id));
     var teacherLines = buildTeacherLines(option.teacher_label);
-    var weekdaySections = buildClassScheduleSections(option);
-    var scheduleCount = countScheduleEntries(weekdaySections);
+    var compactSections = getCompactScheduleSections(option, teacherLines);
+    var scheduleCount = countCompactScheduleEntries(compactSections);
 
     var article = document.createElement('article');
     article.className = 'record-card record-card-catalog class-option-card--record';
@@ -1352,10 +1392,10 @@
     var headInfo = document.createElement('div');
     var nameSpan = document.createElement('span');
     nameSpan.className = 'record-card-name';
-    nameSpan.textContent = buildClassCardTitle(prefix, option);
+    nameSpan.textContent = buildClassCardTitle(prefix, option, optionCount);
     var subtitle = document.createElement('div');
     subtitle.className = 'record-card-subtitle';
-    subtitle.textContent = teacherLines.length + ' professor' + (teacherLines.length > 1 ? 'es' : '') + ' \u00b7 ' + scheduleCount + ' hor\u00e1rio' + (scheduleCount > 1 ? 's' : '');
+    subtitle.textContent = buildClassCardSubtitle(teacherLines.length, scheduleCount);
     headInfo.appendChild(nameSpan);
     headInfo.appendChild(subtitle);
 
@@ -1380,12 +1420,12 @@
     details.open = isSelected;
     var summary = document.createElement('summary');
     summary.className = 'catalog-dropdown-summary';
-    summary.textContent = 'Grade por dia e professor';
+    summary.textContent = 'Ver horários da semana';
     details.appendChild(summary);
 
     var content = document.createElement('div');
     content.className = 'catalog-dropdown-content class-schedule-dropdown-content';
-    content.appendChild(buildScheduleFirstClassOverview(option, teacherLines, weekdaySections));
+    content.appendChild(buildCompactScheduleOverview(compactSections));
 
     details.appendChild(content);
     article.appendChild(head);
@@ -1393,10 +1433,9 @@
     return article;
   }
 
-  function buildScheduleFirstClassOverview(option, teacherLines, weekdaySections) {
+  function buildCompactScheduleOverview(sections) {
     var overview = document.createElement('div');
     overview.className = 'class-schedule-overview';
-    var sections = buildScheduleFirstSections(option, teacherLines, weekdaySections);
 
     if (sections.length === 0) {
       var emptySchedule = document.createElement('p');
@@ -1414,36 +1453,16 @@
       title.className = 'class-schedule-day-title';
       title.textContent = section.weekdayLabel;
 
-      var tableHead = document.createElement('div');
-      tableHead.className = 'class-schedule-table-head';
-      var timeLabel = document.createElement('span');
-      timeLabel.textContent = 'Horário';
-      var teacherLabel = document.createElement('span');
-      teacherLabel.textContent = 'Professor';
-      tableHead.appendChild(timeLabel);
-      tableHead.appendChild(teacherLabel);
-
-      var rows = document.createElement('div');
-      rows.className = 'class-schedule-rows';
+      var rows = document.createElement('ul');
+      rows.className = 'class-schedule-simple-list';
       section.entries.forEach(function (entry) {
-        var row = document.createElement('div');
-        row.className = 'class-schedule-row';
-
-        var time = document.createElement('span');
-        time.className = 'class-schedule-time';
-        time.textContent = entry.timeLabel;
-
-        var teacher = document.createElement('span');
-        teacher.className = 'class-schedule-teacher';
-        teacher.textContent = entry.teacherLabel;
-
-        row.appendChild(time);
-        row.appendChild(teacher);
+        var row = document.createElement('li');
+        row.className = 'class-schedule-simple-item';
+        row.textContent = buildCompactScheduleLine(entry);
         rows.appendChild(row);
       });
 
       dayCard.appendChild(title);
-      dayCard.appendChild(tableHead);
       dayCard.appendChild(rows);
       overview.appendChild(dayCard);
     });
@@ -1547,11 +1566,47 @@
     return uniqueNames.length > 0 ? uniqueNames : ['Equipe docente não definida'];
   }
 
-  function buildClassCardTitle(prefix, option) {
-    if (isSoloHolderFlow(prefix) && String(option.category_audience) === 'adult') {
-      return 'Jiu Jitsu Adulto';
+  function buildClassCardTitle(prefix, option, optionCount) {
+    if (isSoloHolderFlow(prefix) && optionCount === 1) {
+      return 'Treinos disponíveis';
     }
     return option.category_name + ' · ' + option.display_name;
+  }
+
+  function buildClassCardSubtitle(teacherCount, scheduleCount) {
+    if (!scheduleCount) {
+      return 'Sem horários ativos';
+    }
+    var parts = [scheduleCount + ' hor\u00e1rio' + (scheduleCount > 1 ? 's' : '') + ' na semana'];
+    if (teacherCount > 0) {
+      parts.push(teacherCount + ' professor' + (teacherCount > 1 ? 'es' : ''));
+    }
+    return parts.join(' \u00b7 ');
+  }
+
+  function getCompactScheduleSections(option, teacherLines) {
+    if (Array.isArray(option.compact_schedule_sections) && option.compact_schedule_sections.length > 0) {
+      return option.compact_schedule_sections.map(function (section) {
+        return {
+          weekdayLabel: section.weekday_label || '',
+          entries: Array.isArray(section.entries) ? section.entries.map(function (entry) {
+            return {
+              timeLabel: entry.time_label || '',
+              teacherLabel: entry.teacher_label || '',
+              lineLabel: entry.line_label || ''
+            };
+          }) : []
+        };
+      });
+    }
+    return buildScheduleFirstSections(option, teacherLines, buildClassScheduleSections(option));
+  }
+
+  function buildCompactScheduleLine(entry) {
+    if (entry.lineLabel) {
+      return entry.lineLabel;
+    }
+    return (entry.timeLabel || '') + ' - ' + (entry.teacherLabel || 'Equipe docente não definida');
   }
 
   function buildClassScheduleSections(option) {
@@ -1622,9 +1677,9 @@
     return weekdayOrder[normalized] || 99;
   }
 
-  function countScheduleEntries(weekdaySections) {
-    return weekdaySections.reduce(function (total, section) {
-      return total + section.times.length;
+  function countCompactScheduleEntries(sections) {
+    return sections.reduce(function (total, section) {
+      return total + ((section.entries || []).length);
     }, 0);
   }
 
@@ -1773,43 +1828,122 @@
   }
 
   function getEnrollmentMultiplier() {
-    var childFieldNames = [];
-    if (getSelectedProfile() === 'guardian') {
-      childFieldNames.push('student_class_groups');
-    }
-    if (getSelectedProfile() === 'holder' && dependentToggle && dependentToggle.checked) {
-      childFieldNames.push('dependent_class_groups');
-    }
-    for (var i = 0; i < childFieldNames.length; i++) {
-      if (hasKidsAndJuvenile(getSelectedAudiences(childFieldNames[i]))) {
-        return 2;
-      }
-    }
-    for (var j = 0; j < extraDependents.length; j++) {
-      var audiences = (extraDependents[j].class_groups || []).map(function (value) {
-        var option = findClassCatalogOption(value);
-        return option ? option.category_audience : '';
-      });
-      if (hasKidsAndJuvenile(audiences)) {
-        return 2;
-      }
-    }
     return 1;
   }
 
-  function hasKidsAndJuvenile(audiences) {
-    return audiences.indexOf('kids') !== -1 && audiences.indexOf('juvenile') !== -1;
+  function classifyPlanAudience(rawAudience) {
+    if (rawAudience === 'kids' || rawAudience === 'juvenile') {
+      return 'kids_juvenile';
+    }
+    if (rawAudience === 'adult' || rawAudience === 'women') {
+      return 'adult';
+    }
+    return '';
+  }
+
+  function classifyPersonAudience(prefix) {
+    var classAudiences = getSelectedAudiences(prefix + '_class_groups');
+    for (var i = 0; i < classAudiences.length; i++) {
+      var mapped = classifyPlanAudience(classAudiences[i]);
+      if (mapped === 'adult') {
+        return 'adult';
+      }
+    }
+    for (var j = 0; j < classAudiences.length; j++) {
+      var mappedKids = classifyPlanAudience(classAudiences[j]);
+      if (mappedKids === 'kids_juvenile') {
+        return 'kids_juvenile';
+      }
+    }
+    var ageAudience = resolveAudienceForPrefix(prefix);
+    return classifyPlanAudience(ageAudience);
+  }
+
+  function classifyExtraDependentAudience(dependent) {
+    var rawGroups = dependent.class_groups || [];
+    var classAudiences = rawGroups.map(function (value) {
+      var option = findClassCatalogOption(value);
+      return option ? option.category_audience : '';
+    }).filter(Boolean);
+    for (var i = 0; i < classAudiences.length; i++) {
+      var mapped = classifyPlanAudience(classAudiences[i]);
+      if (mapped === 'adult') {
+        return 'adult';
+      }
+    }
+    for (var j = 0; j < classAudiences.length; j++) {
+      var mappedKids = classifyPlanAudience(classAudiences[j]);
+      if (mappedKids === 'kids_juvenile') {
+        return 'kids_juvenile';
+      }
+    }
+    if (!dependent.birth_date) {
+      return '';
+    }
+    var birthDate = parsePtDate(dependent.birth_date);
+    if (!birthDate) {
+      return '';
+    }
+    var age = calculateAge(birthDate);
+    return age < 18 ? 'kids_juvenile' : 'adult';
+  }
+
+  function getEligibilityContext() {
+    var profile = getSelectedProfile();
+    var adultActive = false;
+    var kidsJuvenileCount = 0;
+
+    function tally(audience) {
+      if (audience === 'adult') {
+        adultActive = true;
+      } else if (audience === 'kids_juvenile') {
+        kidsJuvenileCount += 1;
+      }
+    }
+
+    if (profile === 'holder') {
+      tally(classifyPersonAudience('holder'));
+      if (dependentToggle && dependentToggle.checked) {
+        tally(classifyPersonAudience('dependent'));
+      }
+    } else if (profile === 'guardian') {
+      tally(classifyPersonAudience('student'));
+    }
+
+    for (var i = 0; i < extraDependents.length; i++) {
+      tally(classifyExtraDependentAudience(extraDependents[i]));
+    }
+
+    return {
+      adultActive: adultActive,
+      kidsJuvenileCount: kidsJuvenileCount,
+      adultFamilyEligible: adultActive && (adultActive ? 1 : 0) + kidsJuvenileCount >= 2,
+      kidsFamilyEligible: kidsJuvenileCount >= 2
+    };
+  }
+
+  function isPlanEligibleByContext(plan, context) {
+    if (plan.requires_special_authorization) {
+      return false;
+    }
+    if (plan.audience === 'adult') {
+      if (!context.adultActive) {
+        return false;
+      }
+      return !plan.is_family_plan || context.adultFamilyEligible;
+    }
+    if (plan.audience === 'kids_juvenile') {
+      if (context.kidsJuvenileCount < 1) {
+        return false;
+      }
+      return !plan.is_family_plan || context.kidsFamilyEligible;
+    }
+    return false;
   }
 
   function isFamilyPlanEligible() {
-    var profile = getSelectedProfile();
-    if (profile === 'holder') {
-      return Boolean(dependentToggle && dependentToggle.checked);
-    }
-    if (profile === 'guardian') {
-      return getDependentCount() >= 2;
-    }
-    return false;
+    var context = getEligibilityContext();
+    return context.adultFamilyEligible || context.kidsFamilyEligible;
   }
 
   // ============================================================================
@@ -1872,6 +2006,74 @@
     updateCheckoutActionUI();
   }
 
+  var planSelectorState = {
+    audience: '',
+    plan_type: '',
+    weekly_frequency: null,
+    billing_cycle: '',
+    payment_method: ''
+  };
+
+  var CYCLE_LABELS = {
+    monthly: 'Mensal',
+    quarterly: 'Trimestral',
+    semiannual: 'Semestral',
+    annual: 'Anual'
+  };
+
+  var CYCLE_ORDER = ['monthly', 'quarterly', 'semiannual', 'annual'];
+
+  function getPlanDimensionOptions(plans) {
+    var audiences = [];
+    var planTypes = [];
+    var frequencies = [];
+    var cycles = [];
+    var methods = [];
+    plans.forEach(function (plan) {
+      if (audiences.indexOf(plan.audience) === -1) audiences.push(plan.audience);
+      var type = plan.is_family_plan ? 'family' : 'individual';
+      if (planTypes.indexOf(type) === -1) planTypes.push(type);
+      var freq = Number(plan.weekly_frequency);
+      if (frequencies.indexOf(freq) === -1) frequencies.push(freq);
+      if (cycles.indexOf(plan.billing_cycle) === -1) cycles.push(plan.billing_cycle);
+      if (methods.indexOf(plan.payment_method) === -1) methods.push(plan.payment_method);
+    });
+    return {
+      audiences: audiences,
+      plan_types: planTypes,
+      weekly_frequencies: frequencies,
+      billing_cycles: cycles,
+      payment_methods: methods
+    };
+  }
+
+  function ensurePlanSelectorDefaults(plans) {
+    var dims = getPlanDimensionOptions(plans);
+    if (!planSelectorState.audience || dims.audiences.indexOf(planSelectorState.audience) === -1) {
+      planSelectorState.audience = dims.audiences.indexOf('adult') !== -1 ? 'adult' : (dims.audiences[0] || '');
+    }
+    var availableTypes = dims.plan_types.slice();
+    if (!planSelectorState.plan_type || availableTypes.indexOf(planSelectorState.plan_type) === -1) {
+      planSelectorState.plan_type = availableTypes.indexOf('individual') !== -1 ? 'individual' : (availableTypes[0] || '');
+    }
+    if (planSelectorState.weekly_frequency === null || dims.weekly_frequencies.indexOf(planSelectorState.weekly_frequency) === -1) {
+      planSelectorState.weekly_frequency = dims.weekly_frequencies.indexOf(5) !== -1 ? 5 : (dims.weekly_frequencies[0] || null);
+    }
+    if (!planSelectorState.billing_cycle || dims.billing_cycles.indexOf(planSelectorState.billing_cycle) === -1) {
+      planSelectorState.billing_cycle = dims.billing_cycles.indexOf('monthly') !== -1 ? 'monthly' : (dims.billing_cycles[0] || '');
+    }
+  }
+
+  function getPlanForState(method) {
+    return planCatalog.find(function (plan) {
+      return plan.audience === planSelectorState.audience
+        && (plan.is_family_plan ? 'family' : 'individual') === planSelectorState.plan_type
+        && Number(plan.weekly_frequency) === planSelectorState.weekly_frequency
+        && plan.billing_cycle === planSelectorState.billing_cycle
+        && plan.payment_method === method;
+    }) || null;
+  }
+
   function renderPlanList() {
     var container = form.querySelector('[data-plan-list]');
     if (!container) return;
@@ -1883,116 +2085,240 @@
     }
 
     var visiblePlans = getVisiblePlanCatalog();
-    if (selectedPlanId && !visiblePlans.some(function (plan) { return plan.id === selectedPlanId; })) {
-      selectedPlanId = null;
-      syncCheckoutHiddenFields();
-    }
     if (visiblePlans.length === 0) {
       container.innerHTML = '<p class="checkout-empty-note">Nenhum plano dispon\u00edvel para este cadastro.</p>';
+      selectedPlanId = null;
+      planSelectorState.payment_method = '';
+      syncCheckoutHiddenFields();
       return;
     }
 
-    var groupedPlans = groupPlansForDropdown(visiblePlans);
-    groupedPlans.forEach(function (group) {
-      container.appendChild(buildPlanGroupCard(group));
-    });
-  }
+    ensurePlanSelectorDefaults(visiblePlans);
 
-  function buildPlanGroupCard(group) {
-    var article = document.createElement('article');
-    article.className = 'record-card record-card-catalog class-option-card--record';
-    if (group.hasSelection) {
-      article.classList.add('is-selected');
+    var dims = getPlanDimensionOptions(visiblePlans);
+
+    var selector = document.createElement('div');
+    selector.className = 'plan-selector';
+
+    if (dims.audiences.length > 1) {
+      selector.appendChild(buildPlanSelectorRow({
+        label: 'Quem treina',
+        options: dims.audiences.map(function (audience) {
+          var sample = visiblePlans.find(function (p) { return p.audience === audience; });
+          return {
+            value: audience,
+            label: sample && sample.audience_label ? sample.audience_label : (audience === 'adult' ? 'Adulto' : 'Kids/Juvenil')
+          };
+        }),
+        currentValue: planSelectorState.audience,
+        onChange: function (value) {
+          planSelectorState.audience = value;
+          planSelectorState.payment_method = '';
+          renderPlanList();
+        }
+      }));
     }
 
-    var head = document.createElement('div');
-    head.className = 'record-card-head';
-    var headInfo = document.createElement('div');
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'record-card-name';
-    nameSpan.textContent = group.title;
-    var subtitle = document.createElement('div');
-    subtitle.className = 'record-card-subtitle';
-    subtitle.textContent = group.plans.length + (group.plans.length === 1 ? ' op\u00e7\u00e3o' : ' op\u00e7\u00f5es') + ' de pagamento';
-    headInfo.appendChild(nameSpan);
-    headInfo.appendChild(subtitle);
+    if (dims.plan_types.length > 1) {
+      selector.appendChild(buildPlanSelectorRow({
+        label: 'Tipo de plano',
+        options: [
+          { value: 'individual', label: 'Individual' },
+          { value: 'family', label: 'Fam\u00edlia' }
+        ].filter(function (opt) { return dims.plan_types.indexOf(opt.value) !== -1; }),
+        currentValue: planSelectorState.plan_type,
+        onChange: function (value) {
+          planSelectorState.plan_type = value;
+          planSelectorState.payment_method = '';
+          renderPlanList();
+        }
+      }));
+    }
 
-    var badge = document.createElement('span');
-    badge.className = 'record-card-badge';
-    if (group.section === 'family') {
-      badge.textContent = 'Fam\u00edlia';
+    if (dims.weekly_frequencies.length > 1) {
+      var sortedFrequencies = dims.weekly_frequencies.slice().sort(function (a, b) { return b - a; });
+      selector.appendChild(buildPlanSelectorRow({
+        label: 'Frequ\u00eancia',
+        options: sortedFrequencies.map(function (freq) {
+          return { value: freq, label: freq + 'x por semana' };
+        }),
+        currentValue: planSelectorState.weekly_frequency,
+        onChange: function (value) {
+          planSelectorState.weekly_frequency = Number(value);
+          planSelectorState.payment_method = '';
+          renderPlanList();
+        }
+      }));
+    }
+
+    selector.appendChild(buildPlanSelectorRow({
+      label: 'Recorr\u00eancia',
+      options: CYCLE_ORDER
+        .filter(function (c) { return dims.billing_cycles.indexOf(c) !== -1; })
+        .map(function (c) { return { value: c, label: CYCLE_LABELS[c] }; }),
+      currentValue: planSelectorState.billing_cycle,
+      onChange: function (value) {
+        planSelectorState.billing_cycle = value;
+        planSelectorState.payment_method = '';
+        renderPlanList();
+      }
+    }));
+
+    var paymentLabel = document.createElement('span');
+    paymentLabel.className = 'plan-selector-label';
+    paymentLabel.textContent = 'Forma de pagamento';
+    selector.appendChild(paymentLabel);
+
+    var paymentGrid = document.createElement('div');
+    paymentGrid.className = 'plan-selector-payment-grid';
+
+    var pixPlan = getPlanForState('pix');
+    var creditPlan = getPlanForState('credit_card');
+
+    if (pixPlan) {
+      paymentGrid.appendChild(buildPlanSelectorPaymentCard(pixPlan, 'pix'));
+    }
+    if (creditPlan) {
+      paymentGrid.appendChild(buildPlanSelectorPaymentCard(creditPlan, 'credit_card'));
+    }
+
+    selector.appendChild(paymentGrid);
+
+    var resolvedPlan = planSelectorState.payment_method
+      ? getPlanForState(planSelectorState.payment_method)
+      : null;
+
+    if (resolvedPlan) {
+      selector.appendChild(buildPlanSelectorSummary(resolvedPlan));
+      selectedPlanId = resolvedPlan.id;
+      setCheckoutAction(getCheckoutActionForPlan(resolvedPlan));
     } else {
-      badge.textContent = group.cycle === 'monthly' ? 'Mensal' : group.cycle === 'quarterly' ? 'Trimestral' : group.cycle === 'semiannual' ? 'Semestral' : group.cycle === 'annual' ? 'Anual' : 'Plano';
+      selector.appendChild(buildPlanSelectorHint(pixPlan, creditPlan));
+      selectedPlanId = null;
     }
 
-    head.appendChild(headInfo);
-    head.appendChild(badge);
-
-    var details = document.createElement('details');
-    details.className = 'catalog-dropdown';
-    if (group.hasSelection) {
-      details.open = true;
-    }
-    var summary = document.createElement('summary');
-    summary.className = 'catalog-dropdown-summary';
-    summary.textContent = 'Ver op\u00e7\u00f5es de pagamento';
-    details.appendChild(summary);
-
-    var content = document.createElement('div');
-    content.className = 'catalog-dropdown-content';
-    var optionsList = document.createElement('div');
-    optionsList.className = 'catalog-plan-options';
-    group.plans.forEach(function (plan) {
-      optionsList.appendChild(buildPlanCard(plan));
-    });
-    content.appendChild(optionsList);
-    details.appendChild(content);
-
-    article.appendChild(head);
-    article.appendChild(details);
-    return article;
+    syncCheckoutHiddenFields();
+    container.appendChild(selector);
   }
 
-  function buildPlanCard(plan) {
-    var isSelected = selectedPlanId === plan.id;
-    var card = document.createElement('label');
-    card.className = 'catalog-plan-option' + (isSelected ? ' is-selected' : '');
+  function buildPlanSelectorRow(rowOptions) {
+    var row = document.createElement('div');
+    row.className = 'plan-selector-row';
 
-    var radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = '_plan_radio';
-    radio.className = 'catalog-plan-option-radio';
-    radio.value = String(plan.id);
-    radio.checked = isSelected;
-    radio.addEventListener('change', function () {
+    var label = document.createElement('span');
+    label.className = 'plan-selector-label';
+    label.textContent = rowOptions.label;
+    row.appendChild(label);
+
+    var chips = document.createElement('div');
+    chips.className = 'plan-selector-chips';
+
+    rowOptions.options.forEach(function (opt) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'plan-selector-chip';
+      if (String(opt.value) === String(rowOptions.currentValue)) {
+        chip.classList.add('is-selected');
+      }
+      chip.textContent = opt.label;
+      chip.addEventListener('click', function () {
+        rowOptions.onChange(opt.value);
+      });
+      chips.appendChild(chip);
+    });
+
+    row.appendChild(chips);
+    return row;
+  }
+
+  function buildPlanSelectorPaymentCard(plan, paymentMethod) {
+    var card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'plan-selector-payment-card';
+    if (planSelectorState.payment_method === paymentMethod) {
+      card.classList.add('is-selected');
+    }
+    card.dataset.paymentMethod = paymentMethod;
+
+    var iconWrapper = document.createElement('span');
+    iconWrapper.className = 'plan-selector-payment-icon';
+    iconWrapper.appendChild(createPaymentIcon(paymentMethod));
+    card.appendChild(iconWrapper);
+
+    var info = document.createElement('span');
+    info.className = 'plan-selector-payment-info';
+
+    var title = document.createElement('span');
+    title.className = 'plan-selector-payment-title';
+    title.textContent = paymentMethod === 'pix' ? 'PIX' : 'Cart\u00e3o';
+    info.appendChild(title);
+
+    var subtitle = document.createElement('span');
+    subtitle.className = 'plan-selector-payment-subtitle';
+    subtitle.textContent = paymentMethod === 'pix' ? 'Desconto comercial' : 'Cart\u00e3o sem juros';
+    info.appendChild(subtitle);
+
+    var price = document.createElement('span');
+    price.className = 'plan-selector-payment-price';
+    price.textContent = formatBRL(plan.price);
+    info.appendChild(price);
+
+    if (plan.monthly_reference_price && plan.billing_cycle !== 'monthly') {
+      var hint = document.createElement('span');
+      hint.className = 'plan-selector-payment-hint';
+      hint.textContent = formatBRL(plan.monthly_reference_price) + ' por m\u00eas';
+      info.appendChild(hint);
+    }
+
+    card.appendChild(info);
+
+    card.addEventListener('click', function () {
+      planSelectorState.payment_method = paymentMethod;
       selectedPlanId = plan.id;
       setCheckoutAction(getCheckoutActionForPlan(plan));
       syncCheckoutHiddenFields();
       renderPlanList();
     });
 
-    var icon = createPaymentIcon(plan.payment_method);
-
-    var info = document.createElement('div');
-    info.className = 'catalog-plan-option-info';
-    var name = document.createElement('span');
-    name.className = 'catalog-plan-option-name';
-    name.textContent = plan.name;
-    var meta = document.createElement('span');
-    meta.className = 'catalog-plan-option-meta';
-    meta.textContent = buildPlanMeta(plan);
-    info.appendChild(name);
-    info.appendChild(meta);
-
-    var price = document.createElement('span');
-    price.className = 'catalog-plan-option-price';
-    price.textContent = formatBRL(plan.price);
-
-    card.appendChild(radio);
-    card.appendChild(icon);
-    card.appendChild(info);
-    card.appendChild(price);
     return card;
+  }
+
+  function buildPlanSelectorSummary(plan) {
+    var summary = document.createElement('div');
+    summary.className = 'plan-selector-summary';
+
+    var title = document.createElement('span');
+    title.className = 'plan-selector-summary-title';
+    title.textContent = 'Plano selecionado';
+    summary.appendChild(title);
+
+    var name = document.createElement('span');
+    name.className = 'plan-selector-summary-name';
+    name.textContent = plan.name;
+    summary.appendChild(name);
+
+    var meta = document.createElement('span');
+    meta.className = 'plan-selector-summary-meta';
+    meta.textContent = buildPlanMeta(plan);
+    summary.appendChild(meta);
+
+    var total = document.createElement('span');
+    total.className = 'plan-selector-summary-total';
+    total.textContent = formatBRL(plan.price);
+    summary.appendChild(total);
+
+    return summary;
+  }
+
+  function buildPlanSelectorHint(pixPlan, creditPlan) {
+    var hint = document.createElement('p');
+    hint.className = 'plan-selector-hint';
+    if (!pixPlan && !creditPlan) {
+      hint.textContent = 'Nenhuma combina\u00e7\u00e3o dispon\u00edvel para os filtros atuais.';
+    } else {
+      hint.textContent = 'Escolha PIX ou Cart\u00e3o para confirmar o plano.';
+    }
+    return hint;
   }
 
   function createPaymentIcon(paymentMethod) {
@@ -2013,56 +2339,10 @@
     return icon;
   }
 
-  function groupPlansForDropdown(plans) {
-    var cycleOrder = { monthly: 1, quarterly: 2, semiannual: 3, annual: 4 };
-    var grouped = {};
-
-    plans.forEach(function (plan) {
-      var section = plan.is_family_plan ? 'family' : 'standard';
-      var cycle = plan.billing_cycle || 'other';
-      var key = section === 'family' ? 'family' : section + ':' + cycle;
-      if (!grouped[key]) {
-        grouped[key] = {
-          section: section,
-          cycle: section === 'family' ? null : cycle,
-          title: buildPlanGroupTitle(plan, section === 'family'),
-          plans: [],
-          hasSelection: false
-        };
-      }
-      grouped[key].plans.push(plan);
-      if (selectedPlanId === plan.id) {
-        grouped[key].hasSelection = true;
-      }
-    });
-
-    return Object.keys(grouped)
-      .map(function (key) { return grouped[key]; })
-      .sort(function (a, b) {
-        if (a.section !== b.section) {
-          return a.section === 'standard' ? -1 : 1;
-        }
-        var orderA = cycleOrder[a.cycle] || 99;
-        var orderB = cycleOrder[b.cycle] || 99;
-        if (orderA !== orderB) {
-          return orderA - orderB;
-        }
-        return a.title.localeCompare(b.title);
-      });
-  }
-
-  function buildPlanGroupTitle(plan, isFamilyGroup) {
-    if (isFamilyGroup) {
-      return 'Plano família';
-    }
-    var cycleLabel = plan.cycle || 'Plano';
-    return 'Plano ' + cycleLabel.toLowerCase();
-  }
-
   function getVisiblePlanCatalog() {
-    var familyEligible = isFamilyPlanEligible();
+    var context = getEligibilityContext();
     return planCatalog.filter(function (plan) {
-      return !plan.is_family_plan || familyEligible;
+      return isPlanEligibleByContext(plan, context);
     });
   }
 
@@ -2074,8 +2354,16 @@
     if (plan.installment_label) {
       parts.push(plan.installment_label);
     }
+    if (plan.weekly_frequency_label) {
+      parts.push(plan.weekly_frequency_label);
+    }
+    if (plan.audience_label) {
+      parts.push(plan.audience_label);
+    }
     if (plan.is_family_plan) {
-      parts.push('Irmãos / Pais e Filhos');
+      parts.push('Família');
+    } else {
+      parts.push('Individual');
     }
     return parts.filter(Boolean).join(' · ');
   }
@@ -2108,12 +2396,13 @@
     groupedProducts.forEach(function (group) {
       container.appendChild(buildProductGroupCard(group));
     });
+    container.appendChild(buildSelectedProductCartPreview());
   }
 
   function buildProductGroupCard(group) {
     var totalSelected = 0;
     group.products.forEach(function (product) {
-      totalSelected += (selectedProducts[product.id] || 0);
+      totalSelected += getSelectedProductQuantity(product.id);
     });
 
     var article = document.createElement('article');
@@ -2172,26 +2461,34 @@
       var category = product.category || 'Outros materiais';
       if (!grouped[category]) {
         grouped[category] = {
+          order: Number(product.category_order || 999),
           title: category,
           products: [],
           hasSelection: false
         };
       }
       grouped[category].products.push(product);
-      if ((selectedProducts[product.id] || 0) > 0) {
+      if (getSelectedProductQuantity(product.id) > 0) {
         grouped[category].hasSelection = true;
       }
     });
     return Object.keys(grouped)
-      .sort(function (a, b) { return a.localeCompare(b); })
+      .sort(function (a, b) {
+        var first = grouped[a];
+        var second = grouped[b];
+        if (first.order !== second.order) {
+          return first.order - second.order;
+        }
+        return a.localeCompare(b);
+      })
       .map(function (key) { return grouped[key]; });
   }
 
   function buildProductCard(product) {
-    var qty = selectedProducts[product.id] || 0;
+    var qtyInCart = getSelectedProductQuantity(product.id);
 
-    var card = document.createElement('div');
-    card.className = 'catalog-product-item' + (qty > 0 ? ' is-selected' : '');
+    var card = document.createElement('article');
+    card.className = 'catalog-product-item' + (qtyInCart > 0 ? ' is-selected' : '');
 
     var info = document.createElement('div');
     info.className = 'catalog-product-item-info';
@@ -2211,46 +2508,241 @@
     price.className = 'catalog-product-item-price';
     price.textContent = formatBRL(product.price);
 
+    var top = document.createElement('div');
+    top.className = 'catalog-product-item-top';
+    top.appendChild(info);
+    top.appendChild(price);
+
+    if (!hasAvailableProductVariants(product)) {
+      var outBadge = document.createElement('span');
+      outBadge.className = 'store-product-badge--out';
+      outBadge.textContent = 'Esgotado';
+      card.appendChild(top);
+      card.appendChild(outBadge);
+      return card;
+    }
+
+    var selectedSummary = document.createElement('span');
+    selectedSummary.className = 'catalog-product-item-meta';
+    selectedSummary.textContent = qtyInCart > 0 ? 'No carrinho: ' + qtyInCart + ' un.' : 'Nenhuma variante adicionada.';
+
+    var config = document.createElement('div');
+    config.className = 'catalog-product-config-grid';
+
+    var variantField = document.createElement('label');
+    variantField.className = 'catalog-product-config-field';
+    var variantCaption = document.createElement('span');
+    variantCaption.textContent = 'Opção';
+    var variantSelect = document.createElement('select');
+    variantSelect.className = 'catalog-product-select';
+    variantSelect.innerHTML = '<option value="">Selecione</option>';
+    product.variants.forEach(function (variant) {
+      var option = document.createElement('option');
+      option.value = String(variant.id);
+      option.textContent = variant.label;
+      option.disabled = !variant.is_in_stock;
+      variantSelect.appendChild(option);
+    });
+    variantField.appendChild(variantCaption);
+    variantField.appendChild(variantSelect);
+
+    var quantity = 1;
+    var qtyField = document.createElement('div');
+    qtyField.className = 'catalog-product-config-field';
+    var qtyCaption = document.createElement('span');
+    qtyCaption.textContent = 'Quantidade';
     var qtyControl = document.createElement('div');
     qtyControl.className = 'catalog-product-qty';
-
     var minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'catalog-product-qty-btn';
     minusBtn.textContent = '\u2212';
-    minusBtn.addEventListener('click', function () {
-      var current = selectedProducts[product.id] || 0;
-      if (current > 0) {
-        selectedProducts[product.id] = current - 1;
-        if (selectedProducts[product.id] === 0) delete selectedProducts[product.id];
-        syncCheckoutHiddenFields();
-        renderProductList();
-      }
-    });
-
     var qtySpan = document.createElement('span');
     qtySpan.className = 'catalog-product-qty-value';
-    qtySpan.textContent = String(qty);
-
     var plusBtn = document.createElement('button');
     plusBtn.type = 'button';
     plusBtn.className = 'catalog-product-qty-btn';
     plusBtn.textContent = '+';
-    plusBtn.addEventListener('click', function () {
-      var current = selectedProducts[product.id] || 0;
-      selectedProducts[product.id] = current + 1;
-      syncCheckoutHiddenFields();
-      renderProductList();
-    });
-
     qtyControl.appendChild(minusBtn);
     qtyControl.appendChild(qtySpan);
     qtyControl.appendChild(plusBtn);
+    qtyField.appendChild(qtyCaption);
+    qtyField.appendChild(qtyControl);
 
-    card.appendChild(info);
-    card.appendChild(price);
-    card.appendChild(qtyControl);
+    var addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'catalog-product-add-button';
+    addButton.textContent = 'Adicionar ao carrinho';
+
+    function getSelectedVariant() {
+      return getProductVariantById(product, Number(variantSelect.value || '0'));
+    }
+
+    function syncAddState() {
+      var selectedVariant = getSelectedVariant();
+      var selectedQty = selectedVariant ? getSelectedVariantQuantity(selectedVariant.id) : 0;
+      var remaining = selectedVariant ? Math.max(0, selectedVariant.stock_quantity - selectedQty) : 0;
+      if (quantity > Math.max(remaining, 1)) {
+        quantity = Math.max(1, remaining);
+      }
+      qtySpan.textContent = String(quantity);
+      minusBtn.disabled = quantity <= 1;
+      plusBtn.disabled = !selectedVariant || remaining <= quantity;
+      addButton.disabled = !selectedVariant || remaining < quantity || quantity < 1;
+      if (!selectedVariant) {
+        addButton.textContent = 'Selecione uma opção';
+        return;
+      }
+      addButton.textContent = remaining > 0 ? 'Adicionar ao carrinho' : 'Sem estoque disponível';
+    }
+
+    minusBtn.addEventListener('click', function () {
+      quantity = Math.max(1, quantity - 1);
+      syncAddState();
+    });
+    plusBtn.addEventListener('click', function () {
+      quantity += 1;
+      syncAddState();
+    });
+    variantSelect.addEventListener('change', syncAddState);
+    addButton.addEventListener('click', function () {
+      var selectedVariant = getSelectedVariant();
+      if (!selectedVariant) {
+        return;
+      }
+      addSelectedProductVariant(product, selectedVariant, quantity);
+      quantity = 1;
+      syncCheckoutHiddenFields();
+      renderProductList();
+      renderSummary();
+      saveDraft();
+    });
+
+    syncAddState();
+
+    config.appendChild(variantField);
+    config.appendChild(qtyField);
+    config.appendChild(addButton);
+
+    card.appendChild(top);
+    card.appendChild(selectedSummary);
+    card.appendChild(config);
     return card;
+  }
+
+  function hasAvailableProductVariants(product) {
+    return (product.variants || []).some(function (variant) {
+      return variant.is_in_stock;
+    });
+  }
+
+  function getProductVariantById(product, variantId) {
+    return (product.variants || []).find(function (variant) {
+      return Number(variant.id) === Number(variantId);
+    }) || null;
+  }
+
+  function getSelectedVariantQuantity(variantId) {
+    var item = selectedProducts[String(variantId)];
+    return item ? item.quantity : 0;
+  }
+
+  function getSelectedProductQuantity(productId) {
+    return getSelectedProductEntries().reduce(function (total, entry) {
+      return total + (entry.productId === productId ? entry.quantity : 0);
+    }, 0);
+  }
+
+  function getSelectedProductEntries() {
+    return Object.keys(selectedProducts).map(function (variantId) {
+      return selectedProducts[variantId];
+    }).filter(Boolean).sort(function (a, b) {
+      return a.displayName.localeCompare(b.displayName);
+    });
+  }
+
+  function addSelectedProductVariant(product, variant, quantity) {
+    var key = String(variant.id);
+    var existing = selectedProducts[key];
+    if (!existing) {
+      existing = buildSelectedProductState(product, variant, 0);
+      selectedProducts[key] = existing;
+    }
+    var maxAllowed = Math.max(0, variant.stock_quantity - existing.quantity);
+    if (maxAllowed <= 0) {
+      return;
+    }
+    existing.quantity += Math.min(quantity, maxAllowed);
+  }
+
+  function buildSelectedProductState(product, variant, quantity) {
+    return {
+      variantId: variant.id,
+      productId: product.id,
+      displayName: variant.snapshot_name || product.name,
+      productName: product.name,
+      quantity: quantity,
+      unitPrice: parseFloat(product.price || '0'),
+      color: variant.color || '',
+      size: variant.size || ''
+    };
+  }
+
+  function buildSelectedProductCartPreview() {
+    var entries = getSelectedProductEntries();
+    var wrapper = document.createElement('div');
+    wrapper.className = 'catalog-cart-preview';
+
+    var title = document.createElement('h3');
+    title.className = 'checkout-section-title';
+    title.textContent = 'Carrinho de materiais';
+    wrapper.appendChild(title);
+
+    if (entries.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'checkout-empty-note';
+      empty.textContent = 'Nenhum material adicionado.';
+      wrapper.appendChild(empty);
+      return wrapper;
+    }
+
+    var list = document.createElement('div');
+    list.className = 'catalog-cart-preview-list';
+    entries.forEach(function (entry) {
+      var row = document.createElement('div');
+      row.className = 'catalog-cart-preview-row';
+
+      var text = document.createElement('span');
+      text.className = 'catalog-cart-preview-label';
+      text.textContent = entry.displayName + ' x' + entry.quantity;
+
+      var actions = document.createElement('div');
+      actions.className = 'catalog-cart-preview-actions';
+
+      var subtotal = document.createElement('span');
+      subtotal.className = 'catalog-cart-preview-value';
+      subtotal.textContent = formatBRL(entry.unitPrice * entry.quantity);
+
+      var removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'catalog-cart-preview-remove';
+      removeButton.textContent = 'Remover';
+      removeButton.addEventListener('click', function () {
+        delete selectedProducts[String(entry.variantId)];
+        syncCheckoutHiddenFields();
+        renderProductList();
+        renderSummary();
+        saveDraft();
+      });
+
+      actions.appendChild(subtotal);
+      actions.appendChild(removeButton);
+      row.appendChild(text);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    wrapper.appendChild(list);
+    return wrapper;
   }
 
   function renderSummary() {
@@ -2272,19 +2764,15 @@
       }
     }
 
-    var productIds = Object.keys(selectedProducts);
-    for (var i = 0; i < productIds.length; i++) {
-      var pid = parseInt(productIds[i], 10);
-      var qty = selectedProducts[pid];
-      if (!qty) continue;
-      var product = productCatalog.find(function (p) { return p.id === pid; });
-      if (!product) continue;
-      var subtotal = parseFloat(product.price) * qty;
+    var productEntries = getSelectedProductEntries();
+    for (var i = 0; i < productEntries.length; i++) {
+      var entry = productEntries[i];
+      var subtotal = entry.unitPrice * entry.quantity;
       total += subtotal;
-      itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + product.name + ' x' + qty + '</span><span class="checkout-summary-row-value">' + formatBRL(subtotal) + '</span></div>';
+      itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + entry.displayName + ' x' + entry.quantity + '</span><span class="checkout-summary-row-value">' + formatBRL(subtotal) + '</span></div>';
     }
 
-    if (!selectedPlanId && productIds.length === 0) {
+    if (!selectedPlanId && productEntries.length === 0) {
       itemsContainer.innerHTML = '<p class="checkout-empty-note">Nenhum item selecionado.</p>';
     }
 
@@ -2300,16 +2788,62 @@
     var productsInput = document.getElementById('selected-products-payload');
     if (productsInput) {
       var items = [];
-      var ids = Object.keys(selectedProducts);
-      for (var i = 0; i < ids.length; i++) {
-        var id = parseInt(ids[i], 10);
-        var qty = selectedProducts[id];
-        if (qty > 0) items.push({ id: id, qty: qty });
-      }
+      getSelectedProductEntries().forEach(function (entry) {
+        if (entry.quantity > 0) {
+          items.push({ variant_id: entry.variantId, qty: entry.quantity });
+        }
+      });
       productsInput.value = JSON.stringify(items);
     }
     if (checkoutActionInput) {
       checkoutActionInput.value = checkoutAction;
+    }
+  }
+
+  function findProductCatalogVariant(variantId) {
+    for (var i = 0; i < productCatalog.length; i++) {
+      var product = productCatalog[i];
+      var variant = getProductVariantById(product, variantId);
+      if (variant) {
+        return { product: product, variant: variant };
+      }
+    }
+    return null;
+  }
+
+  function hydrateCheckoutStateFromHiddenFields() {
+    var planInput = document.getElementById('selected-plan');
+    selectedPlanId = planInput && planInput.value ? Number(planInput.value) : null;
+    selectedProducts = {};
+
+    var productsInput = document.getElementById('selected-products-payload');
+    if (!productsInput || !productsInput.value) {
+      return;
+    }
+
+    try {
+      var items = JSON.parse(productsInput.value);
+      if (!Array.isArray(items)) {
+        return;
+      }
+      items.forEach(function (item) {
+        var variantId = Number(item.variant_id || item.id || 0);
+        var quantity = Number(item.qty || item.quantity || 0);
+        if (!variantId || quantity <= 0) {
+          return;
+        }
+        var resolved = findProductCatalogVariant(variantId);
+        if (!resolved) {
+          return;
+        }
+        selectedProducts[String(variantId)] = buildSelectedProductState(
+          resolved.product,
+          resolved.variant,
+          quantity
+        );
+      });
+    } catch (_error) {
+      selectedProducts = {};
     }
   }
 
@@ -2327,6 +2861,7 @@
     checkoutAction = normalizeCheckoutAction(
       checkoutActionInput ? checkoutActionInput.value : checkoutAction
     );
+    hydrateCheckoutStateFromHiddenFields();
     
     // Compute initial steps
     activeSteps = computeActiveSteps();

@@ -11,16 +11,21 @@ from system.models import (
     Person,
     PersonType,
     RegistrationOrder,
+    RegistrationOrderItem,
     SubscriptionPlan,
 )
+from system.models.product import Product, ProductCategory, ProductVariant
 from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.models.registration_order import DepositStatus, PaymentProvider
 from system.services.financial_transactions import (
     apply_order_financials,
     calculate_financial_amounts,
 )
-from system.services.membership import add_billing_cycle
-from system.services.registration_checkout import get_registration_plan_multiplier
+from system.services.membership import add_billing_cycle, mark_order_manually_paid
+from system.services.registration_checkout import (
+    create_product_only_order,
+    get_registration_plan_multiplier,
+)
 from system.services.seeding import seed_class_catalog
 
 
@@ -106,7 +111,7 @@ class RegistrationCheckoutServiceTestCase(TestCase):
     def setUp(self):
         seed_class_catalog()
 
-    def test_child_kids_and_juvenile_selection_doubles_plan(self):
+    def test_plan_multiplier_is_always_one(self):
         kids = ClassCategory.objects.get(code="kids")
         juvenile = ClassCategory.objects.get(code="juvenile")
         payload = {
@@ -120,7 +125,7 @@ class RegistrationCheckoutServiceTestCase(TestCase):
             "extra_dependents": [],
         }
 
-        self.assertEqual(get_registration_plan_multiplier(payload), 2)
+        self.assertEqual(get_registration_plan_multiplier(payload), 1)
 
     def test_single_child_category_keeps_plan_simple(self):
         kids = ClassCategory.objects.get(code="kids")
@@ -133,3 +138,67 @@ class RegistrationCheckoutServiceTestCase(TestCase):
         }
 
         self.assertEqual(get_registration_plan_multiplier(payload), 1)
+
+
+class ProductCheckoutServiceTestCase(TestCase):
+    def setUp(self):
+        self.person_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.person = Person.objects.create(
+            full_name="Aluno Loja",
+            cpf="999.888.777-66",
+            person_type=self.person_type,
+        )
+        self.category = ProductCategory.objects.create(
+            code="kimonos",
+            display_name="Kimonos",
+        )
+        self.product = Product.objects.create(
+            sku="gi-lv-teste",
+            display_name="Kimono LV Teste",
+            category=self.category,
+            unit_price=Decimal("480.00"),
+        )
+        self.variant = ProductVariant.objects.create(
+            product=self.product,
+            color="Azul",
+            size="A2",
+            stock_quantity=2,
+        )
+
+    def test_create_product_only_order_keeps_variant_snapshot_in_item_name(self):
+        order = create_product_only_order(
+            self.person,
+            [{"variant_id": self.variant.pk, "quantity": 1}],
+        )
+
+        self.assertIsNotNone(order)
+        item = order.items.get()
+        self.assertEqual(item.product, self.product)
+        self.assertEqual(item.product_name, "Kimono LV Teste (Cor: Azul, Tamanho: A2)")
+        self.assertEqual(item.quantity, 1)
+        self.assertEqual(item.subtotal, Decimal("480.00"))
+
+    def test_mark_order_manually_paid_decrements_variant_stock_once(self):
+        order = create_product_only_order(
+            self.person,
+            [{"variant_id": self.variant.pk, "quantity": 2}],
+        )
+
+        mark_order_manually_paid(order, admin_user=None, notes="Pagamento confirmado")
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_quantity, 0)
+
+        mark_order_manually_paid(order, admin_user=None, notes="Retry")
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_quantity, 0)
+
+    def test_mark_order_manually_paid_preserves_item_snapshot_after_stock_update(self):
+        order = create_product_only_order(
+            self.person,
+            [{"variant_id": self.variant.pk, "quantity": 1}],
+        )
+
+        mark_order_manually_paid(order, admin_user=None, notes="Pago")
+        item = RegistrationOrderItem.objects.get(order=order)
+
+        self.assertEqual(item.product_name, "Kimono LV Teste (Cor: Azul, Tamanho: A2)")

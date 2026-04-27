@@ -1,11 +1,23 @@
+from collections import OrderedDict
+
 from django.contrib import messages
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import TemplateView
 
 from system.models.membership import MembershipStatus
-from system.models.plan import SubscriptionPlan
+from system.models.plan import (
+    BillingCycle,
+    PlanAudience,
+    PlanWeeklyFrequency,
+    SubscriptionPlan,
+)
 from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
+from system.selectors.plan_eligibility import (
+    build_eligibility_context_for_person,
+    get_eligible_plans,
+)
 from system.services.membership import get_active_membership, get_membership_owner
 from system.services.plan_change import (
     PlanChangeError,
@@ -14,6 +26,21 @@ from system.services.plan_change import (
     create_plan_change_order,
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
+
+
+PLAN_CHANGE_GROUP_ORDER = (
+    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, "Adulto · 5x por semana"),
+    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, "Adulto · 2x por semana"),
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, "Kids/Juvenil · 5x por semana"),
+    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, "Kids/Juvenil · 2x por semana"),
+)
+
+CYCLE_DISPLAY_ORDER = {
+    BillingCycle.MONTHLY: 0,
+    BillingCycle.QUARTERLY: 1,
+    BillingCycle.SEMIANNUAL: 2,
+    BillingCycle.ANNUAL: 3,
+}
 
 
 class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
@@ -30,9 +57,9 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
             MembershipStatus.ACTIVE,
             MembershipStatus.EXEMPTED,
         ):
-            available_plans = SubscriptionPlan.objects.filter(is_active=True).exclude(
-                pk=membership.plan_id
-            )
+            billing_owner = get_membership_owner(person) or person
+            eligibility = build_eligibility_context_for_person(billing_owner)
+            available_plans = get_eligible_plans(eligibility).exclude(pk=membership.plan_id)
             plans_with_proration = []
             for plan in available_plans:
                 try:
@@ -41,10 +68,40 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
                 except PlanChangeError:
                     continue
             context["plans_with_proration"] = plans_with_proration
+            context["plan_groups"] = _group_plans_by_audience_and_frequency(plans_with_proration)
         else:
             context["plans_with_proration"] = []
+            context["plan_groups"] = []
+
+        context["back_url"] = reverse("system:student-home")
 
         return context
+
+
+def _group_plans_by_audience_and_frequency(plans_with_proration):
+    grouped = OrderedDict()
+    for audience, frequency, label in PLAN_CHANGE_GROUP_ORDER:
+        grouped[(audience, frequency)] = {
+            "label": label,
+            "audience": audience,
+            "weekly_frequency": int(frequency),
+            "entries": [],
+        }
+    for entry in plans_with_proration:
+        plan = entry["plan"]
+        key = (plan.audience, plan.weekly_frequency)
+        if key not in grouped:
+            continue
+        grouped[key]["entries"].append(entry)
+    for group in grouped.values():
+        group["entries"].sort(
+            key=lambda item: (
+                CYCLE_DISPLAY_ORDER.get(item["plan"].billing_cycle, 99),
+                0 if item["plan"].is_family_plan else 1,
+                item["plan"].price,
+            )
+        )
+    return [group for group in grouped.values() if group["entries"]]
 
 
 class PlanChangeConfirmView(PortalRoleRequiredMixin, View):

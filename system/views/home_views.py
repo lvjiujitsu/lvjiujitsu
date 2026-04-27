@@ -10,7 +10,12 @@ from system.constants import (
     PersonTypeCode,
 )
 from system.models.membership import MembershipInvoice
-from system.services.class_calendar import get_today_classes_for_person
+from system.services.class_calendar import (
+    get_instructor_checkin_history,
+    get_student_checkin_history,
+    get_today_classes_for_instructor,
+    get_today_classes_for_person,
+)
 from system.services.membership import (
     get_active_membership,
     get_guardian_billing_tabs,
@@ -56,6 +61,21 @@ class InstructorHomeView(PortalRoleRequiredMixin, TemplateView):
     allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES
     template_name = "home/instructor/dashboard.html"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        person = getattr(self.request, "portal_person", None)
+        if person:
+            context["today_classes"] = get_today_classes_for_instructor(person)
+            context["attendance_history"] = get_instructor_checkin_history(person)
+        else:
+            context["today_classes"] = []
+            context["attendance_history"] = []
+        today = timezone.localdate()
+        context["today_weekday"] = date_format(today, "l")
+        context["today_date"] = date_format(today, "SHORT_DATE_FORMAT")
+        context["show_back_button"] = False
+        return context
+
 
 class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
     allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
@@ -66,6 +86,7 @@ class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
         person = getattr(self.request, "portal_person", None)
         if person:
             context["today_classes"] = get_today_classes_for_person(person)
+            context["attendance_history"] = get_student_checkin_history(person)
             context["active_trial_access"] = get_active_trial_for_person(person)
 
             if has_dependents(person):
@@ -90,6 +111,7 @@ class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
                 }]
         else:
             context["today_classes"] = []
+            context["attendance_history"] = []
             context["billing_tabs"] = []
             context["active_trial_access"] = None
         today = timezone.localdate()

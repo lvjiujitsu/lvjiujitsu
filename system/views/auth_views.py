@@ -16,10 +16,7 @@ from system.forms import (
 )
 from system.constants import CheckoutAction
 from system.services.class_catalog import get_ibjjf_age_category_payload
-from system.services.class_overview import (
-    get_public_class_group_cards,
-    get_registration_catalog_payload,
-)
+from system.services.class_overview import get_registration_catalog_payload
 from system.services.registration_checkout import get_plan_catalog_payload, get_product_catalog_payload
 from system.services.registration_validation import validate_registration_step
 from system.services.trial_access import grant_trial_for_order
@@ -33,14 +30,10 @@ from system.services import (
 )
 
 
-class PortalHomeView(TemplateView):
-    template_name = "login/login.html"
-
-
 class PortalRegisterView(FormView):
     form_class = PortalRegistrationForm
     template_name = "login/register.html"
-    success_url = reverse_lazy("system:legacy-login-form")
+    success_url = reverse_lazy("system:login")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -93,7 +86,7 @@ class PortalRegisterView(FormView):
                 f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
                 "liberada e pode pagar depois para ativar sua mensalidade.",
             )
-            return redirect("system:legacy-login-form")
+            return redirect("system:login")
         return super().form_valid(form)
 
     def _get_initial_step(self, form):
@@ -105,14 +98,29 @@ class PortalRegisterView(FormView):
             "holder_allergies",
             "holder_injuries",
             "holder_emergency_contact",
+            "holder_has_martial_art",
+            "holder_martial_art",
+            "holder_martial_art_graduation",
+            "holder_jiu_jitsu_belt",
+            "holder_jiu_jitsu_stripes",
             "dependent_blood_type",
             "dependent_allergies",
             "dependent_injuries",
             "dependent_emergency_contact",
+            "dependent_has_martial_art",
+            "dependent_martial_art",
+            "dependent_martial_art_graduation",
+            "dependent_jiu_jitsu_belt",
+            "dependent_jiu_jitsu_stripes",
             "student_blood_type",
             "student_allergies",
             "student_injuries",
             "student_emergency_contact",
+            "student_has_martial_art",
+            "student_martial_art",
+            "student_martial_art_graduation",
+            "student_jiu_jitsu_belt",
+            "student_jiu_jitsu_stripes",
         }
         class_fields = {
             "holder_class_groups",
@@ -140,15 +148,6 @@ class RegistrationStepValidationView(View):
     def post(self, request, *args, **kwargs):
         errors = validate_registration_step(request.POST)
         return JsonResponse({"valid": not errors, "errors": errors})
-
-
-class PortalInfoView(TemplateView):
-    template_name = "login/info.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["class_group_cards"] = get_public_class_group_cards()
-        return context
 
 
 class PortalLoginView(FormView):

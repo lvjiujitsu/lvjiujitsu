@@ -352,6 +352,9 @@ def exempt_order(order, admin_user, notes=""):
             "updated_at",
         ]
     )
+    from system.services.registration_checkout import apply_order_variant_stock
+
+    apply_order_variant_stock(order)
     if order.plan_id:
         _ensure_exempted_membership(order, admin_user, notes)
     return order
@@ -359,6 +362,7 @@ def exempt_order(order, admin_user, notes=""):
 
 @transaction.atomic
 def mark_order_manually_paid(order, admin_user, notes=""):
+    was_paid = order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED)
     order.payment_status = PaymentStatus.PAID
     order.paid_at = timezone.now()
     order.approval_type = ApprovalType.MANUAL_PAID
@@ -376,6 +380,10 @@ def mark_order_manually_paid(order, admin_user, notes=""):
             "updated_at",
         ]
     )
+    from system.services.registration_checkout import apply_order_variant_stock
+
+    if not was_paid:
+        apply_order_variant_stock(order)
     if order.plan_id:
         _ensure_manual_paid_membership(order, admin_user, notes)
     apply_order_financials(

@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260420a">
-  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260426b">
+  <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 </head>
 <body>
   <main class="screen-shell">
     <section class="screen-card screen-card-inner" aria-label="Tela de cadastro">
       <div class="screen-tools-triple">
-        <a class="back-link" href="{% url 'system:legacy-home' %}">Voltar</a>
+        <a class="back-link" href="{% url 'system:root' %}">Voltar</a>
         <div class="draft-note-minimal is-hidden" data-registration-draft-note>
           <span data-registration-draft-label>Rascunho salvo</span>
           <button class="text-link text-button text-button-danger" type="button" data-registration-discard>Descartar</button>
@@ -436,9 +436,17 @@
                   <span>Contato de emergência</span>
                   <input id="holder-emergency-contact" name="holder_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.holder_emergency_contact.value|default_if_none:'' }}">
                 </label>
-                <label class="field" for="holder-martial-art">
+                <label class="field" for="holder-has-martial-art">
                   <span>Já praticou arte marcial?</span>
-                  <select id="holder-martial-art" name="holder_martial_art" data-martial-art-select data-martial-prefix="holder">
+                  <select id="holder-has-martial-art" name="holder_has_martial_art" data-martial-art-presence-select data-martial-prefix="holder">
+                    {% for choice_value, choice_label in form.holder_has_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.holder_has_martial_art.value == choice_value or not form.holder_has_martial_art.value and form.holder_martial_art.value and choice_value == 'yes' %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full{% if form.holder_has_martial_art.value != 'yes' and not form.holder_martial_art.value %} is-hidden{% endif %}" for="holder-martial-art" data-martial-art-details-wrapper="holder"{% if form.holder_has_martial_art.value != 'yes' and not form.holder_martial_art.value %} hidden{% endif %}>
+                  <span>Qual arte marcial?</span>
+                  <select id="holder-martial-art" name="holder_martial_art" data-martial-art-select data-martial-prefix="holder"{% if form.holder_has_martial_art.value != 'yes' and not form.holder_martial_art.value %} disabled{% endif %}>
                     {% for choice_value, choice_label in form.holder_martial_art.field.choices %}
                       <option value="{{ choice_value }}"{% if form.holder_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
                     {% endfor %}
@@ -521,9 +529,17 @@
                   <span>Contato de emergência</span>
                   <input id="dependent-emergency-contact" name="dependent_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.dependent_emergency_contact.value|default_if_none:'' }}">
                 </label>
-                <label class="field" for="dependent-martial-art">
+                <label class="field" for="dependent-has-martial-art">
                   <span>Já praticou arte marcial?</span>
-                  <select id="dependent-martial-art" name="dependent_martial_art" data-martial-art-select data-martial-prefix="dependent">
+                  <select id="dependent-has-martial-art" name="dependent_has_martial_art" data-martial-art-presence-select data-martial-prefix="dependent">
+                    {% for choice_value, choice_label in form.dependent_has_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.dependent_has_martial_art.value == choice_value or not form.dependent_has_martial_art.value and form.dependent_martial_art.value and choice_value == 'yes' %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full{% if form.dependent_has_martial_art.value != 'yes' and not form.dependent_martial_art.value %} is-hidden{% endif %}" for="dependent-martial-art" data-martial-art-details-wrapper="dependent"{% if form.dependent_has_martial_art.value != 'yes' and not form.dependent_martial_art.value %} hidden{% endif %}>
+                  <span>Qual arte marcial?</span>
+                  <select id="dependent-martial-art" name="dependent_martial_art" data-martial-art-select data-martial-prefix="dependent"{% if form.dependent_has_martial_art.value != 'yes' and not form.dependent_martial_art.value %} disabled{% endif %}>
                     {% for choice_value, choice_label in form.dependent_martial_art.field.choices %}
                       <option value="{{ choice_value }}"{% if form.dependent_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
                     {% endfor %}
@@ -606,9 +622,17 @@
                   <span>Contato de emergência</span>
                   <input id="student-emergency-contact" name="student_emergency_contact" type="text" placeholder="Nome e telefone do contato" value="{{ form.student_emergency_contact.value|default_if_none:'' }}">
                 </label>
-                <label class="field" for="student-martial-art">
+                <label class="field" for="student-has-martial-art">
                   <span>Já praticou arte marcial?</span>
-                  <select id="student-martial-art" name="student_martial_art" data-martial-art-select data-martial-prefix="student">
+                  <select id="student-has-martial-art" name="student_has_martial_art" data-martial-art-presence-select data-martial-prefix="student">
+                    {% for choice_value, choice_label in form.student_has_martial_art.field.choices %}
+                      <option value="{{ choice_value }}"{% if form.student_has_martial_art.value == choice_value or not form.student_has_martial_art.value and form.student_martial_art.value and choice_value == 'yes' %} selected{% endif %}>{{ choice_label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="field field-full{% if form.student_has_martial_art.value != 'yes' and not form.student_martial_art.value %} is-hidden{% endif %}" for="student-martial-art" data-martial-art-details-wrapper="student"{% if form.student_has_martial_art.value != 'yes' and not form.student_martial_art.value %} hidden{% endif %}>
+                  <span>Qual arte marcial?</span>
+                  <select id="student-martial-art" name="student_martial_art" data-martial-art-select data-martial-prefix="student"{% if form.student_has_martial_art.value != 'yes' and not form.student_martial_art.value %} disabled{% endif %}>
                     {% for choice_value, choice_label in form.student_martial_art.field.choices %}
                       <option value="{{ choice_value }}"{% if form.student_martial_art.value == choice_value %} selected{% endif %}>{{ choice_label }}</option>
                     {% endfor %}
@@ -698,7 +722,7 @@
               </div>
 
               <div class="checkout-section">
-                <p class="checkout-section-description">Selecione o plano de mensalidade desejado. Planos familiares aparecem quando há dependente no cadastro.</p>
+                <p class="checkout-section-description">Monte seu plano em poucos cliques: escolha a frequência, a recorrência e a forma de pagamento. O valor atualiza conforme você decide.</p>
                 <div class="checkout-plan-list" data-plan-list>
                 </div>
                 <input type="hidden" name="selected_plan" id="selected-plan" value="">
@@ -798,6 +822,6 @@
   <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260420a"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260426a"></script>
 </body>
 </html>
