@@ -15,6 +15,8 @@
         <p>{{ today_weekday }}, {{ today_date }}</p>
     </div>
 
+    {% include "graduation/_progress_card.html" %}
+
     <section class="panel-card billing-block">
         <div class="dashboard-section-heading">
             <div>
@@ -155,6 +157,28 @@
     <section class="panel-card">
         <div class="dashboard-section-heading">
             <div>
+                <p class="panel-eyebrow">Loja</p>
+                <h2>Materiais</h2>
+            </div>
+            <a class="ghost-button" href="{% url 'system:product-store' %}">Ver loja</a>
+        </div>
+        <p>Confira kimonos, faixas e equipamentos disponíveis.</p>
+    </section>
+
+    <section class="panel-card">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Mensalidade</p>
+                <h2>Planos</h2>
+            </div>
+            <a class="ghost-button" href="{% url 'system:plan-change-select' %}">Ver planos</a>
+        </div>
+        <p>Consulte e altere seu plano de mensalidade.</p>
+    </section>
+
+    <section class="panel-card">
+        <div class="dashboard-section-heading">
+            <div>
                 <p class="panel-eyebrow">Hoje</p>
                 <h2>Aulas do dia</h2>
             </div>
@@ -183,7 +207,11 @@
                             {% if entry.is_cancelled %}
                                 <span class="today-class-status-icon today-class-status-icon--cancelled" title="Aula cancelada">&#10005;</span>
                             {% elif entry.has_checked_in %}
-                                <span class="today-class-status-icon today-class-status-icon--done" title="Check-in realizado">&#10003;</span>
+                                {% if entry.is_checkin_approved %}
+                                    <span class="checkin-status-pill checkin-status-pill--approved" title="Check-in confirmado pelo professor">Confirmado</span>
+                                {% else %}
+                                    <span class="checkin-status-pill checkin-status-pill--pending" title="Aguardando aprovação do professor">Aguardando aprovação</span>
+                                {% endif %}
                             {% else %}
                                 {% if entry.is_special %}
                                     <button class="today-class-checkin-btn" type="button" data-checkin-btn data-special-id="{{ entry.special_id }}" title="Fazer check-in no aulão">
@@ -274,11 +302,11 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.success) {
-          var icon = document.createElement('span');
-          icon.className = 'today-class-status-icon today-class-status-icon--done';
-          icon.title = 'Check-in realizado';
-          icon.innerHTML = '&#10003;';
-          btn.parentNode.replaceChild(icon, btn);
+          var pill = document.createElement('span');
+          pill.className = 'checkin-status-pill checkin-status-pill--pending';
+          pill.title = 'Aguardando aprovação do professor';
+          pill.textContent = 'Aguardando aprovação';
+          btn.parentNode.replaceChild(pill, btn);
         } else {
           btn.textContent = data.error || 'Erro';
           btn.disabled = false;

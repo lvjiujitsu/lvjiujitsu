@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from system.models import PersonType, Person, PortalAccount
+from system.models import PersonType, Person, PortalAccount, ProductBackorder, RegistrationOrder
 from system.models.product import Product, ProductCategory, ProductVariant
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 from system.services.seeding import seed_products
@@ -80,7 +80,7 @@ class ProductViewTestCase(TestCase):
 
     def test_product_list_uses_annotations(self):
         self._login_as_admin()
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             self.client.get(reverse("system:product-list"))
 
     def test_product_detail_loads(self):
@@ -158,6 +158,101 @@ class ProductViewTestCase(TestCase):
         self.assertGreater(product["variant_count"], 0)
         self.assertEqual(product["variants"][0]["color"], "Branco")
         self.assertIn("snapshot_name", product["variants"][0])
+
+    def test_instructor_product_store_exposes_student_recipient_choices(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Materiais",
+            cpf="333.222.111-01",
+            person_type=self.instructor_type,
+        )
+        student_person = Person.objects.create(
+            full_name="Aluno Compras",
+            cpf="333.222.111-02",
+            person_type=self.student_type,
+        )
+        self._login_as_portal(instructor_account)
+
+        response = self.client.get(reverse("system:product-store"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Solicitar para")
+        self.assertContains(response, instructor_account.person.full_name)
+        self.assertContains(response, student_person.full_name)
+
+    def test_administrative_product_store_opens_as_portal_person(self):
+        self._login_as_portal(self.portal_account)
+
+        response = self.client.get(reverse("system:product-store"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Materiais")
+
+    def test_instructor_can_checkout_material_for_selected_student(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Pedido",
+            cpf="333.222.111-03",
+            person_type=self.instructor_type,
+        )
+        student_person = Person.objects.create(
+            full_name="Aluno Pedido",
+            cpf="333.222.111-04",
+            person_type=self.student_type,
+        )
+        variant = self.product.variants.first()
+        self._login_as_portal(instructor_account)
+
+        response = self.client.post(
+            reverse("system:product-store-checkout"),
+            {
+                "cart_payload": json.dumps([
+                    {"variant_id": variant.pk, "qty": 1},
+                ]),
+                "purchase_person_id": student_person.pk,
+            },
+        )
+
+        order = RegistrationOrder.objects.get()
+        self.assertEqual(order.person, student_person)
+        self.assertRedirects(
+            response,
+            reverse("system:payment-checkout", kwargs={"order_id": order.pk}),
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(
+            self.client.session.get("pending_checkout_order_id"),
+            order.pk,
+        )
+
+    def test_instructor_can_create_backorder_for_selected_student(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Pre Pedido",
+            cpf="333.222.111-05",
+            person_type=self.instructor_type,
+        )
+        student_person = Person.objects.create(
+            full_name="Aluno Pre Pedido",
+            cpf="333.222.111-06",
+            person_type=self.student_type,
+        )
+        variant = ProductVariant.objects.create(
+            product=self.product,
+            color="Azul",
+            size="A2",
+            stock_quantity=0,
+        )
+        self._login_as_portal(instructor_account)
+
+        response = self.client.post(
+            reverse("system:product-backorder-create"),
+            {
+                "variant_id": variant.pk,
+                "purchase_person_id": student_person.pk,
+            },
+        )
+
+        backorder = ProductBackorder.objects.get()
+        self.assertEqual(backorder.person, student_person)
+        self.assertRedirects(response, reverse("system:student-backorders"))
 
     def test_update_redirects_to_detail(self):
         self._login_as_admin()

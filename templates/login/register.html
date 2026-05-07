@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260426b">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260505a">
   <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 </head>
 <body>
@@ -468,6 +468,22 @@
                   <span>Graus na faixa (0 a 4)</span>
                   <input id="holder-jiu-jitsu-stripes" name="holder_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.holder_jiu_jitsu_stripes.value|default_if_none:'' }}">
                 </label>
+                <label class="field{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-martial-art-started-at" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Quando começou no jiu jitsu?</span>
+                  <input id="holder-martial-art-started-at" name="holder_martial_art_started_at" type="date" value="{{ form.holder_martial_art_started_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-martial-art-last-graduation-at" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Data da última graduação anterior</span>
+                  <input id="holder-martial-art-last-graduation-at" name="holder_martial_art_last_graduation_at" type="date" value="{{ form.holder_martial_art_last_graduation_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field field-full{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="holder-previous-academy" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Academia anterior</span>
+                  <input id="holder-previous-academy" name="holder_previous_academy" type="text" placeholder="Nome da academia onde treinava" value="{{ form.holder_previous_academy.value|default_if_none:'' }}">
+                </label>
+                <div class="field-full ibjjf-notice{% if form.holder_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" data-jiu-jitsu-only-wrapper="holder"{% if form.holder_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <strong>A LV JIU JITSU segue oficialmente o sistema IBJJF.</strong>
+                  Aceitamos sua faixa atual mesmo que sua academia anterior siga regras próprias. A partir do seu cadastro, sua evolução nesta academia passa a ser pautada pela tabela IBJJF (tempo mínimo na faixa + frequência mínima por janela).
+                </div>
               </div>
             </section>
           </section>
@@ -561,6 +577,22 @@
                   <span>Graus na faixa (0 a 4)</span>
                   <input id="dependent-jiu-jitsu-stripes" name="dependent_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.dependent_jiu_jitsu_stripes.value|default_if_none:'' }}">
                 </label>
+                <label class="field{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-martial-art-started-at" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Quando começou no jiu jitsu?</span>
+                  <input id="dependent-martial-art-started-at" name="dependent_martial_art_started_at" type="date" value="{{ form.dependent_martial_art_started_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-martial-art-last-graduation-at" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Data da última graduação anterior</span>
+                  <input id="dependent-martial-art-last-graduation-at" name="dependent_martial_art_last_graduation_at" type="date" value="{{ form.dependent_martial_art_last_graduation_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field field-full{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="dependent-previous-academy" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Academia anterior</span>
+                  <input id="dependent-previous-academy" name="dependent_previous_academy" type="text" placeholder="Nome da academia onde treinava" value="{{ form.dependent_previous_academy.value|default_if_none:'' }}">
+                </label>
+                <div class="field-full ibjjf-notice{% if form.dependent_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" data-jiu-jitsu-only-wrapper="dependent"{% if form.dependent_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <strong>A LV JIU JITSU segue oficialmente o sistema IBJJF.</strong>
+                  Aceitamos a faixa atual mesmo que a academia anterior siga regras próprias. A partir do cadastro, a evolução nesta academia passa a ser pautada pela tabela IBJJF (tempo mínimo na faixa + frequência mínima por janela).
+                </div>
               </div>
             </section>
           </section>
@@ -654,6 +686,22 @@
                   <span>Graus na faixa (0 a 4)</span>
                   <input id="student-jiu-jitsu-stripes" name="student_jiu_jitsu_stripes" type="number" min="0" max="4" placeholder="0" value="{{ form.student_jiu_jitsu_stripes.value|default_if_none:'' }}">
                 </label>
+                <label class="field{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="student-martial-art-started-at" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Quando começou no jiu jitsu?</span>
+                  <input id="student-martial-art-started-at" name="student_martial_art_started_at" type="date" value="{{ form.student_martial_art_started_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="student-martial-art-last-graduation-at" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Data da última graduação anterior</span>
+                  <input id="student-martial-art-last-graduation-at" name="student_martial_art_last_graduation_at" type="date" value="{{ form.student_martial_art_last_graduation_at.value|default_if_none:''|date:'Y-m-d' }}">
+                </label>
+                <label class="field field-full{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" for="student-previous-academy" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <span>Academia anterior</span>
+                  <input id="student-previous-academy" name="student_previous_academy" type="text" placeholder="Nome da academia onde treinava" value="{{ form.student_previous_academy.value|default_if_none:'' }}">
+                </label>
+                <div class="field-full ibjjf-notice{% if form.student_martial_art.value != 'jiu_jitsu' %} is-hidden{% endif %}" data-jiu-jitsu-only-wrapper="student"{% if form.student_martial_art.value != 'jiu_jitsu' %} hidden{% endif %}>
+                  <strong>A LV JIU JITSU segue oficialmente o sistema IBJJF.</strong>
+                  Aceitamos a faixa atual mesmo que a academia anterior siga regras próprias. A partir do cadastro, a evolução nesta academia passa a ser pautada pela tabela IBJJF (tempo mínimo na faixa + frequência mínima por janela).
+                </div>
               </div>
             </section>
           </section>
@@ -822,6 +870,6 @@
   <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260426a"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260505c"></script>
 </body>
 </html>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Remover faixa | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Remover faixa</h1>
+    </div>
+    <a class="ghost-link" href="{% url 'system:belt-rank-list' %}">← Voltar</a>
+</section>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <p>Tem certeza de que deseja remover a faixa <strong>{{ belt_rank.display_name }}</strong>?</p>
+    <p class="muted-text">As regras vinculadas a esta faixa serão removidas. Graduações já registradas serão preservadas se a FK estiver protegida — caso contrário, recomenda-se inativar.</p>
+    <div class="button-row">
+        <a class="ghost-link" href="{% url 'system:belt-rank-list' %}">Cancelar</a>
+        <button type="submit" class="primary-button primary-button--danger">Remover</button>
+    </div>
+</form>
+{% endblock %}

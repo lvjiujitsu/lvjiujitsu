@@ -7,7 +7,8 @@ from system.models import BiologicalSex, ClassCategory, ClassEnrollment, Person,
 from system.models.plan import BillingCycle, PlanPaymentMethod, SubscriptionPlan
 from system.services.class_overview import build_class_group_filter_value
 from system.services.registration import sync_person_class_enrollments
-from system.services.seeding import seed_class_catalog, seed_class_categories, seed_person_types
+from system.services.seeding import seed_class_categories, seed_person_types
+from system.tests.seed_helpers import seed_full_class_catalog
 
 
 class ClassGroupFormTestCase(TestCase):
@@ -38,7 +39,7 @@ class ClassGroupFormTestCase(TestCase):
 
 class PersonFormTestCase(TestCase):
     def setUp(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self.person_types = seed_person_types()
         self.adult_category = ClassCategory.objects.get(code="adult")
         self.student_type = PersonType.objects.get(code="student")
@@ -99,7 +100,7 @@ class PersonFormTestCase(TestCase):
 
 class PortalRegistrationFormPlanTestCase(TestCase):
     def setUp(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         seed_person_types()
         self.family_plan = SubscriptionPlan.objects.create(
             code="family-monthly-pix",

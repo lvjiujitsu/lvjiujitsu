@@ -98,6 +98,14 @@
       <label>Data<input type="date" name="date" required></label>
       <label>Horário<input type="time" name="start_time" required></label>
       <label>Duração (min)<input type="number" name="duration_minutes" value="90" min="1" required></label>
+      <label>Professor responsável
+        <select name="teacher" required>
+          <option value="">Selecione</option>
+          {% for instructor in instructors %}
+            <option value="{{ instructor.pk }}">{{ instructor.full_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
       <label>Observações<input type="text" name="notes"></label>
       <div class="form-errors" id="specialFormErrors"></div>
       <div class="form-actions">
@@ -268,11 +276,17 @@
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.hidden = true; });
   modalForm.addEventListener('submit', function(e) {
     e.preventDefault();
+    var teacherValue = modalForm.teacher ? modalForm.teacher.value : '';
+    if (!teacherValue) {
+      modalErrors.textContent = 'Selecione o professor responsável.';
+      return;
+    }
     var payload = {
       title: modalForm.title.value,
       date: modalForm.date.value,
       start_time: modalForm.start_time.value,
       duration_minutes: parseInt(modalForm.duration_minutes.value, 10),
+      teacher: parseInt(teacherValue, 10),
       notes: modalForm.notes.value || ''
     };
     fetch(specialCreateUrl, {

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Regras de graduação | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Regras de graduação</h1>
+        <p>Tempo mínimo no grau e quantidade mínima de aulas aprovadas para a próxima promoção.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:graduation-rule-create' %}">+ Nova regra</a>
+</section>
+
+<div class="form-card">
+    {% if graduation_rules %}
+        <table class="billing-table">
+            <thead>
+                <tr>
+                    <th>Faixa</th>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Meses mín.</th>
+                    <th>Aulas mín.</th>
+                    <th>Janela (meses)</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in graduation_rules %}
+                    <tr>
+                        <td>{{ rule.belt_rank.display_name }}</td>
+                        <td>Grau {{ rule.from_grade }}</td>
+                        <td>{% if rule.to_grade is None %}Próxima faixa{% else %}Grau {{ rule.to_grade }}{% endif %}</td>
+                        <td>{{ rule.min_months_in_current_grade }}</td>
+                        <td>{{ rule.min_classes_required }}</td>
+                        <td>{{ rule.min_classes_window_months }}</td>
+                        <td>{% if rule.is_active %}Ativa{% else %}Inativa{% endif %}</td>
+                        <td>
+                            <a class="ghost-link" href="{% url 'system:graduation-rule-update' rule.pk %}">Editar</a>
+                            <a class="ghost-link ghost-link--danger" href="{% url 'system:graduation-rule-delete' rule.pk %}">Remover</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted-text">Nenhuma regra cadastrada.</p>
+    {% endif %}
+</div>
+{% endblock %}

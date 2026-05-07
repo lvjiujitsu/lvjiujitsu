@@ -42,19 +42,20 @@ class Command(BaseCommand):
         include_optional = not options["without_optional"]
         closure_dates = get_brazilian_closure_dates(year, include_optional=include_optional)
 
-        count = 0
+        created_count = 0
         for holiday_date, name in closure_dates:
             _, created = Holiday.objects.update_or_create(
                 date=holiday_date,
                 defaults={"name": name, "is_active": True},
             )
             if created:
-                count += 1
+                created_count += 1
 
+        self.stdout.write(f"Feriados cadastrados para {year}: {len(closure_dates)}")
+        for holiday_date, name in closure_dates:
+            self.stdout.write(f"- {holiday_date.isoformat()}: {name}")
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Seeded {count} new holidays ({len(closure_dates)} total) for {year}."
-            )
+            self.style.SUCCESS(f"Seed de feriados concluída: {created_count} novos.")
         )
 
 

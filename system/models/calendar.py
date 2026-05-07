@@ -24,6 +24,11 @@ class SessionStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelada"
 
 
+class CheckinStatus(models.TextChoices):
+    PENDING = "pending", "Aguardando aprovação"
+    APPROVED = "approved", "Confirmado"
+
+
 def default_special_class_title():
     return settings.SPECIAL_CLASS_DEFAULT_TITLE
 
@@ -86,6 +91,21 @@ class ClassCheckin(TimeStampedModel):
         verbose_name="Pessoa",
     )
     checked_in_at = models.DateTimeField("Check-in em", default=timezone.now)
+    status = models.CharField(
+        "Status",
+        max_length=16,
+        choices=CheckinStatus.choices,
+        default=CheckinStatus.PENDING,
+    )
+    approved_at = models.DateTimeField("Aprovado em", null=True, blank=True)
+    approved_by = models.ForeignKey(
+        "system.Person",
+        on_delete=models.SET_NULL,
+        related_name="approved_class_checkins",
+        verbose_name="Aprovado por",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ("-checked_in_at",)
@@ -100,6 +120,10 @@ class ClassCheckin(TimeStampedModel):
 
     def __str__(self):
         return f"{self.person.full_name} — {self.session}"
+
+    @property
+    def is_approved(self):
+        return self.status == CheckinStatus.APPROVED
 
 
 class SpecialClass(TimeStampedModel):
@@ -147,6 +171,21 @@ class SpecialClassCheckin(TimeStampedModel):
         verbose_name="Pessoa",
     )
     checked_in_at = models.DateTimeField("Check-in em", default=timezone.now)
+    status = models.CharField(
+        "Status",
+        max_length=16,
+        choices=CheckinStatus.choices,
+        default=CheckinStatus.PENDING,
+    )
+    approved_at = models.DateTimeField("Aprovado em", null=True, blank=True)
+    approved_by = models.ForeignKey(
+        "system.Person",
+        on_delete=models.SET_NULL,
+        related_name="approved_special_class_checkins",
+        verbose_name="Aprovado por",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ("-checked_in_at",)
@@ -161,3 +200,7 @@ class SpecialClassCheckin(TimeStampedModel):
 
     def __str__(self):
         return f"{self.person.full_name} — {self.special_class}"
+
+    @property
+    def is_approved(self):
+        return self.status == CheckinStatus.APPROVED

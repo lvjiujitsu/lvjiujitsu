@@ -13,6 +13,10 @@ from system.models.asaas import (
     TeacherPayrollConfig,
 )
 from system.services import asaas_client
+from system.services.payroll_rules import (
+    calculate_monthly_payroll,
+    render_payroll_summary,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +38,6 @@ def _scheduled_date(reference_month, payment_day):
 
 @transaction.atomic
 def schedule_monthly_payouts(*, today=None, dry_run=False):
-    """Cria TeacherPayouts PENDENTES para configs ativas cujo payment_day == hoje."""
     if today is None:
         today = timezone.localdate()
     reference_month = _first_of_month(today)
@@ -44,6 +47,12 @@ def schedule_monthly_payouts(*, today=None, dry_run=False):
     )
     created = []
     for config in configs:
+        calculation = calculate_monthly_payroll(
+            config.person,
+            reference_month=reference_month,
+        )
+        if calculation["total"] <= 0:
+            continue
         try:
             bank = config.person.teacher_bank_account
         except TeacherBankAccount.DoesNotExist:
@@ -68,9 +77,10 @@ def schedule_monthly_payouts(*, today=None, dry_run=False):
             bank_account=bank,
             kind=PayoutKind.PAYROLL,
             reference_month=reference_month,
-            amount=config.monthly_salary,
+            amount=calculation["total"],
             status=PayoutStatus.PENDING,
             scheduled_for=_scheduled_date(reference_month, config.payment_day),
+            approval_notes=render_payroll_summary(calculation),
         )
         created.append(payout.pk)
     return created
@@ -170,7 +180,6 @@ def mark_payout_paid(payout: TeacherPayout):
 
 
 def compute_available_balance(person, *, reference_month=None):
-    """Retorna (saldo, salario_base, comprometido)."""
     if reference_month is None:
         reference_month = _first_of_month(timezone.localdate())
     try:
@@ -179,6 +188,9 @@ def compute_available_balance(person, *, reference_month=None):
         return Decimal("0"), Decimal("0"), Decimal("0")
     if not config.is_active:
         return Decimal("0"), config.monthly_salary, Decimal("0")
+
+    calculation = calculate_monthly_payroll(person, reference_month=reference_month)
+    base_total = calculation["total"]
 
     committed_statuses = (
         PayoutStatus.PENDING,
@@ -195,10 +207,10 @@ def compute_available_balance(person, *, reference_month=None):
         .aggregate(total=models.Sum("amount"))
     )
     committed_total = committed["total"] or Decimal("0")
-    available = config.monthly_salary - committed_total
+    available = base_total - committed_total
     if available < 0:
         available = Decimal("0")
-    return available, config.monthly_salary, committed_total
+    return available, base_total, committed_total
 
 
 @transaction.atomic

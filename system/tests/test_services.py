@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -7,26 +8,48 @@ from django.utils import timezone
 from system.models import (
     BiologicalSex,
     CategoryAudience,
+    CheckinStatus,
     ClassCategory,
+    ClassCheckin,
     Person,
     PersonType,
     RegistrationOrder,
     RegistrationOrderItem,
+    ClassEnrollment,
+    ClassGroup,
+    ClassSchedule,
+    ClassSession,
+    PayoutKind,
+    PayoutStatus,
     SubscriptionPlan,
+    TeacherBankAccount,
+    TeacherPayout,
+    TeacherPayrollConfig,
+    WeekdayCode,
 )
 from system.models.product import Product, ProductCategory, ProductVariant
 from system.models.plan import BillingCycle, PlanPaymentMethod
-from system.models.registration_order import DepositStatus, PaymentProvider
+from system.models.registration_order import DepositStatus, PaymentProvider, PaymentStatus
+from system.models.asaas import PixKeyType
+from system.services.financial_dashboard import build_financial_dashboard
 from system.services.financial_transactions import (
     apply_order_financials,
     calculate_financial_amounts,
 )
 from system.services.membership import add_billing_cycle, mark_order_manually_paid
+from system.services.payroll_rules import (
+    PAYROLL_METHOD_FIXED_MONTHLY,
+    PAYROLL_METHOD_PER_CLASS_ATTENDANCE,
+    PAYROLL_METHOD_STUDENT_PERCENTAGE,
+    calculate_monthly_payroll,
+    encode_payroll_rules,
+)
 from system.services.registration_checkout import (
     create_product_only_order,
     get_registration_plan_multiplier,
 )
-from system.services.seeding import seed_class_catalog
+from system.services.seeding import seed_ibjjf_age_categories
+from system.tests.seed_helpers import seed_full_class_catalog
 
 
 class FinancialTransactionServiceTestCase(TestCase):
@@ -98,6 +121,223 @@ class FinancialTransactionServiceTestCase(TestCase):
         self.assertIsNotNone(order.expected_deposit_date)
 
 
+class FinancialDashboardServiceTestCase(TestCase):
+    def setUp(self):
+        seed_ibjjf_age_categories()
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.instructor_type = PersonType.objects.create(
+            code="instructor",
+            display_name="Professor",
+        )
+        self.person = Person.objects.create(
+            full_name="Aluno Painel",
+            cpf="111.222.333-45",
+            person_type=self.student_type,
+        )
+        self.teacher = Person.objects.create(
+            full_name="Professor Painel",
+            cpf="111.222.333-46",
+            person_type=self.instructor_type,
+        )
+        self.plan = SubscriptionPlan.objects.create(
+            code="dashboard-pix",
+            display_name="Dashboard PIX",
+            price=Decimal("200.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+        )
+        self.order = RegistrationOrder.objects.create(
+            person=self.person,
+            plan=self.plan,
+            plan_price=Decimal("200.00"),
+            total=Decimal("200.00"),
+            payment_status=PaymentStatus.PAID,
+            payment_provider=PaymentProvider.ASAAS,
+            administrative_fee=Decimal("1.99"),
+            net_amount=Decimal("198.01"),
+            deposit_status=DepositStatus.AVAILABLE,
+            expected_deposit_date=date(2026, 4, 20),
+            paid_at=timezone.now(),
+        )
+        bank = TeacherBankAccount.objects.create(
+            person=self.teacher,
+            pix_key="pix",
+            pix_key_type=PixKeyType.EVP,
+        )
+        TeacherPayout.objects.create(
+            person=self.teacher,
+            bank_account=bank,
+            kind=PayoutKind.PAYROLL,
+            reference_month=date(2026, 4, 1),
+            amount=Decimal("100.00"),
+            status=PayoutStatus.PAID,
+            scheduled_for=date(2026, 4, 28),
+            approval_notes="Fechamento de abril.",
+        )
+
+    @override_settings(ASAAS_API_KEY="asaas", ASAAS_API_URL="https://sandbox.asaas.com/api/v3", STRIPE_SECRET_KEY="sk_test")
+    @patch("system.services.financial_dashboard.stripe.Balance.retrieve")
+    @patch("system.services.financial_dashboard.asaas_client.get_payment_statistics")
+    @patch("system.services.financial_dashboard.asaas_client.get_balance")
+    def test_build_financial_dashboard_combines_gateways_and_history(
+        self,
+        mock_asaas_balance,
+        mock_asaas_stats,
+        mock_stripe_balance,
+    ):
+        mock_asaas_balance.return_value = {"balance": 5210.96}
+        mock_asaas_stats.return_value = {
+            "quantity": 2,
+            "value": 9270.40,
+            "netValue": 9121.54,
+        }
+        mock_stripe_balance.return_value = {
+            "available": [{"amount": 123456, "currency": "brl"}],
+            "pending": [{"amount": 6543, "currency": "brl"}],
+        }
+
+        dashboard = build_financial_dashboard()
+
+        self.assertEqual(dashboard["asaas"]["available"], Decimal("5210.96"))
+        self.assertEqual(dashboard["asaas"]["receivable"], Decimal("9121.54"))
+        self.assertEqual(dashboard["stripe"]["available"], Decimal("1234.56"))
+        self.assertEqual(dashboard["stripe"]["receivable"], Decimal("65.43"))
+        self.assertEqual(dashboard["totals"]["receivable"], Decimal("9186.97"))
+        self.assertEqual(dashboard["totals"]["local_receivable"], Decimal("198.01"))
+        self.assertEqual(dashboard["totals"]["outflows"], Decimal("100.00"))
+        self.assertTrue(any(entry["direction"] == "outflow" for entry in dashboard["history"]))
+        self.assertTrue(any(entry["person"] == self.person for entry in dashboard["history"]))
+
+
+class PayrollRulesServiceTestCase(TestCase):
+    def setUp(self):
+        seed_ibjjf_age_categories()
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.instructor_type = PersonType.objects.create(
+            code="instructor",
+            display_name="Professor",
+        )
+        self.teacher = Person.objects.create(
+            full_name="Professor Regra",
+            cpf="222.333.444-55",
+            person_type=self.instructor_type,
+        )
+        self.student = Person.objects.create(
+            full_name="Aluno Regra",
+            cpf="222.333.444-56",
+            birth_date=date(2010, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+            person_type=self.student_type,
+        )
+        self.category = ClassCategory.objects.create(
+            code="juvenile-rules",
+            display_name="Juvenil",
+            audience=CategoryAudience.JUVENILE,
+        )
+        self.group = ClassGroup.objects.create(
+            code="juvenile-rules",
+            display_name="Jiu Jitsu",
+            class_category=self.category,
+            main_teacher=self.teacher,
+        )
+        ClassEnrollment.objects.create(
+            class_group=self.group,
+            person=self.student,
+        )
+        self.plan = SubscriptionPlan.objects.create(
+            code="rules-plan",
+            display_name="Plano Regras",
+            price=Decimal("200.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+        )
+        self.order = RegistrationOrder.objects.create(
+            person=self.student,
+            plan=self.plan,
+            plan_price=Decimal("200.00"),
+            total=Decimal("200.00"),
+            payment_status=PaymentStatus.PAID,
+            payment_provider=PaymentProvider.ASAAS,
+            net_amount=Decimal("198.00"),
+            paid_at=timezone.make_aware(datetime(2026, 4, 10, 10, 0)),
+        )
+
+    def test_calculates_fixed_monthly_plus_student_percentage_rules(self):
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("400.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_FIXED_MONTHLY,
+                        "amount": "400.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                    {
+                        "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
+                        "percentage": "50.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+        )
+
+        self.assertEqual(result["total"], Decimal("499.00"))
+        self.assertEqual(result["fixed_total"], Decimal("400.00"))
+        self.assertEqual(result["student_total"], Decimal("99.00"))
+        self.assertEqual(result["student_count"], 1)
+        self.assertEqual(result["entries"][0]["person"], self.student)
+
+    def test_calculates_per_class_attendance_rule(self):
+        schedule = ClassSchedule.objects.create(
+            class_group=self.group,
+            weekday=WeekdayCode.MONDAY,
+            start_time="18:00",
+            training_style="gi",
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=date(2026, 4, 6),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=self.student,
+            status=CheckinStatus.APPROVED,
+        )
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("0.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_PER_CLASS_ATTENDANCE,
+                        "amount": "25.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+        )
+
+        self.assertEqual(result["total"], Decimal("25.00"))
+        self.assertEqual(result["class_total"], Decimal("25.00"))
+        self.assertEqual(result["class_attendance_count"], 1)
+
+
 class MembershipBillingCycleTestCase(TestCase):
     def test_add_billing_cycle_uses_calendar_month_boundaries(self):
         start = timezone.make_aware(datetime(2026, 1, 31, 12, 0))
@@ -109,7 +349,7 @@ class MembershipBillingCycleTestCase(TestCase):
 
 class RegistrationCheckoutServiceTestCase(TestCase):
     def setUp(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
 
     def test_plan_multiplier_is_always_one(self):
         kids = ClassCategory.objects.get(code="kids")

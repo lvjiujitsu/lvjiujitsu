@@ -1,4 +1,5 @@
 from .calendar import (
+    CheckinStatus,
     ClassCheckin,
     ClassSession,
     Holiday,
@@ -8,6 +9,7 @@ from .calendar import (
 )
 from .category import CategoryAudience, ClassCategory, IbjjfAgeCategory
 from .class_group import ClassGroup
+from .graduation import BeltRank, Graduation, GraduationRule
 from .class_membership import (
     ClassEnrollment,
     ClassInstructorAssignment,
@@ -77,12 +79,16 @@ __all__ = [
     "TeacherPayout",
     "TeacherPayrollConfig",
     "TrialAccessGrant",
+    "BeltRank",
     "BiologicalSex",
     "BillingCycle",
     "BloodType",
     "CategoryAudience",
+    "CheckinStatus",
     "ClassCategory",
     "ClassCheckin",
+    "Graduation",
+    "GraduationRule",
     "ClassEnrollment",
     "ClassGroup",
     "ClassInstructorAssignment",

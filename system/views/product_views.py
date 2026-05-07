@@ -12,10 +12,14 @@ from system.forms.product_forms import ProductCartForm, ProductForm, get_product
 from system.models.product import Product, ProductVariant
 from system.models.product_backorder import ProductBackorder
 from system.models.registration_order import PaymentStatus, RegistrationOrder
-from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
+from system.constants import MATERIAL_REQUEST_PERSON_TYPE_CODES
 from system.selectors.product_backorders import (
     get_admin_backorder_queue,
     get_backorders_for_person,
+)
+from system.selectors.person_selectors import (
+    get_material_request_recipient_queryset,
+    resolve_material_request_recipient,
 )
 from system.services.membership import get_membership_owner
 from system.services.product_backorders import (
@@ -108,7 +112,7 @@ class ProductDeleteView(AdministrativeRequiredMixin, DeleteView):
 
 
 class ProductStoreView(PortalRoleRequiredMixin, ListView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
     template_name = "products/product_store.html"
     context_object_name = "products"
 
@@ -123,6 +127,8 @@ class ProductStoreView(PortalRoleRequiredMixin, ListView):
             ensure_ascii=False,
         )
         context["out_of_stock_variants"] = self._build_out_of_stock_variants()
+        context["purchase_person_choices"] = self._build_purchase_person_choices()
+        context["purchase_person_default"] = getattr(self.request, "portal_person", None)
         return context
 
     def _build_out_of_stock_variants(self):
@@ -149,9 +155,20 @@ class ProductStoreView(PortalRoleRequiredMixin, ListView):
             )
         return rows
 
+    def _build_purchase_person_choices(self):
+        actor = getattr(self.request, "portal_person", None)
+        people = list(get_material_request_recipient_queryset(actor))
+        return sorted(
+            people,
+            key=lambda person: (
+                0 if actor is not None and person.pk == actor.pk else 1,
+                person.full_name,
+            ),
+        )
+
 
 class CreateProductOrderView(PortalRoleRequiredMixin, View):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
 
     def post(self, request):
         form = ProductCartForm(request.POST)
@@ -159,17 +176,20 @@ class CreateProductOrderView(PortalRoleRequiredMixin, View):
             messages.error(request, "Carrinho inválido.")
             return redirect("system:product-store")
 
-        person = request.portal_person
+        person = _resolve_purchase_person_or_message(request)
+        if person is None:
+            return redirect("system:product-store")
         order = create_product_only_order(person, form.cleaned_data["cart_payload"])
         if order is None:
             messages.error(request, "Nenhum produto válido selecionado.")
             return redirect("system:product-store")
 
+        request.session["pending_checkout_order_id"] = order.pk
         return redirect("system:payment-checkout", order_id=order.pk)
 
 
 class ProductBackorderCreateView(PortalRoleRequiredMixin, View):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
 
     def post(self, request):
         try:
@@ -186,8 +206,11 @@ class ProductBackorderCreateView(PortalRoleRequiredMixin, View):
             is_active=True,
             product__is_active=True,
         )
+        person = _resolve_purchase_person_or_message(request)
+        if person is None:
+            return redirect("system:product-store")
         try:
-            create_backorder(request.portal_person, variant)
+            create_backorder(person, variant)
         except ProductBackorderError as exc:
             messages.error(request, str(exc))
             return redirect("system:product-store")
@@ -200,7 +223,7 @@ class ProductBackorderCreateView(PortalRoleRequiredMixin, View):
 
 
 class StudentBackorderListView(PortalRoleRequiredMixin, ListView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
     template_name = "products/student_backorder_list.html"
     context_object_name = "backorders"
 
@@ -209,7 +232,7 @@ class StudentBackorderListView(PortalRoleRequiredMixin, ListView):
 
 
 class StudentBackorderConfirmView(PortalRoleRequiredMixin, View):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
 
     def post(self, request, pk):
         backorder = get_object_or_404(
@@ -227,7 +250,7 @@ class StudentBackorderConfirmView(PortalRoleRequiredMixin, View):
 
 
 class StudentBackorderCancelView(PortalRoleRequiredMixin, View):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
 
     def post(self, request, pk):
         backorder = get_object_or_404(
@@ -245,7 +268,7 @@ class StudentBackorderCancelView(PortalRoleRequiredMixin, View):
 
 
 class StudentOrderHistoryView(PortalRoleRequiredMixin, ListView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
+    allowed_codes = MATERIAL_REQUEST_PERSON_TYPE_CODES
     template_name = "products/student_order_history.html"
     context_object_name = "orders"
 
@@ -291,3 +314,14 @@ def _build_product_groups(products):
             }
         grouped[key]["products"].append(product)
     return list(grouped.values())
+
+
+def _resolve_purchase_person_or_message(request):
+    actor = getattr(request, "portal_person", None)
+    person = resolve_material_request_recipient(
+        actor,
+        request.POST.get("purchase_person_id"),
+    )
+    if person is None:
+        messages.error(request, "Selecione uma pessoa válida para a solicitação.")
+    return person

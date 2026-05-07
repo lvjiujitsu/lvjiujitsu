@@ -68,6 +68,8 @@
   var extraDependents = [];
   var dependentSequence = 0;
   var isAdvancing = false;
+  var openScheduleMap = {};
+  var installmentModal = null;
   
   var DRAFT_KEY = 'lv-register-draft-clean';
   var DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -1405,6 +1407,7 @@
     badge.textContent = isSelected ? 'Selecionada' : 'Selecionar';
     badge.addEventListener('click', function (e) {
       e.stopPropagation();
+      openScheduleMap = {};
       toggleClassSelection(selectField, option.id);
       renderClassGroupCards(prefix);
       renderPlanList();
@@ -1417,7 +1420,10 @@
 
     var details = document.createElement('details');
     details.className = 'catalog-dropdown class-schedule-dropdown';
-    details.open = isSelected;
+    details.open = Boolean(openScheduleMap[String(option.id)]);
+    details.addEventListener('toggle', function () {
+      openScheduleMap[String(option.id)] = details.open;
+    });
     var summary = document.createElement('summary');
     summary.className = 'catalog-dropdown-summary';
     summary.textContent = 'Ver horários da semana';
@@ -1947,6 +1953,106 @@
   }
 
   // ============================================================================
+  // Installment Modal
+  // ============================================================================
+  function getOrCreateInstallmentModal() {
+    if (!installmentModal) {
+      installmentModal = document.createElement('div');
+      installmentModal.className = 'installment-modal is-hidden';
+      installmentModal.setAttribute('role', 'dialog');
+      installmentModal.setAttribute('aria-modal', 'true');
+
+      var overlay = document.createElement('div');
+      overlay.className = 'installment-modal-overlay';
+      overlay.addEventListener('click', hideInstallmentModal);
+
+      var panel = document.createElement('div');
+      panel.className = 'installment-modal-panel';
+
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'installment-modal-close';
+      closeBtn.setAttribute('aria-label', 'Fechar');
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', hideInstallmentModal);
+
+      var content = document.createElement('div');
+      content.className = 'installment-modal-content';
+      content.dataset.installmentContent = '1';
+
+      panel.appendChild(closeBtn);
+      panel.appendChild(content);
+      installmentModal.appendChild(overlay);
+      installmentModal.appendChild(panel);
+      document.body.appendChild(installmentModal);
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { hideInstallmentModal(); }
+      });
+    }
+    return installmentModal;
+  }
+
+  function showInstallmentModal(plan) {
+    var modal = getOrCreateInstallmentModal();
+    var content = modal.querySelector('[data-installment-content]');
+    if (!content) { return; }
+    content.innerHTML = '';
+
+    var title = document.createElement('h3');
+    title.className = 'installment-modal-title';
+    title.textContent = plan.name;
+    content.appendChild(title);
+
+    var method = document.createElement('p');
+    method.className = 'installment-modal-method';
+    method.textContent = plan.payment_method === 'pix' ? 'PIX · Desconto comercial' : 'Cartão de crédito';
+    content.appendChild(method);
+
+    var rows = [];
+    rows.push({ label: 'Total', value: formatBRL(plan.price) });
+    if (plan.billing_cycle !== 'monthly' && plan.monthly_reference_price) {
+      rows.push({ label: 'Equivale a', value: formatBRL(plan.monthly_reference_price) + ' por mês' });
+    }
+    if (plan.installment_label) {
+      rows.push({ label: 'Parcelamento', value: plan.installment_label });
+    }
+    if (plan.cycle) {
+      rows.push({ label: 'Ciclo', value: plan.cycle });
+    }
+    if (plan.weekly_frequency_label) {
+      rows.push({ label: 'Frequência', value: plan.weekly_frequency_label });
+    }
+
+    var table = document.createElement('div');
+    table.className = 'installment-modal-table';
+    rows.forEach(function (row) {
+      var rowEl = document.createElement('div');
+      rowEl.className = 'installment-modal-row';
+      var labelEl = document.createElement('span');
+      labelEl.className = 'installment-modal-row-label';
+      labelEl.textContent = row.label;
+      var valueEl = document.createElement('span');
+      valueEl.className = 'installment-modal-row-value';
+      valueEl.textContent = row.value;
+      rowEl.appendChild(labelEl);
+      rowEl.appendChild(valueEl);
+      table.appendChild(rowEl);
+    });
+    content.appendChild(table);
+
+    modal.classList.remove('is-hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideInstallmentModal() {
+    if (installmentModal) {
+      installmentModal.classList.add('is-hidden');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // ============================================================================
   // Checkout: Plan & Materials
   // ============================================================================
   function formatBRL(value) {
@@ -2271,6 +2377,18 @@
     }
 
     card.appendChild(info);
+
+    if (paymentMethod === 'credit_card' && Number(plan.installment_count || 0) > 1) {
+      var installmentBtn = document.createElement('button');
+      installmentBtn.type = 'button';
+      installmentBtn.className = 'plan-selector-installment-btn';
+      installmentBtn.textContent = 'Ver parcelamento';
+      installmentBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showInstallmentModal(plan);
+      });
+      card.appendChild(installmentBtn);
+    }
 
     card.addEventListener('click', function () {
       planSelectorState.payment_method = paymentMethod;

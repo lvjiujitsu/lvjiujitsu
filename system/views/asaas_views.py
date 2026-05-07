@@ -17,7 +17,10 @@ from system.models.asaas import (
     TeacherPayrollConfig,
 )
 from system.models.registration_order import PaymentStatus, RegistrationOrder
-from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES, INSTRUCTOR_PERSON_TYPE_CODES
+from system.constants import (
+    ADMINISTRATIVE_PERSON_TYPE_CODES,
+    INSTRUCTOR_PERSON_TYPE_CODES,
+)
 from system.services.asaas_checkout import (
     AsaasCheckoutError,
     create_pix_charge_for_order,
@@ -32,6 +35,10 @@ from system.services.asaas_payroll import (
     request_withdrawal,
 )
 from system.services.asaas_webhooks import process_asaas_event
+from system.services.payroll_rules import (
+    calculate_monthly_payroll,
+    get_staff_financial_context,
+)
 from system.views.portal_mixins import (
     PortalLoginRequiredMixin,
     PortalRoleRequiredMixin,
@@ -155,6 +162,8 @@ class PayrollListView(AdministrativeRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        for config in context["configs"]:
+            config.current_calculation = calculate_monthly_payroll(config.person)
         context["bank_accounts"] = {
             ba.person_id: ba
             for ba in TeacherBankAccount.objects.filter(
@@ -215,11 +224,11 @@ class PayoutRefuseView(AdministrativeRequiredMixin, View):
         return redirect(request.POST.get("next") or self.success_url)
 
 
-class InstructorRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES
+class StaffFinancialRequiredMixin(PortalRoleRequiredMixin):
+    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES + ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
-class TeacherFinancialView(InstructorRequiredMixin, View):
+class TeacherFinancialView(StaffFinancialRequiredMixin, View):
     template_name = "home/instructor/financial.html"
 
     def get(self, request, *args, **kwargs):
@@ -256,6 +265,7 @@ class TeacherFinancialView(InstructorRequiredMixin, View):
 
     def _build_context(self, request, *, form):
         person = request.portal_person
+        staff_context = get_staff_financial_context(person)
         available, base, committed = compute_available_balance(person)
         recent_payouts = list(
             TeacherPayout.objects.filter(person=person)
@@ -277,6 +287,8 @@ class TeacherFinancialView(InstructorRequiredMixin, View):
             "base_salary": base,
             "committed_total": committed,
             "recent_payouts": recent_payouts,
+            "calculation": staff_context["calculation"],
+            "linked_entries": staff_context["linked_entries"],
         }
 
 

@@ -1,31 +1,103 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Painel do professor | LV JIU JITSU{% endblock %}
+{% block title %}{{ dashboard_page_title|default:"Painel do professor | LV JIU JITSU" }}{% endblock %}
 
 {% block content %}
 <section class="panel-grid">
     <div class="panel-card">
-        <p class="panel-eyebrow">Área do professor</p>
-        <h1>Painel do professor</h1>
+        <p class="panel-eyebrow">{{ dashboard_eyebrow|default:"Área do professor" }}</p>
+        <h1>{{ dashboard_title|default:"Painel do professor" }}</h1>
         <p>{{ today_weekday }}, {{ today_date }}</p>
-        <div style="margin-top:0.75rem">
+        {% if show_financial_button %}
+        <div class="dashboard-section-actions">
             <a class="btn btn--primary" href="{% url 'system:teacher-financial' %}">Meu financeiro</a>
         </div>
+        {% endif %}
     </div>
 
-    <section class="panel-card">
+    {% include "graduation/_progress_card.html" %}
+
+    <section
+        class="panel-card instructor-today-panel"
+        data-instructor-home
+        data-approve-url="{% url 'system:instructor-approve-checkin' %}"
+        data-approve-special-url="{% url 'system:instructor-approve-special-checkin' %}"
+        data-toggle-session-url="{% url 'system:instructor-toggle-session' %}"
+        data-special-create-url="{% url 'system:instructor-special-class-create' %}"
+    >
         <div class="dashboard-section-heading">
             <div>
                 <p class="panel-eyebrow">Hoje</p>
                 <h2>Aulas do dia</h2>
             </div>
-            <a class="ghost-button" href="{% url 'system:student-schedule' %}">Ver cronograma</a>
+            <div class="dashboard-section-actions">
+                <button
+                    class="ghost-button"
+                    type="button"
+                    data-quick-special-open
+                    aria-controls="quick-special-panel"
+                    aria-expanded="false"
+                >
+                    Criar aulão
+                </button>
+                <a class="ghost-button" href="{% url 'system:instructor-calendar' %}">Gerir cronograma</a>
+            </div>
+        </div>
+
+        <div class="quick-special-panel" id="quick-special-panel" data-quick-special-panel hidden>
+            <form class="quick-special-form" data-special-class-form>
+                {% csrf_token %}
+                <div class="quick-special-grid">
+                    <label>
+                        Título
+                        <input type="text" name="title" value="{{ special_class_default_title }}" required>
+                    </label>
+                    <label>
+                        Data
+                        <input type="date" name="date" value="{{ today_iso }}" required>
+                    </label>
+                    <label>
+                        Horário
+                        <input type="time" name="start_time" required>
+                    </label>
+                    <label>
+                        Duração
+                        <input
+                            type="number"
+                            name="duration_minutes"
+                            min="1"
+                            step="1"
+                            value="{{ special_class_default_duration_minutes }}"
+                            required
+                        >
+                    </label>
+                    <label class="quick-special-notes">
+                        Observações
+                        <input type="text" name="notes" placeholder="Opcional">
+                    </label>
+                </div>
+                <p class="form-errors" data-special-form-errors></p>
+                <div class="form-actions">
+                    <button class="ghost-button" type="button" data-quick-special-close>Cancelar</button>
+                    <button class="primary-button" type="submit">Criar aulão</button>
+                </div>
+            </form>
         </div>
 
         {% if today_classes %}
             <div class="today-class-list">
                 {% for entry in today_classes %}
-                    <div class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %} {% if entry.is_special %}today-class-card--special{% endif %}">
+                    <div
+                        class="today-class-card {% if entry.is_cancelled %}today-class-card--cancelled{% endif %} {% if entry.is_special %}today-class-card--special{% endif %}"
+                        data-today-class-card
+                        {% if entry.is_special %}
+                            data-special-id="{{ entry.special_id }}"
+                        {% else %}
+                            data-schedule-id="{{ entry.schedule_id }}"
+                            data-session-date="{{ entry.session_date|date:'Y-m-d' }}"
+                        {% endif %}
+                    >
                         <div class="today-class-time">
                             <span class="today-class-hour">{{ entry.start_time }}</span>
                             <span class="today-class-duration">{{ entry.duration_minutes }} min</span>
@@ -37,14 +109,51 @@
                                 <span class="today-class-cancelled-badge">Cancelada{% if entry.cancellation_reason %} — {{ entry.cancellation_reason }}{% endif %}</span>
                             {% endif %}
                             <div class="today-class-attendance">
-                                <strong>{{ entry.checked_count }} check-in(s)</strong>
-                                {% if entry.checked_students %}
-                                    <span>{{ entry.checked_students|join:", " }}</span>
+                                <strong>{{ entry.checked_count }} check-in(s){% if entry.pending_count %} · {{ entry.pending_count }} pendente(s){% endif %}</strong>
+                                {% if entry.checkins %}
+                                    <ul class="instructor-checkin-list">
+                                        {% for checkin in entry.checkins %}
+                                            <li class="instructor-checkin-item" data-checkin-row data-checkin-id="{{ checkin.pk }}" data-checkin-special="{% if checkin.is_special %}1{% else %}0{% endif %}">
+                                                <span class="instructor-checkin-name">{{ checkin.person_name }}</span>
+                                                {% if checkin.is_approved %}
+                                                    <span class="checkin-status-pill checkin-status-pill--approved" data-checkin-status>Confirmado</span>
+                                                {% else %}
+                                                    <span class="checkin-status-pill checkin-status-pill--pending" data-checkin-status>Aguardando aprovação</span>
+                                                    <button class="checkin-approve-btn" type="button" data-approve-checkin>Aprovar</button>
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
                                 {% else %}
-                                    <span>Nenhum aluno com presença confirmada ainda.</span>
+                                    <span>Nenhum aluno com presença registrada ainda.</span>
                                 {% endif %}
                             </div>
                         </div>
+                        {% if not entry.is_special and not entry.is_holiday_cancelled %}
+                            <div class="today-class-action">
+                                {% if entry.is_cancelled %}
+                                    <button
+                                        class="today-class-quick-btn"
+                                        type="button"
+                                        data-quick-reactivate-session
+                                        data-schedule-id="{{ entry.schedule_id }}"
+                                        data-session-date="{{ entry.session_date|date:'Y-m-d' }}"
+                                    >
+                                        Reativar
+                                    </button>
+                                {% else %}
+                                    <button
+                                        class="today-class-quick-btn today-class-quick-btn--danger"
+                                        type="button"
+                                        data-quick-cancel-session
+                                        data-schedule-id="{{ entry.schedule_id }}"
+                                        data-session-date="{{ entry.session_date|date:'Y-m-d' }}"
+                                    >
+                                        Cancelar
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -77,9 +186,89 @@
                 {% endfor %}
             </div>
         {% else %}
-            <p class="muted-text">Ainda não há histórico de presença para suas aulas.</p>
+            <p class="muted-text">Ainda não há histórico de presença confirmada para suas aulas.</p>
         {% endif %}
     </section>
 
+    {% if show_operational_area %}
+    <section class="panel-card dashboard-shortcuts">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Apoio operacional</p>
+                <h2>Apoio operacional</h2>
+            </div>
+        </div>
+        <div class="dashboard-actions-grid">
+            <a class="dashboard-action-card" href="{% url 'system:product-store' %}">
+                <span class="dashboard-action-meta">Materiais</span>
+                <span class="dashboard-action-title">Solicitar material</span>
+                <span class="dashboard-action-description">Compra ou pré-pedido para você ou para um aluno.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:person-create' %}">
+                <span class="dashboard-action-meta">Cadastro</span>
+                <span class="dashboard-action-title">Cadastrar aluno</span>
+                <span class="dashboard-action-description">Abrir cadastro de aluno ou dependente.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:person-list' %}">
+                <span class="dashboard-action-meta">Alunos</span>
+                <span class="dashboard-action-title">Visualizar alunos</span>
+                <span class="dashboard-action-description">Consultar cadastro e turmas liberadas.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:instructor-calendar' %}">
+                <span class="dashboard-action-meta">Agenda</span>
+                <span class="dashboard-action-title">Cronograma</span>
+                <span class="dashboard-action-description">Gerir suas aulas e aulões.</span>
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if show_administrative_area %}
+    <section class="panel-card dashboard-shortcuts">
+        <div class="dashboard-section-heading">
+            <div>
+                <p class="panel-eyebrow">Área administrativa</p>
+                <h2>Área administrativa</h2>
+            </div>
+        </div>
+        <div class="dashboard-actions-grid">
+            <a class="dashboard-action-card" href="{% url 'system:person-list' %}">
+                <span class="dashboard-action-meta">Cadastro</span>
+                <span class="dashboard-action-title">Pessoas</span>
+                <span class="dashboard-action-description">Cadastrar, visualizar e auditar alunos e equipe.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:product-list' %}">
+                <span class="dashboard-action-meta">Estoque</span>
+                <span class="dashboard-action-title">Controle de estoque</span>
+                <span class="dashboard-action-description">Produtos, variantes e quantidades disponíveis.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:admin-backorder-queue' %}">
+                <span class="dashboard-action-meta">Materiais</span>
+                <span class="dashboard-action-title">Pré-pedidos</span>
+                <span class="dashboard-action-description">Fila de solicitações por produto em falta.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:admin-calendar' %}">
+                <span class="dashboard-action-meta">Agenda</span>
+                <span class="dashboard-action-title">Cronograma</span>
+                <span class="dashboard-action-description">Calendário geral de aulas e cancelamentos.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:plan-list' %}">
+                <span class="dashboard-action-meta">Comercial</span>
+                <span class="dashboard-action-title">Planos</span>
+                <span class="dashboard-action-description">Mensalidades, pacotes e autorizações.</span>
+            </a>
+            <a class="dashboard-action-card" href="{% url 'system:financial-control' %}">
+                <span class="dashboard-action-meta">Financeiro</span>
+                <span class="dashboard-action-title">Controle financeiro</span>
+                <span class="dashboard-action-description">Entradas, repasses e conciliação operacional.</span>
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'system/js/home/instructor-dashboard.js' %}?v=20260507b"></script>
 {% endblock %}

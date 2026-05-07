@@ -4,17 +4,128 @@
 {% block title %}Controle financeiro · LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260416b">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260507b">
 {% endblock %}
 
 {% block content %}
 <section class="billing-screen">
     <header class="billing-screen__header">
         <h1>Controle financeiro</h1>
-        <p>Entradas de matrícula com taxas operacionais, líquido esperado e status de crédito.</p>
+        <p>Entradas, saídas, valores a receber e saldos operacionais por gateway.</p>
     </header>
 
+    <section class="billing-gateway-grid" aria-label="Valores a receber por gateway">
+        <article class="billing-gateway-card">
+            <div>
+                <span class="billing-summary__label">ASAAS</span>
+                <h2>R$ {{ financial_dashboard.asaas.receivable|floatformat:2 }}</h2>
+            </div>
+            <dl>
+                <dt>Disponível</dt>
+                <dd>R$ {{ financial_dashboard.asaas.available|floatformat:2 }}</dd>
+                <dt>A receber</dt>
+                <dd>R$ {{ financial_dashboard.asaas.receivable|floatformat:2 }}</dd>
+                <dt>A receber local</dt>
+                <dd>R$ {{ financial_dashboard.local.asaas_local_receivable|floatformat:2 }}</dd>
+                <dt>Cobranças</dt>
+                <dd>{{ financial_dashboard.asaas.quantity }}</dd>
+            </dl>
+            {% if financial_dashboard.asaas.error %}
+                <p class="billing-provider-error">{{ financial_dashboard.asaas.error }}</p>
+            {% endif %}
+        </article>
+
+        <article class="billing-gateway-card">
+            <div>
+                <span class="billing-summary__label">Stripe</span>
+                <h2>R$ {{ financial_dashboard.stripe.receivable|floatformat:2 }}</h2>
+            </div>
+            <dl>
+                <dt>Disponível</dt>
+                <dd>R$ {{ financial_dashboard.stripe.available|floatformat:2 }}</dd>
+                <dt>A receber</dt>
+                <dd>R$ {{ financial_dashboard.stripe.receivable|floatformat:2 }}</dd>
+                <dt>A receber local</dt>
+                <dd>R$ {{ financial_dashboard.local.stripe_local_receivable|floatformat:2 }}</dd>
+                <dt>Status</dt>
+                <dd>{{ financial_dashboard.stripe.status }}</dd>
+            </dl>
+            {% if financial_dashboard.stripe.error %}
+                <p class="billing-provider-error">{{ financial_dashboard.stripe.error }}</p>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="billing-summary billing-summary--kpis">
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Total a receber</span>
+            <strong>R$ {{ financial_dashboard.totals.receivable|floatformat:2 }}</strong>
+        </div>
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Total local a receber</span>
+            <strong>R$ {{ financial_dashboard.totals.local_receivable|floatformat:2 }}</strong>
+        </div>
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Disponível nos gateways</span>
+            <strong>R$ {{ financial_dashboard.totals.available|floatformat:2 }}</strong>
+        </div>
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Entradas líquidas locais</span>
+            <strong>R$ {{ financial_dashboard.totals.net_inflows|floatformat:2 }}</strong>
+        </div>
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Saídas em repasses</span>
+            <strong>R$ {{ financial_dashboard.totals.outflows|floatformat:2 }}</strong>
+        </div>
+        <div class="billing-summary__item">
+            <span class="billing-summary__label">Saldo local após repasses</span>
+            <strong>R$ {{ financial_dashboard.totals.balance_after_outflows|floatformat:2 }}</strong>
+        </div>
+    </section>
+
+    <section class="billing-history">
+        <h2>Histórico financeiro</h2>
+        {% if financial_dashboard.history %}
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Pessoa</th>
+                            <th>Resumo</th>
+                            <th>Gateway</th>
+                            <th>Status</th>
+                            <th>Valor</th>
+                            <th>Previsão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in financial_dashboard.history %}
+                            <tr class="billing-history-row billing-history-row--{{ entry.direction }}">
+                                <td>{{ entry.date|date:"d/m/Y" }}</td>
+                                <td>{{ entry.kind }}</td>
+                                <td>{{ entry.person.full_name }}</td>
+                                <td>
+                                    <strong>{{ entry.description }}</strong>
+                                    {% if entry.summary %}<small>{{ entry.summary|truncatechars:90 }}</small>{% endif %}
+                                </td>
+                                <td>{{ entry.provider }}</td>
+                                <td>{{ entry.status }}</td>
+                                <td>R$ {{ entry.amount|floatformat:2 }}</td>
+                                <td>{{ entry.expected_date|date:"d/m/Y"|default:"—" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhum histórico financeiro encontrado.</p>
+        {% endif %}
+    </section>
+
     {% if orders %}
+        <h2>Entradas por pedido</h2>
         <div class="billing-table-wrap">
             <table class="billing-table billing-table--financial">
                 <thead>

@@ -2,8 +2,14 @@ import json
 
 from django.db import transaction
 
-from system.constants import DEFAULT_PERSON_TYPE_DEFINITIONS, PersonTypeCode, RegistrationProfile
+from system.constants import (
+    CLASS_ENROLLMENT_PERSON_TYPE_CODES,
+    DEFAULT_PERSON_TYPE_DEFINITIONS,
+    PersonTypeCode,
+    RegistrationProfile,
+)
 from system.services.class_overview import resolve_class_group_selection
+from system.services.graduation import ensure_initial_graduation_for_beginner
 from system.services.registration_checkout import create_registration_order
 from system.models import (
     ClassEnrollment,
@@ -121,6 +127,9 @@ def _create_holder_registration(cleaned_data, person_types):
         martial_art_graduation=cleaned_data.get("holder_martial_art_graduation", ""),
         jiu_jitsu_belt=cleaned_data.get("holder_jiu_jitsu_belt", ""),
         jiu_jitsu_stripes=cleaned_data.get("holder_jiu_jitsu_stripes"),
+        martial_art_started_at=cleaned_data.get("holder_martial_art_started_at"),
+        martial_art_last_graduation_at=cleaned_data.get("holder_martial_art_last_graduation_at"),
+        previous_academy=cleaned_data.get("holder_previous_academy", ""),
         class_groups=cleaned_data.get("holder_class_groups", []),
     )
     created_people = {"holder": holder}
@@ -150,6 +159,9 @@ def _create_holder_registration(cleaned_data, person_types):
             martial_art_graduation=dependent_payload.get("martial_art_graduation", ""),
             jiu_jitsu_belt=dependent_payload.get("jiu_jitsu_belt", ""),
             jiu_jitsu_stripes=dependent_payload.get("jiu_jitsu_stripes"),
+            martial_art_started_at=dependent_payload.get("martial_art_started_at"),
+            martial_art_last_graduation_at=dependent_payload.get("martial_art_last_graduation_at"),
+            previous_academy=dependent_payload.get("previous_academy", ""),
             class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
@@ -200,6 +212,9 @@ def _create_guardian_registration(cleaned_data, person_types):
             martial_art_graduation=dependent_payload.get("martial_art_graduation", ""),
             jiu_jitsu_belt=dependent_payload.get("jiu_jitsu_belt", ""),
             jiu_jitsu_stripes=dependent_payload.get("jiu_jitsu_stripes"),
+            martial_art_started_at=dependent_payload.get("martial_art_started_at"),
+            martial_art_last_graduation_at=dependent_payload.get("martial_art_last_graduation_at"),
+            previous_academy=dependent_payload.get("previous_academy", ""),
             class_groups=dependent_payload.get("class_groups", []),
         )
         _create_relationship(
@@ -252,6 +267,9 @@ def _create_person_with_account(
     martial_art_graduation="",
     jiu_jitsu_belt="",
     jiu_jitsu_stripes=None,
+    martial_art_started_at=None,
+    martial_art_last_graduation_at=None,
+    previous_academy="",
     class_category=None,
     class_groups=None,
 ):
@@ -271,6 +289,9 @@ def _create_person_with_account(
         martial_art_graduation=martial_art_graduation,
         jiu_jitsu_belt=jiu_jitsu_belt,
         jiu_jitsu_stripes=jiu_jitsu_stripes,
+        martial_art_started_at=martial_art_started_at,
+        martial_art_last_graduation_at=martial_art_last_graduation_at,
+        previous_academy=previous_academy or "",
         person_type=person_type,
         class_category=primary_group.class_category if primary_group else class_category,
         class_group=primary_group,
@@ -280,7 +301,51 @@ def _create_person_with_account(
     access_account = PortalAccount(person=person)
     access_account.set_password(password)
     access_account.save()
+    _seed_initial_graduation_from_history(person)
+    _seed_initial_graduation_for_beginner(person)
     return person
+
+
+def _seed_initial_graduation_from_history(person):
+    from system.models import BeltRank, Graduation
+    if not person.jiu_jitsu_belt:
+        return None
+    if Graduation.objects.filter(person=person).exists():
+        return None
+    belt = BeltRank.objects.filter(code__contains=person.jiu_jitsu_belt).order_by(
+        "-display_order"
+    ).first()
+    if belt is None:
+        return None
+    grade_number = person.jiu_jitsu_stripes or 0
+    if grade_number > belt.max_grades:
+        grade_number = belt.max_grades
+    awarded_at = (
+        person.martial_art_last_graduation_at
+        or person.martial_art_started_at
+        or person.created_at.date()
+    )
+    notes_parts = []
+    if person.previous_academy:
+        notes_parts.append(f"Academia anterior: {person.previous_academy}")
+    if person.martial_art_started_at:
+        notes_parts.append(
+            f"Início no jiu jitsu: {person.martial_art_started_at.strftime('%d/%m/%Y')}"
+        )
+    notes = " · ".join(notes_parts) or "Importado do cadastro inicial."
+    return Graduation.objects.create(
+        person=person,
+        belt_rank=belt,
+        grade_number=grade_number,
+        awarded_at=awarded_at,
+        notes=notes,
+    )
+
+
+def _seed_initial_graduation_for_beginner(person):
+    if not person.has_type_code(*CLASS_ENROLLMENT_PERSON_TYPE_CODES):
+        return None
+    return ensure_initial_graduation_for_beginner(person)
 
 
 def _get_primary_class_group(class_groups):
@@ -311,6 +376,9 @@ def _build_primary_dependent_payload(cleaned_data, prefix):
             "martial_art_graduation": cleaned_data.get(f"{prefix}_martial_art_graduation", ""),
             "jiu_jitsu_belt": cleaned_data.get(f"{prefix}_jiu_jitsu_belt", ""),
             "jiu_jitsu_stripes": cleaned_data.get(f"{prefix}_jiu_jitsu_stripes"),
+            "martial_art_started_at": cleaned_data.get(f"{prefix}_martial_art_started_at"),
+            "martial_art_last_graduation_at": cleaned_data.get(f"{prefix}_martial_art_last_graduation_at"),
+            "previous_academy": cleaned_data.get(f"{prefix}_previous_academy", ""),
             "class_groups": cleaned_data.get(f"{prefix}_class_groups", []),
             "kinship_type": cleaned_data.get(f"{prefix}_kinship_type", ""),
             "kinship_other_label": cleaned_data.get(f"{prefix}_kinship_other_label", ""),

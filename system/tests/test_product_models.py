@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from system.models.product import Product, ProductCategory, ProductVariant
-from system.services.seeding import seed_products
+from system.services.seeding import seed_product_categories, seed_products
 
 
 class ProductCategoryModelTestCase(TestCase):
@@ -116,10 +116,17 @@ class ProductVariantModelTestCase(TestCase):
 
 
 class SeedProductsTestCase(TestCase):
+    def setUp(self):
+        seed_product_categories()
+
     def test_seed_creates_all_products(self):
         result = seed_products()
         self.assertEqual(len(result["categories"]), 4)
         self.assertEqual(len(result["products"]), 5)
+
+    def test_seed_product_categories_is_independent(self):
+        self.assertEqual(ProductCategory.objects.count(), 4)
+        self.assertEqual(Product.objects.count(), 0)
 
     def test_seed_creates_belt_variants(self):
         seed_products()

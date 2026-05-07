@@ -4,13 +4,13 @@
 {% block title %}Fila de pagamentos | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260507b">
 {% endblock %}
 
 {% block content %}
 <section class="billing-screen">
     <div class="billing-screen__header">
-        <h1>Fila de pagamentos a professores</h1>
+        <h1>Fila de pagamentos à equipe</h1>
         <p>Aprove, recuse ou dispare pagamentos via PIX (Asaas).</p>
     </div>
 
@@ -30,7 +30,8 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Professor</th>
+                    <th>Pessoa</th>
+                    <th>Resumo</th>
                     <th>Ref.</th>
                     <th>Valor</th>
                     <th>Tipo</th>
@@ -43,6 +44,7 @@
                 <tr>
                     <td>{{ p.pk }}</td>
                     <td>{{ p.person.full_name }}</td>
+                    <td>{{ p.approval_notes|default:"—"|truncatechars:90 }}</td>
                     <td>{{ p.reference_month|date:"m/Y" }}</td>
                     <td>R$ {{ p.amount }}</td>
                     <td>{{ p.get_kind_display }}</td>

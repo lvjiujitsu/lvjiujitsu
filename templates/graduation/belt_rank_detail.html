@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ belt_rank.display_name }} | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>{{ belt_rank.display_name }}</h1>
+        <p>{{ belt_rank.get_audience_display }} · graus máximos: {{ belt_rank.max_grades }}</p>
+    </div>
+    <div class="crud-header-actions">
+        <a class="ghost-link" href="{% url 'system:belt-rank-list' %}">← Voltar</a>
+        <a class="primary-button" href="{% url 'system:belt-rank-update' belt_rank.pk %}">Editar</a>
+    </div>
+</section>
+
+<section class="form-card">
+    <h2>Pré-visualização</h2>
+    {% include "graduation/_belt_visual.html" with belt_rank=belt_rank grade_number=belt_rank.max_grades size="lg" %}
+    <small class="muted-text">Faixa renderizada com {{ belt_rank.max_grades }} grau(s) preenchido(s).</small>
+</section>
+
+<section class="form-card">
+    <h2>Atributos</h2>
+    <ul>
+        <li><strong>Código:</strong> {{ belt_rank.code }}</li>
+        <li><strong>Cor do corpo:</strong> <span class="belt-color-dot" style="background: {{ belt_rank.color_hex }}"></span> {{ belt_rank.color_hex }}</li>
+        <li><strong>Cor da ponteira:</strong> <span class="belt-color-dot" style="background: {{ belt_rank.tip_color_hex }}"></span> {{ belt_rank.tip_color_hex }}</li>
+        <li><strong>Cor das listras:</strong> <span class="belt-color-dot" style="background: {{ belt_rank.stripe_color_hex }}"></span> {{ belt_rank.stripe_color_hex }}</li>
+        <li><strong>Idade:</strong> {{ belt_rank.min_age|default:"—" }}{% if belt_rank.max_age %} até {{ belt_rank.max_age }}{% endif %}</li>
+        <li><strong>Próxima faixa:</strong> {{ belt_rank.next_rank.display_name|default:"—" }}</li>
+        <li><strong>Ordem:</strong> {{ belt_rank.display_order }}</li>
+        <li><strong>Status:</strong> {% if belt_rank.is_active %}Ativa{% else %}Inativa{% endif %}</li>
+    </ul>
+</section>
+
+<section class="form-card">
+    <div class="dashboard-section-heading">
+        <div>
+            <p class="panel-eyebrow">Regras</p>
+            <h2>Regras de graduação desta faixa</h2>
+        </div>
+        <a class="ghost-link" href="{% url 'system:graduation-rule-create' %}">+ Nova regra</a>
+    </div>
+    {% if graduation_rules %}
+        <table class="billing-table">
+            <thead>
+                <tr>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Meses mínimos</th>
+                    <th>Aulas mínimas</th>
+                    <th>Janela (meses)</th>
+                    <th>Ativa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in graduation_rules %}
+                    <tr>
+                        <td>Grau {{ rule.from_grade }}</td>
+                        <td>{% if rule.to_grade is None %}Próxima faixa{% else %}Grau {{ rule.to_grade }}{% endif %}</td>
+                        <td>{{ rule.min_months_in_current_grade }}</td>
+                        <td>{{ rule.min_classes_required }}</td>
+                        <td>{{ rule.min_classes_window_months }}</td>
+                        <td>{% if rule.is_active %}Sim{% else %}Não{% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted-text">Nenhuma regra cadastrada para esta faixa ainda.</p>
+    {% endif %}
+</section>
+{% endblock %}

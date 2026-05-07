@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Faixas | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Faixas</h1>
+        <p>Cadastro de faixas e quantidade de graus por faixa. Edite livremente conforme a regra vigente.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:belt-rank-create' %}">+ Nova faixa</a>
+</section>
+
+<div class="record-list">
+    {% for belt in belt_ranks %}
+        <article class="record-card">
+            <div class="record-card-head">
+                <span class="record-card-name">{{ belt.display_name }}</span>
+                <span class="record-card-badge">{{ belt.get_audience_display }}</span>
+            </div>
+            {% include "graduation/_belt_visual.html" with belt_rank=belt grade_number=belt.max_grades size="md" %}
+            <div class="record-card-info">
+                <span>Graus máximos: <strong>{{ belt.max_grades }}</strong></span>
+                <span>Idade: {% if belt.min_age %}{{ belt.min_age }}+{% else %}—{% endif %}{% if belt.max_age %} até {{ belt.max_age }}{% endif %}</span>
+                <span>Próxima: {% if belt.next_rank %}{{ belt.next_rank.display_name }}{% else %}—{% endif %}</span>
+                <span>Ordem: {{ belt.display_order }}</span>
+                <span>Status: {% if belt.is_active %}Ativa{% else %}Inativa{% endif %}</span>
+            </div>
+            <div class="record-card-actions">
+                <a class="ghost-link" href="{% url 'system:belt-rank-detail' belt.pk %}">Visualizar</a>
+                <a class="ghost-link" href="{% url 'system:belt-rank-update' belt.pk %}">Editar</a>
+                <a class="ghost-link ghost-link--danger" href="{% url 'system:belt-rank-delete' belt.pk %}">Remover</a>
+            </div>
+        </article>
+    {% empty %}
+        <p class="muted-text">Nenhuma faixa cadastrada ainda.</p>
+    {% endfor %}
+</div>
+{% endblock %}

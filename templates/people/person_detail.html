@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260407">
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260414">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260507b">
 <link rel="stylesheet" href="{% static 'system/css/portal/person-detail.css' %}?v=20260425a">
 {% endblock %}
 
@@ -46,6 +46,7 @@
         </div>
     </section>
 
+    {% if can_manage_people %}
     <section class="form-card catalog-section-card catalog-section-card--full billing-block">
         <div class="catalog-section-head">
             <div>
@@ -232,6 +233,7 @@
             </div>
         {% endif %}
     </section>
+    {% endif %}
 
     <section class="form-card catalog-section-card">
         <div class="catalog-section-head">

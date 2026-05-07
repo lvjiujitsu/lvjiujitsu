@@ -79,6 +79,24 @@ class Person(TimeStampedModel):
     martial_art_graduation = models.CharField(max_length=120, blank=True)
     jiu_jitsu_belt = models.CharField(max_length=24, choices=JiuJitsuBelt.choices, blank=True)
     jiu_jitsu_stripes = models.PositiveSmallIntegerField(null=True, blank=True)
+    martial_art_started_at = models.DateField(
+        "Início no jiu jitsu",
+        null=True,
+        blank=True,
+        help_text="Data aproximada em que começou a praticar jiu jitsu, em qualquer academia.",
+    )
+    martial_art_last_graduation_at = models.DateField(
+        "Última graduação anterior",
+        null=True,
+        blank=True,
+        help_text="Data da última graduação recebida antes de entrar na LV.",
+    )
+    previous_academy = models.CharField(
+        "Academia anterior",
+        max_length=200,
+        blank=True,
+        default="",
+    )
     person_type = models.ForeignKey(
         PersonType,
         on_delete=models.PROTECT,

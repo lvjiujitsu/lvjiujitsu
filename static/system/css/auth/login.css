@@ -2631,10 +2631,10 @@ h1 {
 
 .plan-selector-payment-card {
   appearance: none;
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   border: 1px solid var(--border);
   background: var(--panel-strong);
   color: var(--text);
@@ -2642,6 +2642,7 @@ h1 {
   padding: 14px 16px;
   cursor: pointer;
   text-align: left;
+  width: 100%;
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
 }
 
@@ -2662,24 +2663,25 @@ h1 {
 }
 
 .plan-selector-payment-icon {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.05);
 }
 
 .plan-selector-payment-icon .checkout-payment-icon-image {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
 .plan-selector-payment-info {
   display: grid;
   gap: 2px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -2697,6 +2699,7 @@ h1 {
 .plan-selector-payment-price {
   font-size: 1.25rem;
   font-weight: 800;
+  white-space: nowrap;
   margin-top: 4px;
 }
 
@@ -2750,7 +2753,7 @@ h1 {
   background: rgba(0, 0, 0, 0.02);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 360px) {
   .plan-selector-payment-grid {
     grid-template-columns: 1fr;
   }
@@ -3054,4 +3057,158 @@ h1 {
   margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+/* ========== Plan installment button ========== */
+
+.plan-selector-installment-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.plan-selector-installment-btn:hover {
+  border-color: var(--silver-strong);
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+/* ========== Installment modal ========== */
+
+.installment-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.installment-modal.is-hidden {
+  display: none;
+}
+
+.installment-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.installment-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 430px);
+  padding: 24px 20px 32px;
+  border-radius: 28px 28px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--panel-strong);
+  display: grid;
+  gap: 16px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+}
+
+@media (min-width: 500px) {
+  .installment-modal {
+    align-items: center;
+  }
+
+  .installment-modal-panel {
+    border-radius: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.installment-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.installment-modal-close:hover {
+  background: var(--surface-soft);
+  border-color: var(--silver-strong);
+}
+
+.installment-modal-content {
+  display: grid;
+  gap: 12px;
+}
+
+.installment-modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  padding-right: 40px;
+  color: var(--text);
+}
+
+.installment-modal-method {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.installment-modal-table {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.installment-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.installment-modal-row:last-child {
+  border-bottom: none;
+}
+
+.installment-modal-row-label {
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.installment-modal-row-value {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
 }

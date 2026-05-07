@@ -12,13 +12,19 @@ from system.models import (
     ClassSchedule,
     Person,
     PersonType,
+    TeacherPayrollConfig,
 )
+from system.services.payroll_rules import decode_payroll_rules
 from system.services.seeding import (
+    seed_belts,
     seed_class_catalog,
     seed_class_categories,
+    seed_graduation_rules,
     seed_ibjjf_age_categories,
+    seed_official_instructors,
     seed_person_administrative,
     seed_person_types,
+    seed_teacher_payroll_configs,
 )
 
 
@@ -27,6 +33,9 @@ class ClassCatalogModelTestCase(TestCase):
         seed_person_types()
         seed_class_categories()
         seed_ibjjf_age_categories()
+        seed_belts()
+        seed_graduation_rules()
+        seed_official_instructors()
 
     def test_class_instructor_assignment_requires_administrative_or_instructor_type(self):
         adult_category = ClassCategory.objects.get(code="adult")
@@ -152,6 +161,30 @@ class ClassCatalogModelTestCase(TestCase):
                 training_style="no_gi",
             ).exists()
         )
+
+    def test_seed_teacher_payroll_configs_creates_default_payroll_rules(self):
+        seed_class_catalog()
+        seed_teacher_payroll_configs()
+
+        layon = Person.objects.get(full_name="Layon Quirino")
+        vinicius = Person.objects.get(full_name="Vinicius Antonio")
+        andre = Person.objects.get(full_name="Andre Oliveira")
+        vanessa = Person.objects.get(full_name="Vanessa Ferro")
+
+        layon_rules = decode_payroll_rules(layon.payroll_config.notes)["rules"]
+        self.assertEqual(layon.payroll_config.monthly_salary, 400)
+        self.assertTrue(
+            any(
+                rule["method"] == "student_percentage"
+                and rule["percentage"] == "50.00"
+                and rule["class_group_code"] == "juvenile-layon"
+                for rule in layon_rules
+            )
+        )
+        self.assertEqual(vinicius.payroll_config.monthly_salary, 400)
+        self.assertEqual(andre.payroll_config.monthly_salary, 0)
+        self.assertEqual(vanessa.payroll_config.monthly_salary, 0)
+        self.assertEqual(TeacherPayrollConfig.objects.count(), 5)
 
     def test_seed_person_administrative_creates_single_type_account(self):
         result = seed_person_administrative()

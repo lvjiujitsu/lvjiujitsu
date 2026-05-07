@@ -1,0 +1,27 @@
+{% load graduation_tags %}
+{% comment %}
+Renderiza a representação visual de uma faixa de Jiu Jitsu (BJJ).
+
+Variáveis esperadas:
+    belt_rank      — instância de BeltRank (obrigatório).
+    grade_number   — int, grau atual (default 0).
+    size           — opcional: "sm" | "md" | "lg" (default "md").
+    label          — opcional: texto extra exibido abaixo da faixa.
+{% endcomment %}
+{% if belt_rank %}
+{% belt_grade_slots belt_rank grade_number as slots %}
+<div class="bjj-belt bjj-belt--{{ size|default:'md' }}"
+     style="--belt-color: {{ belt_rank.color_hex }};
+            --belt-tip-color: {{ belt_rank.tip_color_hex }};
+            --belt-stripe-color: {{ belt_rank.stripe_color_hex }};"
+     role="img"
+     aria-label="Faixa {{ belt_rank.display_name }} grau {{ grade_number|default:0 }}">
+    <div class="bjj-belt__body"></div>
+    <div class="bjj-belt__tip">
+        {% for filled in slots %}
+            <span class="bjj-belt__stripe {% if filled %}bjj-belt__stripe--filled{% endif %}"></span>
+        {% endfor %}
+    </div>
+</div>
+{% if label %}<small class="bjj-belt-label muted-text">{{ label }}</small>{% endif %}
+{% endif %}

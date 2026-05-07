@@ -91,7 +91,7 @@ class PlanViewTestCase(TestCase):
         response = self.client.get(reverse("system:root"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Entrar")
-        self.assertContains(response, "Criar conta")
+        self.assertContains(response, "Criar Conta")
         self.assertContains(response, "Falar com a LV")
 
     def test_update_redirects_to_detail(self):

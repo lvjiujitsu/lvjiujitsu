@@ -1,20 +1,38 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 from system.models import (
+    BeltRank,
     BiologicalSex,
     CategoryAudience,
     ClassCategory,
     ClassGroup,
     ClassSchedule,
+    Graduation,
+    GraduationRule,
     IbjjfAgeCategory,
+    Membership,
+    MembershipCreatedVia,
+    MembershipStatus,
+    PaymentProvider,
+    PaymentStatus,
     Person,
     PersonRelationship,
     PersonRelationshipKind,
+    PersonType,
+    PixKeyType,
     PortalAccount,
+    RegistrationOrder,
+    SubscriptionPlan,
+    TeacherBankAccount,
+    TeacherPayout,
+    TeacherPayrollConfig,
+    PayoutKind,
+    PayoutStatus,
     TrainingStyle,
     WeekdayCode,
 )
@@ -27,9 +45,19 @@ from system.models.plan import (
     SubscriptionPlan,
 )
 from system.models.product import Product, ProductCategory, ProductVariant
-from system.constants import PersonTypeCode
+from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES, PersonTypeCode
+from system.services.graduation import ensure_initial_graduation_for_beginner
 from system.services.registration import ensure_default_person_types, sync_person_class_enrollments
+from system.services.payroll_rules import (
+    PAYROLL_METHOD_FIXED_MONTHLY,
+    PAYROLL_METHOD_STUDENT_PERCENTAGE,
+    encode_payroll_rules,
+)
 from system.utils import ensure_formatted_cpf
+
+
+class SeedDependencyError(ValueError):
+    pass
 
 
 DEFAULT_TEST_PORTAL_PASSWORD = settings.SEED_TEST_PORTAL_PASSWORD
@@ -184,11 +212,11 @@ OFFICIAL_CLASS_CATALOG_DEFINITIONS = (
         "code": "women-vannessa",
         "display_name": "Jiu Jitsu",
         "class_category": "women",
-        "description": "Turma feminina com a professora Vannessa Ferro.",
+        "description": "Turma feminina com a professora Vanessa Ferro.",
         "teacher": {
-            "full_name": "Vannessa Ferro",
+            "full_name": "Vanessa Ferro",
             "cpf": "92000000005",
-            "email": "vannessa.ferro@lvjiujitsu.test",
+            "email": "vanessa.ferro@lvjiujitsu.test",
             "phone": "(62) 98888-1005",
         },
         "schedules": (
@@ -214,6 +242,295 @@ def seed_class_categories():
     return categories
 
 
+BELT_RANK_DEFINITIONS = (
+    {
+        "code": "kids-white",
+        "display_name": "Branca (Infantil)",
+        "audience": CategoryAudience.KIDS,
+        "color_hex": "#f5f5f5",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 4,
+        "max_age": 15,
+        "display_order": 10,
+        "next_code": "kids-grey",
+    },
+    {
+        "code": "kids-grey",
+        "display_name": "Cinza",
+        "audience": CategoryAudience.KIDS,
+        "color_hex": "#9ca3af",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 4,
+        "max_age": 15,
+        "display_order": 20,
+        "next_code": "kids-yellow",
+    },
+    {
+        "code": "kids-yellow",
+        "display_name": "Amarela",
+        "audience": CategoryAudience.KIDS,
+        "color_hex": "#facc15",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 7,
+        "max_age": 15,
+        "display_order": 30,
+        "next_code": "kids-orange",
+    },
+    {
+        "code": "kids-orange",
+        "display_name": "Laranja",
+        "audience": CategoryAudience.KIDS,
+        "color_hex": "#fb923c",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 10,
+        "max_age": 15,
+        "display_order": 40,
+        "next_code": "kids-green",
+    },
+    {
+        "code": "kids-green",
+        "display_name": "Verde",
+        "audience": CategoryAudience.KIDS,
+        "color_hex": "#22c55e",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 13,
+        "max_age": 15,
+        "display_order": 50,
+        "next_code": "adult-white",
+    },
+    {
+        "code": "adult-white",
+        "display_name": "Branca",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#f5f5f5",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 16,
+        "max_age": None,
+        "display_order": 100,
+        "next_code": "adult-blue",
+    },
+    {
+        "code": "adult-blue",
+        "display_name": "Azul",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#1e3a8a",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 16,
+        "max_age": None,
+        "display_order": 110,
+        "next_code": "adult-purple",
+    },
+    {
+        "code": "adult-purple",
+        "display_name": "Roxa",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#5b21b6",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 16,
+        "max_age": None,
+        "display_order": 120,
+        "next_code": "adult-brown",
+    },
+    {
+        "code": "adult-brown",
+        "display_name": "Marrom",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#78350f",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 4,
+        "min_age": 18,
+        "max_age": None,
+        "display_order": 130,
+        "next_code": "adult-black",
+    },
+    {
+        "code": "adult-black",
+        "display_name": "Preta",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#111827",
+        "tip_color_hex": "#dc2626",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 6,
+        "min_age": 19,
+        "max_age": None,
+        "display_order": 140,
+        "next_code": "adult-coral-redblack",
+    },
+    {
+        "code": "adult-coral-redblack",
+        "display_name": "Coral (Vermelha e Preta)",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#b91c1c",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 0,
+        "min_age": 50,
+        "max_age": None,
+        "display_order": 150,
+        "next_code": "adult-coral-redwhite",
+    },
+    {
+        "code": "adult-coral-redwhite",
+        "display_name": "Coral (Vermelha e Branca)",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#dc2626",
+        "tip_color_hex": "#ffffff",
+        "stripe_color_hex": "#000000",
+        "max_grades": 0,
+        "min_age": 67,
+        "max_age": None,
+        "display_order": 160,
+        "next_code": "adult-red",
+    },
+    {
+        "code": "adult-red",
+        "display_name": "Vermelha",
+        "audience": CategoryAudience.ADULT,
+        "color_hex": "#991b1b",
+        "tip_color_hex": "#000000",
+        "stripe_color_hex": "#ffffff",
+        "max_grades": 0,
+        "min_age": 67,
+        "max_age": None,
+        "display_order": 170,
+        "next_code": None,
+    },
+)
+
+
+GRADUATION_RULE_DEFINITIONS = (
+    # Adulto: 4 graus dentro de cada faixa
+    {"belt_code": "adult-white", "from_grade": 0, "to_grade": 1, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "adult-white", "from_grade": 1, "to_grade": 2, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "adult-white", "from_grade": 2, "to_grade": 3, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "adult-white", "from_grade": 3, "to_grade": 4, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "adult-white", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-blue", "from_grade": 0, "to_grade": 1, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-blue", "from_grade": 1, "to_grade": 2, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-blue", "from_grade": 2, "to_grade": 3, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-blue", "from_grade": 3, "to_grade": 4, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-blue", "from_grade": 4, "to_grade": None, "min_months": 24, "min_classes": 120, "window_months": 24},
+    {"belt_code": "adult-purple", "from_grade": 0, "to_grade": 1, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-purple", "from_grade": 1, "to_grade": 2, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-purple", "from_grade": 2, "to_grade": 3, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-purple", "from_grade": 3, "to_grade": 4, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-purple", "from_grade": 4, "to_grade": None, "min_months": 18, "min_classes": 96, "window_months": 18},
+    {"belt_code": "adult-brown", "from_grade": 0, "to_grade": 1, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-brown", "from_grade": 1, "to_grade": 2, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-brown", "from_grade": 2, "to_grade": 3, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-brown", "from_grade": 3, "to_grade": 4, "min_months": 6, "min_classes": 48, "window_months": 12},
+    {"belt_code": "adult-brown", "from_grade": 4, "to_grade": None, "min_months": 12, "min_classes": 80, "window_months": 12},
+    # Preta: graus
+    {"belt_code": "adult-black", "from_grade": 0, "to_grade": 1, "min_months": 36, "min_classes": 192, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 1, "to_grade": 2, "min_months": 36, "min_classes": 192, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 2, "to_grade": 3, "min_months": 36, "min_classes": 192, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 3, "to_grade": 4, "min_months": 60, "min_classes": 240, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 4, "to_grade": 5, "min_months": 60, "min_classes": 240, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 5, "to_grade": 6, "min_months": 60, "min_classes": 240, "window_months": 36},
+    {"belt_code": "adult-black", "from_grade": 6, "to_grade": None, "min_months": 84, "min_classes": 288, "window_months": 36},
+    # Infantil: 4 graus em cada faixa
+    {"belt_code": "kids-white", "from_grade": 0, "to_grade": 1, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-white", "from_grade": 1, "to_grade": 2, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-white", "from_grade": 2, "to_grade": 3, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-white", "from_grade": 3, "to_grade": 4, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-white", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-grey", "from_grade": 0, "to_grade": 1, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-grey", "from_grade": 1, "to_grade": 2, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-grey", "from_grade": 2, "to_grade": 3, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-grey", "from_grade": 3, "to_grade": 4, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-grey", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-yellow", "from_grade": 0, "to_grade": 1, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-yellow", "from_grade": 1, "to_grade": 2, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-yellow", "from_grade": 2, "to_grade": 3, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-yellow", "from_grade": 3, "to_grade": 4, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-yellow", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-orange", "from_grade": 0, "to_grade": 1, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-orange", "from_grade": 1, "to_grade": 2, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-orange", "from_grade": 2, "to_grade": 3, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-orange", "from_grade": 3, "to_grade": 4, "min_months": 3, "min_classes": 24, "window_months": 6},
+    {"belt_code": "kids-orange", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-green", "from_grade": 0, "to_grade": 1, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-green", "from_grade": 1, "to_grade": 2, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-green", "from_grade": 2, "to_grade": 3, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-green", "from_grade": 3, "to_grade": 4, "min_months": 4, "min_classes": 32, "window_months": 12},
+    {"belt_code": "kids-green", "from_grade": 4, "to_grade": None, "min_months": 6, "min_classes": 32, "window_months": 12},
+)
+
+
+@transaction.atomic
+def seed_belts():
+    ranks = {}
+    for definition in BELT_RANK_DEFINITIONS:
+        rank, _ = BeltRank.objects.update_or_create(
+            code=definition["code"],
+            defaults={
+                "display_name": definition["display_name"],
+                "audience": definition["audience"],
+                "color_hex": definition["color_hex"],
+                "tip_color_hex": definition.get("tip_color_hex", "#000000"),
+                "stripe_color_hex": definition.get("stripe_color_hex", "#ffffff"),
+                "max_grades": definition["max_grades"],
+                "min_age": definition["min_age"],
+                "max_age": definition["max_age"],
+                "display_order": definition["display_order"],
+                "is_active": True,
+            },
+        )
+        ranks[rank.code] = rank
+    for definition in BELT_RANK_DEFINITIONS:
+        rank = ranks[definition["code"]]
+        next_code = definition.get("next_code")
+        rank.next_rank = ranks.get(next_code) if next_code else None
+        rank.save(update_fields=["next_rank", "updated_at"])
+
+    return {"belts": ranks}
+
+
+@transaction.atomic
+def seed_graduation_rules():
+    belt_codes = tuple(dict.fromkeys(definition["belt_code"] for definition in GRADUATION_RULE_DEFINITIONS))
+    ranks = _get_required_by_code(
+        BeltRank,
+        belt_codes,
+        command_name="seed_graduation_rules",
+        dependency_command="seed_belts",
+    )
+    rules = {}
+    for definition in GRADUATION_RULE_DEFINITIONS:
+        belt = ranks[definition["belt_code"]]
+        rule, _ = GraduationRule.objects.update_or_create(
+            belt_rank=belt,
+            from_grade=definition["from_grade"],
+            defaults={
+                "to_grade": definition["to_grade"],
+                "min_months_in_current_grade": definition["min_months"],
+                "min_classes_required": definition["min_classes"],
+                "min_classes_window_months": definition["window_months"],
+                "is_active": True,
+            },
+        )
+        rules[(belt.code, rule.from_grade)] = rule
+
+    return {"rules": rules}
+
+
 @transaction.atomic
 def seed_ibjjf_age_categories():
     categories = {}
@@ -233,29 +550,33 @@ def seed_ibjjf_age_categories():
     return categories
 
 
+DEFAULT_INSTRUCTOR_BELT_CODE = "adult-black"
+DEFAULT_INSTRUCTOR_BELT_GRADE = 1
+
+
 @transaction.atomic
 def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
-    person_types = seed_person_types()
-    class_categories = seed_class_categories()
-    seed_ibjjf_age_categories()
+    class_category_codes = tuple(
+        dict.fromkeys(definition["class_category"] for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS)
+    )
+    class_categories = _get_required_by_code(
+        ClassCategory,
+        class_category_codes,
+        command_name="seed_class_catalog",
+        dependency_command="seed_class_categories",
+    )
+    teacher_cpfs = tuple(
+        dict.fromkeys(definition["teacher"]["cpf"] for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS)
+    )
+    teacher_people = _get_required_people_by_cpf(
+        teacher_cpfs,
+        command_name="seed_class_catalog",
+        dependency_command="seed_official_instructors",
+    )
     class_groups = {}
-    teacher_people = {}
 
     for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS:
-        teacher = _upsert_person_with_account(
-            full_name=definition["teacher"]["full_name"],
-            cpf=definition["teacher"]["cpf"],
-            email=definition["teacher"]["email"],
-            phone=definition["teacher"]["phone"],
-            birth_date=date(1988, 1, 1),
-            blood_type="O+",
-            allergies="",
-            previous_injuries="",
-            emergency_contact="Operação LV - (62) 98888-0000",
-            password=password,
-            person_type=person_types[PersonTypeCode.INSTRUCTOR],
-            class_category=class_categories[definition["class_category"]],
-        )
+        teacher = teacher_people[ensure_formatted_cpf(definition["teacher"]["cpf"])]
         class_group = _upsert_class_group(
             definition=definition,
             class_category=class_categories[definition["class_category"]],
@@ -271,7 +592,6 @@ def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
             )
 
         class_groups[class_group.code] = class_group
-        teacher_people[teacher.cpf] = teacher
 
     return {
         "class_groups": class_groups,
@@ -281,10 +601,210 @@ def seed_class_catalog(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
 
 
 @transaction.atomic
+def seed_official_instructors(password: str = OFFICIAL_INSTRUCTOR_PASSWORD):
+    person_types = _get_required_by_code(
+        PersonType,
+        (PersonTypeCode.INSTRUCTOR,),
+        command_name="seed_official_instructors",
+        dependency_command="seed_person_type",
+    )
+    class_category_codes = tuple(
+        dict.fromkeys(definition["class_category"] for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS)
+    )
+    class_categories = _get_required_by_code(
+        ClassCategory,
+        class_category_codes,
+        command_name="seed_official_instructors",
+        dependency_command="seed_class_categories",
+    )
+    instructor_belt_codes = tuple(
+        dict.fromkeys(
+            definition["teacher"].get("belt_code", DEFAULT_INSTRUCTOR_BELT_CODE)
+            for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS
+        )
+    )
+    belts = _get_required_by_code(
+        BeltRank,
+        instructor_belt_codes,
+        command_name="seed_official_instructors",
+        dependency_command="seed_belts",
+    )
+
+    teachers = {}
+    for definition in _unique_official_teacher_definitions():
+        teacher_definition = definition["teacher"]
+        teacher = _upsert_person_with_account(
+            full_name=teacher_definition["full_name"],
+            cpf=teacher_definition["cpf"],
+            email=teacher_definition["email"],
+            phone=teacher_definition["phone"],
+            birth_date=date(1988, 1, 1),
+            blood_type="O+",
+            allergies="",
+            previous_injuries="",
+            emergency_contact="Operação LV - (62) 98888-0000",
+            password=password,
+            person_type=person_types[PersonTypeCode.INSTRUCTOR],
+            class_category=class_categories[definition["class_category"]],
+        )
+        _ensure_instructor_graduation(
+            teacher=teacher,
+            belts=belts,
+            belt_code=teacher_definition.get("belt_code", DEFAULT_INSTRUCTOR_BELT_CODE),
+            grade_number=teacher_definition.get("belt_grade", DEFAULT_INSTRUCTOR_BELT_GRADE),
+        )
+        teachers[teacher.cpf] = teacher
+
+    return {"teachers": teachers}
+
+
+@transaction.atomic
+def seed_teacher_payroll_configs():
+    class_group_codes = tuple(definition["code"] for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS)
+    class_groups = _get_required_by_code(
+        ClassGroup,
+        class_group_codes,
+        command_name="seed_teacher_payroll_configs",
+        dependency_command="seed_class_catalog",
+    )
+    return _seed_default_payroll_configs(class_groups)
+
+
+def _unique_official_teacher_definitions():
+    seen = set()
+    for definition in OFFICIAL_CLASS_CATALOG_DEFINITIONS:
+        cpf = ensure_formatted_cpf(definition["teacher"]["cpf"])
+        if cpf in seen:
+            continue
+        seen.add(cpf)
+        yield definition
+
+
+def _ensure_instructor_graduation(*, teacher, belts, belt_code, grade_number):
+    if Graduation.objects.filter(person=teacher).exists():
+        return None
+    belt = belts.get(belt_code)
+    if belt is None:
+        return None
+    awarded_at = timezone.localdate() - timedelta(days=730)
+    return Graduation.objects.create(
+        person=teacher,
+        belt_rank=belt,
+        grade_number=grade_number,
+        awarded_at=awarded_at,
+        notes="Graduação inicial cadastrada pelo seed.",
+    )
+
+
+def _seed_default_payroll_configs(class_groups):
+    definitions = (
+        {
+            "person": class_groups["adult-layon"].main_teacher,
+            "monthly_salary": "400.00",
+            "payment_day": 28,
+            "rules": (
+                {
+                    "method": PAYROLL_METHOD_FIXED_MONTHLY,
+                    "amount": "400.00",
+                    "scope": "class_group",
+                    "class_group_code": "adult-layon",
+                },
+                {
+                    "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
+                    "percentage": "50.00",
+                    "scope": "class_group",
+                    "class_group_code": "juvenile-layon",
+                },
+            ),
+        },
+        {
+            "person": class_groups["adult-vinicius"].main_teacher,
+            "monthly_salary": "400.00",
+            "payment_day": 28,
+            "rules": (
+                {
+                    "method": PAYROLL_METHOD_FIXED_MONTHLY,
+                    "amount": "400.00",
+                    "scope": "class_group",
+                    "class_group_code": "adult-vinicius",
+                },
+            ),
+        },
+        {
+            "person": class_groups["adult-lauro"].main_teacher,
+            "monthly_salary": "0.00",
+            "payment_day": 28,
+            "rules": (),
+        },
+        {
+            "person": class_groups["kids-andre"].main_teacher,
+            "monthly_salary": "0.00",
+            "payment_day": 28,
+            "rules": (),
+        },
+        {
+            "person": class_groups["women-vannessa"].main_teacher,
+            "monthly_salary": "0.00",
+            "payment_day": 28,
+            "rules": (),
+        },
+    )
+    configs = {}
+    bank_accounts = {}
+    entries = []
+    for definition in definitions:
+        person = definition["person"]
+        config, _ = TeacherPayrollConfig.objects.update_or_create(
+            person=person,
+            defaults={
+                "monthly_salary": Decimal(definition["monthly_salary"]),
+                "payment_day": definition["payment_day"],
+                "is_active": True,
+                "notes": encode_payroll_rules(definition["rules"]),
+            },
+        )
+        bank_account, _ = TeacherBankAccount.objects.update_or_create(
+            person=person,
+            defaults={
+                "pix_key": person.cpf,
+                "pix_key_type": PixKeyType.CPF,
+                "holder_name": person.full_name,
+                "holder_document": person.cpf,
+                "is_active": True,
+            },
+        )
+        configs[person.cpf] = config
+        bank_accounts[person.cpf] = bank_account
+        entries.append(
+            {
+                "person": person,
+                "config": config,
+                "bank_account": bank_account,
+                "rules_count": len(definition["rules"]),
+            }
+        )
+    return {
+        "payroll_configs": configs,
+        "bank_accounts": bank_accounts,
+        "entries": entries,
+    }
+
+
+def _seed_manual_person_catalog(password: str):
+    seed_ibjjf_age_categories()
+    seed_belts()
+    seed_graduation_rules()
+    seed_official_instructors(password=password)
+    catalog = seed_class_catalog(password=password)
+    seed_teacher_payroll_configs()
+    return catalog
+
+
+@transaction.atomic
 def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
     person_types = seed_person_types()
     categories = seed_class_categories()
-    catalog = seed_class_catalog(password=password)
+    catalog = _seed_manual_person_catalog(password=password)
     student = _upsert_person_with_account(
         full_name="Aluno Teste Individual",
         cpf="90000000001",
@@ -308,7 +828,7 @@ def seed_person_student(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
 def seed_person_student_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
     person_types = seed_person_types()
     categories = seed_class_categories()
-    catalog = seed_class_catalog(password=password)
+    catalog = _seed_manual_person_catalog(password=password)
     holder_group = catalog["class_groups"]["adult-vinicius"]
     dependent_group = catalog["class_groups"]["kids-andre"]
     holder = _upsert_person_with_account(
@@ -378,7 +898,7 @@ def seed_person_guardian(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
 def seed_person_guardian_with_dependent(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
     person_types = seed_person_types()
     categories = seed_class_categories()
-    catalog = seed_class_catalog(password=password)
+    catalog = _seed_manual_person_catalog(password=password)
     dependent_group = catalog["class_groups"]["kids-andre"]
     guardian = _upsert_person_with_account(
         full_name="Responsável com Dependente",
@@ -442,6 +962,405 @@ def seed_person_administrative(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
     return {"administrative": administrative}
 
 
+TEST_PERSONA_DEFINITIONS = (
+    {
+        "kind": "student",
+        "full_name": "Aluno PIX Pago Masculino",
+        "cpf": "95000000001",
+        "email": "aluno.pix.pago@example.com",
+        "phone": "(62) 95000-0001",
+        "birth_date": date(1995, 3, 12),
+        "biological_sex": BiologicalSex.MALE,
+        "class_group_code": "adult-lauro",
+        "plan_code": "adult-2x-individual-monthly-pix",
+        "payment_state": "paid_pix",
+    },
+    {
+        "kind": "student",
+        "full_name": "Aluno Cartão Pago Masculino",
+        "cpf": "95000000002",
+        "email": "aluno.cartao.pago@example.com",
+        "phone": "(62) 95000-0002",
+        "birth_date": date(1993, 6, 5),
+        "biological_sex": BiologicalSex.MALE,
+        "class_group_code": "adult-vinicius",
+        "plan_code": "adult-2x-individual-monthly-credit-card",
+        "payment_state": "paid_card",
+    },
+    {
+        "kind": "student",
+        "full_name": "Aluno Sem Pagamento Masculino",
+        "cpf": "95000000003",
+        "email": "aluno.sem.pagamento@example.com",
+        "phone": "(62) 95000-0003",
+        "birth_date": date(1996, 11, 20),
+        "biological_sex": BiologicalSex.MALE,
+        "class_group_code": "adult-layon",
+        "plan_code": "adult-2x-individual-monthly-pix",
+        "payment_state": "pending",
+    },
+    {
+        "kind": "student",
+        "full_name": "Aluna PIX Paga Feminina",
+        "cpf": "95000000004",
+        "email": "aluna.pix.paga@example.com",
+        "phone": "(62) 95000-0004",
+        "birth_date": date(1994, 4, 8),
+        "biological_sex": BiologicalSex.FEMALE,
+        "class_group_code": "women-vannessa",
+        "plan_code": "adult-2x-individual-monthly-pix",
+        "payment_state": "paid_pix",
+    },
+    {
+        "kind": "student",
+        "full_name": "Aluna Cartão Paga Feminina",
+        "cpf": "95000000005",
+        "email": "aluna.cartao.paga@example.com",
+        "phone": "(62) 95000-0005",
+        "birth_date": date(1991, 7, 14),
+        "biological_sex": BiologicalSex.FEMALE,
+        "class_group_code": "women-vannessa",
+        "plan_code": "adult-2x-individual-monthly-credit-card",
+        "payment_state": "paid_card",
+    },
+    {
+        "kind": "student",
+        "full_name": "Aluna Sem Pagamento Feminina",
+        "cpf": "95000000006",
+        "email": "aluna.sem.pagamento@example.com",
+        "phone": "(62) 95000-0006",
+        "birth_date": date(1997, 1, 28),
+        "biological_sex": BiologicalSex.FEMALE,
+        "class_group_code": "women-vannessa",
+        "plan_code": "adult-2x-individual-monthly-pix",
+        "payment_state": "pending",
+    },
+    {
+        "kind": "guardian_with_dependents",
+        "full_name": "Responsável PIX Pago com 1 Dependente",
+        "cpf": "95000000007",
+        "email": "responsavel.pix.1dep@example.com",
+        "phone": "(62) 95000-0007",
+        "birth_date": date(1985, 5, 22),
+        "biological_sex": BiologicalSex.FEMALE,
+        "class_group_code": None,
+        "plan_code": "kids-juvenile-2x-family-monthly-pix",
+        "payment_state": "paid_pix",
+        "dependents": (
+            {
+                "full_name": "Dependente do Responsável 1 Dep",
+                "cpf": "95000000008",
+                "email": "dependente.1dep@example.com",
+                "phone": "(62) 95000-0008",
+                "birth_date": date(2014, 9, 10),
+                "biological_sex": BiologicalSex.MALE,
+                "class_group_code": "kids-andre",
+                "kinship_type": "son",
+            },
+        ),
+    },
+    {
+        "kind": "guardian_with_dependents",
+        "full_name": "Responsável Cartão Pago com 2 Dependentes",
+        "cpf": "95000000009",
+        "email": "responsavel.cartao.2dep@example.com",
+        "phone": "(62) 95000-0009",
+        "birth_date": date(1982, 8, 30),
+        "biological_sex": BiologicalSex.MALE,
+        "class_group_code": None,
+        "plan_code": "kids-juvenile-2x-family-monthly-credit-card",
+        "payment_state": "paid_card",
+        "dependents": (
+            {
+                "full_name": "Dependente A do Responsável 2 Dep",
+                "cpf": "95000000010",
+                "email": "dependente.a.2dep@example.com",
+                "phone": "(62) 95000-0010",
+                "birth_date": date(2013, 2, 18),
+                "biological_sex": BiologicalSex.MALE,
+                "class_group_code": "kids-andre",
+                "kinship_type": "son",
+            },
+            {
+                "full_name": "Dependente B do Responsável 2 Dep",
+                "cpf": "95000000011",
+                "email": "dependente.b.2dep@example.com",
+                "phone": "(62) 95000-0011",
+                "birth_date": date(2015, 12, 3),
+                "biological_sex": BiologicalSex.FEMALE,
+                "class_group_code": "kids-andre",
+                "kinship_type": "daughter",
+            },
+        ),
+    },
+)
+
+
+@transaction.atomic
+def seed_test_personas(password: str = DEFAULT_TEST_PORTAL_PASSWORD):
+    person_types = seed_person_types()
+    categories = seed_class_categories()
+    seed_ibjjf_age_categories()
+    seed_belts()
+    seed_graduation_rules()
+    seed_official_instructors(password=password)
+    catalog = seed_class_catalog(password=password)
+    seed_teacher_payroll_configs()
+    plans = seed_plans()
+
+    created = []
+    for definition in TEST_PERSONA_DEFINITIONS:
+        result = _build_test_persona(
+            definition=definition,
+            person_types=person_types,
+            categories=categories,
+            class_groups=catalog["class_groups"],
+            plans=plans,
+            password=password,
+        )
+        created.append(result)
+    _seed_test_payout_history()
+    return created
+
+
+def _build_test_persona(*, definition, person_types, categories, class_groups, plans, password):
+    kind = definition["kind"]
+    if kind == "student":
+        return _build_test_student(definition, person_types, categories, class_groups, plans, password)
+    if kind == "guardian_with_dependents":
+        return _build_test_guardian(definition, person_types, categories, class_groups, plans, password)
+    raise ValueError(f"Tipo de persona de teste desconhecido: {kind}")
+
+
+def _seed_test_payout_history():
+    today = timezone.localdate()
+    current_month = today.replace(day=1)
+    previous_month = _add_months(current_month, -1)
+    two_months_ago = _add_months(current_month, -2)
+    payout_definitions = (
+        ("920.000.000-01", previous_month, "499.00", PayoutStatus.PAID, "Repasse Layon: adulto fixo e juvenil proporcional."),
+        ("920.000.000-01", current_month, "499.00", PayoutStatus.PENDING, "Fechamento atual Layon aguardando aprovação."),
+        ("920.000.000-02", previous_month, "400.00", PayoutStatus.PAID, "Repasse Vinicius: adulto fixo."),
+        ("920.000.000-02", current_month, "400.00", PayoutStatus.PENDING, "Fechamento atual Vinicius aguardando aprovação."),
+        ("920.000.000-04", two_months_ago, "0.00", PayoutStatus.CANCELED, "Andre sem repasse configurado para o mês."),
+        ("920.000.000-05", two_months_ago, "0.00", PayoutStatus.CANCELED, "Vanessa sem repasse configurado para o mês."),
+    )
+    for cpf, reference_month, amount, status, notes in payout_definitions:
+        person = Person.objects.filter(cpf=cpf).first()
+        if person is None:
+            continue
+        try:
+            bank = person.teacher_bank_account
+        except TeacherBankAccount.DoesNotExist:
+            continue
+        paid_at = None
+        sent_at = None
+        if status == PayoutStatus.PAID:
+            sent_at = timezone.now() - timedelta(days=7)
+            paid_at = timezone.now() - timedelta(days=6)
+        TeacherPayout.objects.update_or_create(
+            person=person,
+            reference_month=reference_month,
+            kind=PayoutKind.PAYROLL,
+            defaults={
+                "bank_account": bank,
+                "amount": Decimal(amount),
+                "status": status,
+                "scheduled_for": reference_month.replace(day=28),
+                "approval_notes": notes,
+                "sent_at": sent_at,
+                "paid_at": paid_at,
+            },
+        )
+
+
+def _add_months(reference_date, months):
+    month_index = reference_date.month - 1 + months
+    year = reference_date.year + month_index // 12
+    month = month_index % 12 + 1
+    return reference_date.replace(year=year, month=month, day=1)
+
+
+def _build_test_student(definition, person_types, categories, class_groups, plans, password):
+    class_group = class_groups.get(definition["class_group_code"]) if definition["class_group_code"] else None
+    person = _upsert_person_with_account(
+        full_name=definition["full_name"],
+        cpf=definition["cpf"],
+        email=definition["email"],
+        phone=definition["phone"],
+        birth_date=definition["birth_date"],
+        biological_sex=definition["biological_sex"],
+        blood_type="",
+        allergies="",
+        previous_injuries="",
+        emergency_contact="Contato de teste",
+        password=password,
+        person_type=person_types[PersonTypeCode.STUDENT],
+        class_category=class_group.class_category if class_group else categories["adult"],
+        class_groups=[class_group] if class_group else None,
+    )
+    plan = plans.get(definition["plan_code"])
+    _ensure_payment_state(
+        person=person,
+        plan=plan,
+        payment_state=definition["payment_state"],
+    )
+    return {
+        "person": person,
+        "role": "Aluno",
+        "payment_state": definition["payment_state"],
+    }
+
+
+def _build_test_guardian(definition, person_types, categories, class_groups, plans, password):
+    guardian = _upsert_person_with_account(
+        full_name=definition["full_name"],
+        cpf=definition["cpf"],
+        email=definition["email"],
+        phone=definition["phone"],
+        birth_date=definition["birth_date"],
+        biological_sex=definition["biological_sex"],
+        blood_type="",
+        allergies="",
+        previous_injuries="",
+        emergency_contact="Contato de teste",
+        password=password,
+        person_type=person_types[PersonTypeCode.GUARDIAN],
+        class_category=categories["kids"],
+    )
+    dependents = []
+    for dep_definition in definition.get("dependents", ()):  # type: ignore[arg-type]
+        dep_group = class_groups.get(dep_definition["class_group_code"]) if dep_definition["class_group_code"] else None
+        dependent = _upsert_person_with_account(
+            full_name=dep_definition["full_name"],
+            cpf=dep_definition["cpf"],
+            email=dep_definition["email"],
+            phone=dep_definition["phone"],
+            birth_date=dep_definition["birth_date"],
+            biological_sex=dep_definition["biological_sex"],
+            blood_type="",
+            allergies="",
+            previous_injuries="",
+            emergency_contact=guardian.full_name,
+            password=password,
+            person_type=person_types[PersonTypeCode.DEPENDENT],
+            class_category=dep_group.class_category if dep_group else categories["kids"],
+            class_groups=[dep_group] if dep_group else None,
+        )
+        _upsert_relationship(
+            guardian,
+            dependent,
+            f"Responsável de teste — {dep_definition.get('kinship_type', 'son')}.",
+            kinship_type=dep_definition.get("kinship_type", ""),
+        )
+        dependents.append(dependent)
+
+    plan = plans.get(definition["plan_code"])
+    _ensure_payment_state(
+        person=guardian,
+        plan=plan,
+        payment_state=definition["payment_state"],
+    )
+    return {
+        "person": guardian,
+        "role": f"Responsável ({len(dependents)} dependente(s))",
+        "payment_state": definition["payment_state"],
+        "dependents": dependents,
+    }
+
+
+def _ensure_payment_state(*, person, plan, payment_state):
+    if plan is None:
+        return None
+    if RegistrationOrder.objects.filter(person=person).exists():
+        return None
+
+    now = timezone.now()
+    if payment_state == "paid_pix":
+        order = RegistrationOrder.objects.create(
+            person=person,
+            plan=plan,
+            plan_price=plan.price,
+            total=plan.price,
+            payment_status=PaymentStatus.PAID,
+            payment_provider=PaymentProvider.ASAAS,
+            paid_at=now,
+            asaas_payment_id=f"seed-pix-{person.pk}",
+            notes="Pedido criado pelo seed de teste — pagamento via PIX.",
+        )
+        Membership.objects.create(
+            person=person,
+            plan=plan,
+            status=MembershipStatus.ACTIVE,
+            created_via=MembershipCreatedVia.MANUAL_PAID,
+            current_period_start=now,
+            current_period_end=now + timedelta(days=30),
+            activated_at=now,
+            notes="Assinatura criada pelo seed de teste — PIX.",
+        )
+        return order
+    if payment_state == "paid_card":
+        order = RegistrationOrder.objects.create(
+            person=person,
+            plan=plan,
+            plan_price=plan.price,
+            total=plan.price,
+            payment_status=PaymentStatus.PAID,
+            payment_provider=PaymentProvider.STRIPE,
+            paid_at=now,
+            stripe_payment_intent_id=f"seed-pi-{person.pk}",
+            notes="Pedido criado pelo seed de teste — pagamento via cartão.",
+        )
+        Membership.objects.create(
+            person=person,
+            plan=plan,
+            status=MembershipStatus.ACTIVE,
+            created_via=MembershipCreatedVia.CHECKOUT,
+            current_period_start=now,
+            current_period_end=now + timedelta(days=30),
+            activated_at=now,
+            notes="Assinatura criada pelo seed de teste — cartão.",
+        )
+        return order
+    if payment_state == "pending":
+        order = RegistrationOrder.objects.create(
+            person=person,
+            plan=plan,
+            plan_price=plan.price,
+            total=plan.price,
+            payment_status=PaymentStatus.PENDING,
+            notes="Pedido criado pelo seed de teste — aguardando pagamento.",
+        )
+        return order
+    raise ValueError(f"payment_state desconhecido: {payment_state}")
+
+
+def _get_required_by_code(model, codes, *, command_name, dependency_command):
+    ordered_codes = tuple(dict.fromkeys(codes))
+    records = model.objects.filter(code__in=ordered_codes)
+    by_code = {record.code: record for record in records}
+    missing = [code for code in ordered_codes if code not in by_code]
+    if missing:
+        raise SeedDependencyError(
+            f"Execute {dependency_command} antes de {command_name}. "
+            f"Registros ausentes: {', '.join(missing)}"
+        )
+    return {code: by_code[code] for code in ordered_codes}
+
+
+def _get_required_people_by_cpf(cpfs, *, command_name, dependency_command):
+    ordered_cpfs = tuple(dict.fromkeys(ensure_formatted_cpf(cpf) for cpf in cpfs))
+    records = Person.objects.filter(cpf__in=ordered_cpfs)
+    by_cpf = {record.cpf: record for record in records}
+    missing = [cpf for cpf in ordered_cpfs if cpf not in by_cpf]
+    if missing:
+        raise SeedDependencyError(
+            f"Execute {dependency_command} antes de {command_name}. "
+            f"CPFs ausentes: {', '.join(missing)}"
+        )
+    return {cpf: by_cpf[cpf] for cpf in ordered_cpfs}
+
+
 def _upsert_person_with_account(
     *,
     full_name: str,
@@ -483,6 +1402,8 @@ def _upsert_person_with_account(
     portal_account.is_active = True
     portal_account.set_password(password)
     portal_account.save()
+    if person.has_type_code(*CLASS_ENROLLMENT_PERSON_TYPE_CODES):
+        ensure_initial_graduation_for_beginner(person)
     return person
 
 
@@ -684,7 +1605,7 @@ PRODUCT_DEFINITIONS = (
 
 
 @transaction.atomic
-def seed_products():
+def seed_product_categories():
     categories = {}
     for definition in PRODUCT_CATEGORY_DEFINITIONS:
         cat, _ = ProductCategory.objects.update_or_create(
@@ -696,7 +1617,18 @@ def seed_products():
             },
         )
         categories[cat.code] = cat
+    return categories
 
+
+@transaction.atomic
+def seed_products():
+    product_category_codes = tuple(definition["code"] for definition in PRODUCT_CATEGORY_DEFINITIONS)
+    categories = _get_required_by_code(
+        ProductCategory,
+        product_category_codes,
+        command_name="seed_products",
+        dependency_command="seed_product_categories",
+    )
     Product.objects.filter(sku__in=LEGACY_SEED_PRODUCT_SKUS).update(is_active=False)
     ProductVariant.objects.filter(product__sku__in=LEGACY_SEED_PRODUCT_SKUS).update(
         is_active=False

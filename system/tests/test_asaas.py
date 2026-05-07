@@ -23,7 +23,7 @@ from system.models import (
     TeacherPayrollConfig,
 )
 from system.models.registration_order import PaymentStatus
-from system.services import asaas_checkout, asaas_payroll, asaas_webhooks
+from system.services import asaas_checkout, asaas_client, asaas_payroll, asaas_webhooks
 from system.services.asaas_client import AsaasClientError
 
 
@@ -125,6 +125,25 @@ class AsaasCheckoutTests(TestCase):
             asaas_checkout.create_pix_charge_for_order(self.order)
 
 
+class AsaasClientTests(TestCase):
+    @patch("system.services.asaas_client._request")
+    def test_get_payment_statistics_uses_finance_statistics_endpoint(self, mock_request):
+        mock_request.return_value = {
+            "quantity": 2,
+            "value": 100,
+            "netValue": 98,
+        }
+
+        result = asaas_client.get_payment_statistics(status="PENDING")
+
+        self.assertEqual(result["netValue"], 98)
+        mock_request.assert_called_once_with(
+            "GET",
+            "/finance/payment/statistics",
+            params={"status": "PENDING"},
+        )
+
+
 @override_settings(ASAAS_API_KEY="k", ASAAS_WEBHOOK_TOKEN="wh")
 class AsaasPayrollTests(TestCase):
     def setUp(self):
@@ -160,6 +179,15 @@ class AsaasPayrollTests(TestCase):
         today = date(2026, 4, 10)
         result = asaas_payroll.schedule_monthly_payouts(today=today)
         self.assertEqual(result, [])
+
+    def test_schedule_skips_zero_amount_payroll(self):
+        self.config.monthly_salary = Decimal("0.00")
+        self.config.save(update_fields=["monthly_salary", "updated_at"])
+
+        result = asaas_payroll.schedule_monthly_payouts(today=date(2026, 4, 15))
+
+        self.assertEqual(result, [])
+        self.assertFalse(TeacherPayout.objects.exists())
 
     def test_approve_then_dispatch_flow(self):
         payout = TeacherPayout.objects.create(

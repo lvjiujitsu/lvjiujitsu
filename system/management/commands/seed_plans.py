@@ -4,8 +4,11 @@ from system.services.seeding import seed_plans
 
 
 class Command(BaseCommand):
-    help = "Seed subscription plans from SumUp store data."
+    help = "Cria ou atualiza os planos de assinatura."
 
     def handle(self, *args, **options):
         result = seed_plans()
-        self.stdout.write(self.style.SUCCESS(f"Seeded {len(result)} plans."))
+        self.stdout.write(f"Planos cadastrados: {len(result)}")
+        for plan in result.values():
+            self.stdout.write(f"- {plan.code}: {plan.display_name} | R$ {plan.price:.2f}")
+        self.stdout.write(self.style.SUCCESS("Seed de planos concluída."))

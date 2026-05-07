@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Panorama de graduação | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Panorama de graduação</h1>
+        <p>Referência: {{ reference_date|date:"d/m/Y" }}. Lista os alunos ativos com progresso para a próxima promoção.</p>
+    </div>
+    <div class="crud-header-actions">
+        <a class="ghost-link" href="{% url 'system:belt-rank-list' %}">Faixas</a>
+        <a class="ghost-link" href="{% url 'system:graduation-rule-list' %}">Regras</a>
+        <a class="primary-button" href="{% url 'system:graduation-create' %}">+ Registrar graduação</a>
+    </div>
+</section>
+
+<div class="form-card">
+    {% if rows %}
+        <table class="billing-table graduation-overview-table">
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Faixa atual</th>
+                    <th>Próxima</th>
+                    <th>Tempo</th>
+                    <th>Aulas</th>
+                    <th>Progresso</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>{{ row.person.full_name }}</td>
+                        <td>
+                            {% if row.current_belt_rank %}
+                                {% include "graduation/_belt_visual.html" with belt_rank=row.current_belt_rank grade_number=row.current_grade_number size="sm" %}
+                                <small class="muted-text">{{ row.current_belt_rank.display_name }} grau {{ row.current_grade_number|default:0 }}</small>
+                            {% else %}
+                                <span class="muted-text">Sem registro</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.target_belt_rank %}
+                                {% include "graduation/_belt_visual.html" with belt_rank=row.target_belt_rank grade_number=row.target_grade_number size="sm" %}
+                                <small class="muted-text">{{ row.target_belt_rank.display_name }} grau {{ row.target_grade_number|default:0 }}</small>
+                            {% else %}
+                                <span class="muted-text">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ row.months_in_current_grade }}/{{ row.required_months }} meses
+                            {% if row.months_remaining %}
+                                <small class="muted-text">faltam {{ row.months_remaining }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ row.approved_classes_in_window }}/{{ row.required_classes }}
+                            {% if row.missing_classes %}
+                                <small class="muted-text">faltam {{ row.missing_classes }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ row.progress_pct }}%</strong>
+                        </td>
+                        <td>
+                            {% if row.is_eligible %}
+                                <span class="checkin-status-pill checkin-status-pill--approved">Pronto para promover</span>
+                            {% elif row.blocker %}
+                                <span class="checkin-status-pill checkin-status-pill--pending">{{ row.blocker }}</span>
+                            {% else %}
+                                <span class="muted-text">Em progresso</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted-text">Nenhum aluno ativo cadastrado.</p>
+    {% endif %}
+</div>
+{% endblock %}

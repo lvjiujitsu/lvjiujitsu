@@ -10,7 +10,8 @@ from system.models import (
     Person,
     PersonType,
 )
-from system.services.seeding import seed_class_catalog, seed_person_types
+from system.services.seeding import seed_person_types
+from system.tests.seed_helpers import seed_full_class_catalog
 
 
 User = get_user_model()
@@ -53,7 +54,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "O que fazer agora")
 
     def test_technical_admin_can_access_class_crud_routes(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self._login_as_technical_admin()
 
         class_group_list_response = self.client.get(reverse("system:class-group-list"))
@@ -162,7 +163,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertFalse(ClassGroup.objects.filter(code="adult-without-schedule").exists())
 
     def test_class_group_list_groups_logical_classes_once(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self._login_as_technical_admin()
 
         response = self.client.get(reverse("system:class-group-list"))
@@ -175,7 +176,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertNotContains(response, "Editar")
 
     def test_class_group_detail_exposes_full_relations(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self._login_as_technical_admin()
         class_group = ClassGroup.objects.get(code="adult-layon")
 
@@ -196,7 +197,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Excluir")
 
     def test_class_schedule_list_groups_by_weekday(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self._login_as_technical_admin()
 
         response = self.client.get(reverse("system:class-schedule-list"))
@@ -209,7 +210,7 @@ class ClassPortalViewTestCase(TestCase):
         self.assertNotContains(response, "Editar")
 
     def test_class_schedule_detail_exposes_full_relations(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         self._login_as_technical_admin()
         class_schedule = ClassSchedule.objects.filter(
             class_group__code="adult-layon",

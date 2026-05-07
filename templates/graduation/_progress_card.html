@@ -1,0 +1,81 @@
+{% load static %}
+
+{% if graduation_progress %}
+<section class="panel-card">
+    <div class="dashboard-section-heading">
+        <div>
+            <p class="panel-eyebrow">Graduação</p>
+            <h2>Minha faixa</h2>
+        </div>
+    </div>
+    {% if graduation_progress.current_belt_rank %}
+        <div class="bjj-belt-stack">
+            <div class="bjj-belt-stack__item">
+                {% include "graduation/_belt_visual.html" with belt_rank=graduation_progress.current_belt_rank grade_number=graduation_progress.current_grade_number size="lg" %}
+                <p class="bjj-belt-stack__title">
+                    {{ graduation_progress.current_belt_rank.display_name }}
+                    <span class="muted-text">grau {{ graduation_progress.current_grade_number|default:0 }}</span>
+                </p>
+            </div>
+        </div>
+
+        <details class="graduation-progress-details">
+            <summary class="graduation-progress-summary">Mais sobre a graduação</summary>
+            <div class="graduation-progress-body">
+                {% if graduation_progress.current_graduation_date %}
+                    <p class="muted-text">Faixa atual desde {{ graduation_progress.current_graduation_date|date:"d/m/Y" }}.</p>
+                {% endif %}
+
+                {% if graduation_progress.applicable_rule %}
+                    <ul class="graduation-progress-meta">
+                        <li>
+                            <span>Tempo na faixa atual</span>
+                            <strong>{{ graduation_progress.months_in_current_grade }} mês{{ graduation_progress.months_in_current_grade|pluralize:"es" }}</strong>
+                            <small class="muted-text">(regra IBJJF tempo mínimo: {{ graduation_progress.required_months }} mês{{ graduation_progress.required_months|pluralize:"es" }})</small>
+                            {% if graduation_progress.months_remaining %}
+                                <small class="muted-text">faltam {{ graduation_progress.months_remaining }} mês{{ graduation_progress.months_remaining|pluralize:"es" }} para habilitar a graduação por tempo mínimo</small>
+                            {% else %}
+                                <small class="muted-text">tempo mínimo atingido</small>
+                            {% endif %}
+                        </li>
+                        <li>
+                            <span>Aulas aprovadas</span>
+                            <strong>{{ graduation_progress.approved_classes_in_window }} aula{{ graduation_progress.approved_classes_in_window|pluralize }}</strong>
+                            <small class="muted-text">(regra IBJJF mínimo: {{ graduation_progress.required_classes }} aula{{ graduation_progress.required_classes|pluralize }})</small>
+                            {% if graduation_progress.missing_classes %}
+                                <small class="muted-text">faltam {{ graduation_progress.missing_classes }} aula{{ graduation_progress.missing_classes|pluralize }} para habilitar a graduação por frequência</small>
+                            {% else %}
+                                <small class="muted-text">frequência mínima atingida</small>
+                            {% endif %}
+                        </li>
+                        <li>
+                            <span>Conclusão</span>
+                            <strong>{{ graduation_progress.progress_pct }}%</strong>
+                        </li>
+                    </ul>
+                    {% if graduation_progress.is_eligible %}
+                        <p class="checkin-status-pill checkin-status-pill--approved">Pronto para promover</p>
+                    {% elif graduation_progress.blocker %}
+                        <p class="checkin-status-pill checkin-status-pill--pending">{{ graduation_progress.blocker }}</p>
+                    {% endif %}
+                {% else %}
+                    <p class="muted-text">Sem regra de graduação configurada para esta faixa.</p>
+                {% endif %}
+
+                {% if graduation_history %}
+                    <div class="graduation-progress-actions">
+                        <button type="button" class="ghost-button" data-bjj-history-open>Ver histórico</button>
+                    </div>
+                {% endif %}
+            </div>
+        </details>
+    {% else %}
+        <p class="muted-text">Sua graduação ainda não foi registrada. Solicite ao seu professor.</p>
+    {% endif %}
+</section>
+
+{% if graduation_history %}
+    {% include "graduation/_history_modal.html" with graduation_history=graduation_history %}
+    <script src="{% static 'system/js/graduation/progress-card.js' %}?v=20260507a"></script>
+{% endif %}
+{% endif %}

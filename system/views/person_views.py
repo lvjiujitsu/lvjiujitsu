@@ -21,7 +21,11 @@ from system.selectors import get_person_queryset
 from system.services.class_catalog import prepare_class_group_for_display
 from system.services.class_overview import build_class_group_filter_value
 from system.services.membership import get_active_membership, get_membership_owner
-from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
+from system.constants import (
+    ADMINISTRATIVE_PERSON_TYPE_CODES,
+    CLASS_ENROLLMENT_PERSON_TYPE_CODES,
+    PEOPLE_SUPPORT_PERSON_TYPE_CODES,
+)
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -29,7 +33,18 @@ class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
     allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
-class PersonListView(AdministrativeRequiredMixin, ListView):
+class PeopleSupportRequiredMixin(PortalRoleRequiredMixin):
+    allowed_codes = PEOPLE_SUPPORT_PERSON_TYPE_CODES
+
+
+def _can_manage_people(request):
+    return bool(
+        getattr(request, "portal_is_administrative", False)
+        or getattr(request, "portal_is_technical_admin", False)
+    )
+
+
+class PersonListView(PeopleSupportRequiredMixin, ListView):
     model = Person
     template_name = "people/person_list.html"
     context_object_name = "people"
@@ -40,12 +55,22 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
 
     def get_queryset(self):
         if self.filter_form.is_valid():
-            return get_person_queryset(filters=self.filter_form.cleaned_data)
-        return get_person_queryset()
+            queryset = get_person_queryset(filters=self.filter_form.cleaned_data)
+        else:
+            queryset = get_person_queryset()
+        if not _can_manage_people(self.request):
+            queryset = queryset.filter(
+                person_type__code__in=CLASS_ENROLLMENT_PERSON_TYPE_CODES
+            )
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["filter_form"] = self.filter_form
+        context["can_manage_people"] = _can_manage_people(self.request)
+        context["person_create_label"] = (
+            "Nova pessoa" if context["can_manage_people"] else "Cadastrar aluno"
+        )
         active_ibjjf_categories = list(
             IbjjfAgeCategory.objects.filter(is_active=True).order_by(
                 "display_order",
@@ -57,11 +82,23 @@ class PersonListView(AdministrativeRequiredMixin, ListView):
         return context
 
 
-class PersonCreateView(AdministrativeRequiredMixin, CreateView):
+class PersonCreateView(PeopleSupportRequiredMixin, CreateView):
     model = Person
     form_class = PersonForm
     template_name = "people/person_form.html"
     success_url = reverse_lazy("system:person-list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if not _can_manage_people(self.request):
+            kwargs["person_type_codes"] = CLASS_ENROLLMENT_PERSON_TYPE_CODES
+            kwargs["show_payroll_fields"] = False
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["can_manage_people"] = _can_manage_people(self.request)
+        return context
 
 
 class PersonUpdateView(AdministrativeRequiredMixin, UpdateView):
@@ -77,16 +114,22 @@ class PersonDeleteView(AdministrativeRequiredMixin, DeleteView):
     success_url = reverse_lazy("system:person-list")
 
 
-class PersonDetailView(AdministrativeRequiredMixin, DetailView):
+class PersonDetailView(PeopleSupportRequiredMixin, DetailView):
     model = Person
     template_name = "people/person_detail.html"
     context_object_name = "person"
 
     def get_queryset(self):
-        return get_person_queryset()
+        queryset = get_person_queryset()
+        if not _can_manage_people(self.request):
+            queryset = queryset.filter(
+                person_type__code__in=CLASS_ENROLLMENT_PERSON_TYPE_CODES
+            )
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["can_manage_people"] = _can_manage_people(self.request)
         active_ibjjf_categories = list(
             IbjjfAgeCategory.objects.filter(is_active=True).order_by(
                 "display_order",
@@ -94,6 +137,8 @@ class PersonDetailView(AdministrativeRequiredMixin, DetailView):
             )
         )
         _hydrate_person_relationships(context["person"], active_ibjjf_categories)
+        if not context["can_manage_people"]:
+            return context
         person = context["person"]
         billing_person = get_membership_owner(person)
         memberships = list(

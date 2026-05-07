@@ -11,7 +11,19 @@
       "Bash(./.venv/Scripts/python.exe -c \"import system.models.plan as m; import system.services.seeding as s; import system.selectors.plan_eligibility as e; import system.forms.registration_forms as f; import system.views.plan_change_views as v; import system.views.plan_views as pv; import system.forms.plan_forms as pf; print\\('imports ok'\\)\")",
       "Bash(./.venv/Scripts/python.exe -m py_compile system/models/plan.py system/services/seeding.py system/selectors/plan_eligibility.py system/forms/registration_forms.py system/views/plan_change_views.py system/views/plan_views.py system/forms/plan_forms.py system/services/registration_checkout.py system/admin.py system/tests/test_plan_models.py system/tests/test_plan_eligibility.py system/tests/test_plan_views.py system/tests/test_services.py)",
       "Bash(./.venv/Scripts/python.exe manage.py check)",
-      "Bash(./.venv/Scripts/python.exe -m py_compile system/urls.py system/views/__init__.py system/views/auth_views.py system/views/plan_views.py system/views/product_views.py system/views/payment_views.py system/tests/test_views.py system/tests/test_plan_views.py system/tests/test_product_views.py system/tests/test_class_portal_views.py)"
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/urls.py system/views/__init__.py system/views/auth_views.py system/views/plan_views.py system/views/product_views.py system/views/payment_views.py system/tests/test_views.py system/tests/test_plan_views.py system/tests/test_product_views.py system/tests/test_class_portal_views.py)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/models/product_backorder.py system/models/__init__.py system/selectors/__init__.py system/selectors/product_backorders.py system/services/product_backorders.py system/signals.py system/context_processors.py system/views/product_views.py system/views/__init__.py system/urls.py system/admin.py system/management/commands/expire_backorders.py system/tests/test_product_backorders.py)",
+      "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe manage.py test --verbosity 1 2>&1\")",
+      "Bash(powershell -Command \"cd C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu; .\\\\.venv\\\\Scripts\\\\python.exe manage.py test --verbosity 1 2>&1\")",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py check)",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(Start-Process -NoNewWindow .venv/Scripts/python.exe -ArgumentList \"manage.py runserver 127.0.0.1:8000\")",
+      "Bash(Start-Sleep 3)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/models/calendar.py system/models/__init__.py system/services/class_calendar.py system/views/calendar_views.py system/views/__init__.py system/urls.py system/admin.py system/tests/test_calendar.py system/tests/test_views.py)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/views/calendar_views.py system/views/__init__.py system/urls.py system/services/class_calendar.py system/tests/test_calendar.py system/tests/test_views.py)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile system/models/graduation.py system/services/graduation.py system/selectors/graduation.py system/forms/graduation_forms.py system/views/graduation_views.py system/views/__init__.py system/urls.py system/admin.py system/services/seeding.py system/management/commands/seed_belts.py system/management/commands/inicial_seed.py system/tests/test_graduation.py)",
+      "Bash(cmd /c \".venv\\\\\\\\Scripts\\\\\\\\python.exe manage.py test --verbosity 1 2>&1\")",
+      "Bash(powershell -Command \"cd C:\\\\\\\\Users\\\\\\\\whsf\\\\\\\\Documents\\\\\\\\GitHub\\\\\\\\lvjiujitsu; .\\\\\\\\.venv\\\\\\\\Scripts\\\\\\\\python.exe manage.py test --verbosity 1 2>&1\")"
     ]
   },
   "model": "claude-sonnet-4-6",

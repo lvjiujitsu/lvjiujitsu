@@ -147,24 +147,49 @@ Monólito Django com app única (`system`) seguindo MVT com camada explícita de
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py create_admin_superuser
-.\.venv\Scripts\python.exe manage.py inicial_seed
-.\.venv\Scripts\python.exe manage.py inicial_seed_test
 .\.venv\Scripts\python.exe manage.py seed_person_type
+.\.venv\Scripts\python.exe manage.py seed_class_categories
+.\.venv\Scripts\python.exe manage.py seed_ibjjf_age_categories
+.\.venv\Scripts\python.exe manage.py seed_belts
+.\.venv\Scripts\python.exe manage.py seed_graduation_rules
+.\.venv\Scripts\python.exe manage.py seed_official_instructors
 .\.venv\Scripts\python.exe manage.py seed_class_catalog
-.\.venv\Scripts\python.exe manage.py seed_plans
+.\.venv\Scripts\python.exe manage.py seed_teacher_payroll_configs
+.\.venv\Scripts\python.exe manage.py seed_product_categories
 .\.venv\Scripts\python.exe manage.py seed_products
+.\.venv\Scripts\python.exe manage.py seed_plans
 .\.venv\Scripts\python.exe manage.py seed_holidays --year <ANO>
+```
+
+### Seeds de validação manual
+
+```powershell
+.\.venv\Scripts\python.exe manage.py inicial_seed_test
+.\.venv\Scripts\python.exe manage.py seed_test_personas
 ```
 
 ### Comandos individuais de seed presentes no repositório
 
 | Comando | Função |
 |---|---|
+| `seed_person_type` | cria tipos de pessoa base |
+| `seed_class_categories` | cria categorias de turma |
+| `seed_ibjjf_age_categories` | cria categorias etárias IBJJF |
+| `seed_belts` | cria faixas |
+| `seed_graduation_rules` | cria regras de graduação |
+| `seed_official_instructors` | cria professores oficiais e contas de portal |
+| `seed_class_catalog` | cria turmas e horários |
+| `seed_teacher_payroll_configs` | cria configurações de repasse dos professores |
+| `seed_product_categories` | cria categorias de produto |
+| `seed_products` | cria produtos e variantes |
+| `seed_plans` | cria planos comerciais |
+| `seed_holidays` | cria feriados e recesso do ano informado |
 | `seed_person_guardian` | cria responsável de teste |
 | `seed_person_guardian_with_dependent` | cria responsável com dependente |
 | `seed_person_student` | cria aluno individual |
 | `seed_person_student_with_dependent` | cria titular com dependente |
 | `seed_person_administrative` | cria perfil administrativo |
+| `seed_test_personas` | cria personas de teste para validação manual |
 | `schedule_monthly_payouts` | agenda pagamentos mensais de professores |
 
 ### Comandos legados
@@ -204,8 +229,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 - SQLite descartável em `db.sqlite3`
 
 ### Seeds
-- o projeto possui seeds granulares e também agregadores (`inicial_seed`, `inicial_seed_test`)
-- `seed_class_catalog`, `seed_plans` e `seed_products` são centrais para fluxos públicos e de checkout
+- o projeto não possui mais o agregador `inicial_seed`
+- o setup base deve executar seeds granulares em sequência explícita
+- `inicial_seed_test` é um agregador restrito a cenários de validação manual
+- cada seed base deve falhar explicitamente quando uma dependência sequencial não foi executada
+- `seed_class_catalog`, `seed_products`, `seed_plans` e `seed_holidays` devem imprimir logs auditáveis do que cadastraram
 
 ### Schema
 - existe apenas `system/migrations/0001_initial.py`
@@ -263,4 +291,6 @@ Atualizar este arquivo quando houver:
 
 ```md
 - **[2026-04-21]** CLAUDE.md reescrito com contexto factual do projeto LV JIU JITSU.
+- **[2026-05-07]** Removido `inicial_seed` da documentação operacional; setup base passou a usar sequência explícita de seeds granulares.
+- **[2026-05-07]** Separadas seeds de categorias, faixas, regras de graduação, professores oficiais, repasses, categorias de produto e produtos; logs de auditoria passaram a listar registros cadastrados.
 ```

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Remover regra | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Remover regra de graduação</h1>
+    </div>
+    <a class="ghost-link" href="{% url 'system:graduation-rule-list' %}">← Voltar</a>
+</section>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <p>Tem certeza de que deseja remover a regra <strong>{{ graduation_rule }}</strong>?</p>
+    <div class="button-row">
+        <a class="ghost-link" href="{% url 'system:graduation-rule-list' %}">Cancelar</a>
+        <button type="submit" class="primary-button primary-button--danger">Remover</button>
+    </div>
+</form>
+{% endblock %}

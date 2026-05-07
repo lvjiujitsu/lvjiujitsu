@@ -12,8 +12,10 @@ from django.utils import timezone
 
 from system.models import (
     BiologicalSex,
+    CheckinStatus,
     ClassCategory,
     ClassCheckin,
+    ClassEnrollment,
     ClassGroup,
     ClassSchedule,
     ClassSession,
@@ -29,13 +31,16 @@ from system.models import (
     SpecialClass,
     SpecialClassCheckin,
     SubscriptionPlan,
+    TeacherPayrollConfig,
     TrialAccessGrant,
     WeekdayCode,
 )
 from system.models.plan import BillingCycle, PlanPaymentMethod
+from system.services.payroll_rules import decode_payroll_rules
 from system.services.class_overview import build_class_group_filter_value
 from system.services.registration import sync_person_class_enrollments
-from system.services.seeding import seed_class_catalog, seed_products
+from system.services.seeding import seed_belts
+from system.tests.seed_helpers import seed_full_class_catalog, seed_full_product_catalog
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -65,6 +70,7 @@ class PortalViewTestCase(TestCase):
             code="instructor",
             display_name="Professor",
         )
+        seed_belts()
 
     def _create_portal_account(self, *, full_name, cpf, password, person_type):
         person = Person.objects.create(
@@ -88,7 +94,7 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Falar com a LV")
-        self.assertContains(response, "Cadastro")
+        self.assertContains(response, "Criar Conta")
 
     def test_root_route_includes_lv_favicon_metadata(self):
         response = self.client.get(reverse("system:root"))
@@ -114,7 +120,7 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Use seu CPF e senha para acessar o portal.")
         self.assertContains(response, "Esqueci minha senha")
         self.assertContains(response, "Mostrar")
-        self.assertContains(response, "Criar conta")
+        self.assertContains(response, "Criar Conta")
         self.assertContains(response, "Falar com a LV")
 
     def test_register_route_renders_class_group_selection_copy(self):
@@ -142,7 +148,7 @@ class PortalViewTestCase(TestCase):
         self.assertNotContains(response, "Não possui")
 
     def test_register_route_exposes_logical_class_choices_once(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
 
         response = self.client.get(reverse("system:register"))
 
@@ -158,7 +164,7 @@ class PortalViewTestCase(TestCase):
         )
 
     def test_register_route_exposes_compact_schedule_sections_for_wizard(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
 
         response = self.client.get(reverse("system:register"))
 
@@ -181,7 +187,7 @@ class PortalViewTestCase(TestCase):
         )
 
     def test_register_route_exposes_product_variants_in_material_catalog(self):
-        seed_products()
+        seed_full_product_catalog()
 
         response = self.client.get(reverse("system:register"))
 
@@ -373,8 +379,24 @@ class PortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:administrative-home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Rotinas mais usadas")
-        self.assertContains(response, "Tipos")
+        self.assertContains(response, "Painel administrativo")
+        self.assertContains(response, "Aulas do dia")
+        self.assertContains(response, "Área administrativa")
+        self.assertContains(response, "Controle de estoque")
+        self.assertContains(response, "Cronograma")
+
+    def test_administrative_portal_account_cannot_access_master_dashboard(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao LV",
+            cpf="321.654.987-09",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(reverse("system:admin-home"))
+
+        self.assertEqual(response.status_code, 403)
 
     def test_administrative_portal_account_can_open_person_edit_form(self):
         administrative_account = self._create_portal_account(
@@ -555,7 +577,7 @@ class PortalViewTestCase(TestCase):
             password="123456",
             person_type=self.administrative_type,
         )
-        seed_class_catalog()
+        seed_full_class_catalog()
         adult_category = ClassCategory.objects.get(code="adult")
         adult_groups = list(
             ClassGroup.objects.filter(
@@ -640,7 +662,7 @@ class PortalViewTestCase(TestCase):
             password="123456",
             person_type=self.administrative_type,
         )
-        seed_class_catalog()
+        seed_full_class_catalog()
         adult_category = ClassCategory.objects.get(code="adult")
         adult_groups = list(
             ClassGroup.objects.filter(
@@ -847,7 +869,7 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Aulas do dia")
-        self.assertContains(response, "Ver cronograma")
+        self.assertContains(response, "Gerir cronograma")
         self.assertContains(response, "Turma Professor")
         self.assertContains(response, "Aluno Presente")
         self.assertContains(response, "Histórico de check-ins")
@@ -913,6 +935,9 @@ class PortalViewTestCase(TestCase):
         ClassCheckin.objects.create(
             session=session,
             person=student_account.person,
+            status=CheckinStatus.APPROVED,
+            approved_at=timezone.now(),
+            approved_by=instructor,
         )
         self._login_portal_account(student_account)
 
@@ -922,6 +947,375 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Histórico de aulas com check-in confirmado")
         self.assertContains(response, "Turma Histórico")
         self.assertContains(response, "Professor Histórico")
+
+    def _build_instructor_with_checkin(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Aprovador",
+            cpf="321.654.987-40",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-instructor-approve",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-instructor-approve-group",
+            display_name="Turma Aprovação",
+            class_category=adult_category,
+            main_teacher=instructor_account.person,
+        )
+        weekday_map = {
+            0: WeekdayCode.MONDAY,
+            1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY,
+            3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY,
+            5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=weekday_map[timezone.localdate().weekday()],
+            training_style="gi",
+            start_time="19:00",
+            duration_minutes=60,
+        )
+        student_person = Person.objects.create(
+            full_name="Aluno Aprovação",
+            cpf="321.654.987-41",
+            person_type=self.student_type,
+            birth_date=date(2000, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=timezone.localdate(),
+        )
+        checkin = ClassCheckin.objects.create(
+            session=session,
+            person=student_person,
+        )
+        return instructor_account, checkin
+
+    def test_instructor_dashboard_shows_pending_checkin_and_approve_button(self):
+        instructor_account, _ = self._build_instructor_with_checkin()
+        self._login_portal_account(instructor_account)
+
+        response = self.client.get(reverse("system:instructor-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Aluno Aprovação")
+        self.assertContains(response, "Aguardando aprovação")
+        self.assertContains(response, "data-approve-checkin")
+
+    def test_instructor_approve_checkin_view_marks_as_approved(self):
+        instructor_account, checkin = self._build_instructor_with_checkin()
+        self._login_portal_account(instructor_account)
+
+        response = self.client.post(
+            reverse("system:instructor-approve-checkin"),
+            data={"checkin_id": checkin.pk},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["status"], CheckinStatus.APPROVED)
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.APPROVED)
+        self.assertEqual(checkin.approved_by_id, instructor_account.person.pk)
+
+    def test_instructor_approve_checkin_view_blocks_unauthorized(self):
+        _, checkin = self._build_instructor_with_checkin()
+        other_instructor = self._create_portal_account(
+            full_name="Professor Externo",
+            cpf="321.654.987-42",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(other_instructor)
+
+        response = self.client.post(
+            reverse("system:instructor-approve-checkin"),
+            data={"checkin_id": checkin.pk},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.PENDING)
+
+    def test_instructor_calendar_view_loads(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Cronograma",
+            cpf="321.654.987-50",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.get(reverse("system:instructor-calendar"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cronograma do Professor")
+        self.assertContains(response, "Novo aulão")
+
+    def test_instructor_can_toggle_own_session(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Cancelar",
+            cpf="321.654.987-51",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-instructor-toggle",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-instructor-toggle-group",
+            display_name="Turma Cancelável",
+            class_category=adult_category,
+            main_teacher=instructor_account.person,
+        )
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=WeekdayCode.MONDAY,
+            training_style="gi",
+            start_time="19:00",
+            duration_minutes=60,
+        )
+
+        self._login_portal_account(instructor_account)
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("system:instructor-toggle-session"),
+            data={
+                "schedule_id": schedule.pk,
+                "date": today.strftime("%Y-%m-%d"),
+                "reason": "Imprevisto",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_cancelled"])
+
+    def test_instructor_cannot_toggle_other_session(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Externo",
+            cpf="321.654.987-52",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        owner = Person.objects.create(
+            full_name="Professor Dono",
+            cpf="321.654.987-53",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-instructor-toggle-block",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-instructor-toggle-block-group",
+            display_name="Turma Alheia",
+            class_category=adult_category,
+            main_teacher=owner,
+        )
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=WeekdayCode.MONDAY,
+            training_style="gi",
+            start_time="19:00",
+            duration_minutes=60,
+        )
+
+        self._login_portal_account(instructor_account)
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("system:instructor-toggle-session"),
+            data={
+                "schedule_id": schedule.pk,
+                "date": today.strftime("%Y-%m-%d"),
+                "reason": "",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_instructor_create_special_class_links_self_as_teacher(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Aulão Solo",
+            cpf="321.654.987-54",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.post(
+            reverse("system:instructor-special-class-create"),
+            data={
+                "title": "Aulão do Prof",
+                "date": timezone.localdate().strftime("%Y-%m-%d"),
+                "start_time": "20:00",
+                "duration_minutes": 90,
+                "notes": "",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["special"]["teacher_name"], "Professor Aulão Solo")
+        special = SpecialClass.objects.get(pk=payload["special"]["id"])
+        self.assertEqual(special.teacher_id, instructor_account.person.pk)
+
+    def test_instructor_can_only_delete_own_special_class(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor A",
+            cpf="321.654.987-55",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        owner = Person.objects.create(
+            full_name="Professor B",
+            cpf="321.654.987-56",
+            person_type=self.instructor_type,
+        )
+        special_alheio = SpecialClass.objects.create(
+            title="Aulão B",
+            date=timezone.localdate(),
+            start_time="19:00",
+            duration_minutes=60,
+            teacher=owner,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.post(
+            reverse("system:instructor-special-class-delete"),
+            data={"special_id": special_alheio.pk},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(SpecialClass.objects.filter(pk=special_alheio.pk).exists())
+
+    def test_admin_special_class_create_links_selected_teacher(self):
+        instructor = Person.objects.create(
+            full_name="Professor Linkado",
+            cpf="321.654.987-57",
+            person_type=self.instructor_type,
+        )
+        admin_account = self._create_portal_account(
+            full_name="Admin Aulão",
+            cpf="321.654.987-58",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        self.client.force_login(self.django_admin_user)
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = admin_account.pk
+        session[TECHNICAL_ADMIN_SESSION_KEY] = True
+        session.save()
+
+        response = self.client.post(
+            reverse("system:admin-special-class-create"),
+            data={
+                "title": "Aulão Admin",
+                "date": timezone.localdate().strftime("%Y-%m-%d"),
+                "start_time": "21:00",
+                "duration_minutes": 60,
+                "teacher": instructor.pk,
+                "notes": "",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        special = SpecialClass.objects.get(title="Aulão Admin")
+        self.assertEqual(special.teacher_id, instructor.pk)
+
+    def test_student_dashboard_shows_pending_after_checkin(self):
+        from system.models import IbjjfAgeCategory
+        IbjjfAgeCategory.objects.get_or_create(
+            code="adult-age",
+            defaults={
+                "display_name": "Adulto",
+                "audience": "adult",
+                "minimum_age": 18,
+                "maximum_age": 99,
+            },
+        )
+        student_account = self._create_portal_account(
+            full_name="Aluno Pendente",
+            cpf="321.654.987-43",
+            password="123456",
+            person_type=self.student_type,
+        )
+        student_account.person.birth_date = date(2000, 1, 1)
+        student_account.person.biological_sex = BiologicalSex.MALE
+        student_account.person.save(update_fields=["birth_date", "biological_sex"])
+        instructor = Person.objects.create(
+            full_name="Professor Pendente",
+            cpf="321.654.987-44",
+            person_type=self.instructor_type,
+        )
+        adult_category = ClassCategory.objects.create(
+            code="adult-student-pending",
+            display_name="Adulto",
+            audience="adult",
+        )
+        class_group = ClassGroup.objects.create(
+            code="adult-student-pending-group",
+            display_name="Turma Pendente",
+            class_category=adult_category,
+            main_teacher=instructor,
+        )
+        weekday_map = {
+            0: WeekdayCode.MONDAY,
+            1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY,
+            3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY,
+            5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        schedule = ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=weekday_map[timezone.localdate().weekday()],
+            training_style="gi",
+            start_time="18:00",
+            duration_minutes=60,
+        )
+        ClassEnrollment.objects.create(
+            class_group=class_group,
+            person=student_account.person,
+            status="active",
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=timezone.localdate(),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=student_account.person,
+            status=CheckinStatus.PENDING,
+        )
+
+        self._login_portal_account(student_account)
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Turma Pendente")
+        self.assertContains(response, "Aguardando aprovação")
 
     def test_portal_logout_clears_local_and_technical_sessions(self):
         student_account = self._create_portal_account(
@@ -1025,6 +1419,7 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Pedido #")
 
+    @override_settings(ASAAS_API_KEY="", STRIPE_SECRET_KEY="")
     def test_financial_control_lists_gateway_fee_and_net_amount(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao Financeira",
@@ -1068,6 +1463,184 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "R$ 1,99")
         self.assertContains(response, "R$ 238,01")
         self.assertContains(response, "Disponível")
+
+    @override_settings(ASAAS_API_KEY="", STRIPE_SECRET_KEY="")
+    def test_financial_control_displays_gateway_kpis_and_unified_history(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao KPIs",
+            cpf="321.654.987-79",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        self._login_portal_account(administrative_account)
+        plan = SubscriptionPlan.objects.create(
+            code="standard-monthly-card-kpi",
+            display_name="Plano mensal cartão KPI",
+            price=Decimal("250.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            is_active=True,
+        )
+        person = Person.objects.create(
+            full_name="Aluno KPI",
+            cpf="321.654.987-80",
+            person_type=self.student_type,
+        )
+        RegistrationOrder.objects.create(
+            person=person,
+            plan=plan,
+            plan_price=Decimal("250.00"),
+            total=Decimal("250.00"),
+            payment_status="paid",
+            payment_provider=PaymentProvider.STRIPE,
+            net_amount=Decimal("239.63"),
+            paid_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("system:financial-control"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "ASAAS")
+        self.assertContains(response, "Stripe")
+        self.assertContains(response, "Total a receber")
+        self.assertContains(response, "Total local a receber")
+        self.assertContains(response, "Histórico financeiro")
+        self.assertContains(response, "Aluno KPI")
+
+    def test_person_update_saves_payroll_config_for_instructor(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Repasse",
+            cpf="321.654.987-81",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        instructor = Person.objects.create(
+            full_name="Professor Repasse",
+            cpf="321.654.987-82",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.post(
+            reverse("system:person-update", kwargs={"pk": instructor.pk}),
+            {
+                "full_name": "Professor Repasse",
+                "cpf": "32165498782",
+                "email": "prof.repasse@example.com",
+                "phone": "",
+                "birth_date": "",
+                "biological_sex": "",
+                "blood_type": "",
+                "allergies": "",
+                "previous_injuries": "",
+                "emergency_contact": "",
+                "martial_art": "",
+                "martial_art_graduation": "",
+                "jiu_jitsu_belt": "",
+                "jiu_jitsu_stripes": "",
+                "person_type": self.instructor_type.pk,
+                "class_groups": [],
+                "is_active": "on",
+                "payroll_enabled": "on",
+                "payroll_payment_day": "28",
+                "payroll_fixed_monthly": "400.00",
+                "payroll_per_student_amount": "",
+                "payroll_student_percentage": "50.00",
+                "payroll_per_class_amount": "",
+                "payroll_rules_json": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("system:person-list"))
+        config = TeacherPayrollConfig.objects.get(person=instructor)
+        self.assertEqual(config.monthly_salary, Decimal("400.00"))
+        self.assertEqual(config.payment_day, 28)
+        payload = decode_payroll_rules(config.notes)
+        methods = {rule["method"] for rule in payload["rules"]}
+        self.assertIn("fixed_monthly", methods)
+        self.assertIn("student_percentage", methods)
+
+    def test_administrative_portal_account_can_open_own_financial_screen(self):
+        administrative_account = self._create_portal_account(
+            full_name="Administrativo Repasse",
+            cpf="321.654.987-83",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        TeacherPayrollConfig.objects.create(
+            person=administrative_account.person,
+            monthly_salary=Decimal("300.00"),
+            payment_day=28,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(reverse("system:teacher-financial"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Meu financeiro")
+        self.assertContains(response, "Salário base")
+
+    def test_instructor_dashboard_exposes_limited_operational_area(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Apoio",
+            cpf="321.654.987-84",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(instructor_account)
+
+        response = self.client.get(reverse("system:instructor-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Apoio operacional")
+        self.assertContains(response, "Solicitar material")
+        self.assertContains(response, "Cadastrar aluno")
+        self.assertContains(response, "Visualizar alunos")
+        self.assertNotContains(response, "Controle financeiro")
+
+    def test_instructor_can_list_view_and_create_students_without_admin_crud(self):
+        instructor_account = self._create_portal_account(
+            full_name="Professor Cadastro",
+            cpf="321.654.987-85",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        student = Person.objects.create(
+            full_name="Aluno do Professor",
+            cpf="321.654.987-86",
+            person_type=self.student_type,
+        )
+        self._login_portal_account(instructor_account)
+
+        list_response = self.client.get(reverse("system:person-list"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, "Aluno do Professor")
+        self.assertNotContains(list_response, "Excluir")
+
+        detail_response = self.client.get(
+            reverse("system:person-detail", kwargs={"pk": student.pk})
+        )
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Aluno do Professor")
+        self.assertNotContains(detail_response, "Mensalidade e pagamentos")
+
+        create_response = self.client.get(reverse("system:person-create"))
+        self.assertEqual(create_response.status_code, 200)
+        allowed_codes = {
+            person_type.code
+            for person_type in create_response.context["form"].fields[
+                "person_type"
+            ].queryset
+        }
+        self.assertIn("student", allowed_codes)
+        self.assertIn("dependent", allowed_codes)
+        self.assertNotIn("instructor", allowed_codes)
+        self.assertNotIn("administrative-assistant", allowed_codes)
+
+        update_response = self.client.get(
+            reverse("system:person-update", kwargs={"pk": student.pk})
+        )
+        self.assertEqual(update_response.status_code, 403)
 
     def test_register_with_pay_later_grants_trial_and_redirects_to_login(self):
         plan = SubscriptionPlan.objects.create(
@@ -1377,11 +1950,27 @@ class PlanChangeSelectViewGroupingTest(TestCase):
             is_active=True,
             is_family_plan=True,
         )
+        from datetime import date
+        from system.models import PersonRelationshipKind
         person = Person.objects.create(
             full_name="Aluno Teste",
             cpf="123.456.789-00",
             email="aluno@example.com",
             person_type=self.student_type,
+            birth_date=date(1990, 1, 1),
+        )
+        dependent = Person.objects.create(
+            full_name="Dependente Teste",
+            cpf="987.654.321-00",
+            email="dependente@example.com",
+            person_type=self.student_type,
+            birth_date=date(2015, 1, 1),
+            is_active=True,
+        )
+        PersonRelationship.objects.create(
+            source_person=person,
+            target_person=dependent,
+            relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
         )
         self.membership = Membership.objects.create(
             person=person,

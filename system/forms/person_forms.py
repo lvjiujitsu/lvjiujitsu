@@ -19,7 +19,13 @@ from system.services.class_overview import (
     resolve_class_group_selection,
 )
 from system.services.registration import sync_person_class_enrollments
+from system.services.payroll_rules import (
+    PayrollRuleError,
+    get_payroll_form_initial,
+    save_person_payroll_config,
+)
 from system.utils import ensure_formatted_cpf
+from system.constants import CLASS_STAFF_PERSON_TYPE_CODES
 
 
 class PersonTypeForm(forms.ModelForm):
@@ -60,6 +66,34 @@ class PersonListFilterForm(forms.Form):
 
 
 class PersonForm(forms.ModelForm):
+    main_field_names = (
+        "full_name",
+        "cpf",
+        "email",
+        "phone",
+        "birth_date",
+        "biological_sex",
+        "blood_type",
+        "allergies",
+        "previous_injuries",
+        "emergency_contact",
+        "martial_art",
+        "martial_art_graduation",
+        "jiu_jitsu_belt",
+        "jiu_jitsu_stripes",
+        "person_type",
+        "class_groups",
+        "is_active",
+    )
+    payroll_field_names = (
+        "payroll_enabled",
+        "payroll_payment_day",
+        "payroll_fixed_monthly",
+        "payroll_per_student_amount",
+        "payroll_student_percentage",
+        "payroll_per_class_amount",
+        "payroll_rules_json",
+    )
     person_type = forms.ModelChoiceField(
         queryset=PersonType.objects.none(),
         required=True,
@@ -70,6 +104,50 @@ class PersonForm(forms.ModelForm):
         label="Turmas liberadas",
         help_text="Selecione as turmas que a pessoa pode frequentar. Os horários ativos dessas turmas ficam liberados automaticamente.",
         widget=forms.CheckboxSelectMultiple,
+    )
+    payroll_enabled = forms.BooleanField(
+        required=False,
+        label="Repasse ativo",
+    )
+    payroll_payment_day = forms.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=28,
+        label="Dia do pagamento",
+    )
+    payroll_fixed_monthly = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_digits=10,
+        decimal_places=2,
+        label="Valor fixo mensal",
+    )
+    payroll_per_student_amount = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_digits=10,
+        decimal_places=2,
+        label="Valor por aluno",
+    )
+    payroll_student_percentage = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_value=100,
+        max_digits=5,
+        decimal_places=2,
+        label="Percentual por aluno",
+    )
+    payroll_per_class_amount = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_digits=10,
+        decimal_places=2,
+        label="Valor por aluno/aula",
+    )
+    payroll_rules_json = forms.CharField(
+        required=False,
+        label="Regras avançadas",
+        widget=forms.Textarea(attrs={"rows": 5}),
     )
 
     class Meta:
@@ -134,10 +212,15 @@ class PersonForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        person_type_codes = kwargs.pop("person_type_codes", None)
+        self.show_payroll_fields = kwargs.pop("show_payroll_fields", True)
         super().__init__(*args, **kwargs)
-        self.fields["person_type"].queryset = PersonType.objects.filter(
+        person_type_queryset = PersonType.objects.filter(
             is_active=True
-        ).order_by("display_name")
+        )
+        if person_type_codes:
+            person_type_queryset = person_type_queryset.filter(code__in=person_type_codes)
+        self.fields["person_type"].queryset = person_type_queryset.order_by("display_name")
         self.fields["class_groups"].choices = get_public_class_group_choice_options()
         if self.instance.pk:
             self.initial["birth_date"] = (
@@ -148,6 +231,11 @@ class PersonForm(forms.ModelForm):
             self.fields["class_groups"].initial = _get_initial_class_group_values(
                 self.instance
             )
+            payroll_initial = get_payroll_form_initial(self.instance)
+            for field_name, value in payroll_initial.items():
+                self.fields[field_name].initial = value
+        else:
+            self.fields["payroll_payment_day"].initial = 28
         self.order_fields(
             [
                 "full_name",
@@ -167,8 +255,25 @@ class PersonForm(forms.ModelForm):
                 "person_type",
                 "class_groups",
                 "is_active",
+                "payroll_enabled",
+                "payroll_payment_day",
+                "payroll_fixed_monthly",
+                "payroll_per_student_amount",
+                "payroll_student_percentage",
+                "payroll_per_class_amount",
+                "payroll_rules_json",
             ]
         )
+
+    @property
+    def main_fields(self):
+        return [self[name] for name in self.main_field_names]
+
+    @property
+    def payroll_fields(self):
+        if not self.show_payroll_fields:
+            return []
+        return [self[name] for name in self.payroll_field_names]
 
     def clean_cpf(self):
         return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
@@ -216,6 +321,7 @@ class PersonForm(forms.ModelForm):
                 )
                 seen_errors.add(message)
         cleaned_data["class_groups"] = class_groups
+        self._clean_payroll_config(cleaned_data)
         return cleaned_data
 
     def save(self, commit=True):
@@ -228,7 +334,44 @@ class PersonForm(forms.ModelForm):
         if commit:
             person.save()
             sync_person_class_enrollments(person, class_groups)
+            try:
+                save_person_payroll_config(person, self.cleaned_data)
+            except PayrollRuleError as exc:
+                raise ValueError(str(exc)) from exc
         return person
+
+    def _clean_payroll_config(self, cleaned_data):
+        person_type = cleaned_data.get("person_type")
+        payroll_enabled = bool(cleaned_data.get("payroll_enabled"))
+        has_payroll_values = any(
+            cleaned_data.get(field_name)
+            for field_name in (
+                "payroll_fixed_monthly",
+                "payroll_per_student_amount",
+                "payroll_student_percentage",
+                "payroll_per_class_amount",
+                "payroll_rules_json",
+            )
+        )
+        is_staff = bool(
+            person_type and person_type.code in CLASS_STAFF_PERSON_TYPE_CODES
+        )
+        if (payroll_enabled or has_payroll_values) and not is_staff:
+            self.add_error(
+                "payroll_enabled",
+                "Repasse permitido apenas para Professor ou Administrativo.",
+            )
+            return
+        if not payroll_enabled:
+            return
+        if not cleaned_data.get("payroll_payment_day"):
+            cleaned_data["payroll_payment_day"] = 28
+        try:
+            from system.services.payroll_rules import build_payroll_payload_from_form
+
+            build_payroll_payload_from_form(cleaned_data)
+        except PayrollRuleError as exc:
+            self.add_error("payroll_rules_json", str(exc))
 
 
 def _get_initial_class_group_values(person):

@@ -1,0 +1,53 @@
+{% comment %}
+Renderiza o modal de histórico de graduações com timeline.
+
+Variáveis esperadas:
+    graduation_history — lista de SimpleNamespace de get_graduation_history(person).
+{% endcomment %}
+<div class="bjj-history-modal" id="bjjHistoryModal" hidden role="dialog" aria-modal="true" aria-labelledby="bjjHistoryTitle">
+    <div class="bjj-history-modal__backdrop" data-bjj-history-close></div>
+    <div class="bjj-history-modal__card">
+        <header class="bjj-history-modal__head">
+            <h2 id="bjjHistoryTitle">Histórico de graduações</h2>
+            <button type="button" class="bjj-history-modal__close" data-bjj-history-close aria-label="Fechar">&times;</button>
+        </header>
+        <div class="bjj-history-modal__body">
+            {% if graduation_history %}
+                <ol class="bjj-history-timeline">
+                    {% for entry in graduation_history %}
+                        <li class="bjj-history-timeline__item {% if entry.is_current %}bjj-history-timeline__item--current{% endif %}">
+                            <div class="bjj-history-timeline__marker"></div>
+                            <div class="bjj-history-timeline__content">
+                                <div class="bjj-history-timeline__belt">
+                                    {% include "graduation/_belt_visual.html" with belt_rank=entry.belt_rank grade_number=entry.grade_number size="md" %}
+                                </div>
+                                <div class="bjj-history-timeline__info">
+                                    <strong>{{ entry.belt_rank.display_name }} · grau {{ entry.grade_number|default:0 }}</strong>
+                                    <span class="muted-text">
+                                        {{ entry.awarded_at|date:"d/m/Y" }}
+                                        {% if entry.is_current %}
+                                            · permanência atual: {{ entry.period_months }} mês{{ entry.period_months|pluralize:"es" }} ({{ entry.period_days }} dia{{ entry.period_days|pluralize }})
+                                        {% else %}
+                                            → {{ entry.until_date|date:"d/m/Y" }} · permanência: {{ entry.period_months }} mês{{ entry.period_months|pluralize:"es" }} ({{ entry.period_days }} dia{{ entry.period_days|pluralize }})
+                                        {% endif %}
+                                    </span>
+                                    {% if entry.awarded_by %}
+                                        <small class="muted-text">Concedida por {{ entry.awarded_by.full_name }}</small>
+                                    {% endif %}
+                                    {% if entry.notes %}
+                                        <small class="muted-text">{{ entry.notes }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="muted-text">Nenhuma graduação registrada ainda.</p>
+            {% endif %}
+        </div>
+        <footer class="bjj-history-modal__foot">
+            <button type="button" class="ghost-button" data-bjj-history-close>Fechar</button>
+        </footer>
+    </div>
+</div>

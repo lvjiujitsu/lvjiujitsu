@@ -121,7 +121,7 @@ class GetEligiblePlansTestCase(TestCase):
         )
         plans = get_eligible_plans(context)
         kids_5x = plans.filter(weekly_frequency=PlanWeeklyFrequency.FIVE_TIMES)
-        self.assertEqual(kids_5x.count(), 8)
+        self.assertEqual(kids_5x.count(), 16)
 
     def test_no_audience_active_returns_empty(self):
         context = PlanEligibilityContext(adult_active=False, kids_juvenile_active_count=0)

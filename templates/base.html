@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
     {% include "includes/_favicon.html" %}
-    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260427a">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260507b">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -54,6 +54,16 @@
                         {% endif %}
                     </a>
                     <a class="drawer-item" href="{% url 'system:student-order-history' %}">Histórico</a>
+                    {% if request.portal_is_instructor and not request.portal_is_administrative %}
+                        <div class="drawer-sep">Apoio</div>
+                        <a class="drawer-item" href="{% url 'system:person-list' %}">Alunos</a>
+                        <a class="drawer-item" href="{% url 'system:person-create' %}">Cadastrar aluno</a>
+                        <a class="drawer-item" href="{% url 'system:instructor-calendar' %}">Cronograma</a>
+                        <a class="drawer-item" href="{% url 'system:teacher-financial' %}">Meu financeiro</a>
+                    {% elif request.portal_account and request.portal_is_administrative %}
+                        <div class="drawer-sep">Meu financeiro</div>
+                        <a class="drawer-item" href="{% url 'system:teacher-financial' %}">Meu financeiro</a>
+                    {% endif %}
                     {% if request.portal_is_administrative or request.portal_is_technical_admin %}
                         <div class="drawer-sep">Gestão</div>
                         <a class="drawer-item" href="{% url 'system:person-list' %}">Pessoas</a>
@@ -65,6 +75,11 @@
                         <a class="drawer-item" href="{% url 'system:admin-backorder-queue' %}">Pré-pedidos</a>
                         <a class="drawer-item" href="{% url 'system:plan-list' %}">Planos</a>
                         <a class="drawer-item" href="{% url 'system:admin-calendar' %}">Cronograma</a>
+                        <div class="drawer-sep">Graduação</div>
+                        <a class="drawer-item" href="{% url 'system:graduation-overview' %}">Panorama</a>
+                        <a class="drawer-item" href="{% url 'system:belt-rank-list' %}">Faixas</a>
+                        <a class="drawer-item" href="{% url 'system:graduation-rule-list' %}">Regras</a>
+                        <a class="drawer-item" href="{% url 'system:graduation-list' %}">Histórico</a>
                         <div class="drawer-sep">Financeiro</div>
                         <a class="drawer-item" href="{% url 'system:financial-control' %}">Controle financeiro</a>
                         <a class="drawer-item" href="{% url 'system:approval-queue' %}">Aprovações</a>

@@ -9,8 +9,6 @@ from django.views.generic import TemplateView
 from system.models.membership import MembershipStatus
 from system.models.plan import (
     BillingCycle,
-    PlanAudience,
-    PlanWeeklyFrequency,
     SubscriptionPlan,
 )
 from system.constants import STUDENT_PORTAL_PERSON_TYPE_CODES
@@ -27,13 +25,6 @@ from system.services.plan_change import (
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
-
-PLAN_CHANGE_GROUP_ORDER = (
-    (PlanAudience.ADULT, PlanWeeklyFrequency.FIVE_TIMES, "Adulto · 5x por semana"),
-    (PlanAudience.ADULT, PlanWeeklyFrequency.TWICE, "Adulto · 2x por semana"),
-    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.FIVE_TIMES, "Kids/Juvenil · 5x por semana"),
-    (PlanAudience.KIDS_JUVENILE, PlanWeeklyFrequency.TWICE, "Kids/Juvenil · 2x por semana"),
-)
 
 CYCLE_DISPLAY_ORDER = {
     BillingCycle.MONTHLY: 0,
@@ -79,29 +70,21 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, TemplateView):
 
 
 def _group_plans_by_audience_and_frequency(plans_with_proration):
-    grouped = OrderedDict()
-    for audience, frequency, label in PLAN_CHANGE_GROUP_ORDER:
-        grouped[(audience, frequency)] = {
-            "label": label,
-            "audience": audience,
-            "weekly_frequency": int(frequency),
-            "entries": [],
-        }
+    groups = OrderedDict([
+        (False, {"label": "Planos Individuais", "entries": []}),
+        (True, {"label": "Planos Família", "entries": []}),
+    ])
     for entry in plans_with_proration:
         plan = entry["plan"]
-        key = (plan.audience, plan.weekly_frequency)
-        if key not in grouped:
-            continue
-        grouped[key]["entries"].append(entry)
-    for group in grouped.values():
+        groups[plan.is_family_plan]["entries"].append(entry)
+    for group in groups.values():
         group["entries"].sort(
             key=lambda item: (
                 CYCLE_DISPLAY_ORDER.get(item["plan"].billing_cycle, 99),
-                0 if item["plan"].is_family_plan else 1,
                 item["plan"].price,
             )
         )
-    return [group for group in grouped.values() if group["entries"]]
+    return [group for group in groups.values() if group["entries"]]
 
 
 class PlanChangeConfirmView(PortalRoleRequiredMixin, View):

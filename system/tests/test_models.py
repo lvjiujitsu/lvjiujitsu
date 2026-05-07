@@ -22,7 +22,8 @@ from system.models import (
 )
 from system.services.class_overview import build_class_group_filter_value
 from system.services.portal_auth import create_password_reset_token, reset_portal_password
-from system.services.seeding import seed_class_catalog
+from system.services.seeding import seed_belts
+from system.tests.seed_helpers import seed_full_class_catalog
 
 
 User = get_user_model()
@@ -31,6 +32,7 @@ User = get_user_model()
 class PersonModelTestCase(TestCase):
     def setUp(self):
         self.request_factory = RequestFactory()
+        seed_belts()
 
     def test_person_has_single_type(self):
         student_type = PersonType.objects.create(
@@ -217,7 +219,7 @@ class PersonModelTestCase(TestCase):
         self.assertTrue(access_account.check_password("NovaSenha@123"))
 
     def test_registration_creates_multiple_physical_enrollments_from_logical_choice(self):
-        seed_class_catalog()
+        seed_full_class_catalog()
         adult_category = ClassCategory.objects.get(code="adult")
         adult_key = build_class_group_filter_value(adult_category.pk, "Jiu Jitsu")
 

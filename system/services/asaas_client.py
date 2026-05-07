@@ -45,7 +45,7 @@ def _request(method, path, *, json_body=None, params=None, timeout=None):
             timeout=timeout,
         )
     except requests.RequestException as exc:
-        logger.exception("Falha de rede chamando Asaas %s %s", method, path)
+        logger.error("Falha de rede chamando Asaas %s %s: %s", method, path, exc)
         raise AsaasClientError(f"Erro de rede Asaas: {exc}") from exc
 
     try:
@@ -133,6 +133,15 @@ def get_transfer(transfer_id):
 
 def get_balance():
     return _request("GET", "/finance/balance")
+
+
+def get_payment_statistics(*, status=None, billing_type=None):
+    params = {}
+    if status:
+        params["status"] = status
+    if billing_type:
+        params["billingType"] = billing_type
+    return _request("GET", "/finance/payment/statistics", params=params)
 
 
 def verify_webhook_token(received_token):

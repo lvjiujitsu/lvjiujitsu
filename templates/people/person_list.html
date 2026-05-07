@@ -14,7 +14,7 @@
         <h1>Pessoas</h1>
         <p>Resumo direto. Mais contexto fica dentro de Visualizar.</p>
     </div>
-    <a class="primary-button" href="{% url 'system:person-create' %}">Nova pessoa</a>
+    <a class="primary-button" href="{% url 'system:person-create' %}">{{ person_create_label|default:"Nova pessoa" }}</a>
 </section>
 
 <form method="get" class="form-card catalog-section-card filter-form-shell">
@@ -59,8 +59,10 @@
             </div>
             <div class="record-card-actions">
                 <a href="{% url 'system:person-detail' person.pk %}">Visualizar</a>
-                <a href="{% url 'system:person-update' person.pk %}">Editar</a>
-                <a class="danger-link" href="{% url 'system:person-delete' person.pk %}">Excluir</a>
+                {% if can_manage_people %}
+                    <a href="{% url 'system:person-update' person.pk %}">Editar</a>
+                    <a class="danger-link" href="{% url 'system:person-delete' person.pk %}">Excluir</a>
+                {% endif %}
             </div>
         </article>
     {% empty %}

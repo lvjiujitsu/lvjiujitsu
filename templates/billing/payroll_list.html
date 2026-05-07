@@ -4,14 +4,14 @@
 {% block title %}Folha de professores | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260415">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260507b">
 {% endblock %}
 
 {% block content %}
 <section class="billing-screen">
     <div class="billing-screen__header">
         <h1>Folha de professores</h1>
-        <p>Configurações ativas de pagamento mensal via PIX.</p>
+        <p>Configurações de repasse mensal, por aluno, percentual e por aula.</p>
     </div>
 
     {% if configs %}
@@ -19,8 +19,9 @@
         <table class="billing-table">
             <thead>
                 <tr>
-                    <th>Professor</th>
-                    <th>Salário</th>
+                    <th>Pessoa</th>
+                    <th>Fechamento previsto</th>
+                    <th>Regras</th>
                     <th>Dia do pagamento</th>
                     <th>Chave PIX</th>
                     <th>Status</th>
@@ -30,7 +31,16 @@
                 {% for config in configs %}
                 <tr>
                     <td>{{ config.person.full_name }}</td>
-                    <td>R$ {{ config.monthly_salary }}</td>
+                    <td>R$ {{ config.current_calculation.total|floatformat:2 }}</td>
+                    <td>
+                        <div class="billing-rule-list">
+                            {% for rule in config.current_calculation.rule_summaries %}
+                                <span>{{ rule.method_label }} · {{ rule.value }} · {{ rule.scope }}</span>
+                            {% empty %}
+                                <span>Sem repasse</span>
+                            {% endfor %}
+                        </div>
+                    </td>
                     <td>Dia {{ config.payment_day }}</td>
                     <td>
                         {% with bank=bank_accounts|dictsort:0 %}

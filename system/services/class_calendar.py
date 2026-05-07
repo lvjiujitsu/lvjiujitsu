@@ -15,6 +15,7 @@ from system.models import (
     WeekdayCode,
 )
 from system.models.calendar import (
+    CheckinStatus,
     ClassCheckin,
     ClassSession,
     Holiday,
@@ -50,16 +51,18 @@ def get_today_classes_for_person(person):
         .select_related("teacher")
         .order_by("start_time")
     )
-    special_checkin_ids = set(
-        SpecialClassCheckin.objects.filter(
+    special_checkins_by_special_id = {
+        checkin.special_class_id: checkin
+        for checkin in SpecialClassCheckin.objects.filter(
             person=person,
             special_class__in=specials,
-        ).values_list("special_class_id", flat=True)
-    )
+        )
+    }
 
     def _special_entries():
         entries = []
         for sc in specials:
+            checkin = special_checkins_by_special_id.get(sc.pk)
             entries.append(SimpleNamespace(
                 is_special=True,
                 special_class=sc,
@@ -75,7 +78,9 @@ def get_today_classes_for_person(person):
                 group_name=sc.title,
                 is_cancelled=False,
                 cancellation_reason="",
-                has_checked_in=sc.pk in special_checkin_ids,
+                has_checked_in=checkin is not None,
+                checkin_status=checkin.status if checkin else "",
+                is_checkin_approved=bool(checkin and checkin.is_approved),
             ))
         return entries
 
@@ -102,12 +107,13 @@ def get_today_classes_for_person(person):
     for session in existing_sessions:
         sessions_map[session.schedule_id] = session
 
-    checkin_session_ids = set(
-        ClassCheckin.objects.filter(
+    checkins_by_session_id = {
+        checkin.session_id: checkin
+        for checkin in ClassCheckin.objects.filter(
             person=person,
             session__date=today,
-        ).values_list("session_id", flat=True)
-    )
+        )
+    }
 
     result = []
     for schedule in schedules:
@@ -119,7 +125,7 @@ def get_today_classes_for_person(person):
         elif session and session.is_cancelled:
             cancellation_reason = session.cancellation_reason
 
-        has_checked_in = session.pk in checkin_session_ids if session else False
+        checkin = checkins_by_session_id.get(session.pk) if session else None
 
         result.append(SimpleNamespace(
             is_special=False,
@@ -136,7 +142,9 @@ def get_today_classes_for_person(person):
             group_name=schedule.class_group.display_name,
             is_cancelled=is_cancelled,
             cancellation_reason=cancellation_reason,
-            has_checked_in=has_checked_in,
+            has_checked_in=checkin is not None,
+            checkin_status=checkin.status if checkin else "",
+            is_checkin_approved=bool(checkin and checkin.is_approved),
         ))
     result.extend(_special_entries())
     return result
@@ -184,15 +192,22 @@ def get_today_classes_for_instructor(person):
         entries.append(
             SimpleNamespace(
                 is_special=False,
+                schedule=schedule,
+                schedule_id=schedule.pk,
+                session=session,
+                session_date=today,
                 start_time=schedule.start_time.strftime("%H:%M"),
                 date=today,
                 group_name=schedule.class_group.display_name,
                 category_name=schedule.class_group.class_category.display_name,
                 duration_minutes=schedule.duration_minutes,
                 is_cancelled=is_cancelled,
+                is_holiday_cancelled=bool(holiday),
                 cancellation_reason=cancellation_reason,
-                checked_students=[checkin.person.full_name for checkin in session_checkins],
+                checkins=[_instructor_checkin_view(c, is_special=False) for c in session_checkins],
                 checked_count=len(session_checkins),
+                approved_count=sum(1 for c in session_checkins if c.is_approved),
+                pending_count=sum(1 for c in session_checkins if not c.is_approved),
             )
         )
 
@@ -213,26 +228,45 @@ def get_today_classes_for_instructor(person):
         entries.append(
             SimpleNamespace(
                 is_special=True,
+                special_class=special,
+                special_id=special.pk,
                 start_time=special.start_time.strftime("%H:%M"),
                 date=today,
                 group_name=special.title,
                 category_name="Aulão",
                 duration_minutes=special.duration_minutes,
                 is_cancelled=False,
+                is_holiday_cancelled=False,
                 cancellation_reason="",
-                checked_students=[checkin.person.full_name for checkin in special_class_checkins],
+                checkins=[_instructor_checkin_view(c, is_special=True) for c in special_class_checkins],
                 checked_count=len(special_class_checkins),
+                approved_count=sum(1 for c in special_class_checkins if c.is_approved),
+                pending_count=sum(1 for c in special_class_checkins if not c.is_approved),
             )
         )
 
     return entries
 
 
+def _instructor_checkin_view(checkin, *, is_special):
+    return SimpleNamespace(
+        pk=checkin.pk,
+        is_special=is_special,
+        person_name=checkin.person.full_name,
+        status=checkin.status,
+        is_approved=checkin.is_approved,
+        status_label=checkin.get_status_display(),
+    )
+
+
 def get_instructor_checkin_history(person, limit=12):
     class_group_ids = _get_instructor_class_group_ids(person)
 
     class_checkins = (
-        ClassCheckin.objects.filter(session__schedule__class_group_id__in=class_group_ids)
+        ClassCheckin.objects.filter(
+            session__schedule__class_group_id__in=class_group_ids,
+            status=CheckinStatus.APPROVED,
+        )
         .select_related("person", "session__schedule__class_group", "session__schedule__class_group__class_category")
         .order_by("-session__date", "-session__schedule__start_time", "person__full_name")
     )
@@ -254,7 +288,10 @@ def get_instructor_checkin_history(person, limit=12):
         class_history_by_session_id[session_id].attendees.append(checkin.person.full_name)
 
     special_checkins = (
-        SpecialClassCheckin.objects.filter(special_class__teacher=person)
+        SpecialClassCheckin.objects.filter(
+            special_class__teacher=person,
+            status=CheckinStatus.APPROVED,
+        )
         .select_related("person", "special_class")
         .order_by("-special_class__date", "-special_class__start_time", "person__full_name")
     )
@@ -298,8 +335,12 @@ def get_student_checkin_history(person, limit=12):
                 else ""
             ),
             checked_in_at=timezone.localtime(checkin.checked_in_at),
+            approved_at=timezone.localtime(checkin.approved_at) if checkin.approved_at else None,
         )
-        for checkin in ClassCheckin.objects.filter(person=person)
+        for checkin in ClassCheckin.objects.filter(
+            person=person,
+            status=CheckinStatus.APPROVED,
+        )
         .select_related(
             "session__schedule__class_group",
             "session__schedule__class_group__class_category",
@@ -322,8 +363,12 @@ def get_student_checkin_history(person, limit=12):
                 else ""
             ),
             checked_in_at=timezone.localtime(checkin.checked_in_at),
+            approved_at=timezone.localtime(checkin.approved_at) if checkin.approved_at else None,
         )
-        for checkin in SpecialClassCheckin.objects.filter(person=person)
+        for checkin in SpecialClassCheckin.objects.filter(
+            person=person,
+            status=CheckinStatus.APPROVED,
+        )
         .select_related("special_class", "special_class__teacher")
         .order_by("-special_class__date", "-special_class__start_time", "-checked_in_at")
     ]
@@ -349,6 +394,20 @@ def _get_instructor_class_group_ids(person):
     return list(main_teacher_group_ids | assignment_group_ids)
 
 
+def assert_instructor_owns_schedule(person, schedule_id):
+    schedule = ClassSchedule.objects.select_related("class_group").get(pk=schedule_id)
+    if schedule.class_group_id not in _get_instructor_class_group_ids(person):
+        raise PermissionError("Você não é responsável por esta turma.")
+    return schedule
+
+
+def assert_instructor_owns_special(person, special_id):
+    special = SpecialClass.objects.get(pk=special_id)
+    if special.teacher_id != person.pk:
+        raise PermissionError("Você não é responsável por este aulão.")
+    return special
+
+
 @transaction.atomic
 def perform_checkin(person, schedule_id):
     today = timezone.localdate()
@@ -370,10 +429,46 @@ def perform_checkin(person, schedule_id):
     checkin, created = ClassCheckin.objects.get_or_create(
         session=session,
         person=person,
+        defaults={"status": CheckinStatus.PENDING},
     )
     if created:
         consume_trial_for_person(person)
     return checkin, created
+
+
+@transaction.atomic
+def approve_class_checkin(*, instructor, checkin_id):
+    checkin = (
+        ClassCheckin.objects.select_related("session__schedule__class_group")
+        .get(pk=checkin_id)
+    )
+    instructor_group_ids = _get_instructor_class_group_ids(instructor)
+    if checkin.session.schedule.class_group_id not in instructor_group_ids:
+        raise PermissionError("Você não é responsável por esta turma.")
+    if checkin.is_approved:
+        return checkin
+    checkin.status = CheckinStatus.APPROVED
+    checkin.approved_at = timezone.now()
+    checkin.approved_by = instructor
+    checkin.save(update_fields=["status", "approved_at", "approved_by", "updated_at"])
+    return checkin
+
+
+@transaction.atomic
+def approve_special_checkin(*, instructor, checkin_id):
+    checkin = (
+        SpecialClassCheckin.objects.select_related("special_class")
+        .get(pk=checkin_id)
+    )
+    if checkin.special_class.teacher_id != instructor.pk:
+        raise PermissionError("Você não é responsável por este aulão.")
+    if checkin.is_approved:
+        return checkin
+    checkin.status = CheckinStatus.APPROVED
+    checkin.approved_at = timezone.now()
+    checkin.approved_by = instructor
+    checkin.save(update_fields=["status", "approved_at", "approved_by", "updated_at"])
+    return checkin
 
 
 def get_calendar_month_data(year, month):
@@ -540,6 +635,7 @@ def perform_special_class_checkin(person, special_id):
     checkin, created = SpecialClassCheckin.objects.get_or_create(
         special_class=special,
         person=person,
+        defaults={"status": CheckinStatus.PENDING},
     )
     if created:
         consume_trial_for_person(person)

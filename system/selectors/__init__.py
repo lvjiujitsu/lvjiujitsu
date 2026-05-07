@@ -1,4 +1,8 @@
-from .person_selectors import get_person_queryset
+from .person_selectors import (
+    get_material_request_recipient_queryset,
+    get_person_queryset,
+    resolve_material_request_recipient,
+)
 from .plan_eligibility import (
     PlanEligibilityContext,
     build_eligibility_context_for_person,
@@ -32,8 +36,10 @@ __all__ = [
     "get_eligible_plans",
     "get_expired_ready_backorders",
     "get_pending_queue_for_variant",
+    "get_material_request_recipient_queryset",
     "get_person_queryset",
     "get_ready_backorders_for_person",
+    "resolve_material_request_recipient",
     "has_active_backorder_for_variant",
     "is_plan_eligible",
 ]

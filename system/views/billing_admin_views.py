@@ -24,6 +24,7 @@ from system.services.stripe_admin_actions import (
     change_membership_plan,
     refund_order,
 )
+from system.services.financial_dashboard import build_financial_dashboard
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -78,6 +79,11 @@ class FinancialControlView(_BillingAdminMixin, ListView):
             .select_related("person", "plan")
             .order_by("-created_at")
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["financial_dashboard"] = build_financial_dashboard()
+        return context
 
 
 class ExemptOrderActionView(_BillingAdminMixin, View):

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Graduações | LV JIU JITSU{% endblock %}
+
+{% block content %}
+<section class="crud-header">
+    <div>
+        <p class="panel-eyebrow">Graduação</p>
+        <h1>Graduações</h1>
+        <p>Histórico de promoções concedidas. Cada registro vira a faixa atual da pessoa.</p>
+    </div>
+    <a class="primary-button" href="{% url 'system:graduation-create' %}">+ Nova graduação</a>
+</section>
+
+<div class="form-card">
+    {% if graduations %}
+        <table class="billing-table">
+            <thead>
+                <tr>
+                    <th>Pessoa</th>
+                    <th>Faixa</th>
+                    <th>Grau</th>
+                    <th>Concedida em</th>
+                    <th>Concedida por</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for graduation in graduations %}
+                    <tr>
+                        <td>{{ graduation.person.full_name }}</td>
+                        <td>
+                            {% include "graduation/_belt_visual.html" with belt_rank=graduation.belt_rank grade_number=graduation.grade_number size="sm" %}
+                            <small class="muted-text">{{ graduation.belt_rank.display_name }}</small>
+                        </td>
+                        <td>{{ graduation.grade_number }}</td>
+                        <td>{{ graduation.awarded_at|date:"d/m/Y" }}</td>
+                        <td>{{ graduation.awarded_by.full_name|default:"—" }}</td>
+                        <td>
+                            <a class="ghost-link ghost-link--danger" href="{% url 'system:graduation-delete' graduation.pk %}">Remover</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if is_paginated %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                    <a class="ghost-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                    <a class="ghost-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <p class="muted-text">Nenhuma graduação registrada ainda.</p>
+    {% endif %}
+</div>
+{% endblock %}

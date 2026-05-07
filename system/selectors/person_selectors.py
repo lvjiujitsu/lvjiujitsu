@@ -8,7 +8,11 @@ from system.models import (
     Person,
 )
 from system.services.class_overview import parse_class_group_filter_value
-from system.constants import PersonTypeCode
+from system.constants import (
+    CLASS_ENROLLMENT_PERSON_TYPE_CODES,
+    CLASS_STAFF_PERSON_TYPE_CODES,
+    PersonTypeCode,
+)
 
 
 def get_person_queryset(*, filters=None):
@@ -87,6 +91,38 @@ def get_person_queryset(*, filters=None):
     if not filters:
         return queryset
     return _apply_filters(queryset, filters)
+
+
+def get_material_request_recipient_queryset(actor):
+    queryset = Person.objects.select_related("person_type").filter(
+        is_active=True,
+        person_type__is_active=True,
+    )
+    if actor is None:
+        return queryset.none()
+    if actor.has_type_code(*CLASS_STAFF_PERSON_TYPE_CODES):
+        return (
+            queryset.filter(
+                Q(pk=actor.pk)
+                | Q(person_type__code__in=CLASS_ENROLLMENT_PERSON_TYPE_CODES)
+            )
+            .distinct()
+            .order_by("full_name")
+        )
+    return queryset.filter(pk=actor.pk)
+
+
+def resolve_material_request_recipient(actor, raw_person_id=None):
+    queryset = get_material_request_recipient_queryset(actor)
+    if actor is None:
+        return None
+    if not raw_person_id:
+        return queryset.filter(pk=actor.pk).first()
+    try:
+        person_id = int(raw_person_id)
+    except (TypeError, ValueError):
+        return None
+    return queryset.filter(pk=person_id).first()
 
 
 def _apply_filters(queryset, filters):

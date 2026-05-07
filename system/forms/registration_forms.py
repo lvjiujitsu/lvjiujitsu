@@ -93,6 +93,9 @@ class PortalRegistrationForm(forms.Form):
         choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
     )
     holder_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
+    holder_martial_art_started_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    holder_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    holder_previous_academy = forms.CharField(required=False, max_length=200)
 
     dependent_name = forms.CharField(required=False, max_length=255)
     dependent_cpf = forms.CharField(required=False, max_length=14)
@@ -132,6 +135,9 @@ class PortalRegistrationForm(forms.Form):
         choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
     )
     dependent_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
+    dependent_martial_art_started_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    dependent_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    dependent_previous_academy = forms.CharField(required=False, max_length=200)
 
     guardian_name = forms.CharField(required=False, max_length=255)
     guardian_cpf = forms.CharField(required=False, max_length=14)
@@ -182,6 +188,9 @@ class PortalRegistrationForm(forms.Form):
         choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
     )
     student_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
+    student_martial_art_started_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    student_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    student_previous_academy = forms.CharField(required=False, max_length=200)
 
     selected_plan = forms.IntegerField(required=False)
     selected_products_payload = forms.CharField(required=False, widget=forms.HiddenInput)

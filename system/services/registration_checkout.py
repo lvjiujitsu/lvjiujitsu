@@ -51,6 +51,26 @@ COLOR_SORT_ORDER = {
 }
 
 
+_CYCLE_INSTALLMENTS = {
+    "monthly": 1,
+    "quarterly": 3,
+    "semiannual": 6,
+    "annual": 12,
+}
+
+
+def _build_installment_label(plan):
+    if plan.payment_method != "credit_card":
+        return ""
+    n = _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1)
+    if n <= 1:
+        return "1x"
+    if plan.monthly_reference_price:
+        price_str = f"R$ {plan.monthly_reference_price:.2f}".replace(".", ",")
+        return f"{n}x {price_str}"
+    return f"{n}x"
+
+
 def get_plan_catalog_payload():
     plans = SubscriptionPlan.objects.filter(is_active=True).exclude(
         requires_special_authorization=True
@@ -77,7 +97,8 @@ def get_plan_catalog_payload():
             "weekly_frequency_label": plan.get_weekly_frequency_display(),
             "teacher_commission_percentage": str(plan.teacher_commission_percentage),
             "requires_special_authorization": plan.requires_special_authorization,
-            "installment_label": "1x" if plan.payment_method == "credit_card" else "",
+            "installment_label": _build_installment_label(plan),
+            "installment_count": _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1) if plan.payment_method == "credit_card" else 0,
         }
         for plan in plans
     ]
