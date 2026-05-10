@@ -22,6 +22,7 @@ from system.models.registration_order import (
     RegistrationOrder,
 )
 from system.services.financial_transactions import apply_order_financials
+from system.services.payroll_rules import append_order_refund_record
 from system.runtime_config import payment_currency
 
 
@@ -320,7 +321,15 @@ def record_refund_from_charge(stripe_charge):
         order.refunded_at = timezone.now()
         if amount_refunded >= (order.total or Decimal("0")):
             order.payment_status = PaymentStatus.REFUNDED
-        order.save(update_fields=["refunded_at", "payment_status", "updated_at"])
+        if amount_refunded > Decimal("0"):
+            append_order_refund_record(
+                order,
+                amount_refunded,
+                source="stripe_charge",
+                cumulative=True,
+                save=False,
+            )
+        order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
 
     invoice = None
     if payment_intent_id:

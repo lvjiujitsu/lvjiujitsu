@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}LV JIU JITSU{% endblock %}</title>
     {% include "includes/_favicon.html" %}
-    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260507b">
+    <link rel="stylesheet" href="{% static 'system/css/portal/portal.css' %}?v=20260507f">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -42,6 +42,24 @@
                 <div class="drawer-top">
                     <span class="drawer-label">Menu</span>
                     <button class="drawer-x" type="button" id="js-menu-close" aria-label="Fechar menu">&times;</button>
+                </div>
+                <div class="drawer-account" aria-label="Usuário logado">
+                    <span class="drawer-account-label">Logado como</span>
+                    {% if request.portal_person %}
+                        <strong class="drawer-account-name">{{ request.portal_person.full_name }}</strong>
+                        <span class="drawer-account-role">
+                            {% if request.portal_person.person_type_id %}
+                                {{ request.portal_person.person_type.display_name }}
+                            {% else %}
+                                Portal
+                            {% endif %}
+                        </span>
+                    {% elif request.portal_is_technical_admin %}
+                        <strong class="drawer-account-name">
+                            {% firstof request.technical_admin_user.get_full_name request.technical_admin_user.username "Acesso técnico" %}
+                        </strong>
+                        <span class="drawer-account-role">Administrador técnico</span>
+                    {% endif %}
                 </div>
                 <div class="drawer-nav">
                     <a class="drawer-item" href="{% url 'system:dashboard-redirect' %}">Início</a>

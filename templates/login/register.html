@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260505a">
+  <link rel="stylesheet" href="{% static 'system/css/shared/plan-selector.css' %}?v=20260509d">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260509f">
   <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 </head>
 <body>
@@ -794,60 +795,38 @@
             </section>
           </section>
 
-          <section class="wizard-step is-hidden" data-panel="summary" hidden>
+          <section class="wizard-step is-hidden" data-panel="plan-payment" hidden>
             <section class="form-section">
               <div class="section-heading">
                 <span class="section-step-label" data-step-label>Etapa</span>
-                <h2 class="section-title" data-panel-title>Resumo</h2>
+                <h2 class="section-title" data-panel-title>Mensalidade</h2>
               </div>
-
-              <div class="checkout-summary">
-                <h3 class="checkout-section-title">Resumo do cadastro</h3>
-                <div class="checkout-summary-items" data-summary-items>
-                </div>
-                <div class="checkout-summary-total">
-                  <span class="checkout-total-label">Total</span>
-                  <span class="checkout-total-value" data-summary-total>R$ 0,00</span>
-                </div>
-                <div class="checkout-decision" data-checkout-decision>
-                  <h4 class="checkout-section-title">Como deseja finalizar?</h4>
-                  <div class="checkout-action-grid">
-                    <button
-                      class="checkout-action-button"
-                      type="button"
-                      data-checkout-action="stripe"
-                    >
-                      <span class="checkout-action-button-content">
-                        <img class="checkout-action-icon" src="{% static 'system/img/icons/credit-card.svg' %}" alt="">
-                        <span>Pagar com cartão</span>
-                      </span>
-                    </button>
-                    <button
-                      class="checkout-action-button"
-                      type="button"
-                      data-checkout-action="pix"
-                    >
-                      <span class="checkout-action-button-content">
-                        <img class="checkout-action-icon checkout-action-icon--pix" src="{% static 'system/img/icons/pix.svg' %}" alt="">
-                        <span>Pagar com PIX</span>
-                      </span>
-                    </button>
-                    <button
-                      class="checkout-action-button"
-                      type="button"
-                      data-checkout-action="pay_later"
-                    >
-                      Concluir e pagar depois (1 aula experimental)
-                    </button>
-                  </div>
-                  <input
-                    type="hidden"
-                    id="checkout-action"
-                    name="checkout_action"
-                    value="{{ form.checkout_action.value|default_if_none:'pay_later' }}"
+              <div class="checkout-section">
+                <div class="checkout-plan-payment-summary" data-plan-payment-summary></div>
+                <div class="checkout-plan-payment-actions" data-plan-payment-actions>
+                  <button
+                    class="checkout-action-button"
+                    type="button"
+                    data-checkout-action="stripe"
+                    data-checkout-confirm-btn
                   >
-                  <p class="checkout-action-help" data-checkout-action-help></p>
+                    Pagar com cartão de crédito
+                  </button>
+                  <button
+                    class="checkout-action-button checkout-action-button--secondary"
+                    type="button"
+                    data-checkout-action="pay_later"
+                  >
+                    Fazer 1 aula experimental (pagar depois)
+                  </button>
                 </div>
+                <input
+                  type="hidden"
+                  id="checkout-action"
+                  name="checkout_action"
+                  value="{{ form.checkout_action.value|default_if_none:'pay_later' }}"
+                >
+                <p class="checkout-action-help" data-checkout-action-help></p>
               </div>
             </section>
           </section>
@@ -870,6 +849,6 @@
   <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260505c"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260509e"></script>
 </body>
 </html>

@@ -4,8 +4,8 @@
 {% block title %}Trocar plano | LV JIU JITSU{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260507b">
-<link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
+<link rel="stylesheet" href="{% static 'system/css/shared/plan-selector.css' %}?v=20260509d">
+<link rel="stylesheet" href="{% static 'system/css/billing/billing.css' %}?v=20260509d">
 {% endblock %}
 
 {% block content %}
@@ -14,93 +14,77 @@
         <div class="catalog-hero-copy">
             <p class="panel-eyebrow">Financeiro</p>
             <h1>Trocar plano</h1>
-            {% if membership %}
-                <p>Plano atual: <strong>{{ membership.plan.display_name }}</strong> — R$ {{ membership.plan.price }} ({{ membership.plan.get_billing_cycle_display }})</p>
-            {% endif %}
         </div>
     </div>
 
+    {% if membership_summary %}
+        <section class="panel-card plan-change-current-card">
+            <span class="plan-change-current-eyebrow">Seu plano atual</span>
+            <h2 class="plan-change-current-title">{{ membership_summary.plan_name }}</h2>
+            <span class="plan-change-current-cycle">{{ membership_summary.plan_cycle }}</span>
+            <dl class="plan-change-current-grid">
+                <div>
+                    <dt>Valor pago</dt>
+                    <dd>R$ {{ membership_summary.amount_paid }}</dd>
+                </div>
+                <div>
+                    <dt>Dias usados</dt>
+                    <dd>{{ membership_summary.days_used }} de {{ membership_summary.cycle_days }}</dd>
+                </div>
+                <div>
+                    <dt>Dias restantes</dt>
+                    <dd>{{ membership_summary.days_remaining }}</dd>
+                </div>
+                <div>
+                    <dt>Saldo disponível</dt>
+                    <dd class="plan-change-current-balance">R$ {{ membership_summary.available_credit }}</dd>
+                </div>
+            </dl>
+        </section>
+    {% endif %}
+
     <section class="panel-card">
-        {% if plan_groups %}
-            <div class="catalog-stack">
-                {% for group in plan_groups %}
-                    <div class="catalog-cluster-card">
-                        <div class="catalog-cluster-head">
-                            <h3>{{ group.label }}</h3>
-                            <span class="catalog-cluster-meta">{{ group.entries|length }} plano{{ group.entries|length|pluralize:"s" }}</span>
-                        </div>
+        {% if plan_catalog %}
+            {{ plan_catalog|json_script:"plan-catalog-data" }}
+            {% if membership_summary %}
+                {{ membership_summary|json_script:"membership-summary-data" }}
+            {% endif %}
+            <form
+                id="plan-change-form"
+                method="post"
+                action="{% url 'system:plan-change-select' %}"
+                data-pix-icon-url="{% static 'system/img/icons/pix.svg' %}"
+                data-card-icon-url="{% static 'system/img/icons/credit-card.svg' %}"
+            >
+                {% csrf_token %}
+                <div class="checkout-section">
+                    <p class="checkout-section-description">Escolha o novo plano. Seu saldo já pago é convertido em tempo de vigência; sobras viram crédito para a próxima renovação ou podem ser devolvidas no ato.</p>
+                    <div class="checkout-plan-list" data-plan-list></div>
+                    <input type="hidden" name="selected_plan" id="selected-plan" value="">
+                    <input type="hidden" name="leftover_action" id="leftover-action" value="keep_credit">
+                </div>
 
-                        <div class="info-record-list">
-                            {% for entry in group.entries %}
-                                <div class="record-card-catalog">
-                                    <div class="record-card-head">
-                                        <div>
-                                            <span class="record-card-name">{{ entry.plan.display_name }}</span>
-                                            <span class="record-card-subtitle">
-                                                R$ {{ entry.plan.price }} · {{ entry.plan.get_billing_cycle_display }} · {{ entry.plan.get_payment_method_display }}
-                                                {% if entry.plan.is_family_plan %} · Família{% else %} · Individual{% endif %}
-                                                {% if entry.plan.monthly_reference_price and entry.plan.billing_cycle != "monthly" %}
-                                                    · R$ {{ entry.plan.monthly_reference_price }} ao mês
-                                                {% endif %}
-                                            </span>
-                                        </div>
-                                        {% if entry.proration.is_upgrade %}
-                                            <span class="record-card-badge plan-change-badge--upgrade">Upgrade</span>
-                                        {% elif entry.proration.is_downgrade %}
-                                            <span class="record-card-badge plan-change-badge--downgrade">Downgrade</span>
-                                        {% else %}
-                                            <span class="record-card-badge plan-change-badge--free">Gratuito</span>
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="plan-change-action-row">
-                                        <div class="plan-change-net">
-                                            <span class="plan-change-net-label">
-                                                {% if entry.proration.is_upgrade %}Diferença a pagar{% else %}Sem custo adicional{% endif %}
-                                            </span>
-                                            <strong class="plan-change-net-value">
-                                                {% if entry.proration.is_upgrade %}R$ {{ entry.proration.net_amount }}{% else %}Grátis{% endif %}
-                                            </strong>
-                                        </div>
-                                        <a class="btn btn--primary" href="{% url 'system:plan-change-confirm' entry.plan.pk %}">
-                                            Trocar para este plano
-                                        </a>
-                                    </div>
-
-                                    <details class="catalog-dropdown">
-                                        <summary class="catalog-dropdown-summary">Ver cálculo da troca</summary>
-                                        <div class="catalog-dropdown-content">
-                                            <dl class="proration-breakdown">
-                                                <dt>Crédito restante</dt>
-                                                <dd>R$ {{ entry.proration.credit_unused_days }}</dd>
-                                                <dt>Custo proporcional</dt>
-                                                <dd>R$ {{ entry.proration.cost_remaining_days }}</dd>
-                                                <dt class="proration-total">Diferença</dt>
-                                                <dd class="proration-total">
-                                                    {% if entry.proration.is_upgrade %}R$ {{ entry.proration.net_amount }}{% else %}Grátis{% endif %}
-                                                </dd>
-                                            </dl>
-                                        </div>
-                                    </details>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
+                <div class="plan-change-cta-row" data-cta-row hidden>
+                    <button type="submit" class="btn btn--primary" data-cta-submit>Trocar para este plano</button>
+                    <a href="{{ back_url }}" class="btn btn--outline">Cancelar</a>
+                </div>
+            </form>
         {% else %}
-            <p class="billing-empty">
+            <p class="plan-change-empty">
                 {% if membership %}
                     Não há outros planos disponíveis para troca no momento.
                 {% else %}
                     Você não possui uma assinatura ativa.
                 {% endif %}
             </p>
+            <div class="plan-change-cta-row">
+                <a href="{{ back_url }}" class="btn btn--outline">Voltar ao painel</a>
+            </div>
         {% endif %}
-
-        <div style="margin-top:1.5rem">
-            <a href="{{ back_url|default:'' }}{% if not back_url %}{% url 'system:student-home' %}{% endif %}" class="btn btn--outline">Voltar ao painel</a>
-        </div>
     </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'system/js/billing/plan-change-selector.js' %}?v=20260509d"></script>
 {% endblock %}

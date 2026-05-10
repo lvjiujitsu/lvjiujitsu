@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from decimal import Decimal
 
 from django.db import models, transaction
@@ -15,6 +14,7 @@ from system.models.asaas import (
 from system.services import asaas_client
 from system.services.payroll_rules import (
     calculate_monthly_payroll,
+    record_refund_absorptions,
     render_payroll_summary,
 )
 
@@ -50,8 +50,9 @@ def schedule_monthly_payouts(*, today=None, dry_run=False):
         calculation = calculate_monthly_payroll(
             config.person,
             reference_month=reference_month,
+            as_of_date=today,
         )
-        if calculation["total"] <= 0:
+        if calculation["gross_total"] <= 0 and calculation["refund_adjustment_total"] <= 0:
             continue
         try:
             bank = config.person.teacher_bank_account
@@ -72,6 +73,20 @@ def schedule_monthly_payouts(*, today=None, dry_run=False):
         if dry_run:
             created.append(config.person.pk)
             continue
+        if calculation["total"] <= 0:
+            payout = TeacherPayout.objects.create(
+                person=config.person,
+                bank_account=bank,
+                kind=PayoutKind.PAYROLL,
+                reference_month=reference_month,
+                amount=Decimal("0.00"),
+                status=PayoutStatus.CANCELED,
+                scheduled_for=_scheduled_date(reference_month, config.payment_day),
+                approval_notes=render_payroll_summary(calculation),
+            )
+            record_refund_absorptions(calculation)
+            created.append(payout.pk)
+            continue
         payout = TeacherPayout.objects.create(
             person=config.person,
             bank_account=bank,
@@ -82,6 +97,7 @@ def schedule_monthly_payouts(*, today=None, dry_run=False):
             scheduled_for=_scheduled_date(reference_month, config.payment_day),
             approval_notes=render_payroll_summary(calculation),
         )
+        record_refund_absorptions(calculation)
         created.append(payout.pk)
     return created
 
@@ -202,6 +218,7 @@ def compute_available_balance(person, *, reference_month=None):
         TeacherPayout.objects.filter(
             person=person,
             reference_month=reference_month,
+            kind=PayoutKind.PAYROLL,
             status__in=committed_statuses,
         )
         .aggregate(total=models.Sum("amount"))
@@ -211,43 +228,6 @@ def compute_available_balance(person, *, reference_month=None):
     if available < 0:
         available = Decimal("0")
     return available, base_total, committed_total
-
-
-@transaction.atomic
-def request_withdrawal(person, amount, *, notes=""):
-    amount = Decimal(amount)
-    if amount <= 0:
-        raise PayrollError("Valor do saque deve ser maior que zero.")
-    try:
-        config = person.payroll_config
-    except TeacherPayrollConfig.DoesNotExist:
-        raise PayrollError("Professor sem configuração de folha.")
-    if not config.is_active:
-        raise PayrollError("Folha inativa — solicitações bloqueadas.")
-    try:
-        bank = person.teacher_bank_account
-    except TeacherBankAccount.DoesNotExist:
-        raise PayrollError("Cadastre uma chave PIX antes de solicitar saque.")
-    if not bank.is_active:
-        raise PayrollError("Conta bancária inativa.")
-
-    reference_month = _first_of_month(timezone.localdate())
-    available, _, _ = compute_available_balance(person, reference_month=reference_month)
-    if amount > available:
-        raise PayrollError(
-            f"Valor solicitado (R$ {amount}) excede o saldo disponível (R$ {available})."
-        )
-
-    payout = TeacherPayout.objects.create(
-        person=person,
-        bank_account=bank,
-        kind=PayoutKind.WITHDRAWAL,
-        reference_month=reference_month,
-        amount=amount,
-        status=PayoutStatus.PENDING,
-        approval_notes=notes or "",
-    )
-    return payout
 
 
 def mark_payout_failed(payout: TeacherPayout, reason=""):

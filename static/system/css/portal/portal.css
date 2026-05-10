@@ -141,6 +141,51 @@ button, input, select, textarea { font: inherit; }
   font-size: 0.76rem; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--muted);
 }
+.drawer-account {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 10px 10px 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.drawer-account-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.drawer-account-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drawer-account-role {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 3px 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .drawer-x {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; padding: 0;
@@ -348,7 +393,7 @@ html[data-theme="dark"] .theme-btn::before {
 /* === DASHBOARD ACTION CARDS === */
 .dashboard-shortcuts { display: grid; gap: 14px; }
 .dashboard-section-heading { display: grid; gap: 6px; }
-.dashboard-section-heading > div { display: grid; gap: 6px; }
+.dashboard-section-heading > div:not(.dashboard-section-actions) { display: grid; gap: 6px; }
 .dashboard-section-actions {
   display: flex;
   align-items: center;
@@ -701,6 +746,19 @@ html[data-theme="dark"] .theme-btn::before {
 }
 
 @media (max-width: 520px) {
+  .dashboard-section-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .dashboard-section-actions > .btn,
+  .dashboard-section-actions > .ghost-button,
+  .dashboard-section-actions > .ghost-link {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
   .quick-special-grid {
     grid-template-columns: 1fr;
   }
@@ -715,6 +773,10 @@ html[data-theme="dark"] .theme-btn::before {
   }
 
   .today-class-quick-btn {
+    width: 100%;
+  }
+
+  .graduation-progress-summary {
     width: 100%;
   }
 }

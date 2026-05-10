@@ -11,6 +11,7 @@
   --bg-accent: rgba(255, 255, 255, 0.75);
   --panel: rgba(255, 255, 255, 0.82);
   --panel-strong: #ffffff;
+  --panel-solid: #ffffff;
   --surface: #f1f2f4;
   --surface-soft: #f7f7f8;
   --border: rgba(15, 15, 16, 0.08);
@@ -37,6 +38,7 @@ html[data-theme="dark"] {
   --bg-accent: rgba(255, 255, 255, 0.02);
   --panel: rgba(18, 19, 24, 0.9);
   --panel-strong: #14161b;
+  --panel-solid: #14161b;
   --surface: #1c1f26;
   --surface-soft: #16191f;
   --border: rgba(255, 255, 255, 0.08);
@@ -2572,201 +2574,28 @@ h1 {
   white-space: nowrap;
 }
 
-.plan-selector {
-  display: grid;
-  gap: 16px;
-}
-
-.plan-selector-row {
-  display: grid;
-  gap: 8px;
-}
-
-.plan-selector-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.plan-selector-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.plan-selector-chip {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--panel-strong);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.12s ease;
-}
-
-.plan-selector-chip:hover {
-  border-color: var(--silver-strong);
-}
-
-.plan-selector-chip.is-selected {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--panel-strong);
-}
-
-.plan-selector-chip:active {
-  transform: translateY(1px);
-}
-
-.plan-selector-payment-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.plan-selector-payment-card {
-  appearance: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  border: 1px solid var(--border);
-  background: var(--panel-strong);
-  color: var(--text);
-  border-radius: 16px;
-  padding: 14px 16px;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
-}
-
-.plan-selector-payment-card:hover {
-  border-color: var(--silver-strong);
-}
-
-.plan-selector-payment-card.is-selected {
-  border-color: var(--text);
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 60%),
-    var(--panel-strong);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-}
-
-.plan-selector-payment-card:active {
-  transform: translateY(1px);
-}
-
-.plan-selector-payment-icon {
-  width: 44px;
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.plan-selector-payment-icon .checkout-payment-icon-image {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
-
-.plan-selector-payment-info {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  min-width: 0;
-}
-
-.plan-selector-payment-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.plan-selector-payment-subtitle {
-  font-size: 0.74rem;
-  color: var(--muted);
-}
-
-.plan-selector-payment-price {
-  font-size: 1.25rem;
-  font-weight: 800;
-  white-space: nowrap;
-  margin-top: 4px;
-}
-
-.plan-selector-payment-hint {
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
-.plan-selector-summary {
-  display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px dashed var(--silver-strong);
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.plan-selector-summary-title {
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.plan-selector-summary-name {
-  font-size: 0.98rem;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.plan-selector-summary-meta {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.plan-selector-summary-total {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: var(--text);
-  margin-top: 4px;
-}
-
-.plan-selector-hint {
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.02);
-}
-
-@media (max-width: 360px) {
-  .plan-selector-payment-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .catalog-product-item {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--panel-solid);
   transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.catalog-product-item-cart {
+  font-size: 0.78rem;
+  color: var(--muted);
+  min-height: 0;
+}
+
+.catalog-product-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
 }
 
 .catalog-product-item.is-selected {
@@ -2835,6 +2664,8 @@ h1 {
   background: var(--surface-soft);
   color: var(--text);
   font: inherit;
+  cursor: pointer;
+  appearance: auto;
 }
 
 .catalog-product-qty {
@@ -3057,6 +2888,110 @@ h1 {
   margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+/* ========== Plan payment summary ========== */
+
+.checkout-plan-payment-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.checkout-summary-row--plan .checkout-summary-row-label {
+  font-weight: 600;
+}
+
+.checkout-plan-payment-actions {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.plan-payment-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.plan-selector-hint-area .secondary-button,
+.plan-payment-exp-btn {
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.checkout-action-button--secondary {
+  background: transparent;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.checkout-action-button--secondary:hover {
+  color: var(--text);
+  border-color: var(--silver-strong);
+}
+
+/* ========== Materials payment ========== */
+
+.materials-payment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.materials-payment-group--reserve {
+  border-color: var(--border);
+  background: var(--panel-solid);
+}
+
+.materials-payment-group-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.2rem;
+}
+
+.materials-payment-group-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+.checkout-summary-row-value--reserve {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ========== Summary payment info ========== */
+
+.checkout-payment-method-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.checkout-payment-method-info-item {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0;
 }
 
 /* ========== Plan installment button ========== */

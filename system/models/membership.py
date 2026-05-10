@@ -122,6 +122,78 @@ class Membership(TimeStampedModel):
         )
 
 
+class MembershipCreditSource(models.TextChoices):
+    PLAN_CHANGE_LEFTOVER = "plan_change_leftover", "Sobra de troca de plano"
+
+
+class MembershipCreditStatus(models.TextChoices):
+    AVAILABLE = "available", "Disponível"
+    APPLIED = "applied", "Aplicado em renovação"
+    REFUNDED = "refunded", "Devolvido ao cliente"
+
+
+class MembershipCredit(TimeStampedModel):
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.CASCADE,
+        related_name="credits",
+        verbose_name="Assinatura",
+    )
+    amount = models.DecimalField(
+        "Valor",
+        max_digits=10,
+        decimal_places=2,
+    )
+    source = models.CharField(
+        "Origem",
+        max_length=32,
+        choices=MembershipCreditSource.choices,
+    )
+    status = models.CharField(
+        "Status",
+        max_length=16,
+        choices=MembershipCreditStatus.choices,
+        default=MembershipCreditStatus.AVAILABLE,
+    )
+    source_order = models.ForeignKey(
+        "system.RegistrationOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="credits_generated",
+        verbose_name="Pedido de origem",
+    )
+    applied_at = models.DateTimeField("Aplicado em", null=True, blank=True)
+    refunded_at = models.DateTimeField("Devolvido em", null=True, blank=True)
+    refund_provider = models.CharField(
+        "Gateway do refund",
+        max_length=16,
+        blank=True,
+        default="",
+    )
+    refund_provider_reference = models.CharField(
+        "Referência do refund",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    notes = models.TextField("Observações", blank=True, default="")
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Crédito da assinatura"
+        verbose_name_plural = "Créditos das assinaturas"
+        indexes = [
+            models.Index(fields=("membership", "status")),
+        ]
+
+    def __str__(self):
+        return (
+            f"Crédito #{self.pk} — {self.membership.person.full_name} "
+            f"R$ {self.amount} ({self.get_status_display()})"
+        )
+
+
 class MembershipInvoice(TimeStampedModel):
     membership = models.ForeignKey(
         Membership,

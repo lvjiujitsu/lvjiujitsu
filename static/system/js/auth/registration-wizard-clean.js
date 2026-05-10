@@ -75,6 +75,7 @@
   var DRAFT_TTL_MS = 30 * 60 * 1000;
   var REGISTRATION_COMPLETED_KEY = 'lv-registration-completed';
   var draftSaveTimeout = null;
+  var activeMaterialCategory = null;
 
   // ============================================================================
   // Step Definitions
@@ -192,6 +193,20 @@
       panelSelector: '[data-panel="materials"]',
       requiredFields: []
     },
+    plan_payment: {
+      key: 'plan_payment',
+      label: 'Mensalidade',
+      title: 'Pagamento da mensalidade',
+      panelSelector: '[data-panel="plan-payment"]',
+      requiredFields: []
+    },
+    materials_payment: {
+      key: 'materials_payment',
+      label: 'Kit',
+      title: 'Pagamento dos materiais',
+      panelSelector: '[data-panel="materials-payment"]',
+      requiredFields: []
+    },
     summary: {
       key: 'summary',
       label: 'Resumo',
@@ -228,7 +243,6 @@
       trimExtraDependentsToCount(dependentCount);
       steps.push(STEP_DEFINITIONS.plan);
       steps.push(STEP_DEFINITIONS.materials);
-      steps.push(STEP_DEFINITIONS.summary);
     } else if (profile === 'holder') {
       if (hasDependentFlow) {
         // TITULAR + DEPENDENTE(S): fluxo completo por pessoa -> Plano -> Resumo
@@ -256,7 +270,6 @@
       }
       steps.push(STEP_DEFINITIONS.plan);
       steps.push(STEP_DEFINITIONS.materials);
-      steps.push(STEP_DEFINITIONS.summary);
     } else {
       trimExtraDependentsToCount(1);
     }
@@ -364,9 +377,6 @@
     }
     if (currentStep.key === 'materials') {
       renderProductList();
-    }
-    if (currentStep.key === 'summary') {
-      renderSummary();
     }
   }
 
@@ -1263,12 +1273,8 @@
       if (button.disabled) return;
       setCheckoutAction(button.dataset.checkoutAction || 'pay_later');
       var currentStep = activeSteps[currentStepIndex];
-      if (!currentStep || currentStep.key !== 'summary') return;
-      if (typeof form.requestSubmit === 'function') {
-        form.requestSubmit(submitButton || undefined);
-      } else {
-        form.submit();
-      }
+      if (!currentStep || currentStep.key !== 'plan_payment') return;
+      nextStep();
     });
   });
 
@@ -2098,18 +2104,135 @@
     saveDraft();
   }
 
-  function updateCheckoutDecisionAvailability(total) {
-    var hasCharge = total > 0;
+  function updatePlanPaymentActionUI() {
     var selectedPlan = getSelectedPlan();
-    checkoutActionButtons.forEach(function (button) {
-      var action = button.dataset.checkoutAction || '';
-      var mismatchedPlan = selectedPlan && action !== 'pay_later' && action !== getCheckoutActionForPlan(selectedPlan);
-      button.disabled = (!hasCharge && action !== 'pay_later') || mismatchedPlan;
-    });
-    if (!hasCharge) {
+    var planTotal = selectedPlan ? parseFloat(selectedPlan.price) * getEnrollmentMultiplier() : 0;
+    var hasPlanCharge = planTotal > 0;
+    checkoutTotal = planTotal;
+    if (selectedPlan && hasPlanCharge) {
+      checkoutAction = getCheckoutActionForPlan(selectedPlan);
+    } else {
       checkoutAction = 'pay_later';
     }
     updateCheckoutActionUI();
+  }
+
+  function renderPlanPayment() {
+    var summaryEl = form.querySelector('[data-plan-payment-summary]');
+    if (!summaryEl) return;
+    summaryEl.innerHTML = '';
+
+    if (!selectedPlanId) {
+      summaryEl.innerHTML = '<p class="checkout-empty-note">Nenhum plano selecionado. Volte e escolha um plano.</p>';
+      updatePlanPaymentActionUI();
+      return;
+    }
+
+    var plan = getSelectedPlan();
+    if (!plan) {
+      updatePlanPaymentActionUI();
+      return;
+    }
+
+    var multiplier = getEnrollmentMultiplier();
+    var planPrice = parseFloat(plan.price) * multiplier;
+
+    summaryEl.innerHTML =
+      '<div class="checkout-summary-row checkout-summary-row--plan">' +
+        '<span class="checkout-summary-row-label">' + plan.name + ' <small>(' + plan.cycle + ')</small></span>' +
+        '<span class="checkout-summary-row-value">' + formatBRL(planPrice) + '</span>' +
+      '</div>';
+
+    var confirmBtn = form.querySelector('[data-checkout-confirm-btn]');
+    if (confirmBtn) {
+      var action = getCheckoutActionForPlan(plan);
+      var btnLabel = action === 'pix' ? 'Pagar via PIX' : 'Pagar com cartão de crédito';
+      confirmBtn.dataset.checkoutAction = action;
+      confirmBtn.textContent = btnLabel;
+    }
+
+    updatePlanPaymentActionUI();
+  }
+
+  function renderMaterialsPayment() {
+    var summaryEl = form.querySelector('[data-materials-payment-summary]');
+    var materialsActionInput = document.getElementById('materials-action');
+    if (!summaryEl) return;
+    summaryEl.innerHTML = '';
+
+    var entries = getSelectedProductEntries();
+
+    if (entries.length === 0) {
+      summaryEl.innerHTML = '<p class="checkout-empty-note">Nenhum material adicionado. Avance para finalizar seu cadastro.</p>';
+      if (materialsActionInput) materialsActionInput.value = 'none';
+      return;
+    }
+
+    var inStockEntries = [];
+    var outOfStockEntries = [];
+    entries.forEach(function (entry) {
+      var resolved = findProductCatalogVariant(entry.variantId);
+      if (resolved && resolved.variant.is_in_stock) {
+        inStockEntries.push(entry);
+      } else {
+        outOfStockEntries.push(entry);
+      }
+    });
+
+    var html = '';
+
+    if (inStockEntries.length > 0) {
+      html += '<div class="materials-payment-group">';
+      html += '<h4 class="materials-payment-group-title">Materiais disponíveis</h4>';
+      html += '<p class="materials-payment-group-note">Serão cobrados junto com a mensalidade.</p>';
+      inStockEntries.forEach(function (entry) {
+        var subtotal = entry.unitPrice * entry.quantity;
+        html += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + entry.displayName + ' ×' + entry.quantity + '</span><span class="checkout-summary-row-value">' + formatBRL(subtotal) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    if (outOfStockEntries.length > 0) {
+      html += '<div class="materials-payment-group materials-payment-group--reserve">';
+      html += '<h4 class="materials-payment-group-title">Materiais sem estoque — reserva de interesse</h4>';
+      html += '<p class="materials-payment-group-note">A academia entrará em contato quando o material estiver disponível. Não há cobrança agora.</p>';
+      outOfStockEntries.forEach(function (entry) {
+        html += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + entry.displayName + ' ×' + entry.quantity + '</span><span class="checkout-summary-row-value checkout-summary-row-value--reserve">Reserva</span></div>';
+      });
+      html += '</div>';
+    }
+
+    summaryEl.innerHTML = html;
+
+    if (materialsActionInput) {
+      materialsActionInput.value = inStockEntries.length > 0 ? 'pay_now' : 'reserve';
+    }
+  }
+
+  function buildSummaryPaymentInfo() {
+    var lines = [];
+    if (checkoutAction === 'stripe') {
+      lines.push('Mensalidade: pagamento via cartão de crédito.');
+    } else if (checkoutAction === 'pix') {
+      lines.push('Mensalidade: pagamento via PIX.');
+    } else {
+      lines.push('Mensalidade: 1 aula experimental — pagamento adiado.');
+    }
+
+    var materialsActionInput = document.getElementById('materials-action');
+    var materialsAction = materialsActionInput ? materialsActionInput.value : 'none';
+    var productEntries = getSelectedProductEntries();
+
+    if (materialsAction === 'pay_now' && productEntries.length > 0) {
+      lines.push('Materiais: cobrados junto com a mensalidade.');
+    } else if (materialsAction === 'reserve' && productEntries.length > 0) {
+      lines.push('Materiais: reserva de interesse registrada.');
+    }
+
+    if (lines.length === 0) return '';
+    return '<div class="checkout-payment-method-info">' +
+      lines.map(function (l) { return '<p class="checkout-payment-method-info-item">' + l + '</p>'; }).join('') +
+      '</div>';
   }
 
   var planSelectorState = {
@@ -2298,6 +2421,7 @@
       selector.appendChild(buildPlanSelectorSummary(resolvedPlan));
       selectedPlanId = resolvedPlan.id;
       setCheckoutAction(getCheckoutActionForPlan(resolvedPlan));
+      selector.appendChild(buildPlanPaymentActions(resolvedPlan));
     } else {
       selector.appendChild(buildPlanSelectorHint(pixPlan, creditPlan));
       selectedPlanId = null;
@@ -2429,14 +2553,55 @@
   }
 
   function buildPlanSelectorHint(pixPlan, creditPlan) {
-    var hint = document.createElement('p');
-    hint.className = 'plan-selector-hint';
+    var container = document.createElement('div');
+    container.className = 'plan-selector-hint-area';
     if (!pixPlan && !creditPlan) {
-      hint.textContent = 'Nenhuma combina\u00e7\u00e3o dispon\u00edvel para os filtros atuais.';
-    } else {
-      hint.textContent = 'Escolha PIX ou Cart\u00e3o para confirmar o plano.';
+      var msg = document.createElement('p');
+      msg.className = 'plan-selector-hint';
+      msg.textContent = 'Nenhuma combina\u00e7\u00e3o dispon\u00edvel para os filtros atuais.';
+      container.appendChild(msg);
+      return container;
     }
-    return hint;
+    var msg = document.createElement('p');
+    msg.className = 'plan-selector-hint';
+    msg.textContent = 'Escolha PIX ou Cart\u00e3o para confirmar o plano.';
+    container.appendChild(msg);
+    var expBtn = document.createElement('button');
+    expBtn.type = 'button';
+    expBtn.className = 'secondary-button plan-payment-exp-btn';
+    expBtn.textContent = 'Fazer 1 aula experimental (pagar depois)';
+    expBtn.addEventListener('click', function () {
+      setCheckoutAction('pay_later');
+      nextStep();
+    });
+    container.appendChild(expBtn);
+    return container;
+  }
+
+  function buildPlanPaymentActions(plan) {
+    var container = document.createElement('div');
+    container.className = 'plan-payment-actions';
+    var action = getCheckoutActionForPlan(plan);
+    var confirmLabel = action === 'pix' ? 'Pagar via PIX' : 'Pagar com cart\u00e3o de cr\u00e9dito';
+    var confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'primary-button';
+    confirmBtn.textContent = confirmLabel;
+    confirmBtn.addEventListener('click', function () {
+      setCheckoutAction(action);
+      nextStep();
+    });
+    container.appendChild(confirmBtn);
+    var expBtn = document.createElement('button');
+    expBtn.type = 'button';
+    expBtn.className = 'secondary-button';
+    expBtn.textContent = 'Fazer 1 aula experimental (pagar depois)';
+    expBtn.addEventListener('click', function () {
+      setCheckoutAction('pay_later');
+      nextStep();
+    });
+    container.appendChild(expBtn);
+    return container;
   }
 
   function createPaymentIcon(paymentMethod) {
@@ -2510,11 +2675,52 @@
       return;
     }
 
-    var groupedProducts = groupProductsForDropdown(productCatalog);
-    groupedProducts.forEach(function (group) {
-      container.appendChild(buildProductGroupCard(group));
+    var groups = groupProductsForDropdown(productCatalog);
+    if (groups.length === 0) {
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum material dispon\u00edvel.</p>';
+      return;
+    }
+
+    if (!activeMaterialCategory || !groups.find(function (g) { return g.title === activeMaterialCategory; })) {
+      activeMaterialCategory = groups[0].title;
+    }
+
+    var selector = document.createElement('div');
+    selector.className = 'plan-selector';
+
+    var catRow = document.createElement('div');
+    catRow.className = 'plan-selector-row';
+    var catLabel = document.createElement('span');
+    catLabel.className = 'plan-selector-label';
+    catLabel.textContent = 'Categoria';
+    catRow.appendChild(catLabel);
+    var catChips = document.createElement('div');
+    catChips.className = 'plan-selector-chips';
+    groups.forEach(function (group) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'plan-selector-chip' + (group.title === activeMaterialCategory ? ' is-selected' : '');
+      chip.textContent = group.title;
+      chip.addEventListener('click', function () {
+        activeMaterialCategory = group.title;
+        renderProductList();
+      });
+      catChips.appendChild(chip);
     });
-    container.appendChild(buildSelectedProductCartPreview());
+    catRow.appendChild(catChips);
+    selector.appendChild(catRow);
+
+    var activeGroup = groups.find(function (g) { return g.title === activeMaterialCategory; }) || groups[0];
+    var productsArea = document.createElement('div');
+    productsArea.className = 'product-selector-area';
+    activeGroup.products.forEach(function (product) {
+      productsArea.appendChild(buildProductCard(product));
+    });
+    selector.appendChild(productsArea);
+
+    selector.appendChild(buildSelectedProductCartPreview());
+
+    container.appendChild(selector);
   }
 
   function buildProductGroupCard(group) {
@@ -2603,78 +2809,73 @@
   }
 
   function buildProductCard(product) {
-    var qtyInCart = getSelectedProductQuantity(product.id);
+    var selectedVariantId = null;
+    var quantity = 1;
 
     var card = document.createElement('article');
-    card.className = 'catalog-product-item' + (qtyInCart > 0 ? ' is-selected' : '');
-
-    var info = document.createElement('div');
-    info.className = 'catalog-product-item-info';
-
-    var name = document.createElement('span');
-    name.className = 'catalog-product-item-name';
-    name.textContent = product.name;
-
-    var meta = document.createElement('span');
-    meta.className = 'catalog-product-item-meta';
-    meta.textContent = product.description || product.category;
-
-    info.appendChild(name);
-    info.appendChild(meta);
-
-    var price = document.createElement('span');
-    price.className = 'catalog-product-item-price';
-    price.textContent = formatBRL(product.price);
+    card.className = 'catalog-product-item';
 
     var top = document.createElement('div');
     top.className = 'catalog-product-item-top';
+    var info = document.createElement('div');
+    info.className = 'catalog-product-item-info';
+    var nameEl = document.createElement('span');
+    nameEl.className = 'catalog-product-item-name';
+    nameEl.textContent = product.name;
+    var metaEl = document.createElement('span');
+    metaEl.className = 'catalog-product-item-meta';
+    metaEl.textContent = product.description || product.category;
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+    var priceEl = document.createElement('span');
+    priceEl.className = 'catalog-product-item-price';
+    priceEl.textContent = formatBRL(product.price);
     top.appendChild(info);
-    top.appendChild(price);
+    top.appendChild(priceEl);
+    card.appendChild(top);
 
     if (!hasAvailableProductVariants(product)) {
       var outBadge = document.createElement('span');
       outBadge.className = 'store-product-badge--out';
       outBadge.textContent = 'Esgotado';
-      card.appendChild(top);
       card.appendChild(outBadge);
       return card;
     }
 
-    var selectedSummary = document.createElement('span');
-    selectedSummary.className = 'catalog-product-item-meta';
-    selectedSummary.textContent = qtyInCart > 0 ? 'No carrinho: ' + qtyInCart + ' un.' : 'Nenhuma variante adicionada.';
+    var cartSummary = document.createElement('span');
+    cartSummary.className = 'catalog-product-item-meta catalog-product-item-cart';
 
-    var config = document.createElement('div');
-    config.className = 'catalog-product-config-grid';
+    var variantLabel = document.createElement('span');
+    variantLabel.className = 'plan-selector-label';
+    variantLabel.textContent = 'Opção';
 
-    var variantField = document.createElement('label');
-    variantField.className = 'catalog-product-config-field';
-    var variantCaption = document.createElement('span');
-    variantCaption.textContent = 'Opção';
-    var variantSelect = document.createElement('select');
-    variantSelect.className = 'catalog-product-select';
-    variantSelect.innerHTML = '<option value="">Selecione</option>';
+    var variantChips = document.createElement('div');
+    variantChips.className = 'plan-selector-chips';
+
     product.variants.forEach(function (variant) {
-      var option = document.createElement('option');
-      option.value = String(variant.id);
-      option.textContent = variant.label;
-      option.disabled = !variant.is_in_stock;
-      variantSelect.appendChild(option);
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'plan-selector-chip';
+      chip.dataset.variantId = String(variant.id);
+      chip.textContent = variant.label;
+      chip.disabled = !variant.is_in_stock;
+      chip.addEventListener('click', function () {
+        if (chip.disabled) return;
+        selectedVariantId = variant.id;
+        syncCardState();
+      });
+      variantChips.appendChild(chip);
     });
-    variantField.appendChild(variantCaption);
-    variantField.appendChild(variantSelect);
 
-    var quantity = 1;
-    var qtyField = document.createElement('div');
-    qtyField.className = 'catalog-product-config-field';
-    var qtyCaption = document.createElement('span');
-    qtyCaption.textContent = 'Quantidade';
+    var bottomRow = document.createElement('div');
+    bottomRow.className = 'catalog-product-item-bottom';
+
     var qtyControl = document.createElement('div');
     qtyControl.className = 'catalog-product-qty';
     var minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'catalog-product-qty-btn';
-    minusBtn.textContent = '\u2212';
+    minusBtn.textContent = '−';
     var qtySpan = document.createElement('span');
     qtySpan.className = 'catalog-product-qty-value';
     var plusBtn = document.createElement('button');
@@ -2684,70 +2885,67 @@
     qtyControl.appendChild(minusBtn);
     qtyControl.appendChild(qtySpan);
     qtyControl.appendChild(plusBtn);
-    qtyField.appendChild(qtyCaption);
-    qtyField.appendChild(qtyControl);
 
     var addButton = document.createElement('button');
     addButton.type = 'button';
     addButton.className = 'catalog-product-add-button';
-    addButton.textContent = 'Adicionar ao carrinho';
+
+    bottomRow.appendChild(qtyControl);
+    bottomRow.appendChild(addButton);
 
     function getSelectedVariant() {
-      return getProductVariantById(product, Number(variantSelect.value || '0'));
+      return selectedVariantId ? getProductVariantById(product, selectedVariantId) : null;
     }
 
-    function syncAddState() {
-      var selectedVariant = getSelectedVariant();
-      var selectedQty = selectedVariant ? getSelectedVariantQuantity(selectedVariant.id) : 0;
-      var remaining = selectedVariant ? Math.max(0, selectedVariant.stock_quantity - selectedQty) : 0;
+    function syncCardState() {
+      var variant = getSelectedVariant();
+      var remaining = variant ? Math.max(0, variant.stock_quantity - getSelectedVariantQuantity(variant.id)) : 0;
       if (quantity > Math.max(remaining, 1)) {
         quantity = Math.max(1, remaining);
       }
       qtySpan.textContent = String(quantity);
       minusBtn.disabled = quantity <= 1;
-      plusBtn.disabled = !selectedVariant || remaining <= quantity;
-      addButton.disabled = !selectedVariant || remaining < quantity || quantity < 1;
-      if (!selectedVariant) {
-        addButton.textContent = 'Selecione uma opção';
-        return;
-      }
-      addButton.textContent = remaining > 0 ? 'Adicionar ao carrinho' : 'Sem estoque disponível';
+      plusBtn.disabled = !variant || remaining <= quantity;
+      addButton.disabled = !variant || remaining < 1;
+      addButton.textContent = !variant ? 'Selecione uma opção' : (remaining > 0 ? 'Adicionar' : 'Sem estoque');
+
+      Array.from(variantChips.querySelectorAll('[data-variant-id]')).forEach(function (chip) {
+        chip.classList.toggle('is-selected', selectedVariantId !== null && Number(chip.dataset.variantId) === selectedVariantId);
+      });
+
+      var qtyInCart = getSelectedProductQuantity(product.id);
+      card.classList.toggle('is-selected', qtyInCart > 0);
+      cartSummary.textContent = qtyInCart > 0 ? 'No carrinho: ' + qtyInCart + ' un.' : '';
     }
 
     minusBtn.addEventListener('click', function () {
       quantity = Math.max(1, quantity - 1);
-      syncAddState();
+      syncCardState();
     });
     plusBtn.addEventListener('click', function () {
       quantity += 1;
-      syncAddState();
+      syncCardState();
     });
-    variantSelect.addEventListener('change', syncAddState);
     addButton.addEventListener('click', function () {
-      var selectedVariant = getSelectedVariant();
-      if (!selectedVariant) {
-        return;
-      }
-      addSelectedProductVariant(product, selectedVariant, quantity);
+      var variant = getSelectedVariant();
+      if (!variant) return;
+      addSelectedProductVariant(product, variant, quantity);
       quantity = 1;
+      selectedVariantId = null;
       syncCheckoutHiddenFields();
       renderProductList();
       renderSummary();
       saveDraft();
     });
 
-    syncAddState();
+    card.appendChild(cartSummary);
+    card.appendChild(variantLabel);
+    card.appendChild(variantChips);
+    card.appendChild(bottomRow);
 
-    config.appendChild(variantField);
-    config.appendChild(qtyField);
-    config.appendChild(addButton);
-
-    card.appendChild(top);
-    card.appendChild(selectedSummary);
-    card.appendChild(config);
+    syncCardState();
     return card;
   }
-
   function hasAvailableProductVariants(product) {
     return (product.variants || []).some(function (variant) {
       return variant.is_in_stock;
@@ -2866,6 +3064,7 @@
   function renderSummary() {
     var itemsContainer = form.querySelector('[data-summary-items]');
     var totalEl = form.querySelector('[data-summary-total]');
+    var paymentInfoEl = form.querySelector('[data-summary-payment-info]');
     if (!itemsContainer || !totalEl) return;
 
     itemsContainer.innerHTML = '';
@@ -2885,9 +3084,12 @@
     var productEntries = getSelectedProductEntries();
     for (var i = 0; i < productEntries.length; i++) {
       var entry = productEntries[i];
-      var subtotal = entry.unitPrice * entry.quantity;
-      total += subtotal;
-      itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + entry.displayName + ' x' + entry.quantity + '</span><span class="checkout-summary-row-value">' + formatBRL(subtotal) + '</span></div>';
+      var resolved = findProductCatalogVariant(entry.variantId);
+      var isInStock = resolved && resolved.variant.is_in_stock;
+      var subtotal = isInStock ? entry.unitPrice * entry.quantity : 0;
+      if (isInStock) total += subtotal;
+      var valueLabel = isInStock ? formatBRL(subtotal) : 'Reserva';
+      itemsContainer.innerHTML += '<div class="checkout-summary-row"><span class="checkout-summary-row-label">' + entry.displayName + ' ×' + entry.quantity + '</span><span class="checkout-summary-row-value">' + valueLabel + '</span></div>';
     }
 
     if (!selectedPlanId && productEntries.length === 0) {
@@ -2896,7 +3098,14 @@
 
     checkoutTotal = total;
     totalEl.textContent = formatBRL(total);
-    updateCheckoutDecisionAvailability(total);
+
+    if (paymentInfoEl) {
+      paymentInfoEl.innerHTML = buildSummaryPaymentInfo();
+    }
+
+    if (checkoutActionInput) {
+      checkoutActionInput.value = checkoutAction;
+    }
   }
 
   function syncCheckoutHiddenFields() {

@@ -1,0 +1,738 @@
+﻿Found 357 test(s).
+python.exe : Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+No linha:1 caractere:1
++ & '.venv\Scripts\python.exe' manage.py test --verbosity 2 2>&1 | Out- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Creating test d...che=shared')...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, sessions, system
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying sessions.0001_initial... OK
+  Applying system.0001_initial... OK
+System check identified no issues (0 silenced).
+test_create_pix_charge_happy_path (system.tests.test_asaas.AsaasCheckoutTests.test_create_pix_charge_happy_path) ... ok
+test_propagates_client_errors (system.tests.test_asaas.AsaasCheckoutTests.test_propagates_client_errors) ... ok
+test_rejects_paid_order (system.tests.test_asaas.AsaasCheckoutTests.test_rejects_paid_order) ... ok
+test_reuses_pix_when_not_expired (system.tests.test_asaas.AsaasCheckoutTests.test_reuses_pix_when_not_expired) ... ok
+test_get_payment_statistics_uses_finance_statistics_endpoint 
+(system.tests.test_asaas.AsaasClientTests.test_get_payment_statistics_uses_finance_statistics_endpoint) ... ok
+test_approve_then_dispatch_flow (system.tests.test_asaas.AsaasPayrollTests.test_approve_then_dispatch_flow) ... ok
+test_cannot_dispatch_pending (system.tests.test_asaas.AsaasPayrollTests.test_cannot_dispatch_pending) ... ok
+test_dispatch_failure_marks_failed (system.tests.test_asaas.AsaasPayrollTests.test_dispatch_failure_marks_failed) ... 
+ok
+test_schedule_creates_pending_payout (system.tests.test_asaas.AsaasPayrollTests.test_schedule_creates_pending_payout) 
+... ok
+test_schedule_is_idempotent (system.tests.test_asaas.AsaasPayrollTests.test_schedule_is_idempotent) ... ok
+test_schedule_skips_wrong_day (system.tests.test_asaas.AsaasPayrollTests.test_schedule_skips_wrong_day) ... ok
+test_schedule_skips_zero_amount_payroll 
+(system.tests.test_asaas.AsaasPayrollTests.test_schedule_skips_zero_amount_payroll) ... ok
+test_event_claim_lock_aborts_transaction_for_retry 
+(system.tests.test_asaas.AsaasWebhookTests.test_event_claim_lock_aborts_transaction_for_retry) ... ok
+test_payment_created_is_non_actionable_and_not_persisted 
+(system.tests.test_asaas.AsaasWebhookTests.test_payment_created_is_non_actionable_and_not_persisted) ... ok
+test_payment_partially_refunded_records_partial_payroll_adjustment 
+(system.tests.test_asaas.AsaasWebhookTests.test_payment_partially_refunded_records_partial_payroll_adjustment) ... ok
+test_payment_received_marks_order_paid 
+(system.tests.test_asaas.AsaasWebhookTests.test_payment_received_marks_order_paid) ... ok
+test_payment_refunded_records_payroll_adjustment 
+(system.tests.test_asaas.AsaasWebhookTests.test_payment_refunded_records_payroll_adjustment) ... ok
+test_transfer_done_marks_payout_paid (system.tests.test_asaas.AsaasWebhookTests.test_transfer_done_marks_payout_paid) 
+... ok
+test_transfer_failed_marks_payout_failed 
+(system.tests.test_asaas.AsaasWebhookTests.test_transfer_failed_marks_payout_failed) ... ok
+test_unknown_payment_id_ignored (system.tests.test_asaas.AsaasWebhookTests.test_unknown_payment_id_ignored) ... ok
+test_webhook_is_idempotent (system.tests.test_asaas.AsaasWebhookTests.test_webhook_is_idempotent) ... ok
+test_withdrawal_service_is_removed (system.tests.test_asaas.AsaasWebhookTests.test_withdrawal_service_is_removed) ... 
+ok
+test_calendar_month_data (system.tests.test_calendar.CalendarServiceTestCase.test_calendar_month_data) ... ok
+test_checkin_blocked_on_holiday (system.tests.test_calendar.CalendarServiceTestCase.test_checkin_blocked_on_holiday) 
+... ok
+test_get_today_classes (system.tests.test_calendar.CalendarServiceTestCase.test_get_today_classes) ... ok
+test_perform_checkin (system.tests.test_calendar.CalendarServiceTestCase.test_perform_checkin) ... ok
+test_perform_checkin_idempotent (system.tests.test_calendar.CalendarServiceTestCase.test_perform_checkin_idempotent) 
+... ok
+test_today_classes_cancelled_by_holiday 
+(system.tests.test_calendar.CalendarServiceTestCase.test_today_classes_cancelled_by_holiday) ... ok
+test_toggle_session_cancel (system.tests.test_calendar.CalendarServiceTestCase.test_toggle_session_cancel) ... ok
+test_trial_is_consumed_on_first_checkin_only 
+(system.tests.test_calendar.CalendarServiceTestCase.test_trial_is_consumed_on_first_checkin_only) ... ok
+test_admin_calendar_loads (system.tests.test_calendar.CalendarViewTestCase.test_admin_calendar_loads) ... ok
+test_admin_calendar_month_loads (system.tests.test_calendar.CalendarViewTestCase.test_admin_calendar_month_loads) ... 
+ok
+test_admin_dashboard_shows_cronograma 
+(system.tests.test_calendar.CalendarViewTestCase.test_admin_dashboard_shows_cronograma) ... ok
+test_student_dashboard_shows_today 
+(system.tests.test_calendar.CalendarViewTestCase.test_student_dashboard_shows_today) ... ok
+test_student_schedule_loads (system.tests.test_calendar.CalendarViewTestCase.test_student_schedule_loads) ... ok
+test_approve_class_checkin_authorizes_assigned_instructor 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_approve_class_checkin_authorizes_assigned_instructor) 
+... ok
+test_approve_class_checkin_blocks_unauthorized_instructor 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_approve_class_checkin_blocks_unauthorized_instructor) 
+... ok
+test_approve_class_checkin_idempotent 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_approve_class_checkin_idempotent) ... ok
+test_approve_class_checkin_marks_as_approved 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_approve_class_checkin_marks_as_approved) ... ok
+test_get_instructor_history_only_lists_approved 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_get_instructor_history_only_lists_approved) ... ok
+test_get_student_history_only_lists_approved 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_get_student_history_only_lists_approved) ... ok
+test_get_today_classes_for_instructor_exposes_pending_and_approved (system.tests.test_calendar.CheckinApprovalServiceTe
+stCase.test_get_today_classes_for_instructor_exposes_pending_and_approved) ... ok
+test_today_classes_for_instructor_exposes_quick_action_identifiers (system.tests.test_calendar.CheckinApprovalServiceTe
+stCase.test_today_classes_for_instructor_exposes_quick_action_identifiers) ... ok
+test_today_classes_for_person_exposes_checkin_status 
+(system.tests.test_calendar.CheckinApprovalServiceTestCase.test_today_classes_for_person_exposes_checkin_status) ... ok
+test_cancel_session (system.tests.test_calendar.ClassSessionModelTestCase.test_cancel_session) ... ok
+test_create_session (system.tests.test_calendar.ClassSessionModelTestCase.test_create_session) ... ok
+test_unique_constraint (system.tests.test_calendar.ClassSessionModelTestCase.test_unique_constraint) ... ok
+test_create_holiday (system.tests.test_calendar.HolidayModelTestCase.test_create_holiday) ... ok
+test_unique_date (system.tests.test_calendar.HolidayModelTestCase.test_unique_date) ... ok
+test_instructor_dashboard_exposes_quick_schedule_actions (system.tests.test_calendar.InstructorHomeQuickActionsViewTest
+Case.test_instructor_dashboard_exposes_quick_schedule_actions) ... ok
+test_assert_instructor_owns_schedule_blocks_outsider (system.tests.test_calendar.InstructorScheduleOwnershipServiceTest
+Case.test_assert_instructor_owns_schedule_blocks_outsider) ... ok
+test_assert_instructor_owns_schedule_returns_schedule (system.tests.test_calendar.InstructorScheduleOwnershipServiceTes
+tCase.test_assert_instructor_owns_schedule_returns_schedule) ... ok
+test_assert_instructor_owns_special_blocks_outsider (system.tests.test_calendar.InstructorScheduleOwnershipServiceTestC
+ase.test_assert_instructor_owns_special_blocks_outsider) ... ok
+test_assert_instructor_owns_special_returns_special (system.tests.test_calendar.InstructorScheduleOwnershipServiceTestC
+ase.test_assert_instructor_owns_special_returns_special) ... ok
+test_approve_special_checkin_blocks_unauthorized_instructor (system.tests.test_calendar.SpecialCheckinApprovalServiceTe
+stCase.test_approve_special_checkin_blocks_unauthorized_instructor) ... ok
+test_approve_special_checkin_marks_as_approved 
+(system.tests.test_calendar.SpecialCheckinApprovalServiceTestCase.test_approve_special_checkin_marks_as_approved) ... 
+ok
+test_calendar_month_data_includes_specials 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_calendar_month_data_includes_specials) ... ok
+test_create_special_class (system.tests.test_calendar.SpecialClassServiceTestCase.test_create_special_class) ... ok
+test_create_special_class_on_holiday 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_create_special_class_on_holiday) ... ok
+test_delete_special_class (system.tests.test_calendar.SpecialClassServiceTestCase.test_delete_special_class) ... ok
+test_perform_special_class_checkin 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_perform_special_class_checkin) ... ok
+test_special_checkin_blocked_on_other_date 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_special_checkin_blocked_on_other_date) ... ok
+test_special_checkin_idempotent 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_special_checkin_idempotent) ... ok
+test_today_classes_includes_special 
+(system.tests.test_calendar.SpecialClassServiceTestCase.test_today_classes_includes_special) ... ok
+test_create_special_class_invalid 
+(system.tests.test_calendar.SpecialClassViewTestCase.test_create_special_class_invalid) ... ok
+test_create_special_class_view (system.tests.test_calendar.SpecialClassViewTestCase.test_create_special_class_view) 
+... ok
+test_delete_special_class_view (system.tests.test_calendar.SpecialClassViewTestCase.test_delete_special_class_view) 
+... ok
+test_student_special_checkin_view 
+(system.tests.test_calendar.SpecialClassViewTestCase.test_student_special_checkin_view) ... ok
+test_class_enrollment_blocks_adult_student_from_kids_group 
+(system.tests.test_class_catalog.ClassCatalogModelTestCase.test_class_enrollment_blocks_adult_student_from_kids_group) 
+... ok
+test_class_enrollment_blocks_male_student_from_women_group 
+(system.tests.test_class_catalog.ClassCatalogModelTestCase.test_class_enrollment_blocks_male_student_from_women_group) 
+... ok
+test_class_enrollment_requires_student_or_dependent_type 
+(system.tests.test_class_catalog.ClassCatalogModelTestCase.test_class_enrollment_requires_student_or_dependent_type) 
+... ok
+test_class_group_requires_instructor_as_main_teacher 
+(system.tests.test_class_catalog.ClassCatalogModelTestCase.test_class_group_requires_instructor_as_main_teacher) ... ok
+test_class_instructor_assignment_requires_administrative_or_instructor_type (system.tests.test_class_catalog.ClassCatal
+ogModelTestCase.test_class_instructor_assignment_requires_administrative_or_instructor_type) ... ok
+test_person_computes_ibjjf_category_from_birth_date 
+(system.tests.test_class_catalog.ClassCatalogModelTestCase.test_person_computes_ibjjf_category_from_birth_date) ... ok
+test_seed_class_catalog_creates_official_groups_and_schedules (system.tests.test_class_catalog.ClassCatalogModelTestCas
+e.test_seed_class_catalog_creates_official_groups_and_schedules) ... ok
+test_seed_person_administrative_creates_single_type_account (system.tests.test_class_catalog.ClassCatalogModelTestCase.
+test_seed_person_administrative_creates_single_type_account) ... ok
+test_seed_teacher_payroll_configs_creates_default_payroll_rules (system.tests.test_class_catalog.ClassCatalogModelTestC
+ase.test_seed_teacher_payroll_configs_creates_default_payroll_rules) ... ok
+test_active_class_group_without_inline_schedule_is_rejected (system.tests.test_class_portal_views.ClassPortalViewTestCa
+se.test_active_class_group_without_inline_schedule_is_rejected) ... ok
+test_admin_home_exposes_class_crud_shortcuts 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_admin_home_exposes_class_crud_shortcuts) ... ok
+test_class_group_detail_exposes_full_relations 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_class_group_detail_exposes_full_relations) ... ok
+test_class_group_form_shows_existing_schedule_summary_grouped_by_weekday (system.tests.test_class_portal_views.ClassPor
+talViewTestCase.test_class_group_form_shows_existing_schedule_summary_grouped_by_weekday) ... ok
+test_class_group_list_groups_logical_classes_once 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_class_group_list_groups_logical_classes_once) ... ok
+test_class_schedule_detail_exposes_full_relations 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_class_schedule_detail_exposes_full_relations) ... ok
+test_class_schedule_list_groups_by_weekday 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_class_schedule_list_groups_by_weekday) ... ok
+test_technical_admin_can_access_class_crud_routes 
+(system.tests.test_class_portal_views.ClassPortalViewTestCase.test_technical_admin_can_access_class_crud_routes) ... ok
+test_technical_admin_can_create_class_group_with_inline_schedule_and_assistant_team (system.tests.test_class_portal_vie
+ws.ClassPortalViewTestCase.test_technical_admin_can_create_class_group_with_inline_schedule_and_assistant_team) ... ok
+test_new_granular_seed_commands_are_available 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_new_granular_seed_commands_are_available) ... ok
+test_seed_belts_logs_belts_only 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_belts_logs_belts_only) ... ok
+test_seed_class_catalog_logs_groups_without_payroll 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_class_catalog_logs_groups_without_payroll) ... ok
+test_seed_class_categories_logs_each_category 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_class_categories_logs_each_category) ... ok
+test_seed_graduation_rules_logs_each_rule 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_graduation_rules_logs_each_rule) ... ok
+test_seed_graduation_rules_requires_seed_belts_first 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_graduation_rules_requires_seed_belts_first) ... ok
+test_seed_holidays_logs_each_holiday 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_holidays_logs_each_holiday) ... ok
+test_seed_ibjjf_age_categories_logs_each_category 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_ibjjf_age_categories_logs_each_category) ... ok
+test_seed_plans_logs_each_plan (system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_plans_logs_each_plan) 
+... ok
+test_seed_product_categories_logs_without_products 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_product_categories_logs_without_products) ... ok
+test_seed_products_logs_each_product 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_products_logs_each_product) ... ok
+test_seed_products_requires_product_categories_first 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_products_requires_product_categories_first) ... ok
+test_seed_teacher_payroll_configs_logs_payroll_separately 
+(system.tests.test_commands.SeedAuditLogCommandTestCase.test_seed_teacher_payroll_configs_logs_payroll_separately) ... 
+ok
+test_active_class_group_requires_main_teacher 
+(system.tests.test_forms.ClassGroupFormTestCase.test_active_class_group_requires_main_teacher) ... ok
+test_person_form_exposes_logical_class_choices_and_expands_enrollments 
+(system.tests.test_forms.PersonFormTestCase.test_person_form_exposes_logical_class_choices_and_expands_enrollments) 
+... ok
+test_person_form_initial_selection_collapses_logical_group_once 
+(system.tests.test_forms.PersonFormTestCase.test_person_form_initial_selection_collapses_logical_group_once) ... ok
+test_clears_martial_art_details_when_answer_is_no 
+(system.tests.test_forms.PortalRegistrationFormMartialArtTestCase.test_clears_martial_art_details_when_answer_is_no) 
+... ok
+test_requires_martial_art_when_answer_is_yes 
+(system.tests.test_forms.PortalRegistrationFormMartialArtTestCase.test_requires_martial_art_when_answer_is_yes) ... ok
+test_accepts_family_plan_for_holder_with_dependent 
+(system.tests.test_forms.PortalRegistrationFormPlanTestCase.test_accepts_family_plan_for_holder_with_dependent) ... ok
+test_rejects_family_plan_for_holder_without_dependent 
+(system.tests.test_forms.PortalRegistrationFormPlanTestCase.test_rejects_family_plan_for_holder_without_dependent) ... 
+ok
+test_default_tip_and_stripe_colors 
+(system.tests.test_graduation.BeltRankModelTestCase.test_default_tip_and_stripe_colors) ... ok
+test_get_grade_slots_marks_filled_positions 
+(system.tests.test_graduation.BeltRankModelTestCase.test_get_grade_slots_marks_filled_positions) ... ok
+test_get_grade_slots_returns_empty_when_no_grades 
+(system.tests.test_graduation.BeltRankModelTestCase.test_get_grade_slots_returns_empty_when_no_grades) ... ok
+test_next_rank_relationship (system.tests.test_graduation.BeltRankModelTestCase.test_next_rank_relationship) ... ok
+test_unique_code (system.tests.test_graduation.BeltRankModelTestCase.test_unique_code) ... ok
+test_instructor_home_collapses_graduation_details_by_default (system.tests.test_graduation.GraduationDashboardCardTestC
+ase.test_instructor_home_collapses_graduation_details_by_default) ... ok
+test_student_home_collapses_graduation_details_by_default (system.tests.test_graduation.GraduationDashboardCardTestCase
+.test_student_home_collapses_graduation_details_by_default) ... ok
+test_seed_belts_creates_default_belts_only 
+(system.tests.test_graduation.GraduationSeedTestCase.test_seed_belts_creates_default_belts_only) ... ok
+test_seed_graduation_rules_creates_default_rules 
+(system.tests.test_graduation.GraduationSeedTestCase.test_seed_graduation_rules_creates_default_rules) ... ok
+test_compute_progress_eligible_when_requirements_met 
+(system.tests.test_graduation.GraduationServiceTestCase.test_compute_progress_eligible_when_requirements_met) ... ok
+test_compute_progress_targets_next_rank_when_rule_promotes 
+(system.tests.test_graduation.GraduationServiceTestCase.test_compute_progress_targets_next_rank_when_rule_promotes) 
+... ok
+test_compute_progress_with_pending_requirements 
+(system.tests.test_graduation.GraduationServiceTestCase.test_compute_progress_with_pending_requirements) ... ok
+test_count_approved_classes_in_window 
+(system.tests.test_graduation.GraduationServiceTestCase.test_count_approved_classes_in_window) ... ok
+test_overview_includes_active_students 
+(system.tests.test_graduation.GraduationServiceTestCase.test_overview_includes_active_students) ... ok
+test_register_graduation_blocks_grade_above_max 
+(system.tests.test_graduation.GraduationServiceTestCase.test_register_graduation_blocks_grade_above_max) ... ok
+test_register_graduation_creates_record 
+(system.tests.test_graduation.GraduationServiceTestCase.test_register_graduation_creates_record) ... ok
+test_belt_rank_create_view (system.tests.test_graduation.GraduationViewTestCase.test_belt_rank_create_view) ... ok
+test_belt_rank_list_view (system.tests.test_graduation.GraduationViewTestCase.test_belt_rank_list_view) ... ok
+test_graduation_overview_view (system.tests.test_graduation.GraduationViewTestCase.test_graduation_overview_view) ... 
+ok
+test_beginner_initial_graduation_is_idempotent 
+(system.tests.test_graduation.InitialGraduationRegistrationTestCase.test_beginner_initial_graduation_is_idempotent) 
+... ok
+test_dependent_without_jiu_jitsu_history_receives_kids_white_graduation (system.tests.test_graduation.InitialGraduation
+RegistrationTestCase.test_dependent_without_jiu_jitsu_history_receives_kids_white_graduation) ... ok
+test_holder_with_jiu_jitsu_history_keeps_imported_graduation (system.tests.test_graduation.InitialGraduationRegistratio
+nTestCase.test_holder_with_jiu_jitsu_history_keeps_imported_graduation) ... ok
+test_holder_with_other_martial_art_receives_initial_jiu_jitsu_graduation (system.tests.test_graduation.InitialGraduatio
+nRegistrationTestCase.test_holder_with_other_martial_art_receives_initial_jiu_jitsu_graduation) ... ok
+test_holder_without_jiu_jitsu_history_receives_adult_white_graduation (system.tests.test_graduation.InitialGraduationRe
+gistrationTestCase.test_holder_without_jiu_jitsu_history_receives_adult_white_graduation) ... ok
+test_initial_belt_rank_follows_student_age 
+(system.tests.test_graduation.InitialGraduationRegistrationTestCase.test_initial_belt_rank_follows_student_age) ... ok
+test_student_test_personas_receive_initial_graduation (system.tests.test_graduation.TestPersonaInitialGraduationTestCas
+e.test_student_test_personas_receive_initial_graduation) ... ok
+test_guardian_registration_accepts_multiple_dependents 
+(system.tests.test_models.PersonModelTestCase.test_guardian_registration_accepts_multiple_dependents) ... ok
+test_guardian_registration_form_creates_guardian_and_dependent_accounts 
+(system.tests.test_models.PersonModelTestCase.test_guardian_registration_form_creates_guardian_and_dependent_accounts) 
+... ok
+test_holder_registration_form_creates_local_accounts 
+(system.tests.test_models.PersonModelTestCase.test_holder_registration_form_creates_local_accounts) ... ok
+test_other_registration_creates_single_selected_type 
+(system.tests.test_models.PersonModelTestCase.test_other_registration_creates_single_selected_type) ... ok
+test_password_reset_token_defaults_to_active_window 
+(system.tests.test_models.PersonModelTestCase.test_password_reset_token_defaults_to_active_window) ... ok
+test_password_reset_token_request_invalidates_previous_active_tokens 
+(system.tests.test_models.PersonModelTestCase.test_password_reset_token_request_invalidates_previous_active_tokens) 
+... ok
+test_person_has_single_type (system.tests.test_models.PersonModelTestCase.test_person_has_single_type) ... ok
+test_portal_account_is_independent_from_django_user 
+(system.tests.test_models.PersonModelTestCase.test_portal_account_is_independent_from_django_user) ... ok
+test_registration_creates_multiple_physical_enrollments_from_logical_choice (system.tests.test_models.PersonModelTestCa
+se.test_registration_creates_multiple_physical_enrollments_from_logical_choice) ... ok
+test_registration_form_requires_matching_password_confirmation 
+(system.tests.test_models.PersonModelTestCase.test_registration_form_requires_matching_password_confirmation) ... ok
+test_reset_password_marks_other_open_tokens_as_used 
+(system.tests.test_models.PersonModelTestCase.test_reset_password_marks_other_open_tokens_as_used) ... ok
+test_apply_extension_creates_membership_credit_when_leftover 
+(system.tests.test_plan_change.ApplyPlanChangeTest.test_apply_extension_creates_membership_credit_when_leftover) ... ok
+test_apply_with_paid_order_uses_full_cycle 
+(system.tests.test_plan_change.ApplyPlanChangeTest.test_apply_with_paid_order_uses_full_cycle) ... ok
+test_annual_to_monthly_creates_extension_with_leftover 
+(system.tests.test_plan_change.CalculatePlanChangeTest.test_annual_to_monthly_creates_extension_with_leftover) ... ok
+test_annual_to_quarterly_covers_three_cycles 
+(system.tests.test_plan_change.CalculatePlanChangeTest.test_annual_to_quarterly_covers_three_cycles) ... ok
+test_calculate_uses_plan_price_when_no_paid_order 
+(system.tests.test_plan_change.CalculatePlanChangeTest.test_calculate_uses_plan_price_when_no_paid_order) ... ok
+test_inactive_membership_raises 
+(system.tests.test_plan_change.CalculatePlanChangeTest.test_inactive_membership_raises) ... ok
+test_monthly_to_annual_charges_difference_with_full_cycle 
+(system.tests.test_plan_change.CalculatePlanChangeTest.test_monthly_to_annual_charges_difference_with_full_cycle) ... 
+ok
+test_same_plan_raises (system.tests.test_plan_change.CalculatePlanChangeTest.test_same_plan_raises) ... ok
+test_creates_order_only_when_additional_charge_positive 
+(system.tests.test_plan_change.CreatePlanChangeOrderTest.test_creates_order_only_when_additional_charge_positive) ... 
+ok
+test_returns_none_when_no_charge 
+(system.tests.test_plan_change.CreatePlanChangeOrderTest.test_returns_none_when_no_charge) ... ok
+test_refund_raises_when_no_paid_order 
+(system.tests.test_plan_change.RefundLeftoverTest.test_refund_raises_when_no_paid_order) ... ok
+test_refund_raises_when_provider_is_manual 
+(system.tests.test_plan_change.RefundLeftoverTest.test_refund_raises_when_provider_is_manual) ... ok
+test_refund_uses_asaas_when_provider_is_asaas 
+(system.tests.test_plan_change.RefundLeftoverTest.test_refund_uses_asaas_when_provider_is_asaas) ... ok
+test_refund_uses_stripe_when_provider_is_stripe 
+(system.tests.test_plan_change.RefundLeftoverTest.test_refund_uses_stripe_when_provider_is_stripe) ... ok
+test_guardian_with_one_kid 
+(system.tests.test_plan_eligibility.BuildEligibilityContextForRegistrationTestCase.test_guardian_with_one_kid) ... ok
+test_guardian_with_two_kids 
+(system.tests.test_plan_eligibility.BuildEligibilityContextForRegistrationTestCase.test_guardian_with_two_kids) ... ok
+test_holder_adult_with_kid_dependent (system.tests.test_plan_eligibility.BuildEligibilityContextForRegistrationTestCase
+.test_holder_adult_with_kid_dependent) ... ok
+test_holder_adult_without_dependent (system.tests.test_plan_eligibility.BuildEligibilityContextForRegistrationTestCase.
+test_holder_adult_without_dependent) ... ok
+test_eighteen_or_older_is_adult 
+(system.tests.test_plan_eligibility.ClassifyAudienceFromAgeTestCase.test_eighteen_or_older_is_adult) ... ok
+test_missing_birth_date_returns_empty 
+(system.tests.test_plan_eligibility.ClassifyAudienceFromAgeTestCase.test_missing_birth_date_returns_empty) ... ok
+test_under_eighteen_is_kids_juvenile 
+(system.tests.test_plan_eligibility.ClassifyAudienceFromAgeTestCase.test_under_eighteen_is_kids_juvenile) ... ok
+test_adult_alone_only_sees_adult_individual_plans 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_adult_alone_only_sees_adult_individual_plans) ... ok
+test_adult_with_one_dependent_sees_adult_full_set 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_adult_with_one_dependent_sees_adult_full_set) ... ok
+test_guardian_with_one_kid_only_sees_kids_individual 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_guardian_with_one_kid_only_sees_kids_individual) ... 
+ok
+test_guardian_with_two_kids_sees_kids_individual_and_family (system.tests.test_plan_eligibility.GetEligiblePlansTestCas
+e.test_guardian_with_two_kids_sees_kids_individual_and_family) ... ok
+test_kids_5x_hidden_unless_authorized 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_kids_5x_hidden_unless_authorized) ... ok
+test_kids_5x_visible_when_authorized 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_kids_5x_visible_when_authorized) ... ok
+test_no_audience_active_returns_empty 
+(system.tests.test_plan_eligibility.GetEligiblePlansTestCase.test_no_audience_active_returns_empty) ... ok
+test_adult_solo_only_individual_adult 
+(system.tests.test_plan_eligibility.IsPlanEligibleTestCase.test_adult_solo_only_individual_adult) ... ok
+test_adult_with_kid_unlocks_adult_family 
+(system.tests.test_plan_eligibility.IsPlanEligibleTestCase.test_adult_with_kid_unlocks_adult_family) ... ok
+test_kids_5x_allowed_with_authorization 
+(system.tests.test_plan_eligibility.IsPlanEligibleTestCase.test_kids_5x_allowed_with_authorization) ... ok
+test_kids_5x_blocked_without_authorization 
+(system.tests.test_plan_eligibility.IsPlanEligibleTestCase.test_kids_5x_blocked_without_authorization) ... ok
+test_two_kids_unlocks_kids_family 
+(system.tests.test_plan_eligibility.IsPlanEligibleTestCase.test_two_kids_unlocks_kids_family) ... ok
+test_adult_alone_does_not_unlock_family 
+(system.tests.test_plan_eligibility.PlanEligibilityContextTestCase.test_adult_alone_does_not_unlock_family) ... ok
+test_adult_with_one_dependent_unlocks_adult_family 
+(system.tests.test_plan_eligibility.PlanEligibilityContextTestCase.test_adult_with_one_dependent_unlocks_adult_family) 
+... ok
+test_two_kids_dependents_unlocks_kids_family 
+(system.tests.test_plan_eligibility.PlanEligibilityContextTestCase.test_two_kids_dependents_unlocks_kids_family) ... ok
+test_adult_2x_family_pix_quarterly_pricing 
+(system.tests.test_plan_models.SeedPlansTestCase.test_adult_2x_family_pix_quarterly_pricing) ... ok
+test_adult_5x_individual_credit_annual_pricing 
+(system.tests.test_plan_models.SeedPlansTestCase.test_adult_5x_individual_credit_annual_pricing) ... ok
+test_adult_5x_individual_pix_monthly_pricing 
+(system.tests.test_plan_models.SeedPlansTestCase.test_adult_5x_individual_pix_monthly_pricing) ... ok
+test_adult_plans_have_zero_teacher_commission 
+(system.tests.test_plan_models.SeedPlansTestCase.test_adult_plans_have_zero_teacher_commission) ... ok
+test_credit_monthly_reference_matches_business_rule 
+(system.tests.test_plan_models.SeedPlansTestCase.test_credit_monthly_reference_matches_business_rule) ... ok
+test_cycle_price_is_monthly_times_months 
+(system.tests.test_plan_models.SeedPlansTestCase.test_cycle_price_is_monthly_times_months) ... ok
+test_kids_2x_individual_pix_monthly_pricing 
+(system.tests.test_plan_models.SeedPlansTestCase.test_kids_2x_individual_pix_monthly_pricing) ... ok
+test_kids_5x_family_credit_semiannual_pricing 
+(system.tests.test_plan_models.SeedPlansTestCase.test_kids_5x_family_credit_semiannual_pricing) ... ok
+test_kids_5x_requires_special_authorization 
+(system.tests.test_plan_models.SeedPlansTestCase.test_kids_5x_requires_special_authorization) ... ok
+test_kids_juvenile_carries_teacher_commission 
+(system.tests.test_plan_models.SeedPlansTestCase.test_kids_juvenile_carries_teacher_commission) ... ok
+test_other_plans_do_not_require_authorization 
+(system.tests.test_plan_models.SeedPlansTestCase.test_other_plans_do_not_require_authorization) ... ok
+test_pix_monthly_reference_matches_business_rule 
+(system.tests.test_plan_models.SeedPlansTestCase.test_pix_monthly_reference_matches_business_rule) ... ok
+test_seed_deactivates_legacy_plans 
+(system.tests.test_plan_models.SeedPlansTestCase.test_seed_deactivates_legacy_plans) ... ok
+test_seed_plans_audience_distribution 
+(system.tests.test_plan_models.SeedPlansTestCase.test_seed_plans_audience_distribution) ... ok
+test_seed_plans_creates_full_matrix 
+(system.tests.test_plan_models.SeedPlansTestCase.test_seed_plans_creates_full_matrix) ... ok
+test_seed_plans_family_distribution 
+(system.tests.test_plan_models.SeedPlansTestCase.test_seed_plans_family_distribution) ... ok
+test_seed_plans_frequency_distribution 
+(system.tests.test_plan_models.SeedPlansTestCase.test_seed_plans_frequency_distribution) ... ok
+test_seed_plans_idempotent (system.tests.test_plan_models.SeedPlansTestCase.test_seed_plans_idempotent) ... ok
+test_create_plan_uses_defaults 
+(system.tests.test_plan_models.SubscriptionPlanModelTestCase.test_create_plan_uses_defaults) ... ok
+test_ordering (system.tests.test_plan_models.SubscriptionPlanModelTestCase.test_ordering) ... ok
+test_unique_code (system.tests.test_plan_models.SubscriptionPlanModelTestCase.test_unique_code) ... ok
+test_admin_dashboard_shows_planos (system.tests.test_plan_views.PlanViewTestCase.test_admin_dashboard_shows_planos) 
+... ok
+test_plan_create_page_loads (system.tests.test_plan_views.PlanViewTestCase.test_plan_create_page_loads) ... ok
+test_plan_delete_confirm_loads (system.tests.test_plan_views.PlanViewTestCase.test_plan_delete_confirm_loads) ... ok
+test_plan_delete_removes (system.tests.test_plan_views.PlanViewTestCase.test_plan_delete_removes) ... ok
+test_plan_detail_loads (system.tests.test_plan_views.PlanViewTestCase.test_plan_detail_loads) ... ok
+test_plan_list_loads (system.tests.test_plan_views.PlanViewTestCase.test_plan_list_loads) ... ok
+test_plan_list_requires_auth (system.tests.test_plan_views.PlanViewTestCase.test_plan_list_requires_auth) ... ok
+test_root_landing_serves_login (system.tests.test_plan_views.PlanViewTestCase.test_root_landing_serves_login) ... ok
+test_student_dashboard_shows_planos 
+(system.tests.test_plan_views.PlanViewTestCase.test_student_dashboard_shows_planos) ... ok
+test_update_redirects_to_detail (system.tests.test_plan_views.PlanViewTestCase.test_update_redirects_to_detail) ... ok
+test_cancel_pending_marks_canceled 
+(system.tests.test_product_backorders.CancelBackorderTestCase.test_cancel_pending_marks_canceled) ... ok
+test_cancel_ready_promotes_next_in_queue 
+(system.tests.test_product_backorders.CancelBackorderTestCase.test_cancel_ready_promotes_next_in_queue) ... ok
+test_confirm_creates_order_and_marks_confirmed 
+(system.tests.test_product_backorders.ConfirmBackorderTestCase.test_confirm_creates_order_and_marks_confirmed) ... ok
+test_confirm_pending_raises 
+(system.tests.test_product_backorders.ConfirmBackorderTestCase.test_confirm_pending_raises) ... ok
+test_create_backorder_creates_pending 
+(system.tests.test_product_backorders.CreateBackorderTestCase.test_create_backorder_creates_pending) ... ok
+test_create_duplicate_returns_existing 
+(system.tests.test_product_backorders.CreateBackorderTestCase.test_create_duplicate_returns_existing) ... ok
+test_create_inactive_variant_raises 
+(system.tests.test_product_backorders.CreateBackorderTestCase.test_create_inactive_variant_raises) ... ok
+test_command_runs_without_error_on_empty 
+(system.tests.test_product_backorders.ExpireBackordersCommandTestCase.test_command_runs_without_error_on_empty) ... ok
+test_expire_promotes_next_in_queue 
+(system.tests.test_product_backorders.ExpireBackordersTestCase.test_expire_promotes_next_in_queue) ... ok
+test_restock_promotes_pending_in_order 
+(system.tests.test_product_backorders.RestockVariantTestCase.test_restock_promotes_pending_in_order) ... ok
+test_restock_signal_promotes_on_stock_increase 
+(system.tests.test_product_backorders.RestockVariantTestCase.test_restock_signal_promotes_on_stock_increase) ... ok
+test_restock_with_more_units_promotes_all 
+(system.tests.test_product_backorders.RestockVariantTestCase.test_restock_with_more_units_promotes_all) ... ok
+test_deactivating_variant_cancels_active_backorders (system.tests.test_product_backorders.VariantDeactivationCancelsBac
+kordersTestCase.test_deactivating_variant_cancels_active_backorders) ... ok
+test_code_is_unique (system.tests.test_product_models.ProductCategoryModelTestCase.test_code_is_unique) ... ok
+test_create_category (system.tests.test_product_models.ProductCategoryModelTestCase.test_create_category) ... ok
+test_create_product (system.tests.test_product_models.ProductModelTestCase.test_create_product) ... ok
+test_sku_is_unique (system.tests.test_product_models.ProductModelTestCase.test_sku_is_unique) ... ok
+test_total_stock_with_variants (system.tests.test_product_models.ProductModelTestCase.test_total_stock_with_variants) 
+... ok
+test_create_variant (system.tests.test_product_models.ProductVariantModelTestCase.test_create_variant) ... ok
+test_out_of_stock_variant (system.tests.test_product_models.ProductVariantModelTestCase.test_out_of_stock_variant) ... 
+ok
+test_unique_variant_constraint 
+(system.tests.test_product_models.ProductVariantModelTestCase.test_unique_variant_constraint) ... ok
+test_seed_creates_all_products (system.tests.test_product_models.SeedProductsTestCase.test_seed_creates_all_products) 
+... ok
+test_seed_creates_belt_variants 
+(system.tests.test_product_models.SeedProductsTestCase.test_seed_creates_belt_variants) ... ok
+test_seed_creates_traditional_gi_colors_and_sizes_with_two_units_each (system.tests.test_product_models.SeedProductsTes
+tCase.test_seed_creates_traditional_gi_colors_and_sizes_with_two_units_each) ... ok
+test_seed_is_idempotent (system.tests.test_product_models.SeedProductsTestCase.test_seed_is_idempotent) ... ok
+test_seed_product_categories_is_independent 
+(system.tests.test_product_models.SeedProductsTestCase.test_seed_product_categories_is_independent) ... ok
+test_admin_dashboard_shows_materiais 
+(system.tests.test_product_views.ProductViewTestCase.test_admin_dashboard_shows_materiais) ... ok
+test_administrative_dashboard_shows_materiais 
+(system.tests.test_product_views.ProductViewTestCase.test_administrative_dashboard_shows_materiais) ... ok
+test_administrative_product_store_opens_as_portal_person 
+(system.tests.test_product_views.ProductViewTestCase.test_administrative_product_store_opens_as_portal_person) ... ok
+test_instructor_can_checkout_material_for_selected_student 
+(system.tests.test_product_views.ProductViewTestCase.test_instructor_can_checkout_material_for_selected_student) ... ok
+test_instructor_can_create_backorder_for_selected_student 
+(system.tests.test_product_views.ProductViewTestCase.test_instructor_can_create_backorder_for_selected_student) ... ok
+test_instructor_product_store_exposes_student_recipient_choices 
+(system.tests.test_product_views.ProductViewTestCase.test_instructor_product_store_exposes_student_recipient_choices) 
+... ok
+test_product_create_page_loads (system.tests.test_product_views.ProductViewTestCase.test_product_create_page_loads) 
+... ok
+test_product_delete_confirm_loads 
+(system.tests.test_product_views.ProductViewTestCase.test_product_delete_confirm_loads) ... ok
+test_product_delete_removes (system.tests.test_product_views.ProductViewTestCase.test_product_delete_removes) ... ok
+test_product_detail_loads (system.tests.test_product_views.ProductViewTestCase.test_product_detail_loads) ... ok
+test_product_list_loads (system.tests.test_product_views.ProductViewTestCase.test_product_list_loads) ... ok
+test_product_list_requires_auth (system.tests.test_product_views.ProductViewTestCase.test_product_list_requires_auth) 
+... ok
+test_product_list_uses_annotations 
+(system.tests.test_product_views.ProductViewTestCase.test_product_list_uses_annotations) ... ok
+test_product_store_exposes_variant_catalog_json 
+(system.tests.test_product_views.ProductViewTestCase.test_product_store_exposes_variant_catalog_json) ... ok
+test_student_dashboard_shows_materiais_link 
+(system.tests.test_product_views.ProductViewTestCase.test_student_dashboard_shows_materiais_link) ... ok
+test_update_redirects_to_detail (system.tests.test_product_views.ProductViewTestCase.test_update_redirects_to_detail) 
+... ok
+test_build_financial_dashboard_combines_gateways_and_history (system.tests.test_services.FinancialDashboardServiceTestC
+ase.test_build_financial_dashboard_combines_gateways_and_history) ... ok
+test_apply_order_financials_sets_transaction_fields 
+(system.tests.test_services.FinancialTransactionServiceTestCase.test_apply_order_financials_sets_transaction_fields) 
+... ok
+test_calculates_asaas_pix_fee_from_settings 
+(system.tests.test_services.FinancialTransactionServiceTestCase.test_calculates_asaas_pix_fee_from_settings) ... ok
+test_calculates_asaas_pix_fixed_fee 
+(system.tests.test_services.FinancialTransactionServiceTestCase.test_calculates_asaas_pix_fixed_fee) ... ok
+test_calculates_stripe_credit_fee 
+(system.tests.test_services.FinancialTransactionServiceTestCase.test_calculates_stripe_credit_fee) ... ok
+test_calculates_stripe_credit_fee_from_settings 
+(system.tests.test_services.FinancialTransactionServiceTestCase.test_calculates_stripe_credit_fee_from_settings) ... ok
+test_add_billing_cycle_uses_calendar_month_boundaries 
+(system.tests.test_services.MembershipBillingCycleTestCase.test_add_billing_cycle_uses_calendar_month_boundaries) ... 
+ok
+test_calculates_fixed_monthly_plus_student_percentage_rules 
+(system.tests.test_services.PayrollRulesServiceTestCase.test_calculates_fixed_monthly_plus_student_percentage_rules) 
+... ok
+test_calculates_per_class_attendance_rule 
+(system.tests.test_services.PayrollRulesServiceTestCase.test_calculates_per_class_attendance_rule) ... ok
+test_ignores_student_percentage_entry_before_refund_hold_window (system.tests.test_services.PayrollRulesServiceTestCase
+.test_ignores_student_percentage_entry_before_refund_hold_window) ... ok
+test_includes_student_percentage_entry_after_refund_hold_window (system.tests.test_services.PayrollRulesServiceTestCase
+.test_includes_student_percentage_entry_after_refund_hold_window) ... ok
+test_refund_after_credit_is_deducted_proportionally_from_future_payroll (system.tests.test_services.PayrollRulesService
+TestCase.test_refund_after_credit_is_deducted_proportionally_from_future_payroll) ... ok
+test_create_product_only_order_keeps_variant_snapshot_in_item_name (system.tests.test_services.ProductCheckoutServiceTe
+stCase.test_create_product_only_order_keeps_variant_snapshot_in_item_name) ... ok
+test_mark_order_manually_paid_decrements_variant_stock_once (system.tests.test_services.ProductCheckoutServiceTestCase.
+test_mark_order_manually_paid_decrements_variant_stock_once) ... ok
+test_mark_order_manually_paid_preserves_item_snapshot_after_stock_update (system.tests.test_services.ProductCheckoutSer
+viceTestCase.test_mark_order_manually_paid_preserves_item_snapshot_after_stock_update) ... ok
+test_plan_multiplier_is_always_one 
+(system.tests.test_services.RegistrationCheckoutServiceTestCase.test_plan_multiplier_is_always_one) ... ok
+test_single_child_category_keeps_plan_simple 
+(system.tests.test_services.RegistrationCheckoutServiceTestCase.test_single_child_category_keeps_plan_simple) ... ok
+test_confirm_route_was_removed (system.tests.test_views.PlanChangeSelectViewTest.test_confirm_route_was_removed) ... ok
+test_get_plan_catalog_excludes_current_plan 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_plan_catalog_excludes_current_plan) ... ok
+test_get_plan_catalog_marks_upgrade_and_extension_correctly 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_plan_catalog_marks_upgrade_and_extension_correctly) ... ok
+test_get_plan_catalog_serializes_proration_fields 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_plan_catalog_serializes_proration_fields) ... ok
+test_get_renders_membership_in_context 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_renders_membership_in_context) ... ok
+test_get_renders_membership_summary 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_renders_membership_summary) ... ok
+test_get_template_carries_plan_catalog_script_and_icons 
+(system.tests.test_views.PlanChangeSelectViewTest.test_get_template_carries_plan_catalog_script_and_icons) ... ok
+test_post_with_extension_keeps_leftover_as_credit 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_with_extension_keeps_leftover_as_credit) ... ok
+test_post_with_extension_refund_dispatches_provider 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_with_extension_refund_dispatches_provider) ... ok
+test_post_with_inactive_plan_returns_404 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_with_inactive_plan_returns_404) ... ok
+test_post_with_same_plan_redirects_with_error 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_with_same_plan_redirects_with_error) ... ok
+test_post_with_upgrade_creates_order_and_redirects_to_checkout 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_with_upgrade_creates_order_and_redirects_to_checkout) ... 
+ok
+test_post_without_selected_plan_redirects_with_error 
+(system.tests.test_views.PlanChangeSelectViewTest.test_post_without_selected_plan_redirects_with_error) ... ok
+test_unauthenticated_access_redirected 
+(system.tests.test_views.PlanChangeSelectViewTest.test_unauthenticated_access_redirected) ... ok
+test_admin_special_class_create_links_selected_teacher 
+(system.tests.test_views.PortalViewTestCase.test_admin_special_class_create_links_selected_teacher) ... ok
+test_administrative_portal_account_can_access_person_crud 
+(system.tests.test_views.PortalViewTestCase.test_administrative_portal_account_can_access_person_crud) ... ok
+test_administrative_portal_account_can_open_own_financial_screen 
+(system.tests.test_views.PortalViewTestCase.test_administrative_portal_account_can_open_own_financial_screen) ... ok
+test_administrative_portal_account_can_open_person_edit_form 
+(system.tests.test_views.PortalViewTestCase.test_administrative_portal_account_can_open_person_edit_form) ... ok
+test_administrative_portal_account_cannot_access_master_dashboard 
+(system.tests.test_views.PortalViewTestCase.test_administrative_portal_account_cannot_access_master_dashboard) ... ok
+test_administrative_portal_account_dashboard_exposes_shortcuts 
+(system.tests.test_views.PortalViewTestCase.test_administrative_portal_account_dashboard_exposes_shortcuts) ... ok
+test_anonymous_user_is_redirected_to_login_when_opening_person_edit_form 
+(system.tests.test_views.PortalViewTestCase.test_anonymous_user_is_redirected_to_login_when_opening_person_edit_form) 
+... ok
+test_chrome_devtools_probe_route_returns_no_content 
+(system.tests.test_views.PortalViewTestCase.test_chrome_devtools_probe_route_returns_no_content) ... ok
+test_class_category_detail_shows_linked_groups_and_people 
+(system.tests.test_views.PortalViewTestCase.test_class_category_detail_shows_linked_groups_and_people) ... ok
+test_dependent_only_portal_account_can_access_student_home 
+(system.tests.test_views.PortalViewTestCase.test_dependent_only_portal_account_can_access_student_home) ... ok
+test_drawer_shows_logged_portal_person_identity 
+(system.tests.test_views.PortalViewTestCase.test_drawer_shows_logged_portal_person_identity) ... ok
+test_drawer_shows_technical_admin_identity 
+(system.tests.test_views.PortalViewTestCase.test_drawer_shows_technical_admin_identity) ... ok
+test_favicon_route_redirects_to_lv_asset 
+(system.tests.test_views.PortalViewTestCase.test_favicon_route_redirects_to_lv_asset) ... ok
+test_financial_control_displays_gateway_kpis_and_unified_history 
+(system.tests.test_views.PortalViewTestCase.test_financial_control_displays_gateway_kpis_and_unified_history) ... ok
+test_financial_control_lists_gateway_fee_and_net_amount 
+(system.tests.test_views.PortalViewTestCase.test_financial_control_lists_gateway_fee_and_net_amount) ... ok
+test_instructor_approve_checkin_view_blocks_unauthorized 
+(system.tests.test_views.PortalViewTestCase.test_instructor_approve_checkin_view_blocks_unauthorized) ... ok
+test_instructor_approve_checkin_view_marks_as_approved 
+(system.tests.test_views.PortalViewTestCase.test_instructor_approve_checkin_view_marks_as_approved) ... ok
+test_instructor_calendar_view_loads (system.tests.test_views.PortalViewTestCase.test_instructor_calendar_view_loads) 
+... ok
+test_instructor_can_access_schedule_route 
+(system.tests.test_views.PortalViewTestCase.test_instructor_can_access_schedule_route) ... ok
+test_instructor_can_list_view_and_create_students_without_admin_crud 
+(system.tests.test_views.PortalViewTestCase.test_instructor_can_list_view_and_create_students_without_admin_crud) ... 
+ok
+test_instructor_can_only_delete_own_special_class 
+(system.tests.test_views.PortalViewTestCase.test_instructor_can_only_delete_own_special_class) ... ok
+test_instructor_can_toggle_own_session 
+(system.tests.test_views.PortalViewTestCase.test_instructor_can_toggle_own_session) ... ok
+test_instructor_cannot_toggle_other_session 
+(system.tests.test_views.PortalViewTestCase.test_instructor_cannot_toggle_other_session) ... ok
+test_instructor_create_special_class_links_self_as_teacher 
+(system.tests.test_views.PortalViewTestCase.test_instructor_create_special_class_links_self_as_teacher) ... ok
+test_instructor_dashboard_exposes_limited_operational_area 
+(system.tests.test_views.PortalViewTestCase.test_instructor_dashboard_exposes_limited_operational_area) ... ok
+test_instructor_dashboard_shows_pending_checkin_and_approve_button 
+(system.tests.test_views.PortalViewTestCase.test_instructor_dashboard_shows_pending_checkin_and_approve_button) ... ok
+test_instructor_dashboard_shows_today_classes_checkins_and_history 
+(system.tests.test_views.PortalViewTestCase.test_instructor_dashboard_shows_today_classes_checkins_and_history) ... ok
+test_instructor_portal_account_can_access_instructor_home 
+(system.tests.test_views.PortalViewTestCase.test_instructor_portal_account_can_access_instructor_home) ... ok
+test_login_route_returns_portal_login_page 
+(system.tests.test_views.PortalViewTestCase.test_login_route_returns_portal_login_page) ... ok
+test_login_with_invalid_numeric_identifier_returns_form_error 
+(system.tests.test_views.PortalViewTestCase.test_login_with_invalid_numeric_identifier_returns_form_error) ... ok
+test_payment_checkout_allows_dependent_when_order_belongs_to_responsible 
+(system.tests.test_views.PortalViewTestCase.test_payment_checkout_allows_dependent_when_order_belongs_to_responsible) 
+... ok
+test_payment_checkout_with_missing_order_redirects_to_home_with_message 
+(system.tests.test_views.PortalViewTestCase.test_payment_checkout_with_missing_order_redirects_to_home_with_message) 
+... ok
+test_payment_checkout_without_authorization_redirects_to_home_with_message (system.tests.test_views.PortalViewTestCase.
+test_payment_checkout_without_authorization_redirects_to_home_with_message) ... ok
+test_pending_payment_with_trial_allows_login 
+(system.tests.test_views.PortalViewTestCase.test_pending_payment_with_trial_allows_login) ... ok
+test_person_detail_groups_student_classes_once_and_shows_student_schedules (system.tests.test_views.PortalViewTestCase.
+test_person_detail_groups_student_classes_once_and_shows_student_schedules) ... ok
+test_person_detail_shows_responsible_billing_context_for_dependent 
+(system.tests.test_views.PortalViewTestCase.test_person_detail_shows_responsible_billing_context_for_dependent) ... ok
+test_person_list_keeps_summary_and_person_detail_shows_teacher_context 
+(system.tests.test_views.PortalViewTestCase.test_person_list_keeps_summary_and_person_detail_shows_teacher_context) 
+... ok
+test_person_list_renders_filter_form_and_red_delete_action 
+(system.tests.test_views.PortalViewTestCase.test_person_list_renders_filter_form_and_red_delete_action) ... ok
+test_person_list_supports_operational_filters 
+(system.tests.test_views.PortalViewTestCase.test_person_list_supports_operational_filters) ... ok
+test_person_type_detail_shows_people_of_that_type 
+(system.tests.test_views.PortalViewTestCase.test_person_type_detail_shows_people_of_that_type) ... ok
+test_person_update_form_renders_birth_date_and_logical_class_choice_once 
+(system.tests.test_views.PortalViewTestCase.test_person_update_form_renders_birth_date_and_logical_class_choice_once) 
+... ok
+test_person_update_saves_payroll_config_for_instructor 
+(system.tests.test_views.PortalViewTestCase.test_person_update_saves_payroll_config_for_instructor) ... ok
+test_pix_checkout_without_env_redirects_back_with_message 
+(system.tests.test_views.PortalViewTestCase.test_pix_checkout_without_env_redirects_back_with_message) ... ok
+test_portal_logout_clears_local_and_technical_sessions 
+(system.tests.test_views.PortalViewTestCase.test_portal_logout_clears_local_and_technical_sessions) ... ok
+test_public_route_does_not_render_logged_user_identity 
+(system.tests.test_views.PortalViewTestCase.test_public_route_does_not_render_logged_user_identity) ... ok
+test_register_other_profile_creates_single_selected_person_type 
+(system.tests.test_views.PortalViewTestCase.test_register_other_profile_creates_single_selected_person_type) ... ok
+test_register_route_creates_local_account_and_not_django_user 
+(system.tests.test_views.PortalViewTestCase.test_register_route_creates_local_account_and_not_django_user) ... ok
+test_register_route_exposes_binary_martial_art_question_choices 
+(system.tests.test_views.PortalViewTestCase.test_register_route_exposes_binary_martial_art_question_choices) ... ok
+test_register_route_exposes_compact_schedule_sections_for_wizard 
+(system.tests.test_views.PortalViewTestCase.test_register_route_exposes_compact_schedule_sections_for_wizard) ... ok
+test_register_route_exposes_logical_class_choices_once 
+(system.tests.test_views.PortalViewTestCase.test_register_route_exposes_logical_class_choices_once) ... ok
+test_register_route_exposes_product_variants_in_material_catalog 
+(system.tests.test_views.PortalViewTestCase.test_register_route_exposes_product_variants_in_material_catalog) ... ok
+test_register_route_renders_class_group_selection_copy 
+(system.tests.test_views.PortalViewTestCase.test_register_route_renders_class_group_selection_copy) ... ok
+test_register_with_card_action_redirects_directly_to_stripe_checkout 
+(system.tests.test_views.PortalViewTestCase.test_register_with_card_action_redirects_directly_to_stripe_checkout) ... 
+ok
+test_register_with_pay_later_grants_trial_and_redirects_to_login 
+(system.tests.test_views.PortalViewTestCase.test_register_with_pay_later_grants_trial_and_redirects_to_login) ... ok
+test_registered_holder_can_log_in_with_local_account 
+(system.tests.test_views.PortalViewTestCase.test_registered_holder_can_log_in_with_local_account) ... ok
+test_registration_step_validation_blocks_existing_cpf 
+(system.tests.test_views.PortalViewTestCase.test_registration_step_validation_blocks_existing_cpf) ... ok
+test_registration_step_validation_blocks_missing_jiu_jitsu_belt 
+(system.tests.test_views.PortalViewTestCase.test_registration_step_validation_blocks_missing_jiu_jitsu_belt) ... ok
+test_root_route_includes_lv_favicon_metadata 
+(system.tests.test_views.PortalViewTestCase.test_root_route_includes_lv_favicon_metadata) ... ok
+test_root_route_returns_approved_home_page 
+(system.tests.test_views.PortalViewTestCase.test_root_route_returns_approved_home_page) ... ok
+test_staff_financial_screen_rejects_withdrawal_post 
+(system.tests.test_views.PortalViewTestCase.test_staff_financial_screen_rejects_withdrawal_post) ... ok
+test_stripe_checkout_without_env_redirects_back_with_message 
+(system.tests.test_views.PortalViewTestCase.test_stripe_checkout_without_env_redirects_back_with_message) ... ok
+test_student_dashboard_backfills_membership_from_paid_order 
+(system.tests.test_views.PortalViewTestCase.test_student_dashboard_backfills_membership_from_paid_order) ... ok
+test_student_dashboard_shows_active_membership_and_due_date 
+(system.tests.test_views.PortalViewTestCase.test_student_dashboard_shows_active_membership_and_due_date) ... ok
+test_student_dashboard_shows_checkin_attendance_history 
+(system.tests.test_views.PortalViewTestCase.test_student_dashboard_shows_checkin_attendance_history) ... ok
+test_student_dashboard_shows_pending_after_checkin 
+(system.tests.test_views.PortalViewTestCase.test_student_dashboard_shows_pending_after_checkin) ... ok
+test_student_dashboard_uses_responsible_membership_for_dependent 
+(system.tests.test_views.PortalViewTestCase.test_student_dashboard_uses_responsible_membership_for_dependent) ... ok
+test_technical_admin_can_log_in_through_portal_and_access_admin_routes 
+(system.tests.test_views.PortalViewTestCase.test_technical_admin_can_log_in_through_portal_and_access_admin_routes) 
+... ok
+test_technical_admin_session_is_separate_from_django_admin_login 
+(system.tests.test_views.PortalViewTestCase.test_technical_admin_session_is_separate_from_django_admin_login) ... ok
+test_remove_runtime_artifacts_also_removes_playwright_and_screenshot_dirs (system.tests.test_commands.ClearMigrationsCl
+eanupTestCase.test_remove_runtime_artifacts_also_removes_playwright_and_screenshot_dirs) ... ok
+test_inicial_seed_command_is_not_available 
+(system.tests.test_commands.SeedCommandGovernanceTestCase.test_inicial_seed_command_is_not_available) ... ok
+test_inicial_seed_test_runs_granular_seed_sequence 
+(system.tests.test_commands.SeedCommandGovernanceTestCase.test_inicial_seed_test_runs_granular_seed_sequence) ... ok
+test_builds_brazilian_closure_dates_for_requested_year 
+(system.tests.test_commands.SeedHolidaysCommandTestCase.test_builds_brazilian_closure_dates_for_requested_year) ... ok
+test_calculates_easter_date_for_requested_year 
+(system.tests.test_commands.SeedHolidaysCommandTestCase.test_calculates_easter_date_for_requested_year) ... ok
+test_can_exclude_optional_closure_dates 
+(system.tests.test_commands.SeedHolidaysCommandTestCase.test_can_exclude_optional_closure_dates) ... ok
+
+----------------------------------------------------------------------
+Ran 357 tests in 75.475s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+

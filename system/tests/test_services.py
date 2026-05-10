@@ -41,6 +41,7 @@ from system.services.payroll_rules import (
     PAYROLL_METHOD_FIXED_MONTHLY,
     PAYROLL_METHOD_PER_CLASS_ATTENDANCE,
     PAYROLL_METHOD_STUDENT_PERCENTAGE,
+    append_order_refund_record,
     calculate_monthly_payroll,
     encode_payroll_rules,
 )
@@ -336,6 +337,105 @@ class PayrollRulesServiceTestCase(TestCase):
         self.assertEqual(result["total"], Decimal("25.00"))
         self.assertEqual(result["class_total"], Decimal("25.00"))
         self.assertEqual(result["class_attendance_count"], 1)
+
+    @override_settings(PAYROLL_REFUND_HOLD_DAYS=7)
+    def test_ignores_student_percentage_entry_before_refund_hold_window(self):
+        self.order.paid_at = timezone.make_aware(datetime(2026, 4, 28, 10, 0))
+        self.order.save(update_fields=["paid_at", "updated_at"])
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("0.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
+                        "percentage": "50.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+            as_of_date=date(2026, 5, 3),
+        )
+
+        self.assertEqual(result["student_total"], Decimal("0.00"))
+        self.assertEqual(result["total"], Decimal("0.00"))
+        self.assertEqual(result["held_entries"][0]["person"], self.student)
+
+    @override_settings(PAYROLL_REFUND_HOLD_DAYS=7)
+    def test_includes_student_percentage_entry_after_refund_hold_window(self):
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("0.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
+                        "percentage": "50.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+            as_of_date=date(2026, 4, 18),
+        )
+
+        self.assertEqual(result["student_total"], Decimal("99.00"))
+        self.assertEqual(result["total"], Decimal("99.00"))
+        self.assertEqual(result["entries"][0]["payout_available_on"], date(2026, 4, 17))
+
+    @override_settings(PAYROLL_REFUND_HOLD_DAYS=7)
+    def test_refund_after_credit_is_deducted_proportionally_from_future_payroll(self):
+        self.order.paid_at = timezone.make_aware(datetime(2026, 3, 10, 10, 0))
+        self.order.refunded_at = timezone.make_aware(datetime(2026, 4, 20, 10, 0))
+        self.order.payment_status = PaymentStatus.REFUNDED
+        self.order.save(
+            update_fields=["paid_at", "refunded_at", "payment_status", "updated_at"]
+        )
+        append_order_refund_record(
+            self.order,
+            Decimal("40.00"),
+            source="test",
+            cumulative=False,
+        )
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("0.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
+                        "percentage": "50.00",
+                        "scope": "class_group",
+                        "class_group_code": self.group.code,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+            as_of_date=date(2026, 4, 30),
+        )
+
+        self.assertEqual(result["refund_adjustment_total"], Decimal("19.80"))
+        self.assertEqual(result["total"], Decimal("0.00"))
+        self.assertEqual(result["carryover_adjustment"], Decimal("19.80"))
+        self.assertEqual(result["refund_entries"][0]["order"], self.order)
 
 
 class MembershipBillingCycleTestCase(TestCase):

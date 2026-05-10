@@ -113,6 +113,15 @@ def get_pix_qrcode(payment_id):
     return _request("GET", f"/payments/{payment_id}/pixQrCode")
 
 
+def refund_payment(payment_id, *, value=None, description=""):
+    body = {}
+    if value is not None:
+        body["value"] = float(Decimal(value))
+    if description:
+        body["description"] = description[:500]
+    return _request("POST", f"/payments/{payment_id}/refund", json_body=body)
+
+
 def create_transfer(*, value, pix_key, pix_key_type, description="", external_reference=None):
     body = {
         "value": float(Decimal(value)),

@@ -32,7 +32,6 @@ from system.services.asaas_payroll import (
     compute_available_balance,
     dispatch_payout,
     refuse_payout,
-    request_withdrawal,
 )
 from system.services.asaas_webhooks import process_asaas_event
 from system.services.payroll_rules import (
@@ -232,38 +231,10 @@ class TeacherFinancialView(StaffFinancialRequiredMixin, View):
     template_name = "home/instructor/financial.html"
 
     def get(self, request, *args, **kwargs):
-        from system.forms import WithdrawalRequestForm
-
-        context = self._build_context(request, form=WithdrawalRequestForm())
+        context = self._build_context(request)
         return render(request, self.template_name, context)
 
-    def post(self, request, *args, **kwargs):
-        from system.forms import WithdrawalRequestForm
-
-        form = WithdrawalRequestForm(request.POST)
-        if not form.is_valid():
-            context = self._build_context(request, form=form)
-            return render(request, self.template_name, context)
-
-        person = request.portal_person
-        try:
-            request_withdrawal(
-                person,
-                form.cleaned_data["amount"],
-                notes=form.cleaned_data.get("notes", ""),
-            )
-        except PayrollError as exc:
-            form.add_error("amount", str(exc))
-            context = self._build_context(request, form=form)
-            return render(request, self.template_name, context)
-
-        messages.success(
-            request,
-            "Solicitação enviada. Aguarde aprovação administrativa.",
-        )
-        return redirect("system:teacher-financial")
-
-    def _build_context(self, request, *, form):
+    def _build_context(self, request):
         person = request.portal_person
         staff_context = get_staff_financial_context(person)
         available, base, committed = compute_available_balance(person)
@@ -280,7 +251,6 @@ class TeacherFinancialView(StaffFinancialRequiredMixin, View):
         except TeacherBankAccount.DoesNotExist:
             bank = None
         return {
-            "form": form,
             "config": config,
             "bank": bank,
             "available_balance": available,
@@ -289,6 +259,8 @@ class TeacherFinancialView(StaffFinancialRequiredMixin, View):
             "recent_payouts": recent_payouts,
             "calculation": staff_context["calculation"],
             "linked_entries": staff_context["linked_entries"],
+            "held_entries": staff_context["held_entries"],
+            "refund_entries": staff_context["refund_entries"],
         }
 
 

@@ -27,10 +27,13 @@ from system.models import (
     PersonRelationship,
     PersonType,
     PortalAccount,
+    PixKeyType,
     RegistrationOrder,
     SpecialClass,
     SpecialClassCheckin,
     SubscriptionPlan,
+    TeacherBankAccount,
+    TeacherPayout,
     TeacherPayrollConfig,
     TrialAccessGrant,
     WeekdayCode,
@@ -342,6 +345,48 @@ class PortalViewTestCase(TestCase):
         person_response = self.client.get(reverse("system:person-list"))
         self.assertEqual(person_response.status_code, 200)
         self.assertContains(person_response, "Pessoas")
+
+    def test_drawer_shows_logged_portal_person_identity(self):
+        student_account = self._create_portal_account(
+            full_name="Aluno Menu Lateral",
+            cpf="321.654.987-11",
+            password="123456",
+            person_type=self.student_type,
+        )
+        self._login_portal_account(student_account)
+
+        response = self.client.get(reverse("system:student-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'aria-label="Usuário logado"')
+        self.assertContains(response, "Aluno Menu Lateral")
+        self.assertContains(
+            response,
+            '<span class="drawer-account-role">Aluno</span>',
+            html=True,
+        )
+
+    def test_drawer_shows_technical_admin_identity(self):
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "admin", "password": "admin"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:admin-home"))
+        self.assertContains(response, 'aria-label="Usuário logado"')
+        self.assertContains(response, "admin")
+        self.assertContains(
+            response,
+            '<span class="drawer-account-role">Administrador técnico</span>',
+            html=True,
+        )
+
+    def test_public_route_does_not_render_logged_user_identity(self):
+        response = self.client.get(reverse("system:root"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "drawer-account")
 
     def test_technical_admin_session_is_separate_from_django_admin_login(self):
         self.client.force_login(self.django_admin_user)
@@ -1572,6 +1617,11 @@ class PortalViewTestCase(TestCase):
             monthly_salary=Decimal("300.00"),
             payment_day=28,
         )
+        TeacherBankAccount.objects.create(
+            person=administrative_account.person,
+            pix_key="32165498783",
+            pix_key_type=PixKeyType.CPF,
+        )
         self._login_portal_account(administrative_account)
 
         response = self.client.get(reverse("system:teacher-financial"))
@@ -1579,6 +1629,29 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Meu financeiro")
         self.assertContains(response, "Salário base")
+        self.assertNotContains(response, "Solicitar saque antecipado")
+
+    def test_staff_financial_screen_rejects_withdrawal_post(self):
+        administrative_account = self._create_portal_account(
+            full_name="Administrativo Sem Saque",
+            cpf="321.654.987-87",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        TeacherPayrollConfig.objects.create(
+            person=administrative_account.person,
+            monthly_salary=Decimal("300.00"),
+            payment_day=28,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.post(
+            reverse("system:teacher-financial"),
+            {"amount": "100.00", "notes": "nao permitido"},
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.assertFalse(TeacherPayout.objects.exists())
 
     def test_instructor_dashboard_exposes_limited_operational_area(self):
         instructor_account = self._create_portal_account(
@@ -1917,7 +1990,7 @@ class PortalViewTestCase(TestCase):
         self.assertTrue(any("PIX indisponível" in message for message in messages))
 
 
-class PlanChangeSelectViewGroupingTest(TestCase):
+class PlanChangeSelectViewTest(TestCase):
     def setUp(self):
         self.student_type = PersonType.objects.create(
             code="student",
@@ -1932,25 +2005,24 @@ class PlanChangeSelectViewGroupingTest(TestCase):
             is_active=True,
             is_family_plan=False,
         )
-        self.individual_plan = SubscriptionPlan.objects.create(
+        self.upgrade_plan = SubscriptionPlan.objects.create(
             code="mensal-credito-individual",
             display_name="Plano Mensal Crédito",
-            price=Decimal("250.00"),
+            price=Decimal("260.00"),
             billing_cycle=BillingCycle.MONTHLY,
             payment_method=PlanPaymentMethod.CREDIT_CARD,
             is_active=True,
             is_family_plan=False,
         )
-        self.family_plan = SubscriptionPlan.objects.create(
+        self.downgrade_plan = SubscriptionPlan.objects.create(
             code="mensal-pix-familia",
             display_name="Plano Mensal PIX Família",
-            price=Decimal("220.00"),
+            price=Decimal("180.00"),
             billing_cycle=BillingCycle.MONTHLY,
             payment_method=PlanPaymentMethod.PIX,
             is_active=True,
             is_family_plan=True,
         )
-        from datetime import date
         from system.models import PersonRelationshipKind
         person = Person.objects.create(
             full_name="Aluno Teste",
@@ -1972,6 +2044,7 @@ class PlanChangeSelectViewGroupingTest(TestCase):
             target_person=dependent,
             relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
         )
+        self.person = person
         self.membership = Membership.objects.create(
             person=person,
             plan=self.current_plan,
@@ -1988,50 +2061,168 @@ class PlanChangeSelectViewGroupingTest(TestCase):
         session[PORTAL_ACCOUNT_SESSION_KEY] = self.portal_account.pk
         session.save()
 
-    def test_plan_groups_context_contains_individual_and_family(self):
-        self._login()
-        response = self.client.get(reverse("system:plan-change-select"))
-
-        self.assertEqual(response.status_code, 200)
-        plan_groups = response.context["plan_groups"]
-        labels = [g["label"] for g in plan_groups]
-        self.assertIn("Planos Individuais", labels)
-        self.assertIn("Planos Família", labels)
-
-    def test_individual_group_excludes_family_plans(self):
-        self._login()
-        response = self.client.get(reverse("system:plan-change-select"))
-
-        plan_groups = response.context["plan_groups"]
-        individual_group = next(g for g in plan_groups if g["label"] == "Planos Individuais")
-        family_flags = [e["plan"].is_family_plan for e in individual_group["entries"]]
-        self.assertFalse(any(family_flags))
-
-    def test_family_group_contains_only_family_plans(self):
-        self._login()
-        response = self.client.get(reverse("system:plan-change-select"))
-
-        plan_groups = response.context["plan_groups"]
-        family_group = next(g for g in plan_groups if g["label"] == "Planos Família")
-        family_flags = [e["plan"].is_family_plan for e in family_group["entries"]]
-        self.assertTrue(all(family_flags))
-
-    def test_empty_group_is_omitted_from_plan_groups(self):
-        self.family_plan.delete()
-        self._login()
-        response = self.client.get(reverse("system:plan-change-select"))
-
-        plan_groups = response.context["plan_groups"]
-        labels = [g["label"] for g in plan_groups]
-        self.assertNotIn("Planos Família", labels)
-
-    def test_template_renders_group_labels(self):
-        self._login()
-        response = self.client.get(reverse("system:plan-change-select"))
-
-        self.assertContains(response, "Planos Individuais")
-        self.assertContains(response, "Planos Família")
-
     def test_unauthenticated_access_redirected(self):
         response = self.client.get(reverse("system:plan-change-select"))
         self.assertNotEqual(response.status_code, 200)
+
+    def test_get_renders_membership_in_context(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["membership"].pk, self.membership.pk)
+
+    def test_get_renders_membership_summary(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        summary = response.context["membership_summary"]
+        self.assertIsNotNone(summary)
+        self.assertEqual(summary["plan_name"], self.current_plan.display_name)
+        self.assertIn("amount_paid", summary)
+        self.assertIn("available_credit", summary)
+        self.assertIn("days_used", summary)
+        self.assertIn("days_remaining", summary)
+
+    def test_get_template_carries_plan_catalog_script_and_icons(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        self.assertContains(response, 'id="plan-catalog-data"')
+        self.assertContains(response, 'id="membership-summary-data"')
+        self.assertContains(response, "data-pix-icon-url=")
+        self.assertContains(response, "data-card-icon-url=")
+
+    def test_get_plan_catalog_excludes_current_plan(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        catalog = response.context["plan_catalog"]
+        ids = [entry["id"] for entry in catalog]
+        self.assertNotIn(self.current_plan.pk, ids)
+        self.assertIn(self.upgrade_plan.pk, ids)
+        self.assertIn(self.downgrade_plan.pk, ids)
+
+    def test_get_plan_catalog_serializes_proration_fields(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        catalog = response.context["plan_catalog"]
+        self.assertGreater(len(catalog), 0)
+        required_string_fields = ("leftover_credit", "additional_charge")
+        required_bool_fields = ("is_upgrade", "is_extension", "has_leftover")
+        for entry in catalog:
+            self.assertIsInstance(entry["price"], str)
+            self.assertIn("proration", entry)
+            proration = entry["proration"]
+            for key in required_string_fields:
+                self.assertIn(key, proration)
+                self.assertIsInstance(proration[key], str)
+            for key in required_bool_fields:
+                self.assertIn(key, proration)
+            self.assertIn("cycles_covered", proration)
+            self.assertIn("new_period_end", proration)
+
+    def test_get_plan_catalog_marks_upgrade_and_extension_correctly(self):
+        self._login()
+        response = self.client.get(reverse("system:plan-change-select"))
+        catalog = {entry["id"]: entry for entry in response.context["plan_catalog"]}
+        self.assertTrue(catalog[self.upgrade_plan.pk]["proration"]["is_upgrade"])
+        self.assertTrue(catalog[self.downgrade_plan.pk]["proration"]["is_extension"])
+        self.assertTrue(catalog[self.downgrade_plan.pk]["proration"]["has_leftover"])
+
+    def test_post_with_upgrade_creates_order_and_redirects_to_checkout(self):
+        self._login()
+        response = self.client.post(
+            reverse("system:plan-change-select"),
+            {"selected_plan": self.upgrade_plan.pk},
+        )
+        order = RegistrationOrder.objects.filter(
+            plan=self.upgrade_plan, is_plan_change=True
+        ).first()
+        self.assertIsNotNone(order)
+        self.assertRedirects(
+            response,
+            reverse("system:payment-checkout", args=[order.pk]),
+        )
+
+    def test_post_with_extension_keeps_leftover_as_credit(self):
+        from system.models import MembershipCredit, MembershipCreditStatus
+        self._login()
+        response = self.client.post(
+            reverse("system:plan-change-select"),
+            {"selected_plan": self.downgrade_plan.pk},
+        )
+        self.assertRedirects(response, reverse("system:student-home"))
+        self.membership.refresh_from_db()
+        self.assertEqual(self.membership.plan_id, self.downgrade_plan.pk)
+        credit = MembershipCredit.objects.filter(membership=self.membership).first()
+        self.assertIsNotNone(credit)
+        self.assertEqual(credit.status, MembershipCreditStatus.AVAILABLE)
+        self.assertGreater(credit.amount, Decimal("0"))
+
+    def test_post_with_extension_refund_dispatches_provider(self):
+        from system.models import (
+            MembershipCredit,
+            MembershipCreditStatus,
+            PaymentProvider,
+            PaymentStatus,
+        )
+        paid_order = RegistrationOrder.objects.create(
+            person=self.person,
+            plan=self.current_plan,
+            plan_price=self.current_plan.price,
+            total=self.current_plan.price,
+            payment_status=PaymentStatus.PAID,
+            payment_provider=PaymentProvider.STRIPE,
+            stripe_payment_intent_id="pi_test_123",
+            paid_at=timezone.now() - timedelta(days=5),
+        )
+        self._login()
+        with patch(
+            "system.services.plan_change.refund_order"
+        ) as mock_refund:
+            mock_refund.return_value = {
+                "refund_id": "re_test_abc",
+                "amount": Decimal("60.00"),
+                "order": paid_order,
+            }
+            response = self.client.post(
+                reverse("system:plan-change-select"),
+                {
+                    "selected_plan": self.downgrade_plan.pk,
+                    "leftover_action": "refund",
+                },
+            )
+        self.assertRedirects(response, reverse("system:student-home"))
+        mock_refund.assert_called_once()
+        credit = MembershipCredit.objects.filter(membership=self.membership).first()
+        self.assertIsNotNone(credit)
+        self.assertEqual(credit.status, MembershipCreditStatus.REFUNDED)
+        self.assertEqual(credit.refund_provider, "stripe")
+        self.assertEqual(credit.refund_provider_reference, "re_test_abc")
+
+    def test_post_without_selected_plan_redirects_with_error(self):
+        self._login()
+        response = self.client.post(reverse("system:plan-change-select"), {})
+        self.assertRedirects(response, reverse("system:plan-change-select"))
+        message_texts = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertTrue(any("Selecione" in text for text in message_texts))
+
+    def test_post_with_same_plan_redirects_with_error(self):
+        self._login()
+        response = self.client.post(
+            reverse("system:plan-change-select"),
+            {"selected_plan": self.current_plan.pk},
+        )
+        self.assertRedirects(response, reverse("system:plan-change-select"))
+
+    def test_post_with_inactive_plan_returns_404(self):
+        self.upgrade_plan.is_active = False
+        self.upgrade_plan.save(update_fields=["is_active"])
+        self._login()
+        response = self.client.post(
+            reverse("system:plan-change-select"),
+            {"selected_plan": self.upgrade_plan.pk},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_confirm_route_was_removed(self):
+        from django.urls import NoReverseMatch
+        with self.assertRaises(NoReverseMatch):
+            reverse("system:plan-change-confirm", args=[self.upgrade_plan.pk])

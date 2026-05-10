@@ -118,7 +118,6 @@ from .billing_admin_views import (
     RefundOrderActionView,
 )
 from .plan_change_views import (
-    PlanChangeConfirmView,
     PlanChangeSelectView,
 )
 from .person_views import (
@@ -237,7 +236,6 @@ __all__ = [
     "StudentBackorderConfirmView",
     "StudentBackorderListView",
     "StudentOrderHistoryView",
-    "PlanChangeConfirmView",
     "PlanChangeSelectView",
     "RootRedirectView",
     "StudentCheckinView",

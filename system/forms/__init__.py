@@ -7,7 +7,6 @@ from .category_forms import ClassCategoryForm
 from .class_forms import ClassGroupForm, ClassScheduleForm
 from .person_forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from .plan_forms import PlanForm
-from .payroll_forms import WithdrawalRequestForm
 from .product_forms import ProductCartForm, ProductForm, ProductVariantForm
 from .registration_forms import PortalRegistrationForm
 
@@ -26,5 +25,4 @@ __all__ = [
     "ProductCartForm",
     "ProductForm",
     "ProductVariantForm",
-    "WithdrawalRequestForm",
 ]

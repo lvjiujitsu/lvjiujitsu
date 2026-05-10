@@ -46,6 +46,9 @@ from .product_backorder import (
 from .membership import (
     Membership,
     MembershipCreatedVia,
+    MembershipCredit,
+    MembershipCreditSource,
+    MembershipCreditStatus,
     MembershipInvoice,
     MembershipStatus,
 )
@@ -107,6 +110,9 @@ __all__ = [
     "ApprovalType",
     "Membership",
     "MembershipCreatedVia",
+    "MembershipCredit",
+    "MembershipCreditSource",
+    "MembershipCreditStatus",
     "MembershipInvoice",
     "MembershipStatus",
     "OrderKind",

@@ -1,13 +1,14 @@
 import json
 from calendar import monthrange
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from system.constants import CLASS_STAFF_PERSON_TYPE_CODES
-from system.models.asaas import PayoutStatus, TeacherPayrollConfig
+from system.models.asaas import TeacherPayrollConfig
 from system.models.calendar import CheckinStatus, ClassCheckin, SpecialClassCheckin
 from system.models.class_membership import ClassEnrollment, EnrollmentStatus
 from system.models.registration_order import PaymentStatus, RegistrationOrder
@@ -20,6 +21,8 @@ PAYROLL_METHOD_STUDENT_PERCENTAGE = "student_percentage"
 PAYROLL_METHOD_PER_CLASS_ATTENDANCE = "per_class_attendance"
 PAYROLL_SCOPE_ALL = "all"
 PAYROLL_SCOPE_CLASS_GROUP = "class_group"
+PAYROLL_REFUND_NOTE_PREFIX = "PAYROLL_REFUND_ADJUSTMENT:"
+PAYROLL_REFUND_ABSORPTION_PREFIX = "PAYROLL_REFUND_ABSORPTION:"
 
 ZERO = Decimal("0.00")
 CENT = Decimal("0.01")
@@ -133,6 +136,61 @@ def save_person_payroll_config(person, cleaned_data):
     return config
 
 
+def append_order_refund_record(
+    order,
+    amount,
+    *,
+    source="",
+    cumulative=False,
+    reason="",
+    save=True,
+):
+    refund_amount = _money(amount)
+    if refund_amount <= ZERO:
+        raise PayrollRuleError("Valor de estorno deve ser maior que zero.")
+    payload = {
+        "version": PAYROLL_RULES_VERSION,
+        "amount": str(refund_amount),
+        "source": source or "manual",
+        "cumulative": bool(cumulative),
+        "reason": reason or "",
+        "recorded_at": timezone.now().isoformat(),
+    }
+    return _append_order_note_record(
+        order,
+        PAYROLL_REFUND_NOTE_PREFIX,
+        payload,
+        save=save,
+    )
+
+
+def record_refund_absorptions(calculation, *, source="monthly_payroll"):
+    remaining = min(
+        _money(calculation.get("refund_adjustment_total")),
+        _money(calculation.get("gross_total")),
+    )
+    if remaining <= ZERO:
+        return []
+
+    records = []
+    reference_month = calculation["reference_month"]
+    person = calculation["person"]
+    for entry in calculation.get("refund_entries", []):
+        if remaining <= ZERO:
+            break
+        amount = min(_money(entry["amount"]), remaining)
+        _append_order_refund_absorption(
+            entry["order"],
+            person,
+            amount,
+            reference_month=reference_month,
+            source=source,
+        )
+        records.append({"order": entry["order"], "amount": amount})
+        remaining -= amount
+    return records
+
+
 def _get_existing_config(person):
     try:
         return person.payroll_config
@@ -176,8 +234,9 @@ def get_payroll_form_initial(person):
     return initial
 
 
-def calculate_monthly_payroll(person, *, reference_month=None):
+def calculate_monthly_payroll(person, *, reference_month=None, as_of_date=None):
     reference_month = _first_of_month(reference_month or timezone.localdate())
+    as_of_date = as_of_date or timezone.localdate()
     try:
         config = person.payroll_config
     except TeacherPayrollConfig.DoesNotExist:
@@ -190,6 +249,8 @@ def calculate_monthly_payroll(person, *, reference_month=None):
     rules = _get_effective_rules(config)
     person_group_ids_by_code = _get_staff_class_group_ids_by_code(person)
     entries_by_rule = []
+    held_entries = []
+    refund_entries = []
     fixed_total = ZERO
     student_total = ZERO
     class_total = ZERO
@@ -203,18 +264,58 @@ def calculate_monthly_payroll(person, *, reference_month=None):
             if _rule_applies_to_person(rule, group_ids):
                 fixed_total += _money(rule["amount"])
         elif method == PAYROLL_METHOD_PER_STUDENT_FIXED:
-            count = _count_active_students(group_ids, reference_month)
-            student_ids.update(_active_student_ids(group_ids, reference_month))
+            rule_entries = _get_paid_student_entries(
+                group_ids,
+                reference_month,
+                as_of_date=as_of_date,
+            )
+            held_entries.extend(
+                _get_held_student_entries(
+                    group_ids,
+                    reference_month,
+                    as_of_date=as_of_date,
+                )
+            )
+            entry_student_ids = {entry["person"].pk for entry in rule_entries}
+            count = len(entry_student_ids)
+            student_ids.update(entry_student_ids)
             student_total += _money(rule["amount"]) * count
+            refund_entries.extend(
+                _get_refund_entries_for_rule(
+                    rule,
+                    group_ids,
+                    reference_month,
+                    person,
+                )
+            )
         elif method == PAYROLL_METHOD_STUDENT_PERCENTAGE:
-            rule_entries = _get_paid_student_entries(group_ids, reference_month)
+            rule_entries = _get_paid_student_entries(
+                group_ids,
+                reference_month,
+                as_of_date=as_of_date,
+            )
             entries_by_rule.extend(rule_entries)
+            held_entries.extend(
+                _get_held_student_entries(
+                    group_ids,
+                    reference_month,
+                    as_of_date=as_of_date,
+                )
+            )
             percentage = _percentage(rule["percentage"]) / Decimal("100")
             student_total += sum(
                 (_money(entry["amount"]) * percentage for entry in rule_entries),
                 ZERO,
             )
             student_ids.update(entry["person"].pk for entry in rule_entries)
+            refund_entries.extend(
+                _get_refund_entries_for_rule(
+                    rule,
+                    group_ids,
+                    reference_month,
+                    person,
+                )
+            )
         elif method == PAYROLL_METHOD_PER_CLASS_ATTENDANCE:
             count = _count_class_attendances(
                 person,
@@ -228,21 +329,38 @@ def calculate_monthly_payroll(person, *, reference_month=None):
     fixed_total = _money(fixed_total)
     student_total = _money(student_total)
     class_total = _money(class_total)
-    total = _money(fixed_total + student_total + class_total)
+    gross_total = _money(fixed_total + student_total + class_total)
+    refund_entries = _apply_recorded_absorptions(refund_entries, person)
+    refund_adjustment_total = _money(
+        sum((_money(entry["amount"]) for entry in refund_entries), ZERO)
+    )
+    held_total = _money(
+        sum((_money(entry["amount"]) for entry in held_entries), ZERO)
+    )
+    total_before_floor = _money(gross_total - refund_adjustment_total)
+    carryover_adjustment = _money(abs(min(total_before_floor, ZERO)))
+    total = _money(max(total_before_floor, ZERO))
     return {
         "person": person,
         "config": config,
         "reference_month": reference_month,
+        "as_of_date": as_of_date,
         "scheduled_for": _scheduled_date(reference_month, config.payment_day),
         "rules": rules,
         "rule_summaries": format_payroll_rules(config),
         "fixed_total": fixed_total,
         "student_total": student_total,
         "class_total": class_total,
+        "gross_total": gross_total,
+        "held_total": held_total,
+        "refund_adjustment_total": refund_adjustment_total,
+        "carryover_adjustment": carryover_adjustment,
         "total": total,
         "student_count": len(student_ids),
         "class_attendance_count": class_attendance_count,
         "entries": entries_by_rule,
+        "held_entries": held_entries,
+        "refund_entries": refund_entries,
     }
 
 
@@ -280,7 +398,10 @@ def render_payroll_summary(calculation):
         f"alunos R$ {calculation['student_total']} "
         f"({calculation['student_count']} aluno(s)), "
         f"aulas R$ {calculation['class_total']} "
-        f"({calculation['class_attendance_count']} presenca(s))."
+        f"({calculation['class_attendance_count']} presenca(s)), "
+        f"retido R$ {calculation['held_total']}, "
+        f"abatimentos R$ {calculation['refund_adjustment_total']}, "
+        f"total R$ {calculation['total']}."
     )
 
 
@@ -296,6 +417,8 @@ def get_staff_financial_context(person, *, reference_month=None):
         "calculation": calculation,
         "recent_payouts": recent_payouts,
         "linked_entries": calculation["entries"],
+        "held_entries": calculation["held_entries"],
+        "refund_entries": calculation["refund_entries"],
     }
 
 
@@ -383,11 +506,35 @@ def _active_student_ids(group_ids, reference_month):
     )
 
 
-def _get_paid_student_entries(group_ids, reference_month):
+def _get_paid_student_entries(group_ids, reference_month, *, as_of_date):
+    cutoff = _eligible_paid_cutoff(reference_month, as_of_date)
+    period_start, _ = _month_bounds(reference_month)
+    if not group_ids or cutoff < period_start:
+        return []
+    orders = _get_student_entry_orders(
+        period_start=period_start,
+        period_end=cutoff,
+    )
+    return _build_student_entries_from_orders(orders, group_ids, active_only=True)
+
+
+def _get_held_student_entries(group_ids, reference_month, *, as_of_date):
     if not group_ids:
         return []
     period_start, period_end = _month_bounds(reference_month)
-    orders = (
+    cutoff = _eligible_paid_cutoff(reference_month, as_of_date)
+    start = period_start
+    if cutoff >= period_start:
+        start = cutoff + timedelta(days=1)
+    end = min(period_end, as_of_date)
+    if end < start:
+        return []
+    orders = _get_student_entry_orders(period_start=start, period_end=end)
+    return _build_student_entries_from_orders(orders, group_ids, active_only=True)
+
+
+def _get_student_entry_orders(*, period_start, period_end):
+    return (
         RegistrationOrder.objects.filter(
             payment_status=PaymentStatus.PAID,
             paid_at__date__gte=period_start,
@@ -397,9 +544,16 @@ def _get_paid_student_entries(group_ids, reference_month):
         .select_related("person", "plan")
         .order_by("paid_at", "pk")
     )
+
+
+def _build_student_entries_from_orders(orders, group_ids, *, active_only):
     entries = []
     for order in orders:
-        linked_students = _get_order_students_for_groups(order.person, group_ids)
+        linked_students = _get_order_students_for_groups(
+            order.person,
+            group_ids,
+            active_only=active_only,
+        )
         if not linked_students:
             continue
         order_amount = _money(order.net_amount if order.net_amount else order.total)
@@ -412,24 +566,99 @@ def _get_paid_student_entries(group_ids, reference_month):
                     "amount": allocated,
                     "expected_deposit_date": order.expected_deposit_date,
                     "paid_at": order.paid_at,
+                    "payout_available_on": _payout_available_on(order),
                 }
             )
     return entries
 
 
-def _get_order_students_for_groups(billing_person, group_ids):
+def _get_refund_entries_for_rule(rule, group_ids, reference_month, person):
+    if not group_ids:
+        return []
+    orders = _get_refunded_orders(reference_month)
+    entries = []
+    for order in orders:
+        if not _refund_should_adjust_period(order, reference_month):
+            continue
+        refund_amount = _get_recorded_refund_amount(order)
+        if refund_amount <= ZERO:
+            continue
+        linked_students = _get_order_students_for_groups(
+            order.person,
+            group_ids,
+            active_only=False,
+        )
+        if not linked_students:
+            continue
+        ratio = _refund_ratio(order, refund_amount)
+        if ratio <= ZERO:
+            continue
+        entries.extend(
+            _build_refund_entries_for_order(
+                rule,
+                order,
+                linked_students,
+                ratio,
+            )
+        )
+    return entries
+
+
+def _get_refunded_orders(reference_month):
+    _, period_end = _month_bounds(reference_month)
+    return (
+        RegistrationOrder.objects.filter(
+            refunded_at__isnull=False,
+            refunded_at__date__lte=period_end,
+            paid_at__isnull=False,
+            total__gt=0,
+        )
+        .select_related("person", "plan")
+        .order_by("refunded_at", "pk")
+    )
+
+
+def _build_refund_entries_for_order(rule, order, linked_students, ratio):
+    entries = []
+    if rule["method"] == PAYROLL_METHOD_STUDENT_PERCENTAGE:
+        percentage = _percentage(rule["percentage"]) / Decimal("100")
+        order_amount = _money(order.net_amount if order.net_amount else order.total)
+        allocated = _money(order_amount / Decimal(len(linked_students)))
+        adjustment = _money(allocated * percentage * ratio)
+    elif rule["method"] == PAYROLL_METHOD_PER_STUDENT_FIXED:
+        adjustment = _money(_money(rule["amount"]) * ratio)
+    else:
+        return entries
+    if adjustment <= ZERO:
+        return entries
+    refunded_amount = _get_recorded_refund_amount(order)
+    for student in linked_students:
+        entries.append(
+            {
+                "person": student,
+                "order": order,
+                "amount": adjustment,
+                "refunded_amount": refunded_amount,
+                "refunded_at": order.refunded_at,
+            }
+        )
+    return entries
+
+
+def _get_order_students_for_groups(billing_person, group_ids, *, active_only=True):
     candidate_ids = {billing_person.pk}
     candidate_ids.update(
         billing_person.outgoing_relationships.values_list("target_person_id", flat=True)
     )
-    enrollments = (
-        ClassEnrollment.objects.filter(
-            person_id__in=candidate_ids,
-            class_group_id__in=group_ids,
-            status=EnrollmentStatus.ACTIVE,
-        )
-        .select_related("person")
-        .order_by("person__full_name", "person_id")
+    enrollments = ClassEnrollment.objects.filter(
+        person_id__in=candidate_ids,
+        class_group_id__in=group_ids,
+    )
+    if active_only:
+        enrollments = enrollments.filter(status=EnrollmentStatus.ACTIVE)
+    enrollments = enrollments.select_related("person").order_by(
+        "person__full_name",
+        "person_id",
     )
     students = []
     seen = set()
@@ -439,6 +668,156 @@ def _get_order_students_for_groups(billing_person, group_ids):
         students.append(enrollment.person)
         seen.add(enrollment.person_id)
     return students
+
+
+def _eligible_paid_cutoff(reference_month, as_of_date):
+    _, period_end = _month_bounds(reference_month)
+    cutoff = as_of_date - timedelta(days=_payroll_refund_hold_days())
+    return min(period_end, cutoff)
+
+
+def _payroll_refund_hold_days():
+    return max(int(getattr(settings, "PAYROLL_REFUND_HOLD_DAYS", 7) or 0), 0)
+
+
+def _payout_available_on(order):
+    paid_on = _local_date(order.paid_at)
+    if paid_on is None:
+        return None
+    return paid_on + timedelta(days=_payroll_refund_hold_days())
+
+
+def _refund_should_adjust_period(order, reference_month):
+    period_start, _ = _month_bounds(reference_month)
+    paid_on = _local_date(order.paid_at)
+    refunded_on = _local_date(order.refunded_at)
+    if paid_on is None or refunded_on is None:
+        return False
+    if paid_on >= period_start and order.payment_status == PaymentStatus.REFUNDED:
+        return False
+    return True
+
+
+def _refund_ratio(order, refund_amount):
+    total = _money(order.total)
+    if total <= ZERO:
+        return ZERO
+    return min(_money(refund_amount), total) / total
+
+
+def _apply_recorded_absorptions(entries, person):
+    if not entries:
+        return []
+    adjusted = []
+    absorbed_by_order = {}
+    for entry in entries:
+        order = entry["order"]
+        if order.pk not in absorbed_by_order:
+            absorbed_by_order[order.pk] = _get_recorded_absorption_amount(order, person)
+        remaining_absorbed = absorbed_by_order[order.pk]
+        amount = _money(entry["amount"])
+        if remaining_absorbed >= amount:
+            absorbed_by_order[order.pk] = remaining_absorbed - amount
+            continue
+        if remaining_absorbed > ZERO:
+            amount -= remaining_absorbed
+            absorbed_by_order[order.pk] = ZERO
+        adjusted_entry = dict(entry)
+        adjusted_entry["amount"] = _money(amount)
+        adjusted.append(adjusted_entry)
+    return adjusted
+
+
+def _get_recorded_refund_amount(order):
+    records = _read_order_note_records(order.notes, PAYROLL_REFUND_NOTE_PREFIX)
+    incremental_total = ZERO
+    cumulative_total = ZERO
+    for record in records:
+        amount = _money(record.get("amount"))
+        if record.get("cumulative"):
+            cumulative_total = max(cumulative_total, amount)
+        else:
+            incremental_total += amount
+    recorded_total = _money(max(incremental_total, cumulative_total))
+    if recorded_total > ZERO:
+        return recorded_total
+    if order.refunded_at and order.payment_status == PaymentStatus.REFUNDED:
+        return _money(order.total)
+    return ZERO
+
+
+def _get_recorded_absorption_amount(order, person):
+    records = _read_order_note_records(order.notes, PAYROLL_REFUND_ABSORPTION_PREFIX)
+    return _money(
+        sum(
+            (
+                _money(record.get("amount"))
+                for record in records
+                if int(record.get("person_id") or 0) == person.pk
+            ),
+            ZERO,
+        )
+    )
+
+
+def _append_order_refund_absorption(
+    order,
+    person,
+    amount,
+    *,
+    reference_month,
+    source,
+):
+    absorbed_amount = _money(amount)
+    if absorbed_amount <= ZERO:
+        return order
+    payload = {
+        "version": PAYROLL_RULES_VERSION,
+        "amount": str(absorbed_amount),
+        "person_id": person.pk,
+        "reference_month": reference_month.isoformat(),
+        "source": source or "monthly_payroll",
+        "recorded_at": timezone.now().isoformat(),
+    }
+    return _append_order_note_record(
+        order,
+        PAYROLL_REFUND_ABSORPTION_PREFIX,
+        payload,
+        save=True,
+    )
+
+
+def _append_order_note_record(order, prefix, payload, *, save):
+    line = prefix + json.dumps(payload, sort_keys=True)
+    current_notes = (order.notes or "").strip()
+    order.notes = "\n".join([item for item in (current_notes, line) if item])
+    if save:
+        order.save(update_fields=["notes", "updated_at"])
+    return order
+
+
+def _read_order_note_records(notes, prefix):
+    records = []
+    for line in (notes or "").splitlines():
+        if not line.startswith(prefix):
+            continue
+        raw_payload = line[len(prefix):]
+        try:
+            payload = json.loads(raw_payload)
+        except json.JSONDecodeError as exc:
+            raise PayrollRuleError("Registro de estorno inválido.") from exc
+        if not isinstance(payload, dict):
+            raise PayrollRuleError("Registro de estorno deve ser um objeto.")
+        records.append(payload)
+    return records
+
+
+def _local_date(value):
+    if value is None:
+        return None
+    if isinstance(value, date) and not hasattr(value, "date"):
+        return value
+    return timezone.localtime(value).date()
 
 
 def _count_class_attendances(person, group_ids, reference_month, *, include_special):
@@ -472,10 +851,16 @@ def _empty_calculation(person, reference_month):
         "fixed_total": ZERO,
         "student_total": ZERO,
         "class_total": ZERO,
+        "gross_total": ZERO,
+        "held_total": ZERO,
+        "refund_adjustment_total": ZERO,
+        "carryover_adjustment": ZERO,
         "total": ZERO,
         "student_count": 0,
         "class_attendance_count": 0,
         "entries": [],
+        "held_entries": [],
+        "refund_entries": [],
     }
 
 

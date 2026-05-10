@@ -414,90 +414,168 @@
 .billing-tab-panel { display: none; }
 .billing-tab-panel--active { display: block; }
 
-/* ── Plan change cards ── */
-.plan-change-grid {
+/* ── Plan change current card ── */
+.plan-change-current-card {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
-}
-.plan-change-card {
-    border: 2px solid var(--border-soft, #e5e7eb);
-    border-radius: 12px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-.plan-change-card--upgrade { border-color: #16a34a; }
-.plan-change-card--downgrade { border-color: #d97706; }
-.plan-change-card--free { border-color: #2563eb; }
-
-.plan-change-badge {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-.plan-change-badge--upgrade { background: #dcfce7; color: #166534; }
-.plan-change-badge--downgrade { background: #fef3c7; color: #92400e; }
-.plan-change-badge--free { background: #dbeafe; color: #1e40af; }
-
-.proration-breakdown {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.4rem 1rem;
-    padding: 1rem;
-    background: var(--surface-soft, #f7f7f9);
-    border-radius: 10px;
-    font-size: 0.9rem;
-}
-.proration-breakdown dt { color: var(--text-muted, #6b7280); }
-.proration-breakdown dd { font-weight: 600; text-align: right; margin: 0; }
-.proration-total {
-    border-top: 2px solid var(--border-soft, #e5e7eb);
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    font-size: 1.05rem;
+    gap: 0.5rem;
 }
 
-/* ── Plan change action row ── */
-.plan-change-action-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.plan-change-net {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.plan-change-net-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
+.plan-change-current-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
     letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-muted, #6b7280);
+}
+
+.plan-change-current-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.plan-change-current-cycle {
+    font-size: 0.85rem;
+    color: var(--text-muted, #6b7280);
+}
+
+.plan-change-current-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin: 0.5rem 0 0 0;
+}
+
+.plan-change-current-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.plan-change-current-grid dt {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #6b7280);
+    margin: 0;
+}
+
+.plan-change-current-grid dd {
+    margin: 0;
+    font-size: 1rem;
     font-weight: 700;
 }
 
-.plan-change-net-value {
-    font-size: 1.1rem;
+.plan-change-current-balance {
+    color: #166534;
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+}
+
+/* ── Leftover action panel ── */
+.plan-leftover-action {
+    display: grid;
+    gap: 0.5rem;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px dashed var(--silver-strong, #b9bec7);
+    background: rgba(0, 0, 0, 0.02);
+    margin-top: 0.5rem;
+}
+
+.plan-leftover-action-heading {
+    margin: 0;
+    font-size: 0.95rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
+}
+
+.plan-leftover-action-description {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted, #6b7280);
+    line-height: 1.4;
+}
+
+.plan-leftover-action-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.plan-leftover-option {
+    appearance: none;
+    border: 1px solid var(--border, rgba(15, 15, 16, 0.08));
+    background: var(--panel-solid, #fff);
+    color: var(--text, #121315);
+    border-radius: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.18s ease, background 0.18s ease;
+    display: grid;
+    gap: 4px;
+}
+
+.plan-leftover-option:hover:not(.is-disabled) {
+    border-color: var(--silver-strong, #b9bec7);
+}
+
+.plan-leftover-option.is-selected {
+    border-color: var(--text, #121315);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+}
+
+.plan-leftover-option.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.plan-leftover-option-title {
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.plan-leftover-option-description {
+    font-size: 0.74rem;
+    color: var(--text-muted, #6b7280);
+    line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+    .plan-leftover-action-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Plan change CTA row ── */
+.plan-change-cta-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.plan-change-cta-row .btn {
+    flex: 1 1 220px;
+}
+
+.plan-change-empty {
+    padding: 1rem;
+    border: 1px dashed var(--border-soft, #e5e7eb);
+    border-radius: 12px;
+    color: var(--text-muted, #6b7280);
+    text-align: center;
 }
 
 @media (max-width: 560px) {
-    .plan-change-action-row {
+    .plan-change-cta-row {
         flex-direction: column;
         align-items: stretch;
     }
-    .plan-change-action-row .btn {
+    .plan-change-cta-row .btn {
         width: 100%;
-        text-align: center;
+        flex: 0 0 auto;
     }
 }
 

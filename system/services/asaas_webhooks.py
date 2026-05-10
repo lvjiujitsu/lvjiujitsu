@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -12,6 +13,7 @@ from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.asaas_payroll import mark_payout_failed, mark_payout_paid
 from system.services.financial_transactions import apply_order_financials
 from system.services.membership import activate_membership_from_paid_order
+from system.services.payroll_rules import append_order_refund_record
 from system.services.registration_checkout import apply_order_variant_stock
 
 
@@ -31,6 +33,11 @@ PAYMENT_FAILURE_EVENTS = {
     "PAYMENT_CHARGEBACK_DISPUTE",
 }
 
+PAYMENT_REFUND_EVENTS = {
+    "PAYMENT_REFUNDED",
+    "PAYMENT_PARTIALLY_REFUNDED",
+}
+
 TRANSFER_SUCCESS_EVENTS = {
     "TRANSFER_DONE",
     "TRANSFER_PAID",
@@ -43,7 +50,9 @@ TRANSFER_FAILURE_EVENTS = {
     "TRANSFER_DENIED",
 }
 
-ACTIONABLE_PAYMENT_EVENTS = PAYMENT_RECEIVED_EVENTS | PAYMENT_FAILURE_EVENTS
+ACTIONABLE_PAYMENT_EVENTS = (
+    PAYMENT_RECEIVED_EVENTS | PAYMENT_FAILURE_EVENTS | PAYMENT_REFUND_EVENTS
+)
 ACTIONABLE_TRANSFER_EVENTS = TRANSFER_SUCCESS_EVENTS | TRANSFER_FAILURE_EVENTS
 
 
@@ -168,7 +177,40 @@ def _handle_payment_event(event_type, event):
         if order.payment_status == PaymentStatus.PENDING:
             order.payment_status = PaymentStatus.FAILED
             order.save(update_fields=["payment_status", "updated_at"])
+    elif event_type in PAYMENT_REFUND_EVENTS:
+        refunded_amount = _extract_refund_amount(event_type, payment, order)
+        order.refunded_at = timezone.now()
+        if event_type != "PAYMENT_PARTIALLY_REFUNDED":
+            order.payment_status = PaymentStatus.REFUNDED
+        if refunded_amount > Decimal("0"):
+            append_order_refund_record(
+                order,
+                refunded_amount,
+                source="asaas_webhook",
+                cumulative=False,
+                save=False,
+            )
+        order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
     return order
+
+
+def _extract_refund_amount(event_type, payment, order):
+    for key in (
+        "refundedValue",
+        "refundValue",
+        "valueRefunded",
+        "amountRefunded",
+    ):
+        raw_value = payment.get(key)
+        if raw_value in (None, ""):
+            continue
+        try:
+            return Decimal(str(raw_value).replace(",", ".")).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError) as exc:
+            raise ValueError(f"Valor de estorno Asaas inválido: {key}") from exc
+    if event_type == "PAYMENT_REFUNDED":
+        return Decimal(order.total or 0).quantize(Decimal("0.01"))
+    return Decimal("0.00")
 
 
 def _handle_transfer_event(event_type, event):

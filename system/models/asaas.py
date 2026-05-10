@@ -24,7 +24,6 @@ class PayoutStatus(models.TextChoices):
 
 class PayoutKind(models.TextChoices):
     PAYROLL = "payroll", "Folha mensal"
-    WITHDRAWAL = "withdrawal", "Saque parcial"
 
 
 class TeacherBankAccount(TimeStampedModel):

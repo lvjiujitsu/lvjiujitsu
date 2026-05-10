@@ -322,62 +322,53 @@ class AsaasWebhookTests(TestCase):
         self.assertEqual(self.payout.status, PayoutStatus.FAILED)
         self.assertIn("invalid", self.payout.failure_reason)
 
-    def test_withdrawal_happy_path(self):
-        person = _make_person(full_name="Prof Sacador", cpf="11122233344", type_code="instructor")
-        TeacherBankAccount.objects.create(
-            person=person,
-            pix_key="chave",
-            pix_key_type=PixKeyType.EVP,
+    def test_payment_refunded_records_payroll_adjustment(self):
+        self.order.payment_status = PaymentStatus.PAID
+        self.order.paid_at = timezone.now()
+        self.order.net_amount = Decimal("98.01")
+        self.order.save(
+            update_fields=[
+                "payment_status",
+                "paid_at",
+                "net_amount",
+                "updated_at",
+            ]
         )
-        TeacherPayrollConfig.objects.create(
-            person=person,
-            monthly_salary=Decimal("3000.00"),
-            payment_day=5,
-        )
-        available, base, committed = asaas_payroll.compute_available_balance(person)
-        self.assertEqual(base, Decimal("3000.00"))
-        self.assertEqual(committed, Decimal("0"))
-        self.assertEqual(available, Decimal("3000.00"))
+        event = {
+            "id": "evt_refund",
+            "event": "PAYMENT_REFUNDED",
+            "payment": {"id": "pay_x"},
+        }
 
-        payout = asaas_payroll.request_withdrawal(
-            person, Decimal("500.00"), notes="emergência"
-        )
-        self.assertEqual(payout.kind, PayoutKind.WITHDRAWAL)
-        self.assertEqual(payout.status, PayoutStatus.PENDING)
+        result = asaas_webhooks.process_asaas_event(event)
 
-        available2, _, committed2 = asaas_payroll.compute_available_balance(person)
-        self.assertEqual(committed2, Decimal("500.00"))
-        self.assertEqual(available2, Decimal("2500.00"))
+        self.order.refresh_from_db()
+        self.assertEqual(result["order"], self.order)
+        self.assertEqual(self.order.payment_status, PaymentStatus.REFUNDED)
+        self.assertIsNotNone(self.order.refunded_at)
+        self.assertIn("PAYROLL_REFUND_ADJUSTMENT", self.order.notes)
+        self.assertIn('"amount": "100.00"', self.order.notes)
 
-    def test_withdrawal_exceeds_balance(self):
-        person = _make_person(full_name="P2", cpf="11122233300", type_code="instructor")
-        TeacherBankAccount.objects.create(
-            person=person,
-            pix_key="x",
-            pix_key_type=PixKeyType.EVP,
-        )
-        TeacherPayrollConfig.objects.create(
-            person=person,
-            monthly_salary=Decimal("1000.00"),
-            payment_day=5,
-        )
-        with self.assertRaises(asaas_payroll.PayrollError):
-            asaas_payroll.request_withdrawal(person, Decimal("2000.00"))
+    def test_payment_partially_refunded_records_partial_payroll_adjustment(self):
+        self.order.payment_status = PaymentStatus.PAID
+        self.order.paid_at = timezone.now()
+        self.order.save(update_fields=["payment_status", "paid_at", "updated_at"])
+        event = {
+            "id": "evt_partial_refund",
+            "event": "PAYMENT_PARTIALLY_REFUNDED",
+            "payment": {"id": "pay_x", "refundedValue": "40.00"},
+        }
 
-    def test_withdrawal_without_bank_account(self):
-        person = _make_person(full_name="P3", cpf="11122233311", type_code="instructor")
-        TeacherPayrollConfig.objects.create(
-            person=person,
-            monthly_salary=Decimal("1000.00"),
-            payment_day=5,
-        )
-        with self.assertRaises(asaas_payroll.PayrollError):
-            asaas_payroll.request_withdrawal(person, Decimal("100.00"))
+        asaas_webhooks.process_asaas_event(event)
 
-    def test_withdrawal_without_config(self):
-        person = _make_person(full_name="P4", cpf="11122233322", type_code="instructor")
-        with self.assertRaises(asaas_payroll.PayrollError):
-            asaas_payroll.request_withdrawal(person, Decimal("100.00"))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+        self.assertIsNotNone(self.order.refunded_at)
+        self.assertIn("PAYROLL_REFUND_ADJUSTMENT", self.order.notes)
+        self.assertIn('"amount": "40.00"', self.order.notes)
+
+    def test_withdrawal_service_is_removed(self):
+        self.assertFalse(hasattr(asaas_payroll, "request_withdrawal"))
 
     def test_unknown_payment_id_ignored(self):
         event = {

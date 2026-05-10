@@ -1,0 +1,237 @@
+.plan-selector {
+  display: grid;
+  gap: 16px;
+}
+
+.plan-selector-row {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-selector-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-selector-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-selector-chip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.plan-selector-chip:hover {
+  border-color: var(--silver-strong);
+}
+
+.plan-selector-chip.is-selected {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--panel-solid);
+}
+
+.plan-selector-chip:active {
+  transform: translateY(1px);
+}
+
+.plan-selector-payment-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 560px) {
+  .plan-selector-payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.plan-selector-payment-card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+
+.plan-selector-payment-card:hover {
+  border-color: var(--silver-strong);
+}
+
+.plan-selector-payment-card.is-selected {
+  border-color: var(--text);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 60%),
+    var(--panel-solid);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.plan-selector-payment-card:active {
+  transform: translateY(1px);
+}
+
+.plan-selector-payment-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.plan-selector-payment-icon .checkout-payment-icon-image {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.plan-selector-payment-info {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}
+
+.plan-selector-payment-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.plan-selector-payment-subtitle {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.plan-selector-payment-price {
+  font-size: 1.25rem;
+  font-weight: 800;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+
+.plan-selector-payment-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.plan-selector-summary {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--silver-strong);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.plan-selector-summary-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.plan-selector-summary-name {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.plan-selector-summary-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.plan-selector-summary-total {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.plan-selector-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.plan-selector-summary-breakdown {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--silver-strong);
+  font-size: 0.84rem;
+}
+
+.plan-selector-summary-breakdown dt {
+  margin: 0;
+  color: var(--muted);
+}
+
+.plan-selector-summary-breakdown dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.plan-selector-summary-breakdown .plan-selector-summary-net {
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.plan-selector-summary-net-label {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.plan-selector-summary-net--upgrade {
+  color: #b45309;
+}
+
+.plan-selector-summary-net--downgrade,
+.plan-selector-summary-net--free {
+  color: #166534;
+}
+
+.plan-selector-summary-row-muted {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+@media (max-width: 360px) {
+  .plan-selector-payment-grid {
+    grid-template-columns: 1fr;
+  }
+}

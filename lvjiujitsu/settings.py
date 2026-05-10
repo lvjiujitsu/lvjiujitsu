@@ -97,6 +97,7 @@ SPECIAL_CLASS_DEFAULT_DURATION_MINUTES = config(
     cast=int,
 )
 SEED_TEST_PORTAL_PASSWORD = config("SEED_TEST_PORTAL_PASSWORD", default="123456")
+PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=int)
 
 
 # Application definition

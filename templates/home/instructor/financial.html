@@ -12,7 +12,7 @@
     <div class="billing-screen__header">
         <p class="panel-eyebrow">Equipe</p>
         <h1>Meu financeiro</h1>
-        <p>Consulte o fechamento mensal, entradas vinculadas e solicitações de repasse.</p>
+        <p>Consulte o fechamento mensal, entradas vinculadas, cobertura de estorno e abatimentos.</p>
     </div>
 
     {% if messages %}
@@ -42,7 +42,21 @@
                 <strong>R$ {{ committed_total }}</strong>
             </div>
             <div class="billing-summary__item">
-                <span class="billing-summary__label">Disponível agora</span>
+                <span class="billing-summary__label">Retido em cobertura</span>
+                <strong>R$ {{ calculation.held_total }}</strong>
+            </div>
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Abatimentos por estorno</span>
+                <strong>R$ {{ calculation.refund_adjustment_total }}</strong>
+            </div>
+            {% if calculation.carryover_adjustment %}
+                <div class="billing-summary__item billing-summary__item--warning">
+                    <span class="billing-summary__label">A abater nos próximos pagamentos</span>
+                    <strong>R$ {{ calculation.carryover_adjustment }}</strong>
+                </div>
+            {% endif %}
+            <div class="billing-summary__item">
+                <span class="billing-summary__label">Disponível para repasse</span>
                 <strong>R$ {{ available_balance }}</strong>
             </div>
             <div class="billing-summary__item">
@@ -61,33 +75,6 @@
                 </div>
             {% endif %}
         </div>
-
-        {% if bank %}
-        <section class="billing-block">
-            <h3>Solicitar saque antecipado</h3>
-            <form method="post" class="billing-inline-form">
-                {% csrf_token %}
-                <label>
-                    Valor (R$)
-                    {{ form.amount }}
-                </label>
-                <label style="flex:1;">
-                    Justificativa
-                    {{ form.notes }}
-                </label>
-                <button type="submit" class="btn btn--primary">Solicitar</button>
-            </form>
-            {% if form.errors %}
-                <ul class="billing-messages">
-                    {% for field, errors in form.errors.items %}
-                        {% for err in errors %}
-                            <li class="error">{{ field }}: {{ err }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        </section>
-        {% endif %}
     {% else %}
         <div class="billing-alert billing-alert--warning">
             Seu repasse ainda não foi configurado. Procure o administrativo.
@@ -106,6 +93,7 @@
                             <th>Valor base</th>
                             <th>Pago em</th>
                             <th>Previsão de crédito</th>
+                            <th>Liberado para repasse</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -116,6 +104,7 @@
                                 <td>R$ {{ entry.amount|floatformat:2 }}</td>
                                 <td>{{ entry.paid_at|date:"d/m/Y"|default:"—" }}</td>
                                 <td>{{ entry.expected_deposit_date|date:"d/m/Y"|default:"—" }}</td>
+                                <td>{{ entry.payout_available_on|date:"d/m/Y"|default:"—" }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -123,6 +112,68 @@
             </div>
         {% else %}
             <p class="billing-empty">Nenhuma entrada vinculada ao fechamento atual.</p>
+        {% endif %}
+    </section>
+
+    <section class="billing-history">
+        <h3>Entradas em cobertura de estorno</h3>
+        {% if held_entries %}
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Pedido</th>
+                            <th>Valor base</th>
+                            <th>Pago em</th>
+                            <th>Liberado para repasse</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in held_entries %}
+                            <tr>
+                                <td>{{ entry.person.full_name }}</td>
+                                <td>#{{ entry.order.pk }} · {{ entry.order.plan.display_name|default:"—" }}</td>
+                                <td>R$ {{ entry.amount|floatformat:2 }}</td>
+                                <td>{{ entry.paid_at|date:"d/m/Y"|default:"—" }}</td>
+                                <td>{{ entry.payout_available_on|date:"d/m/Y"|default:"—" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhuma entrada aguardando cobertura de estorno.</p>
+        {% endif %}
+    </section>
+
+    <section class="billing-history">
+        <h3>Abatimentos por estorno</h3>
+        {% if refund_entries %}
+            <div class="billing-table-wrap">
+                <table class="billing-table billing-table--compact">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Pedido</th>
+                            <th>Valor abatido</th>
+                            <th>Estornado em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in refund_entries %}
+                            <tr>
+                                <td>{{ entry.person.full_name }}</td>
+                                <td>#{{ entry.order.pk }} · {{ entry.order.plan.display_name|default:"—" }}</td>
+                                <td>R$ {{ entry.amount|floatformat:2 }}</td>
+                                <td>{{ entry.refunded_at|date:"d/m/Y"|default:"—" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="billing-empty">Nenhum abatimento por estorno no fechamento atual.</p>
         {% endif %}
     </section>
 

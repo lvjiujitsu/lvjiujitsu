@@ -9,6 +9,7 @@ from django.utils import timezone
 from system.models.membership import Membership, MembershipStatus
 from system.models.plan import SubscriptionPlan
 from system.models.registration_order import PaymentStatus, RegistrationOrder
+from system.services.payroll_rules import append_order_refund_record
 
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,14 @@ def refund_order(order, *, amount=None, admin_user=None, reason=""):
         order.payment_status = PaymentStatus.REFUNDED
     if reason:
         order.notes = (order.notes + "\n" + f"Estorno: {reason}").strip()
+    append_order_refund_record(
+        order,
+        refunded_amount,
+        source="stripe_admin",
+        cumulative=False,
+        reason=reason,
+        save=False,
+    )
     order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
     return {"refund_id": refund["id"], "amount": refunded_amount, "order": order}
 
