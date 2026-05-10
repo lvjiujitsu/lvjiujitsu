@@ -51,6 +51,22 @@
 
   var productCatalogNode = document.getElementById('product-catalog');
   var productCatalog = productCatalogNode ? JSON.parse(productCatalogNode.textContent) : [];
+
+  var postPaymentNode = document.getElementById('post-payment-data');
+  var postPaymentData = postPaymentNode ? JSON.parse(postPaymentNode.textContent) : {};
+  var postPlanPaymentComplete = postPaymentData.postPlanPaymentComplete === true;
+  var postMaterialsPaymentComplete = postPaymentData.postMaterialsPaymentComplete === true;
+  var isPostPayment = postPlanPaymentComplete || postMaterialsPaymentComplete;
+  var materialsCheckoutUrl = postPaymentData.materialsCheckoutUrl || '';
+  var finalizeUrl = postPaymentData.finalizeUrl || '';
+  var postPaymentDashboardUrl = postPaymentData.dashboardUrl || '';
+
+  var feeConfigNode = document.getElementById('fee-config');
+  var feeConfig = feeConfigNode ? JSON.parse(feeConfigNode.textContent) : {
+    pixFixedFee: 1.99, creditCardPercentFee: 0.0399, creditCardFixedFee: 0.39,
+    creditCardFeePassThrough: true, pixFeePassThrough: true
+  };
+
   var checkoutActionInput = document.getElementById('checkout-action');
   var checkoutActionButtons = Array.from(form.querySelectorAll('[data-checkout-action]'));
   var checkoutActionHelp = form.querySelector('[data-checkout-action-help]');
@@ -76,6 +92,7 @@
   var REGISTRATION_COMPLETED_KEY = 'lv-registration-completed';
   var draftSaveTimeout = null;
   var activeMaterialCategory = null;
+  var postPaymentMaterialsMethod = '';
 
   // ============================================================================
   // Step Definitions
@@ -213,6 +230,20 @@
       title: 'Resumo',
       panelSelector: '[data-panel="summary"]',
       requiredFields: []
+    },
+    materials_post_payment: {
+      key: 'materials_post_payment',
+      label: 'Materiais',
+      title: 'Materiais (opcional)',
+      panelSelector: '[data-panel="materials-post-payment"]',
+      requiredFields: []
+    },
+    finalize_step: {
+      key: 'finalize_step',
+      label: 'Finalizar',
+      title: 'Finalizar cadastro',
+      panelSelector: '[data-panel="finalize"]',
+      requiredFields: []
     }
   };
 
@@ -242,7 +273,6 @@
       }
       trimExtraDependentsToCount(dependentCount);
       steps.push(STEP_DEFINITIONS.plan);
-      steps.push(STEP_DEFINITIONS.materials);
     } else if (profile === 'holder') {
       if (hasDependentFlow) {
         // TITULAR + DEPENDENTE(S): fluxo completo por pessoa -> Plano -> Resumo
@@ -269,9 +299,17 @@
         trimExtraDependentsToCount(1);
       }
       steps.push(STEP_DEFINITIONS.plan);
-      steps.push(STEP_DEFINITIONS.materials);
     } else {
       trimExtraDependentsToCount(1);
+    }
+
+    // Em modo pós-pagamento, adiciona etapas de conclusão ao fluxo normal
+    // para que o usuário veja o contexto completo do seu cadastro.
+    if (postMaterialsPaymentComplete) {
+      steps.push(STEP_DEFINITIONS.finalize_step);
+    } else if (postPlanPaymentComplete) {
+      steps.push(STEP_DEFINITIONS.materials_post_payment);
+      steps.push(STEP_DEFINITIONS.finalize_step);
     }
 
     syncExtraDependentsPayload();
@@ -326,7 +364,8 @@
       button.appendChild(indexSpan);
       button.appendChild(labelSmall);
       button.addEventListener('click', function () {
-        if (index < currentStepIndex) {
+        // Em modo pós-pagamento, permite clicar em qualquer etapa (para ver dados)
+        if (isPostPayment || index < currentStepIndex) {
           goToStep(index);
         }
       });
@@ -378,6 +417,12 @@
     if (currentStep.key === 'materials') {
       renderProductList();
     }
+    if (currentStep.key === 'materials_post_payment') {
+      renderPostPaymentProductList();
+    }
+    if (currentStep.key === 'finalize_step') {
+      renderFinalizePanel();
+    }
   }
 
   function updateProgressBar() {
@@ -389,20 +434,47 @@
   function updateNavigation() {
     var isFirstStep = currentStepIndex === 0;
     var isLastStep = currentStepIndex === activeSteps.length - 1;
-    
+    var currentStep = activeSteps[currentStepIndex];
+
+    // Modo pós-pagamento: exibe todas as etapas do fluxo normal
+    // como contexto; permite navegar pelo histórico e avançar até a conclusão.
+    if (isPostPayment) {
+      var isMaterialsPostPayment = currentStep && currentStep.key === 'materials_post_payment';
+      var isFinalizeStep = currentStep && currentStep.key === 'finalize_step';
+      var isPrePaymentStep = !isMaterialsPostPayment && !isFinalizeStep;
+
+      // Botão Voltar oculto em todo o modo pós-pagamento (navegação via indicadores)
+      if (backButton) { backButton.classList.add('is-hidden'); backButton.hidden = true; }
+
+      if (nextButton) {
+        var showNext = isPrePaymentStep;
+        nextButton.classList.toggle('is-hidden', !showNext);
+        nextButton.hidden = !showNext;
+        nextButton.textContent = 'Avançar';
+      }
+
+      if (submitButton) {
+        submitButton.classList.toggle('is-hidden', !isFinalizeStep);
+        submitButton.hidden = !isFinalizeStep;
+        if (isFinalizeStep) submitButton.textContent = 'Finalizar cadastro';
+      }
+      return;
+    }
+
     if (backButton) {
       backButton.classList.toggle('is-hidden', isFirstStep);
       backButton.hidden = isFirstStep;
     }
-    
+
     if (nextButton) {
       nextButton.classList.toggle('is-hidden', isLastStep);
       nextButton.hidden = isLastStep;
     }
-    
+
     if (submitButton) {
-      submitButton.classList.toggle('is-hidden', !isLastStep);
-      submitButton.hidden = !isLastStep;
+      var showSubmit = isLastStep && !(currentStep && currentStep.key === 'plan');
+      submitButton.classList.toggle('is-hidden', !showSubmit);
+      submitButton.hidden = !showSubmit;
     }
   }
 
@@ -1038,6 +1110,11 @@
 
   function updateDraftNoteVisibility() {
     if (!draftNote) return;
+    // Em modo pós-pagamento o rascunho é apenas contexto; oculta o botão Descartar
+    if (isPostPayment) {
+      draftNote.classList.add('is-hidden');
+      return;
+    }
     var shouldShow = hasAnyFieldFilled();
     draftNote.classList.toggle('is-hidden', !shouldShow);
   }
@@ -1084,24 +1161,25 @@
     return values;
   }
 
-  function restoreDraft() {
+  function restoreDraft(options) {
+    var skipStepRestore = options && options.skipStepRestore;
     try {
       var raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
-      
+
       var draft = JSON.parse(raw);
       if (!draft || Date.now() - draft.savedAt > DRAFT_TTL_MS) {
         localStorage.removeItem(DRAFT_KEY);
         return;
       }
-      
+
       // Restore fields
       Object.keys(draft.fields).forEach(function (name) {
         var value = draft.fields[name];
         var field = form.querySelector('[name="' + name + '"]');
-        
+
         if (!field) return;
-        
+
         if (field.type === 'radio') {
           var radio = form.querySelector('[name="' + name + '"][value="' + value + '"]');
           if (radio) radio.checked = true;
@@ -1118,20 +1196,24 @@
           field.value = value;
         }
       });
-      
+
       // Restore extra dependents
       if (Array.isArray(draft.extraDependents)) {
         extraDependents = draft.extraDependents;
       }
-      
+
+      if (skipStepRestore) {
+        return;
+      }
+
       // Restore step
       activeSteps = computeActiveSteps();
       syncExtraDependentsPayload();
       currentStepIndex = Math.min(draft.currentStep || 0, activeSteps.length - 1);
-      
+
       updateUI();
       updateDraftNoteVisibility();
-      
+
       if (draftLabel) {
         draftLabel.textContent = 'Rascunho recuperado';
       }
@@ -1283,10 +1365,30 @@
   }
 
   if (nextButton) {
-    nextButton.addEventListener('click', nextStep);
+    nextButton.addEventListener('click', function () {
+      if (isPostPayment) {
+        var currentStepDef = activeSteps[currentStepIndex];
+        // Nas etapas anteriores aos botões da seção, avança sem validação
+        if (currentStepIndex < activeSteps.length - 1) {
+          goToStep(currentStepIndex + 1);
+        }
+        return;
+      }
+      nextStep();
+    });
   }
 
   form.addEventListener('submit', function (event) {
+    var currentStep = activeSteps[currentStepIndex];
+    if (isPostPayment) {
+      if (currentStep && currentStep.key === 'finalize_step') {
+        // Submit to finalize URL
+        form.action = finalizeUrl;
+        return;
+      }
+      event.preventDefault();
+      return;
+    }
     persistStepDependentData(activeSteps[currentStepIndex]);
     if (!validateAllStepsUpTo(activeSteps.length - 1)) {
       event.preventDefault();
@@ -2308,6 +2410,11 @@
     if (!container) return;
     container.innerHTML = '';
 
+    if (isPostPayment) {
+      container.appendChild(buildPlanPaidBadge());
+      return;
+    }
+
     if (planCatalog.length === 0) {
       container.innerHTML = '<p class="checkout-empty-note">Nenhum plano dispon\u00edvel no momento.</p>';
       return;
@@ -2572,10 +2679,25 @@
     expBtn.textContent = 'Fazer 1 aula experimental (pagar depois)';
     expBtn.addEventListener('click', function () {
       setCheckoutAction('pay_later');
-      nextStep();
+      syncCheckoutHiddenFields();
+      form.requestSubmit ? form.requestSubmit() : form.submit();
     });
     container.appendChild(expBtn);
     return container;
+  }
+
+  function buildPlanPaidBadge() {
+    var wrapper = document.createElement('div');
+    wrapper.className = 'plan-paid-confirmation';
+    var badge = document.createElement('div');
+    badge.className = 'plan-paid-badge';
+    badge.textContent = '✓ Plano pago';
+    var msg = document.createElement('p');
+    msg.className = 'plan-paid-message';
+    msg.textContent = 'Pagamento confirmado. Avance para adicionar materiais ou finalize o cadastro.';
+    wrapper.appendChild(badge);
+    wrapper.appendChild(msg);
+    return wrapper;
   }
 
   function buildPlanPaymentActions(plan) {
@@ -2589,7 +2711,8 @@
     confirmBtn.textContent = confirmLabel;
     confirmBtn.addEventListener('click', function () {
       setCheckoutAction(action);
-      nextStep();
+      syncCheckoutHiddenFields();
+      form.requestSubmit();
     });
     container.appendChild(confirmBtn);
     var expBtn = document.createElement('button');
@@ -2598,7 +2721,8 @@
     expBtn.textContent = 'Fazer 1 aula experimental (pagar depois)';
     expBtn.addEventListener('click', function () {
       setCheckoutAction('pay_later');
-      nextStep();
+      syncCheckoutHiddenFields();
+      form.requestSubmit ? form.requestSubmit() : form.submit();
     });
     container.appendChild(expBtn);
     return container;
@@ -2809,8 +2933,40 @@
   }
 
   function buildProductCard(product) {
-    var selectedVariantId = null;
+    var selectedColor = null;
+    var selectedSize = null;
     var quantity = 1;
+
+    function uniqueValues(arr) {
+      var seen = {}, result = [];
+      arr.forEach(function (x) { if (x && !seen[x]) { seen[x] = true; result.push(x); } });
+      return result;
+    }
+
+    var inStock = (product.variants || []).filter(function (v) { return v.is_in_stock; });
+    var availableColors = uniqueValues(inStock.map(function (v) { return v.color; }));
+    var hasColors = availableColors.length > 0;
+    var allSizes = uniqueValues(inStock.map(function (v) { return v.size; }));
+    var hasSizes = allSizes.length > 0;
+
+    function getSizesForColor(color) {
+      return uniqueValues(
+        inStock.filter(function (v) { return !hasColors || v.color === color; })
+               .map(function (v) { return v.size; })
+      );
+    }
+
+    function getMatchingVariant() {
+      return (product.variants || []).find(function (v) {
+        var colorOk = !hasColors || v.color === selectedColor;
+        var sizeOk = !hasSizes || v.size === selectedSize;
+        return colorOk && sizeOk && v.is_in_stock;
+      }) || null;
+    }
+
+    function isFullySelected() {
+      return (!hasColors || selectedColor !== null) && (!hasSizes || selectedSize !== null);
+    }
 
     var card = document.createElement('article');
     card.className = 'catalog-product-item';
@@ -2842,40 +2998,70 @@
       return card;
     }
 
-    var cartSummary = document.createElement('span');
-    cartSummary.className = 'catalog-product-item-meta catalog-product-item-cart';
+    var configGrid = document.createElement('div');
+    configGrid.className = 'catalog-product-config-grid';
 
-    var variantLabel = document.createElement('span');
-    variantLabel.className = 'plan-selector-label';
-    variantLabel.textContent = 'Opção';
-
-    var variantChips = document.createElement('div');
-    variantChips.className = 'plan-selector-chips';
-
-    product.variants.forEach(function (variant) {
-      var chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'plan-selector-chip';
-      chip.dataset.variantId = String(variant.id);
-      chip.textContent = variant.label;
-      chip.disabled = !variant.is_in_stock;
-      chip.addEventListener('click', function () {
-        if (chip.disabled) return;
-        selectedVariantId = variant.id;
+    var colorSelectEl = null;
+    if (hasColors) {
+      var colorField = document.createElement('div');
+      colorField.className = 'catalog-product-config-field';
+      var colorLbl = document.createElement('span');
+      colorLbl.textContent = 'Cor';
+      colorField.appendChild(colorLbl);
+      colorSelectEl = document.createElement('select');
+      colorSelectEl.className = 'catalog-product-select';
+      var colorPh = document.createElement('option');
+      colorPh.value = '';
+      colorPh.textContent = 'Selecione a cor';
+      colorSelectEl.appendChild(colorPh);
+      availableColors.forEach(function (color) {
+        var opt = document.createElement('option');
+        opt.value = color;
+        opt.textContent = color;
+        colorSelectEl.appendChild(opt);
+      });
+      colorSelectEl.addEventListener('change', function () {
+        selectedColor = colorSelectEl.value || null;
+        selectedSize = null;
+        if (sizeSelectEl) sizeSelectEl.value = '';
+        updateSizeOptions();
         syncCardState();
       });
-      variantChips.appendChild(chip);
-    });
+      colorField.appendChild(colorSelectEl);
+      configGrid.appendChild(colorField);
+    }
+
+    var sizeSelectEl = null;
+    var sizeField = null;
+    if (hasSizes) {
+      sizeField = document.createElement('div');
+      sizeField.className = 'catalog-product-config-field' + (hasColors ? ' is-hidden' : '');
+      if (hasColors) sizeField.hidden = true;
+      var sizeLbl = document.createElement('span');
+      sizeLbl.textContent = 'Tamanho';
+      sizeField.appendChild(sizeLbl);
+      sizeSelectEl = document.createElement('select');
+      sizeSelectEl.className = 'catalog-product-select';
+      sizeSelectEl.addEventListener('change', function () {
+        selectedSize = sizeSelectEl.value || null;
+        syncCardState();
+      });
+      sizeField.appendChild(sizeSelectEl);
+      configGrid.appendChild(sizeField);
+    }
+
+    card.appendChild(configGrid);
 
     var bottomRow = document.createElement('div');
-    bottomRow.className = 'catalog-product-item-bottom';
+    bottomRow.className = 'catalog-product-item-bottom is-hidden';
+    bottomRow.hidden = true;
 
     var qtyControl = document.createElement('div');
     qtyControl.className = 'catalog-product-qty';
     var minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'catalog-product-qty-btn';
-    minusBtn.textContent = '−';
+    minusBtn.textContent = '\u2212';
     var qtySpan = document.createElement('span');
     qtySpan.className = 'catalog-product-qty-value';
     var plusBtn = document.createElement('button');
@@ -2889,29 +3075,52 @@
     var addButton = document.createElement('button');
     addButton.type = 'button';
     addButton.className = 'catalog-product-add-button';
+    addButton.textContent = 'Adicionar';
 
     bottomRow.appendChild(qtyControl);
     bottomRow.appendChild(addButton);
+    card.appendChild(bottomRow);
 
-    function getSelectedVariant() {
-      return selectedVariantId ? getProductVariantById(product, selectedVariantId) : null;
+    var cartSummary = document.createElement('span');
+    cartSummary.className = 'catalog-product-item-meta catalog-product-item-cart';
+    card.appendChild(cartSummary);
+
+    function updateSizeOptions() {
+      if (!sizeSelectEl) return;
+      sizeSelectEl.innerHTML = '';
+      var ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = 'Selecione o tamanho';
+      sizeSelectEl.appendChild(ph);
+      var sizes = (hasColors && selectedColor) ? getSizesForColor(selectedColor) : allSizes;
+      sizes.forEach(function (size) {
+        var opt = document.createElement('option');
+        opt.value = size;
+        opt.textContent = size;
+        sizeSelectEl.appendChild(opt);
+      });
     }
 
     function syncCardState() {
-      var variant = getSelectedVariant();
-      var remaining = variant ? Math.max(0, variant.stock_quantity - getSelectedVariantQuantity(variant.id)) : 0;
-      if (quantity > Math.max(remaining, 1)) {
-        quantity = Math.max(1, remaining);
+      if (sizeField && hasColors) {
+        var showSize = selectedColor !== null;
+        sizeField.classList.toggle('is-hidden', !showSize);
+        sizeField.hidden = !showSize;
+        if (!showSize) selectedSize = null;
       }
+
+      var ready = isFullySelected();
+      bottomRow.classList.toggle('is-hidden', !ready);
+      bottomRow.hidden = !ready;
+
+      var variant = getMatchingVariant();
+      var remaining = variant ? Math.max(0, variant.stock_quantity - getSelectedVariantQuantity(variant.id)) : 0;
+      if (quantity > Math.max(remaining, 1)) quantity = Math.max(1, remaining);
       qtySpan.textContent = String(quantity);
       minusBtn.disabled = quantity <= 1;
       plusBtn.disabled = !variant || remaining <= quantity;
       addButton.disabled = !variant || remaining < 1;
-      addButton.textContent = !variant ? 'Selecione uma opção' : (remaining > 0 ? 'Adicionar' : 'Sem estoque');
-
-      Array.from(variantChips.querySelectorAll('[data-variant-id]')).forEach(function (chip) {
-        chip.classList.toggle('is-selected', selectedVariantId !== null && Number(chip.dataset.variantId) === selectedVariantId);
-      });
+      addButton.textContent = (remaining > 0) ? 'Adicionar' : 'Sem estoque';
 
       var qtyInCart = getSelectedProductQuantity(product.id);
       card.classList.toggle('is-selected', qtyInCart > 0);
@@ -2927,26 +3136,30 @@
       syncCardState();
     });
     addButton.addEventListener('click', function () {
-      var variant = getSelectedVariant();
+      var variant = getMatchingVariant();
       if (!variant) return;
       addSelectedProductVariant(product, variant, quantity);
       quantity = 1;
-      selectedVariantId = null;
+      selectedColor = null;
+      selectedSize = null;
+      if (colorSelectEl) colorSelectEl.value = '';
+      if (sizeSelectEl) sizeSelectEl.value = '';
+      if (sizeField && hasColors) { sizeField.classList.add('is-hidden'); sizeField.hidden = true; }
       syncCheckoutHiddenFields();
-      renderProductList();
-      renderSummary();
-      saveDraft();
+      if (isPostPayment) {
+        renderPostPaymentProductList();
+      } else {
+        renderProductList();
+        renderSummary();
+        saveDraft();
+      }
     });
 
-    card.appendChild(cartSummary);
-    card.appendChild(variantLabel);
-    card.appendChild(variantChips);
-    card.appendChild(bottomRow);
-
+    updateSizeOptions();
     syncCardState();
     return card;
   }
-  function hasAvailableProductVariants(product) {
+    function hasAvailableProductVariants(product) {
     return (product.variants || []).some(function (variant) {
       return variant.is_in_stock;
     });
@@ -3046,9 +3259,13 @@
       removeButton.addEventListener('click', function () {
         delete selectedProducts[String(entry.variantId)];
         syncCheckoutHiddenFields();
-        renderProductList();
-        renderSummary();
-        saveDraft();
+        if (isPostPayment) {
+          renderPostPaymentProductList();
+        } else {
+          renderProductList();
+          renderSummary();
+          saveDraft();
+        }
       });
 
       actions.appendChild(subtotal);
@@ -3058,6 +3275,22 @@
       list.appendChild(row);
     });
     wrapper.appendChild(list);
+
+    if (!isPostPayment) {
+      var cartTotal = entries.reduce(function (sum, e) { return sum + e.unitPrice * e.quantity; }, 0);
+      var totalRow = document.createElement('div');
+      totalRow.className = 'catalog-cart-preview-total';
+      var totalLbl = document.createElement('span');
+      totalLbl.className = 'catalog-cart-preview-total-label';
+      totalLbl.textContent = 'Total de materiais';
+      var totalVal = document.createElement('span');
+      totalVal.className = 'catalog-cart-preview-total-value';
+      totalVal.textContent = formatBRL(cartTotal);
+      totalRow.appendChild(totalLbl);
+      totalRow.appendChild(totalVal);
+      wrapper.appendChild(totalRow);
+    }
+
     return wrapper;
   }
 
@@ -3106,6 +3339,287 @@
     if (checkoutActionInput) {
       checkoutActionInput.value = checkoutAction;
     }
+  }
+
+  function getMaterialsCartTotal() {
+    return getSelectedProductEntries().reduce(function (sum, e) {
+      return sum + e.unitPrice * e.quantity;
+    }, 0);
+  }
+
+  function calcMaterialsTotalForMethod(method) {
+    var base = getMaterialsCartTotal();
+    if (base <= 0) return 0;
+    if (method === 'pix' && feeConfig.pixFeePassThrough) {
+      return Math.round((base + feeConfig.pixFixedFee) * 100) / 100;
+    }
+    if (method === 'credit_card' && feeConfig.creditCardFeePassThrough) {
+      return Math.round(((base + feeConfig.creditCardFixedFee) / (1 - feeConfig.creditCardPercentFee)) * 100) / 100;
+    }
+    return base;
+  }
+
+  function buildMaterialsPaymentCard(method) {
+    var cartTotal = getMaterialsCartTotal();
+    var charged = cartTotal > 0 ? calcMaterialsTotalForMethod(method) : 0;
+
+    var card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'plan-selector-payment-card';
+    if (postPaymentMaterialsMethod === method) {
+      card.classList.add('is-selected');
+    }
+    card.dataset.paymentMethod = method;
+
+    var iconWrapper = document.createElement('span');
+    iconWrapper.className = 'plan-selector-payment-icon';
+    iconWrapper.appendChild(createPaymentIcon(method === 'credit_card' ? 'credit_card' : 'pix'));
+    card.appendChild(iconWrapper);
+
+    var info = document.createElement('span');
+    info.className = 'plan-selector-payment-info';
+
+    var titleEl = document.createElement('span');
+    titleEl.className = 'plan-selector-payment-title';
+    titleEl.textContent = method === 'pix' ? 'PIX' : 'Cartão';
+    info.appendChild(titleEl);
+
+    var subtitleEl = document.createElement('span');
+    subtitleEl.className = 'plan-selector-payment-subtitle';
+    subtitleEl.textContent = method === 'pix' ? 'Pagamento instantâneo' : 'Parcelado no cartão';
+    info.appendChild(subtitleEl);
+
+    var priceEl = document.createElement('span');
+    priceEl.className = 'plan-selector-payment-price';
+    var isSelected = postPaymentMaterialsMethod === method;
+    priceEl.textContent = (cartTotal > 0 && isSelected) ? formatBRL(charged) : '—';
+    info.appendChild(priceEl);
+
+    card.appendChild(info);
+
+    card.addEventListener('click', function () {
+      postPaymentMaterialsMethod = method;
+      renderPostPaymentProductList();
+    });
+
+    return card;
+  }
+
+  function buildMaterialsPaymentSection() {
+    var wrapper = document.createElement('div');
+    wrapper.className = 'plan-selector';
+
+    var label = document.createElement('span');
+    label.className = 'plan-selector-label';
+    label.textContent = 'Forma de pagamento';
+    wrapper.appendChild(label);
+
+    var paymentGrid = document.createElement('div');
+    paymentGrid.className = 'plan-selector-payment-grid';
+    paymentGrid.appendChild(buildMaterialsPaymentCard('pix'));
+    paymentGrid.appendChild(buildMaterialsPaymentCard('credit_card'));
+    wrapper.appendChild(paymentGrid);
+
+    if (postPaymentMaterialsMethod) {
+      var actDiv = document.createElement('div');
+      actDiv.className = 'plan-payment-actions';
+      var method = postPaymentMaterialsMethod;
+      var payBtn = document.createElement('button');
+      payBtn.type = 'button';
+      payBtn.className = 'primary-button';
+      payBtn.textContent = method === 'pix' ? 'Pagar via PIX' : 'Pagar com cartão de crédito';
+      payBtn.addEventListener('click', function () {
+        var entries = getSelectedProductEntries().filter(function (e) { return e.quantity > 0; });
+        if (entries.length === 0) {
+          alert('Adicione ao menos um material para continuar ou use "Pular materiais".');
+          return;
+        }
+        setCheckoutAction(method === 'pix' ? 'pix' : 'stripe');
+        syncCheckoutHiddenFields();
+        form.action = materialsCheckoutUrl;
+        form.requestSubmit ? form.requestSubmit() : form.submit();
+      });
+      actDiv.appendChild(payBtn);
+      wrapper.appendChild(actDiv);
+    } else {
+      var hint = document.createElement('p');
+      hint.className = 'plan-selector-hint';
+      hint.textContent = 'Escolha PIX ou Cartão para confirmar os materiais.';
+      wrapper.appendChild(hint);
+    }
+
+    var skipBtn = document.createElement('button');
+    skipBtn.type = 'button';
+    skipBtn.className = 'secondary-button plan-payment-exp-btn';
+    skipBtn.textContent = 'Pular materiais';
+    skipBtn.addEventListener('click', function () {
+      goToStep(currentStepIndex + 1);
+    });
+    wrapper.appendChild(skipBtn);
+
+    return wrapper;
+  }
+
+  function renderPostPaymentProductList() {
+    var container = form.querySelector('[data-post-payment-product-list]');
+    var actionsContainer = form.querySelector('[data-post-payment-materials-actions]');
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (productCatalog.length === 0) {
+      container.innerHTML = '<p class="checkout-empty-note">Nenhum material disponível no momento.</p>';
+    } else {
+      var groups = groupProductsForDropdown(productCatalog);
+      if (groups.length === 0) {
+        container.innerHTML = '<p class="checkout-empty-note">Nenhum material disponível.</p>';
+      } else {
+        if (!activeMaterialCategory || !groups.find(function (g) { return g.title === activeMaterialCategory; })) {
+          activeMaterialCategory = groups[0].title;
+        }
+        var selector = document.createElement('div');
+        selector.className = 'plan-selector';
+
+        var catRow = document.createElement('div');
+        catRow.className = 'plan-selector-row';
+        var catLabel = document.createElement('span');
+        catLabel.className = 'plan-selector-label';
+        catLabel.textContent = 'Categoria';
+        catRow.appendChild(catLabel);
+        var catChips = document.createElement('div');
+        catChips.className = 'plan-selector-chips';
+        groups.forEach(function (group) {
+          var chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'plan-selector-chip' + (group.title === activeMaterialCategory ? ' is-selected' : '');
+          chip.textContent = group.title;
+          chip.addEventListener('click', function () {
+            activeMaterialCategory = group.title;
+            renderPostPaymentProductList();
+          });
+          catChips.appendChild(chip);
+        });
+        catRow.appendChild(catChips);
+        selector.appendChild(catRow);
+
+        var activeGroup = groups.find(function (g) { return g.title === activeMaterialCategory; }) || groups[0];
+        var productsArea = document.createElement('div');
+        productsArea.className = 'product-selector-area';
+        activeGroup.products.forEach(function (product) {
+          productsArea.appendChild(buildProductCard(product));
+        });
+        selector.appendChild(productsArea);
+        selector.appendChild(buildSelectedProductCartPreview());
+        container.appendChild(selector);
+      }
+    }
+
+    if (!actionsContainer) return;
+    actionsContainer.innerHTML = '';
+    actionsContainer.appendChild(buildMaterialsPaymentSection());
+  }
+
+  function fmtCurrency(value) {
+    var n = parseFloat(value);
+    if (isNaN(n)) return '—';
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderFinalizePanel() {
+    var container = form.querySelector('[data-finalize-content]');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var statusList = document.createElement('div');
+    statusList.className = 'finalize-status-list';
+
+    var planOrder = postPaymentData.planOrder;
+    var materialsOrder = postPaymentData.materialsOrder;
+
+    if (planOrder) {
+      var planItem = document.createElement('div');
+      planItem.className = 'finalize-status-item finalize-status-item--ok';
+      planItem.innerHTML = '<span class="finalize-status-icon">✓</span><span class="finalize-status-label">Mensalidade confirmada</span>';
+      statusList.appendChild(planItem);
+    }
+
+    var hasConfirmedMaterials = postMaterialsPaymentComplete &&
+      materialsOrder && materialsOrder.items && materialsOrder.items.length > 0;
+    if (hasConfirmedMaterials) {
+      var materialsItem = document.createElement('div');
+      materialsItem.className = 'finalize-status-item finalize-status-item--ok';
+      materialsItem.innerHTML = '<span class="finalize-status-icon">✓</span><span class="finalize-status-label">Materiais confirmados</span>';
+      statusList.appendChild(materialsItem);
+    }
+
+    container.appendChild(statusList);
+
+    if (planOrder || materialsOrder) {
+      var summary = document.createElement('div');
+      summary.className = 'finalize-order-summary';
+
+      if (planOrder) {
+        var planSection = document.createElement('div');
+        planSection.className = 'finalize-order-section';
+
+        var planTitle = document.createElement('div');
+        planTitle.className = 'finalize-order-section-title';
+        planTitle.textContent = 'Plano';
+        planSection.appendChild(planTitle);
+
+        var planRow = document.createElement('div');
+        planRow.className = 'finalize-order-row';
+        var planLabel = document.createElement('span');
+        planLabel.textContent = planOrder.plan_name || 'Mensalidade';
+        var planValue = document.createElement('span');
+        planValue.textContent = 'R$ ' + fmtCurrency(planOrder.plan_price || planOrder.total);
+        planRow.appendChild(planLabel);
+        planRow.appendChild(planValue);
+        planSection.appendChild(planRow);
+
+        summary.appendChild(planSection);
+      }
+
+      if (materialsOrder && materialsOrder.items && materialsOrder.items.length > 0) {
+        var matSection = document.createElement('div');
+        matSection.className = 'finalize-order-section';
+
+        var matTitle = document.createElement('div');
+        matTitle.className = 'finalize-order-section-title';
+        matTitle.textContent = 'Materiais';
+        matSection.appendChild(matTitle);
+
+        materialsOrder.items.forEach(function (item) {
+          var r = document.createElement('div');
+          r.className = 'finalize-order-row';
+          var lbl = document.createElement('span');
+          lbl.textContent = item.name + (item.quantity > 1 ? ' x' + item.quantity : '');
+          var val = document.createElement('span');
+          val.textContent = 'R$ ' + fmtCurrency(item.subtotal);
+          r.appendChild(lbl);
+          r.appendChild(val);
+          matSection.appendChild(r);
+        });
+
+        var totalRow = document.createElement('div');
+        totalRow.className = 'finalize-order-row finalize-order-row--total';
+        var totalLabel = document.createElement('span');
+        totalLabel.textContent = 'Total materiais';
+        var totalValue = document.createElement('span');
+        totalValue.textContent = 'R$ ' + fmtCurrency(materialsOrder.total);
+        totalRow.appendChild(totalLabel);
+        totalRow.appendChild(totalValue);
+        matSection.appendChild(totalRow);
+
+        summary.appendChild(matSection);
+      }
+
+      container.appendChild(summary);
+    }
+
+    var msg = document.createElement('p');
+    msg.className = 'finalize-description';
+    msg.textContent = 'Tudo pronto! Clique em "Finalizar cadastro" para ativar sua conta e acessar o portal.';
+    container.appendChild(msg);
   }
 
   function syncCheckoutHiddenFields() {
@@ -3178,9 +3692,28 @@
   // Initialization
   // ============================================================================
   function init() {
+    if (isPostPayment) {
+      // Restaura os campos do draft sem forçar o índice de etapa,
+      // para que o usuário veja seus dados preenchidos nas etapas anteriores.
+      restoreDraft({ skipStepRestore: true });
+      activeSteps = computeActiveSteps();
+      syncExtraDependentsPayload();
+
+      // Salta direto para a primeira etapa pós-pagamento
+      var targetKey = postMaterialsPaymentComplete ? 'finalize_step' : 'materials_post_payment';
+      var targetIndex = -1;
+      for (var i = 0; i < activeSteps.length; i++) {
+        if (activeSteps[i].key === targetKey) { targetIndex = i; break; }
+      }
+      currentStepIndex = targetIndex >= 0 ? targetIndex : 0;
+
+      updateUI();
+      updateDraftNoteVisibility();
+      return;
+    }
+
     clearCompletedRegistrationState();
 
-    // Try to restore draft first
     var canRestoreDraft = form.dataset.canRestoreDraft === 'true';
     if (canRestoreDraft) {
       restoreDraft();
@@ -3189,10 +3722,10 @@
       checkoutActionInput ? checkoutActionInput.value : checkoutAction
     );
     hydrateCheckoutStateFromHiddenFields();
-    
+
     // Compute initial steps
     activeSteps = computeActiveSteps();
-    
+
     // Initial UI update
     updateUI();
     updateCheckoutActionUI();

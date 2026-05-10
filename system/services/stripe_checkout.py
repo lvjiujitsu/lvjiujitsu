@@ -101,6 +101,8 @@ def _create_subscription_session(client, order, customer_id, success_url, cancel
 
 def _create_one_time_session(client, order, has_plan, customer_id, success_url, cancel_url):
     line_items = []
+    items_subtotal = Decimal("0")
+
     if has_plan:
         line_items.append(
             {
@@ -114,6 +116,8 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
                 "quantity": 1,
             }
         )
+        items_subtotal += Decimal(str(order.plan_price or "0"))
+
     for item in order.items.all():
         line_items.append(
             {
@@ -125,6 +129,22 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
                 "quantity": item.quantity,
             }
         )
+        items_subtotal += Decimal(str(item.unit_price or "0")) * item.quantity
+
+    order_total = Decimal(str(order.total or "0"))
+    fee_amount = (order_total - items_subtotal).quantize(Decimal("0.01"))
+    if fee_amount >= Decimal("0.01"):
+        line_items.append(
+            {
+                "price_data": {
+                    "currency": payment_currency(),
+                    "unit_amount": _to_cents(fee_amount),
+                    "product_data": {"name": "Taxa cartão de crédito"},
+                },
+                "quantity": 1,
+            }
+        )
+
     return client.checkout.Session.create(
         mode="payment",
         payment_method_types=["card"],

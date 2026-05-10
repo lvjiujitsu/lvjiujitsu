@@ -35,6 +35,7 @@ def create_portal_registration(cleaned_data):
     with transaction.atomic():
         person_types = ensure_default_person_types()
         profile = cleaned_data["registration_profile"]
+        _purge_inactive_persons(cleaned_data)
         if profile == RegistrationProfile.HOLDER:
             result = _create_holder_registration(cleaned_data, person_types)
             result["order"] = create_registration_order(result["holder"], cleaned_data)
@@ -101,6 +102,21 @@ def _sync_person_membership_snapshot(person, class_groups):
                 "updated_at",
             )
         )
+
+
+def _purge_inactive_persons(cleaned_data):
+    cpf_fields = ("holder_cpf", "dependent_cpf", "guardian_cpf", "student_cpf", "other_cpf")
+    cpfs = {cleaned_data.get(f) for f in cpf_fields if cleaned_data.get(f)}
+    extra = cleaned_data.get("extra_dependents") or []
+    cpfs.update(dep.get("cpf") for dep in extra if dep.get("cpf"))
+    for cpf in cpfs:
+        try:
+            person = Person.objects.get(cpf=cpf, is_active=False)
+        except Person.DoesNotExist:
+            continue
+        if person.registration_orders.filter(payment_status="paid").exists():
+            continue
+        person.delete()
 
 
 def _get_or_create_person_type(code):
@@ -296,6 +312,7 @@ def _create_person_with_account(
         class_category=primary_group.class_category if primary_group else class_category,
         class_group=primary_group,
         class_schedule=None,
+        is_active=False,
     )
     sync_person_class_enrollments(person, class_groups)
     access_account = PortalAccount(person=person)

@@ -352,7 +352,8 @@ class PortalRegistrationForm(forms.Form):
                 self.add_error(None, f"Dependente adicional {index}: {message}")
             return value
 
-        if Person.objects.filter(cpf=formatted).exists():
+        existing = Person.objects.filter(cpf=formatted).first()
+        if existing is not None and existing.is_active:
             message = "CPF já cadastrado no sistema."
             if field_name:
                 self.add_error(field_name, message)

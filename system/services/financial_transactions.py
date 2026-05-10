@@ -32,6 +32,20 @@ def resolve_checkout_action_for_plan(plan):
     return CheckoutAction.PAY_LATER
 
 
+def calculate_gross_for_net(net_amount, payment_provider):
+    """Retorna o valor bruto a cobrar do cliente para que a academia receba net_amount líquido."""
+    net = _money(net_amount)
+    if net <= ZERO:
+        return net
+    if payment_provider == PaymentProvider.ASAAS:
+        return _money(net + _decimal_setting("ASAAS_PIX_FIXED_FEE"))
+    if payment_provider == PaymentProvider.STRIPE:
+        percent = _decimal_setting("STRIPE_CREDIT_PERCENT_FEE")
+        fixed = _decimal_setting("STRIPE_CREDIT_FIXED_FEE")
+        return _money((net + fixed) / (Decimal("1") - percent))
+    return net
+
+
 def calculate_financial_amounts(gross_amount, payment_provider):
     gross = _money(gross_amount)
     fee = _calculate_fee(gross, payment_provider)

@@ -8,17 +8,19 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-from system.models.person import PersonRelationship, PersonRelationshipKind
+from system.models.person import PersonRelationship, PersonRelationshipKind, PortalAccount
 from system.models.registration_order import (
     PaymentStatus,
     RegistrationOrder,
 )
+from system.services import login_portal_identity
 from system.services.membership import get_latest_open_order
 from system.services.stripe_checkout import (
     StripeCheckoutError,
     create_checkout_session_for_order,
     verify_webhook_event,
 )
+from system.services.registration_checkout import gross_up_order_for_checkout
 from system.services.stripe_webhooks import process_stripe_event
 from system.services.trial_access import grant_trial_for_order
 
@@ -159,14 +161,18 @@ class DeferPaymentView(View):
             order,
             notes="Pagamento adiado pelo usuário na tela de checkout.",
         )
-        request.session["pending_checkout_order_id"] = order.pk
-        messages.warning(
+        request.session["post_plan_payment_complete"] = True
+        request.session["plan_order_id"] = order.pk
+        request.session.pop("post_materials_payment_complete", None)
+        request.session.pop("materials_order_id", None)
+        if not order.person.is_active:
+            request.session["pending_registration_person_id"] = order.person.pk
+        messages.info(
             request,
-            "Cadastro concluído sem pagamento. "
             f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
-            "liberada e pode pagar depois para ativar sua mensalidade.",
+            "liberada. Finalize seu cadastro para ativar a mensalidade.",
         )
-        return redirect("system:login")
+        return redirect("system:register")
 
 
 class RetryPendingOrderView(View):
@@ -192,11 +198,38 @@ class RetryPendingOrderView(View):
 
 class PaymentSuccessView(View):
     def get(self, request, *args, **kwargs):
-        request.session.pop("pending_checkout_order_id", None)
-        messages.success(
-            request,
-            "Pagamento confirmado! Seu cadastro foi finalizado. Faça login para acessar o sistema.",
-        )
+        order_id = request.session.pop("pending_checkout_order_id", None)
+
+        if order_id:
+            try:
+                order = RegistrationOrder.objects.select_related("person").get(pk=order_id)
+                person = order.person
+
+                if not person.is_active:
+                    from system.models.registration_order import OrderKind
+                    if order.kind == OrderKind.ONE_TIME:
+                        request.session["post_materials_payment_complete"] = True
+                        request.session["materials_order_id"] = order.pk
+                    else:
+                        request.session["post_plan_payment_complete"] = True
+                        request.session["plan_order_id"] = order.pk
+                        request.session["pending_registration_person_id"] = person.pk
+                        request.session.pop("post_materials_payment_complete", None)
+                        request.session.pop("materials_order_id", None)
+                    messages.success(request, "Pagamento confirmado!")
+                    return redirect("system:register")
+
+                portal_account = PortalAccount.objects.filter(
+                    person=person, is_active=True
+                ).first()
+                if portal_account:
+                    login_portal_identity(request, portal_account=portal_account)
+                    messages.success(request, "Pagamento confirmado!")
+                    return redirect("system:dashboard-redirect")
+            except RegistrationOrder.DoesNotExist:
+                pass
+
+        messages.success(request, "Pagamento confirmado!")
         return redirect("system:login")
 
 
@@ -204,9 +237,9 @@ class PaymentCancelView(View):
     def get(self, request, *args, **kwargs):
         messages.warning(
             request,
-            "Pagamento cancelado. Seu cadastro foi registrado mas ainda não está ativo — refaça o pagamento para concluir.",
+            "Pagamento cancelado. Retorne ao cadastro e tente novamente.",
         )
-        return redirect("system:login")
+        return redirect("system:register")
 
 
 @method_decorator(csrf_exempt, name="dispatch")

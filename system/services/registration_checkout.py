@@ -2,13 +2,16 @@ import json
 import re
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 
+from system.constants import CheckoutAction
 from system.models.plan import SubscriptionPlan
 from system.models.product import Product, ProductVariant
-from system.models.registration_order import RegistrationOrder, RegistrationOrderItem
+from system.models.registration_order import RegistrationOrder, RegistrationOrderItem, PaymentProvider
 from system.services.financial_transactions import (
     apply_order_financials,
+    calculate_gross_for_net,
     resolve_payment_provider_for_plan,
 )
 
@@ -340,42 +343,54 @@ def get_registration_plan_multiplier(cleaned_data):
 @transaction.atomic
 def create_registration_order(person, cleaned_data):
     plan_id = cleaned_data.get("selected_plan")
-    selected_products = normalize_selected_product_items(
-        cleaned_data.get("selected_products") or []
-    )
 
-    if not plan_id and not selected_products:
+    if not plan_id:
         return None
 
     plan = None
     plan_price = Decimal("0")
-    if plan_id:
-        try:
-            plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-            multiplier = 1
-            if getattr(plan, "is_family_plan", False):
-                multiplier = _count_group_members(cleaned_data)
-            plan_price = plan.price * Decimal(multiplier)
-        except SubscriptionPlan.DoesNotExist:
-            pass
+    try:
+        plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
+        multiplier = 1
+        if getattr(plan, "is_family_plan", False):
+            multiplier = _count_group_members(cleaned_data)
+        plan_price = plan.price * Decimal(multiplier)
+    except SubscriptionPlan.DoesNotExist:
+        return None
+
+    payment_provider = resolve_payment_provider_for_plan(plan)
+    total = _apply_fee_pass_through(plan_price, payment_provider)
 
     order = RegistrationOrder.objects.create(
         person=person,
         plan=plan,
         plan_price=plan_price,
-        total=Decimal("0"),
+        total=total,
     )
+    apply_order_financials(order, payment_provider=payment_provider)
+    return order
 
-    items_total = Decimal("0")
-    for selection in selected_products:
-        items_total += _create_product_order_item(order, selection)
 
-    order.total = plan_price + items_total
-    order.save(update_fields=["total", "updated_at"])
-    apply_order_financials(
-        order,
-        payment_provider=resolve_payment_provider_for_plan(plan),
-    )
+def _apply_fee_pass_through(base_amount, payment_provider):
+    if payment_provider == PaymentProvider.STRIPE and getattr(settings, "CREDIT_CARD_FEE_PASS_THROUGH", True):
+        return calculate_gross_for_net(base_amount, payment_provider)
+    if payment_provider == PaymentProvider.ASAAS and getattr(settings, "PIX_FEE_PASS_THROUGH", True):
+        return calculate_gross_for_net(base_amount, payment_provider)
+    return base_amount
+
+
+def gross_up_order_for_checkout(order, checkout_action):
+    """Aplica gross-up de taxa ao total do pedido de acordo com o método de pagamento escolhido."""
+    if checkout_action == CheckoutAction.STRIPE:
+        provider = PaymentProvider.STRIPE
+    elif checkout_action == CheckoutAction.PIX:
+        provider = PaymentProvider.ASAAS
+    else:
+        return order
+    gross = _apply_fee_pass_through(order.total or Decimal("0"), provider)
+    if gross != order.total:
+        order.total = gross
+        order.save(update_fields=["total", "updated_at"])
     return order
 
 

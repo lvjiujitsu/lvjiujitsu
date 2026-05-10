@@ -260,52 +260,6 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Informe um CPF com 11 dígitos ou use seu acesso técnico.")
 
     def test_register_route_creates_local_account_and_not_django_user(self):
-        response = self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Teste",
-                "holder_cpf": "12345678903",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1212",
-                "holder_email": "aluno@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-            },
-            follow=True,
-        )
-
-        self.assertRedirects(response, reverse("system:login"))
-        person = Person.objects.get(cpf="123.456.789-03")
-        self.assertTrue(hasattr(person, "access_account"))
-        self.assertEqual(person.person_type.code, "student")
-        self.assertEqual(User.objects.count(), 1)
-        self.assertContains(response, "Cadastro registrado com sucesso")
-
-    def test_register_other_profile_creates_single_selected_person_type(self):
-        response = self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "other",
-                "other_type_code": "instructor",
-                "other_name": "Equipe Tecnica LV",
-                "other_cpf": "12345678904",
-                "other_birthdate": "02/04/1990",
-                "other_phone": "(62) 98888-0000",
-                "other_email": "equipe@example.com",
-                "other_password": "123456",
-                "other_password_confirm": "123456",
-            },
-            follow=True,
-        )
-
-        self.assertRedirects(response, reverse("system:login"))
-        person = Person.objects.get(cpf="123.456.789-04")
-        self.assertTrue(hasattr(person, "access_account"))
-        self.assertEqual(person.person_type.code, "instructor")
-
-    def test_registered_holder_can_log_in_with_local_account(self):
         self.client.post(
             reverse("system:register"),
             {
@@ -320,6 +274,55 @@ class PortalViewTestCase(TestCase):
                 "holder_password_confirm": "123456",
             },
         )
+
+        person = Person.objects.get(cpf="123.456.789-03")
+        self.assertTrue(hasattr(person, "access_account"))
+        self.assertEqual(person.person_type.code, "student")
+        self.assertEqual(User.objects.count(), 1)
+        self.assertFalse(person.is_active)
+
+    def test_register_other_profile_creates_single_selected_person_type(self):
+        self.client.post(
+            reverse("system:register"),
+            {
+                "registration_profile": "other",
+                "other_type_code": "instructor",
+                "other_name": "Equipe Tecnica LV",
+                "other_cpf": "12345678904",
+                "other_birthdate": "02/04/1990",
+                "other_phone": "(62) 98888-0000",
+                "other_email": "equipe@example.com",
+                "other_password": "123456",
+                "other_password_confirm": "123456",
+            },
+        )
+
+        person = Person.objects.get(cpf="123.456.789-04")
+        self.assertTrue(hasattr(person, "access_account"))
+        self.assertEqual(person.person_type.code, "instructor")
+        self.assertFalse(person.is_active)
+
+    def test_registered_holder_can_log_in_after_finalization(self):
+        self.client.post(
+            reverse("system:register"),
+            {
+                "registration_profile": "holder",
+                "holder_name": "Aluno Teste",
+                "holder_cpf": "12345678903",
+                "holder_birthdate": "01/04/1995",
+                "holder_biological_sex": "male",
+                "holder_phone": "(62) 99999-1212",
+                "holder_email": "aluno@example.com",
+                "holder_password": "123456",
+                "holder_password_confirm": "123456",
+            },
+        )
+        person = Person.objects.get(cpf="123.456.789-03")
+        session = self.client.session
+        session["pending_registration_person_id"] = person.pk
+        session["post_plan_payment_complete"] = True
+        session.save()
+        self.client.post(reverse("system:finalize-registration"))
 
         response = self.client.post(
             reverse("system:login"),
@@ -1715,7 +1718,7 @@ class PortalViewTestCase(TestCase):
         )
         self.assertEqual(update_response.status_code, 403)
 
-    def test_register_with_pay_later_grants_trial_and_redirects_to_login(self):
+    def test_register_with_pay_later_grants_trial_and_redirects_to_register(self):
         plan = SubscriptionPlan.objects.create(
             code="mensal-trial",
             display_name="Mensal Trial",
@@ -1738,14 +1741,18 @@ class PortalViewTestCase(TestCase):
                 "selected_plan": str(plan.pk),
                 "checkout_action": "pay_later",
             },
-            follow=True,
         )
 
-        self.assertRedirects(response, reverse("system:login"))
+        self.assertRedirects(
+            response,
+            reverse("system:register"),
+            fetch_redirect_response=False,
+        )
         order = RegistrationOrder.objects.get(person__cpf="123.456.789-12")
         grant = TrialAccessGrant.objects.get(order=order)
         self.assertEqual(grant.granted_classes, 1)
         self.assertEqual(grant.consumed_classes, 0)
+        self.assertFalse(order.person.is_active)
 
     def test_register_with_card_action_redirects_directly_to_stripe_checkout(self):
         plan = SubscriptionPlan.objects.create(
@@ -1779,7 +1786,7 @@ class PortalViewTestCase(TestCase):
             fetch_redirect_response=False,
         )
 
-    def test_pending_payment_with_trial_allows_login(self):
+    def test_pending_payment_with_trial_allows_login_after_finalization(self):
         plan = SubscriptionPlan.objects.create(
             code="mensal-login-trial",
             display_name="Mensal Login Trial",
@@ -1803,6 +1810,12 @@ class PortalViewTestCase(TestCase):
                 "checkout_action": "pay_later",
             },
         )
+        person = Person.objects.get(cpf="123.456.789-14")
+        session = self.client.session
+        session["pending_registration_person_id"] = person.pk
+        session["post_plan_payment_complete"] = True
+        session.save()
+        self.client.post(reverse("system:finalize-registration"))
 
         response = self.client.post(
             reverse("system:login"),
@@ -1811,7 +1824,6 @@ class PortalViewTestCase(TestCase):
         )
 
         self.assertRedirects(response, reverse("system:student-home"))
-        self.assertContains(response, "período experimental")
 
     def test_student_dashboard_shows_active_membership_and_due_date(self):
         student_account = self._create_portal_account(

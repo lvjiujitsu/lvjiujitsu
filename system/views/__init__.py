@@ -15,6 +15,8 @@ from .calendar_views import (
 )
 from .auth_views import (
     ChromeDevtoolsProbeView,
+    FinalizeRegistrationView,
+    MaterialsCheckoutView,
     PortalLoginView,
     PortalLogoutView,
     PortalPasswordResetCompleteView,
@@ -221,6 +223,8 @@ __all__ = [
     "PlanDetailView",
     "PlanListView",
     "PlanUpdateView",
+    "FinalizeRegistrationView",
+    "MaterialsCheckoutView",
     "PortalRegisterView",
     "RegistrationStepValidationView",
     "AdminBackorderQueueView",

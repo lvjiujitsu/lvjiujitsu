@@ -7,7 +7,7 @@
   <title>LV JIU JITSU | Cadastro</title>
   {% include "includes/_favicon.html" %}
   <link rel="stylesheet" href="{% static 'system/css/shared/plan-selector.css' %}?v=20260509d">
-  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260509f">
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=20260509j">
   <link rel="stylesheet" href="{% static 'system/css/portal/class-catalog.css' %}?v=20260421a">
 </head>
 <body>
@@ -830,6 +830,36 @@
               </div>
             </section>
           </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: MATERIALS POST-PAYMENT (seleção de materiais após plano pago) -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="materials-post-payment" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Materiais (opcional)</h2>
+              </div>
+              <div class="checkout-section">
+                <p class="checkout-section-description">Seu plano foi confirmado! Deseja adicionar kimonos, faixas ou acessórios ao seu cadastro?</p>
+                <div class="checkout-product-list" data-post-payment-product-list></div>
+                <div class="post-payment-materials-actions" data-post-payment-materials-actions></div>
+              </div>
+            </section>
+          </section>
+
+          <!-- ============================================================ -->
+          <!-- STEP: FINALIZE (resumo e confirmação final do cadastro) -->
+          <!-- ============================================================ -->
+          <section class="wizard-step is-hidden" data-panel="finalize" hidden>
+            <section class="form-section">
+              <div class="section-heading">
+                <span class="section-step-label" data-step-label>Etapa</span>
+                <h2 class="section-title" data-panel-title>Finalizar cadastro</h2>
+              </div>
+              <div class="checkout-section" data-finalize-content></div>
+            </section>
+          </section>
         </div>
 
         <div class="wizard-actions">
@@ -844,11 +874,13 @@
     <script id="ibjjf-age-categories" type="application/json">{{ ibjjf_categories_json|safe }}</script>
     <script id="plan-catalog" type="application/json">{{ plan_catalog_json|safe }}</script>
     <script id="product-catalog" type="application/json">{{ product_catalog_json|safe }}</script>
+    <script id="post-payment-data" type="application/json">{"postPlanPaymentComplete": {{ post_plan_payment_complete|yesno:"true,false" }}, "postMaterialsPaymentComplete": {{ post_materials_payment_complete|yesno:"true,false" }}, "materialsCheckoutUrl": "{% url 'system:materials-checkout' %}", "finalizeUrl": "{% url 'system:finalize-registration' %}", "dashboardUrl": "{% url 'system:dashboard-redirect' %}", "planOrder": {{ plan_order_json|safe }}, "materialsOrder": {{ materials_order_json|safe }}}</script>
+    <script id="fee-config" type="application/json">{{ fee_config_json|safe }}</script>
   </main>
 
   <script src="{% static 'system/js/shared/viewport-height.js' %}?v=20260413"></script>
   <script src="{% static 'system/js/shared/theme-toggle.js' %}"></script>
   <script src="{% static 'system/js/auth/password-toggle.js' %}"></script>
-  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260509e"></script>
+  <script src="{% static 'system/js/auth/registration-wizard-clean.js' %}?v=20260510f"></script>
 </body>
 </html>

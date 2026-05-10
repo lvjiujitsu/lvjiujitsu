@@ -1674,7 +1674,9 @@ h1 {
 .secondary-button.is-hidden,
 .wizard-step.is-hidden,
 .form-section.is-hidden,
-.switch-card.is-hidden {
+.switch-card.is-hidden,
+.catalog-product-item-bottom.is-hidden,
+.catalog-product-config-field.is-hidden {
   display: none !important;
 }
 
@@ -3146,4 +3148,170 @@ h1 {
   color: var(--text);
   text-align: right;
   white-space: nowrap;
+}
+
+/* ========== Cart total row ========== */
+
+.catalog-cart-preview-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.catalog-cart-preview-total-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.catalog-cart-preview-total-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* ========== Product variant selector ========== */
+
+.product-variant-selector {
+  margin-top: 12px;
+  border: none;
+  padding: 0;
+}
+
+/* ========== Post-payment confirmation badge ========== */
+
+.plan-paid-confirmation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.plan-paid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.plan-paid-message {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 340px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   Post-payment materials actions
+   ========================================================= */
+.post-payment-materials-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* =========================================================
+   Finalize panel
+   ========================================================= */
+.finalize-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.finalize-status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.finalize-status-item--ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+html[data-theme="dark"] .finalize-status-item--ok {
+  background: rgba(21, 128, 61, 0.12);
+  border-color: rgba(21, 128, 61, 0.3);
+}
+
+.finalize-status-icon {
+  font-size: 1.1rem;
+  color: #15803d;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.finalize-status-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.finalize-description {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0 0 8px;
+}
+
+.finalize-order-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.finalize-order-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.finalize-order-section-title {
+  background: var(--surface-alt, var(--border));
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.finalize-order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+}
+
+.finalize-order-row:first-of-type {
+  border-top: none;
+}
+
+.finalize-order-row--total {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  background: var(--surface-alt, transparent);
 }
