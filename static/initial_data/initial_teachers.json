@@ -1,0 +1,52 @@
+[
+  {
+    "full_name": "Layon Quirino Vidal",
+    "cpf": "920.000.000-01",
+    "email": "layon-quirino@hotmail.com",
+    "phone": "(62) 98888-1001",
+    "birth_date": "1988-01-01",
+    "biological_sex": "male",
+    "jiu_jitsu_belt": "black",
+    "jiu_jitsu_stripes": 1
+  },
+  {
+    "full_name": "Vinicius Antonio",
+    "cpf": "920.000.000-02",
+    "email": "vinicius.1acf@gmail.com",
+    "phone": "(62) 98888-1002",
+    "birth_date": "1988-01-01",
+    "biological_sex": "male",
+    "jiu_jitsu_belt": "black",
+    "jiu_jitsu_stripes": 1
+  },
+  {
+    "full_name": "Lauro Rodrigues Viana",
+    "cpf": "755.980.941-34",
+    "email": "lauro.viana@lvjiujitsu.test",
+    "phone": "(62) 98888-1003",
+    "birth_date": "1991-08-08",
+    "biological_sex": "male",
+    "jiu_jitsu_belt": "black",
+    "jiu_jitsu_stripes": 1
+  },
+  {
+    "full_name": "André Henrique Freiria Oliveira",
+    "cpf": "920.000.000-04",
+    "email": "andre.oliveira@lvjiujitsu.test",
+    "phone": "(62) 98888-1004",
+    "birth_date": "1988-01-01",
+    "biological_sex": "male",
+    "jiu_jitsu_belt": "black",
+    "jiu_jitsu_stripes": 1
+  },
+  {
+    "full_name": "Vanessa Ferro",
+    "cpf": "920.000.000-05",
+    "email": "vanessa.ferro@lvjiujitsu.test",
+    "phone": "(62) 98888-1005",
+    "birth_date": "1988-01-01",
+    "biological_sex": "female",
+    "jiu_jitsu_belt": "black",
+    "jiu_jitsu_stripes": 1
+  }
+]

@@ -8,7 +8,6 @@ from django.urls import reverse
 from system.models import PersonType, Person, PortalAccount, ProductBackorder, RegistrationOrder
 from system.models.product import Product, ProductCategory, ProductVariant
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
-from system.services.seeding import seed_products
 
 User = get_user_model()
 

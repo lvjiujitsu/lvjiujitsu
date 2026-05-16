@@ -1,0 +1,337 @@
+[
+  {
+    "sku": "belt-lv",
+    "variants": [
+      {
+        "color": "Branca",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Roxa",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Roxa",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Roxa",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Roxa",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Marrom",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Marrom",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Marrom",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Marrom",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Preta",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Preta",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Preta",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Preta",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Branca",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Cinza",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Cinza",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Cinza",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Amarela",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Amarela",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Amarela",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Laranja",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Laranja",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Laranja",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Verde",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Verde",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Verde",
+        "size": "M3",
+        "stock": 2
+      }
+    ]
+  },
+  {
+    "sku": "gi-lv-adulto",
+    "variants": [
+      {
+        "color": "Branco",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Branco",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Branco",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Branco",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "A4",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "A1",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "A2",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "A3",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "A4",
+        "stock": 2
+      }
+    ]
+  },
+  {
+    "sku": "gi-lv-infantil",
+    "variants": [
+      {
+        "color": "Branco",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Branco",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Branco",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Azul",
+        "size": "M3",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "M1",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "M2",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "M3",
+        "stock": 2
+      }
+    ]
+  },
+  {
+    "sku": "rash-lv",
+    "variants": [
+      {
+        "color": "Preto",
+        "size": "PP",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "P",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "M",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "G",
+        "stock": 2
+      },
+      {
+        "color": "Preto",
+        "size": "GG",
+        "stock": 2
+      }
+    ]
+  },
+  {
+    "sku": "patch-kit-3",
+    "variants": [
+      {
+        "color": "",
+        "size": "",
+        "stock": 2
+      }
+    ]
+  }
+]

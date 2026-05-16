@@ -43,12 +43,31 @@
 
   var planSelectorState = {
     audience: '',
-    plan_type: '',
+    commercial_tier: '',
     weekly_frequency: null,
     billing_cycle: '',
     payment_method: '',
     leftover_action: 'keep_credit'
   };
+
+  var COMMERCIAL_TIER_ORDER = ['individual', 'fidelity', 'family'];
+
+  function planCommercialTierKey(plan) {
+    if (plan.commercial_tier) {
+      return plan.commercial_tier;
+    }
+    return plan.is_family_plan ? 'family' : 'individual';
+  }
+
+  function commercialTierLabelForKey(tierKey, plans) {
+    var sample = plans.find(function (p) { return planCommercialTierKey(p) === tierKey; });
+    if (sample && sample.commercial_tier_label) {
+      return sample.commercial_tier_label;
+    }
+    if (tierKey === 'fidelity') return 'Fidelidade';
+    if (tierKey === 'family') return 'Família';
+    return 'Individual';
+  }
 
   var selectedPlanId = null;
 
@@ -85,14 +104,14 @@
 
   function getPlanDimensionOptions(plans) {
     var audiences = [];
-    var planTypes = [];
+    var tiers = [];
     var frequencies = [];
     var cycles = [];
     var methods = [];
     plans.forEach(function (plan) {
       if (audiences.indexOf(plan.audience) === -1) audiences.push(plan.audience);
-      var type = plan.is_family_plan ? 'family' : 'individual';
-      if (planTypes.indexOf(type) === -1) planTypes.push(type);
+      var tk = planCommercialTierKey(plan);
+      if (tiers.indexOf(tk) === -1) tiers.push(tk);
       var freq = Number(plan.weekly_frequency);
       if (frequencies.indexOf(freq) === -1) frequencies.push(freq);
       if (cycles.indexOf(plan.billing_cycle) === -1) cycles.push(plan.billing_cycle);
@@ -100,7 +119,7 @@
     });
     return {
       audiences: audiences,
-      plan_types: planTypes,
+      commercial_tiers: tiers,
       weekly_frequencies: frequencies,
       billing_cycles: cycles,
       payment_methods: methods
@@ -114,10 +133,11 @@
         ? 'adult'
         : (dims.audiences[0] || '');
     }
-    if (!planSelectorState.plan_type || dims.plan_types.indexOf(planSelectorState.plan_type) === -1) {
-      planSelectorState.plan_type = dims.plan_types.indexOf('individual') !== -1
+    var availableTiers = dims.commercial_tiers.slice();
+    if (!planSelectorState.commercial_tier || availableTiers.indexOf(planSelectorState.commercial_tier) === -1) {
+      planSelectorState.commercial_tier = availableTiers.indexOf('individual') !== -1
         ? 'individual'
-        : (dims.plan_types[0] || '');
+        : (availableTiers[0] || '');
     }
     if (planSelectorState.weekly_frequency === null
       || dims.weekly_frequencies.indexOf(planSelectorState.weekly_frequency) === -1) {
@@ -135,7 +155,7 @@
   function getPlanForState(method) {
     return planCatalog.find(function (plan) {
       return plan.audience === planSelectorState.audience
-        && (plan.is_family_plan ? 'family' : 'individual') === planSelectorState.plan_type
+        && planCommercialTierKey(plan) === planSelectorState.commercial_tier
         && Number(plan.weekly_frequency) === planSelectorState.weekly_frequency
         && plan.billing_cycle === planSelectorState.billing_cycle
         && plan.payment_method === method;
@@ -163,7 +183,11 @@
     var parts = [plan.cycle, plan.payment_method_label || ''];
     if (plan.weekly_frequency_label) parts.push(plan.weekly_frequency_label);
     if (plan.audience_label) parts.push(plan.audience_label);
-    parts.push(plan.is_family_plan ? 'Família' : 'Individual');
+    if (plan.commercial_tier_label) {
+      parts.push(plan.commercial_tier_label);
+    } else {
+      parts.push(plan.is_family_plan ? 'Família' : 'Individual');
+    }
     return parts.filter(Boolean).join(' · ');
   }
 
@@ -517,16 +541,23 @@
       }));
     }
 
-    if (dims.plan_types.length > 1) {
+    if (dims.commercial_tiers.length > 1) {
+      var sortedTiers = dims.commercial_tiers.slice().sort(function (a, b) {
+        var ai = COMMERCIAL_TIER_ORDER.indexOf(a);
+        var bi = COMMERCIAL_TIER_ORDER.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      });
       selector.appendChild(buildPlanSelectorRow({
-        label: 'Tipo de plano',
-        options: [
-          { value: 'individual', label: 'Individual' },
-          { value: 'family', label: 'Família' }
-        ].filter(function (opt) { return dims.plan_types.indexOf(opt.value) !== -1; }),
-        currentValue: planSelectorState.plan_type,
+        label: 'Categoria do plano',
+        options: sortedTiers.map(function (tierKey) {
+          return {
+            value: tierKey,
+            label: commercialTierLabelForKey(tierKey, planCatalog)
+          };
+        }),
+        currentValue: planSelectorState.commercial_tier,
         onChange: function (value) {
-          planSelectorState.plan_type = value;
+          planSelectorState.commercial_tier = value;
           planSelectorState.payment_method = '';
           planSelectorState.leftover_action = 'keep_credit';
           selectedPlanId = null;

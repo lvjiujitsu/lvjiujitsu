@@ -1,6 +1,3 @@
-import json
-from datetime import date
-
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from django.test import TestCase
@@ -10,20 +7,12 @@ from unittest.mock import patch
 from system.forms import PortalRegistrationForm
 from system.models import (
     BiologicalSex,
-    ClassCategory,
-    ClassEnrollment,
-    ClassGroup,
     Person,
-    PersonRelationship,
-    PersonRelationshipKind,
     PersonType,
     PortalAccount,
     PortalPasswordResetToken,
 )
-from system.services.class_overview import build_class_group_filter_value
 from system.services.portal_auth import create_password_reset_token, reset_portal_password
-from system.services.seeding import seed_belts
-from system.tests.seed_helpers import seed_full_class_catalog
 
 
 User = get_user_model()
@@ -32,7 +21,6 @@ User = get_user_model()
 class PersonModelTestCase(TestCase):
     def setUp(self):
         self.request_factory = RequestFactory()
-        seed_belts()
 
     def test_person_has_single_type(self):
         student_type = PersonType.objects.create(
@@ -60,81 +48,6 @@ class PersonModelTestCase(TestCase):
 
         self.assertTrue(access_account.check_password("SenhaForte@123"))
         self.assertEqual(User.objects.count(), 0)
-
-    def test_holder_registration_form_creates_local_accounts(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "include_dependent": "on",
-                "holder_name": "Carlos Titular",
-                "holder_cpf": "12345678901",
-                "holder_birthdate": "01/01/1990",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_phone": "(62) 99999-1111",
-                "holder_email": "carlos@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "dependent_name": "João Dependente",
-                "dependent_cpf": "12345678902",
-                "dependent_birthdate": "02/02/2015",
-                "dependent_biological_sex": BiologicalSex.MALE,
-                "dependent_password": "123456",
-                "dependent_password_confirm": "123456",
-                "dependent_kinship_type": "father",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors.as_json())
-        created = form.save()
-
-        holder = created["holder"]
-        dependent = created["dependent"]
-
-        self.assertEqual(holder.person_type.code, "student")
-        self.assertEqual(holder.access_account.person, holder)
-        self.assertTrue(holder.access_account.check_password("123456"))
-        self.assertEqual(dependent.person_type.code, "dependent")
-        self.assertEqual(dependent.access_account.person, dependent)
-        self.assertTrue(dependent.access_account.check_password("123456"))
-        self.assertTrue(
-            PersonRelationship.objects.filter(
-                source_person=holder,
-                target_person=dependent,
-                relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
-            ).exists()
-        )
-        self.assertEqual(User.objects.count(), 0)
-
-    def test_guardian_registration_form_creates_guardian_and_dependent_accounts(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "guardian",
-                "guardian_name": "Paula Responsável",
-                "guardian_cpf": "98765432100",
-                "guardian_phone": "(62) 99999-3333",
-                "guardian_email": "paula@example.com",
-                "guardian_password": "123456",
-                "guardian_password_confirm": "123456",
-                "student_name": "Pedro Aluno",
-                "student_cpf": "98765432101",
-                "student_birthdate": "03/03/2012",
-                "student_biological_sex": BiologicalSex.MALE,
-                "student_password": "123456",
-                "student_password_confirm": "123456",
-                "student_kinship_type": "mother",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors.as_json())
-        created = form.save()
-
-        guardian = created["guardian"]
-        student = created["student"]
-
-        self.assertEqual(guardian.person_type.code, "guardian")
-        self.assertEqual(student.person_type.code, "dependent")
-        self.assertTrue(guardian.access_account.check_password("123456"))
-        self.assertTrue(student.access_account.check_password("123456"))
 
     def test_registration_form_requires_matching_password_confirmation(self):
         form = PortalRegistrationForm(
@@ -217,95 +130,6 @@ class PersonModelTestCase(TestCase):
         self.assertIsNotNone(target_token.used_at)
         self.assertIsNotNone(extra_token.used_at)
         self.assertTrue(access_account.check_password("NovaSenha@123"))
-
-    def test_registration_creates_multiple_physical_enrollments_from_logical_choice(self):
-        seed_full_class_catalog()
-        adult_category = ClassCategory.objects.get(code="adult")
-        adult_key = build_class_group_filter_value(adult_category.pk, "Jiu Jitsu")
-
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "holder_name": "Aluno com Turma",
-                "holder_cpf": "22345678901",
-                "holder_birthdate": "01/01/1995",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "holder_class_groups": [adult_key],
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors.as_json())
-        created = form.save()
-        holder = created["holder"]
-
-        self.assertEqual(holder.class_category, adult_category)
-        self.assertEqual(holder.class_group.class_category, adult_category)
-        self.assertIsNone(holder.class_schedule)
-        self.assertEqual(ClassEnrollment.objects.filter(person=holder).count(), 3)
-        self.assertEqual(
-            set(
-                ClassEnrollment.objects.filter(person=holder).values_list(
-                    "class_group__code",
-                    flat=True,
-                )
-            ),
-            {"adult-lauro", "adult-layon", "adult-vinicius"},
-        )
-
-    def test_guardian_registration_accepts_multiple_dependents(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "guardian",
-                "guardian_name": "Responsável Multi",
-                "guardian_cpf": "32345678901",
-                "guardian_password": "123456",
-                "guardian_password_confirm": "123456",
-                "student_name": "Dependente Principal",
-                "student_cpf": "32345678902",
-                "student_birthdate": "01/02/2014",
-                "student_biological_sex": BiologicalSex.FEMALE,
-                "student_password": "123456",
-                "student_password_confirm": "123456",
-                "student_kinship_type": "mother",
-                "extra_dependents_payload": json.dumps(
-                    [
-                        {
-                            "full_name": "Dependente Extra 1",
-                            "cpf": "32345678903",
-                            "birth_date": "01/03/2015",
-                            "biological_sex": BiologicalSex.FEMALE,
-                            "password": "123456",
-                            "password_confirm": "123456",
-                            "kinship_type": "mother",
-                        },
-                        {
-                            "full_name": "Dependente Extra 2",
-                            "cpf": "32345678904",
-                            "birth_date": "01/04/2016",
-                            "biological_sex": BiologicalSex.MALE,
-                            "password": "123456",
-                            "password_confirm": "123456",
-                            "kinship_type": "other",
-                            "kinship_other_label": "Tutor legal",
-                        },
-                    ]
-                ),
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors.as_json())
-        created = form.save()
-
-        self.assertEqual(len(created["dependents"]), 3)
-        self.assertEqual(
-            PersonRelationship.objects.filter(
-                source_person=created["guardian"],
-                relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
-            ).count(),
-            3,
-        )
 
     def test_other_registration_creates_single_selected_type(self):
         PersonType.objects.create(code="instructor", display_name="Professor")

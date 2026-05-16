@@ -77,7 +77,10 @@
       "Bash(C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\manage.py test --verbosity 2)",
       "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe manage.py test --verbosity 2 2>&1\")",
       "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe manage.py test --verbosity 2 2>&1 | tail -40\")",
-      "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe manage.py test --verbosity 2\")"
+      "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe manage.py test --verbosity 2\")",
+      "Bash(Select-Object -Last 40)",
+      "Bash(./.venv/Scripts/python.exe manage.py test --verbosity 2)",
+      "Bash(SEED_INITIAL_ADMINISTRATIVE_PASSWORD=teste123 .venv/Scripts/python.exe manage.py seed_system_initial_administrative)"
     ]
   },
   "model": "claude-sonnet-4-6",

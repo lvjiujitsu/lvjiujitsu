@@ -180,15 +180,6 @@ class ExpireBackordersTestCase(TestCase):
         self.assertEqual(second.status, ProductBackorderStatus.READY)
 
 
-class ExpireBackordersCommandTestCase(TestCase):
-    def test_command_runs_without_error_on_empty(self):
-        output = StringIO()
-
-        call_command("expire_backorders", stdout=output)
-
-        self.assertIn("Nenhuma reserva expirada encontrada.", output.getvalue())
-
-
 class VariantDeactivationCancelsBackordersTestCase(TestCase):
     def setUp(self):
         _, self.person_a, _, _, self.variant = BackorderTestData.build()

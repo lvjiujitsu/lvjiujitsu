@@ -22,6 +22,7 @@ from system.services.plan_change import (
     create_plan_change_order,
     get_last_paid_order,
 )
+from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -50,10 +51,15 @@ def _build_installment_label(plan):
 
 
 def _serialize_plan_with_proration(plan, proration):
+    tier = resolve_commercial_tier(
+        code=plan.code, audience=plan.audience, is_family_plan=plan.is_family_plan
+    )
     return {
         "id": plan.pk,
         "code": plan.code,
         "name": plan.display_name,
+        "commercial_tier": tier,
+        "commercial_tier_label": COMMERCIAL_TIER_LABELS.get(tier, tier),
         "price": str(plan.price),
         "monthly_reference_price": (
             str(plan.monthly_reference_price)

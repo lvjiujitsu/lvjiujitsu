@@ -143,58 +143,35 @@ Monólito Django com app única (`system`) seguindo MVT com camada explícita de
 .\.venv\Scripts\python.exe manage.py shell -c "<CHECK>"
 ```
 
-### Seeds e setup
+### Setup mínimo (apenas o necessário para subir)
+
+O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas uma a uma com validação manual.
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py create_admin_superuser
-.\.venv\Scripts\python.exe manage.py seed_person_type
-.\.venv\Scripts\python.exe manage.py seed_class_categories
-.\.venv\Scripts\python.exe manage.py seed_ibjjf_age_categories
-.\.venv\Scripts\python.exe manage.py seed_belts
-.\.venv\Scripts\python.exe manage.py seed_graduation_rules
-.\.venv\Scripts\python.exe manage.py seed_official_instructors
-.\.venv\Scripts\python.exe manage.py seed_class_catalog
-.\.venv\Scripts\python.exe manage.py seed_teacher_payroll_configs
-.\.venv\Scripts\python.exe manage.py seed_product_categories
-.\.venv\Scripts\python.exe manage.py seed_products
-.\.venv\Scripts\python.exe manage.py seed_plans
-.\.venv\Scripts\python.exe manage.py seed_holidays --year <ANO>
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-### Seeds de validação manual
+### Seeds disponíveis
 
-```powershell
-.\.venv\Scripts\python.exe manage.py inicial_seed_test
-.\.venv\Scripts\python.exe manage.py seed_test_personas
-```
+> **Estado atual:** seeds estão sendo recriadas incrementalmente. Cada seed é validada com o usuário antes de ser considerada estável. A tabela abaixo reflete apenas os comandos que existem no repositório.
 
-### Comandos individuais de seed presentes no repositório
+| Comando | Função | Depende de | Status |
+|---|---|---|---|
+| `create_admin_superuser` | cria superusuário administrativo | — | ativo |
+| `seed_system_initial_person_type` | cria os 5 tipos de pessoa base | — | ativo |
+| `seed_system_initial_teacher` | cria professores iniciais + contas de portal | `seed_system_initial_person_type` | ativo |
+| `seed_system_initial_belt_ranks` | cria as 13 faixas com progressão e cores | — | ativo |
+| `seed_system_initial_administrative` | cria usuários administrativos + histórico de graduação | `seed_system_initial_person_type`, `seed_system_initial_belt_ranks` | ativo |
 
-| Comando | Função |
-|---|---|
-| `seed_person_type` | cria tipos de pessoa base |
-| `seed_class_categories` | cria categorias de turma |
-| `seed_ibjjf_age_categories` | cria categorias etárias IBJJF |
-| `seed_belts` | cria faixas |
-| `seed_graduation_rules` | cria regras de graduação |
-| `seed_official_instructors` | cria professores oficiais e contas de portal |
-| `seed_class_catalog` | cria turmas e horários |
-| `seed_teacher_payroll_configs` | cria configurações de repasse dos professores |
-| `seed_product_categories` | cria categorias de produto |
-| `seed_products` | cria produtos e variantes |
-| `seed_plans` | cria planos comerciais |
-| `seed_holidays` | cria feriados e recesso do ano informado |
-| `seed_person_guardian` | cria responsável de teste |
-| `seed_person_guardian_with_dependent` | cria responsável com dependente |
-| `seed_person_student` | cria aluno individual |
-| `seed_person_student_with_dependent` | cria titular com dependente |
-| `seed_person_administrative` | cria perfil administrativo |
-| `seed_test_personas` | cria personas de teste para validação manual |
-| `schedule_monthly_payouts` | agenda pagamentos mensais de professores |
+### Arquitetura de seeds
 
-### Comandos legados
-
-- não há lista formal de comandos legados documentada no repositório
+- o sistema funciona como casca sem nenhuma codependência com seeds
+- seeds são convenientes (poupam cadastro manual), não são requisito de boot
+- cada seed deve falhar explicitamente quando uma dependência não foi executada
+- não existe orquestrador: execução é manual e sequencial
+- dados JSON das seeds vivem em `static/initial_data/`
+- seeds **nunca** aceitam argumentos `--` na linha de comando; toda configuração vem de variáveis de ambiente definidas no `.env`
 
 ---
 
@@ -229,11 +206,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 - SQLite descartável em `db.sqlite3`
 
 ### Seeds
-- o projeto não possui mais o agregador `inicial_seed`
-- o setup base deve executar seeds granulares em sequência explícita
-- `inicial_seed_test` é um agregador restrito a cenários de validação manual
-- cada seed base deve falhar explicitamente quando uma dependência sequencial não foi executada
-- `seed_class_catalog`, `seed_products`, `seed_plans` e `seed_holidays` devem imprimir logs auditáveis do que cadastraram
+- o sistema sobe sem nenhum dado — seeds são opcionais e poupam cadastro manual
+- não existe o package `system/management/seeders/` — seeds são comandos individuais em `system/management/commands/`
+- cada seed deve falhar explicitamente quando uma dependência não foi executada
+- seeds são recriadas incrementalmente com validação manual; a lista de comandos no CLAUDE.md reflete apenas os existentes
 
 ### Schema
 - existe apenas `system/migrations/0001_initial.py`
@@ -293,4 +269,8 @@ Atualizar este arquivo quando houver:
 - **[2026-04-21]** CLAUDE.md reescrito com contexto factual do projeto LV JIU JITSU.
 - **[2026-05-07]** Removido `inicial_seed` da documentação operacional; setup base passou a usar sequência explícita de seeds granulares.
 - **[2026-05-07]** Separadas seeds de categorias, faixas, regras de graduação, professores oficiais, repasses, categorias de produto e produtos; logs de auditoria passaram a listar registros cadastrados.
+- **[2026-05-11]** Seeds opcionais por `.env` (`SEED_ENABLE_*`, `SEED_STRICT`, `SEED_DATA_ROOT`); dados volumosos em `config/initial_data/*.json` carregados via `system/services/initial_load/`.
+- **[2026-05-12]** Seeds atomicas e manuais; removidos `initial_load`/`seeding` como arquitetura oficial e agregadores de seed.
+- **[2026-05-16]** Sistema reestruturado para subir como casca sem codependência com seeds; package `system/management/seeders/` removido; seeds serão recriadas incrementalmente; testes seed-dependentes eliminados da suite.
+- **[2026-05-16]** Seeds passam a não aceitar argumentos `--`; toda configuração via `.env`. Implementadas `seed_system_initial_person_type` e `seed_system_initial_teacher`. Dados JSON em `static/initial_data/`.
 ```

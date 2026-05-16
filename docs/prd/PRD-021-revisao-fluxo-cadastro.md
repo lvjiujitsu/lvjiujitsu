@@ -310,6 +310,18 @@ path("register/finalize/", FinalizeRegistrationView.as_view(), name="finalize-re
 
 ---
 
+## Correção 2026-05-11 — Pagamento do plano confundido com materiais
+
+**Causa:** `create_checkout_session_for_order` persistia `order.kind = OrderKind.ONE_TIME` para todo checkout Stripe. `PaymentSuccessView` tratava `ONE_TIME` como pedido só de materiais, setando `post_materials_payment_complete` e pulando a etapa de materiais no wizard.
+
+**Correção:** Em `PaymentSuccessView`, classificar por `order.plan_id is None` (pedido só de produtos) vs presença de plano no pedido, em vez de confiar apenas em `order.kind`.
+
+**UX:** Wizard pós-plano passou a incluir etapa explícita **Resumo** entre materiais e finalizar (`registration-wizard-clean.js` + `register.html`).
+
+**UX (indicadores pré-pagamento):** Para fluxos com etapa de plano, o progresso passa a listar **Materiais**, **Resumo** e **Finalizar** desde o início, em estado bloqueado (`phaseLocked`) até o pagamento do plano, alinhando a expectativa do usuário ao caminho completo.
+
+---
+
 ## Implementado
 
 _A preencher após implementação_

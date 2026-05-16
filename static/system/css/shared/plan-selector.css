@@ -135,6 +135,14 @@
   margin-top: 4px;
 }
 
+.plan-selector-payment-alt {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
 .plan-selector-payment-hint {
   font-size: 0.72rem;
   color: var(--muted);

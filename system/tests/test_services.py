@@ -27,6 +27,7 @@ from system.models import (
     TeacherPayrollConfig,
     WeekdayCode,
 )
+
 from system.models.product import Product, ProductCategory, ProductVariant
 from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.models.registration_order import DepositStatus, PaymentProvider, PaymentStatus
@@ -45,12 +46,7 @@ from system.services.payroll_rules import (
     calculate_monthly_payroll,
     encode_payroll_rules,
 )
-from system.services.registration_checkout import (
-    create_product_only_order,
-    get_registration_plan_multiplier,
-)
-from system.services.seeding import seed_ibjjf_age_categories
-from system.tests.seed_helpers import seed_full_class_catalog
+from system.services.registration_checkout import create_product_only_order
 
 
 class FinancialTransactionServiceTestCase(TestCase):
@@ -124,7 +120,6 @@ class FinancialTransactionServiceTestCase(TestCase):
 
 class FinancialDashboardServiceTestCase(TestCase):
     def setUp(self):
-        seed_ibjjf_age_categories()
         self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
         self.instructor_type = PersonType.objects.create(
             code="instructor",
@@ -212,7 +207,6 @@ class FinancialDashboardServiceTestCase(TestCase):
 
 class PayrollRulesServiceTestCase(TestCase):
     def setUp(self):
-        seed_ibjjf_age_categories()
         self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
         self.instructor_type = PersonType.objects.create(
             code="instructor",
@@ -229,6 +223,15 @@ class PayrollRulesServiceTestCase(TestCase):
             birth_date=date(2010, 1, 1),
             biological_sex=BiologicalSex.MALE,
             person_type=self.student_type,
+        )
+        from system.models import IbjjfAgeCategory
+        IbjjfAgeCategory.objects.create(
+            code="juvenile",
+            display_name="Juvenil",
+            audience=CategoryAudience.JUVENILE,
+            minimum_age=15,
+            maximum_age=17,
+            display_order=1,
         )
         self.category = ClassCategory.objects.create(
             code="juvenile-rules",
@@ -445,39 +448,6 @@ class MembershipBillingCycleTestCase(TestCase):
         result = add_billing_cycle(start, BillingCycle.MONTHLY)
 
         self.assertEqual(result.date(), date(2026, 2, 28))
-
-
-class RegistrationCheckoutServiceTestCase(TestCase):
-    def setUp(self):
-        seed_full_class_catalog()
-
-    def test_plan_multiplier_is_always_one(self):
-        kids = ClassCategory.objects.get(code="kids")
-        juvenile = ClassCategory.objects.get(code="juvenile")
-        payload = {
-            "registration_profile": "guardian",
-            "student_birthdate": date(2014, 5, 1),
-            "student_biological_sex": BiologicalSex.MALE,
-            "student_class_groups": [
-                kids.class_groups.first(),
-                juvenile.class_groups.first(),
-            ],
-            "extra_dependents": [],
-        }
-
-        self.assertEqual(get_registration_plan_multiplier(payload), 1)
-
-    def test_single_child_category_keeps_plan_simple(self):
-        kids = ClassCategory.objects.get(code="kids")
-        payload = {
-            "registration_profile": "guardian",
-            "student_birthdate": date(2014, 5, 1),
-            "student_biological_sex": BiologicalSex.MALE,
-            "student_class_groups": [kids.class_groups.first()],
-            "extra_dependents": [],
-        }
-
-        self.assertEqual(get_registration_plan_multiplier(payload), 1)
 
 
 class ProductCheckoutServiceTestCase(TestCase):

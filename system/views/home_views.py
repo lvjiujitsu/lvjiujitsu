@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -56,7 +56,13 @@ class DashboardRedirectView(PortalLoginRequiredMixin, RedirectView):
 class TechnicalAdminRequiredMixin(PortalLoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not getattr(request, "portal_is_technical_admin", False):
-            raise PermissionDenied
+            if not getattr(request, "portal_account", None):
+                from django.contrib.auth.views import redirect_to_login
+                return redirect_to_login(
+                    next=request.get_full_path(),
+                    login_url=reverse("system:login"),
+                )
+            return redirect(reverse("system:dashboard-redirect"))
         return super().dispatch(request, *args, **kwargs)
 
 

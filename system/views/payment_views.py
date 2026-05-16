@@ -206,8 +206,8 @@ class PaymentSuccessView(View):
                 person = order.person
 
                 if not person.is_active:
-                    from system.models.registration_order import OrderKind
-                    if order.kind == OrderKind.ONE_TIME:
+                    is_materials_only_order = order.plan_id is None
+                    if is_materials_only_order:
                         request.session["post_materials_payment_complete"] = True
                         request.session["materials_order_id"] = order.pk
                     else:

@@ -1,0 +1,52 @@
+[
+  {
+    "class_group_code": "adult-layon",
+    "monthly_salary": "400.00",
+    "payment_day": 28,
+    "rules": [
+      {
+        "method": "fixed_monthly",
+        "amount": "400.00",
+        "scope": "class_group",
+        "class_group_code": "adult-layon"
+      },
+      {
+        "method": "student_percentage",
+        "percentage": "50.00",
+        "scope": "class_group",
+        "class_group_code": "juvenile-layon"
+      }
+    ]
+  },
+  {
+    "class_group_code": "adult-vinicius",
+    "monthly_salary": "400.00",
+    "payment_day": 28,
+    "rules": [
+      {
+        "method": "fixed_monthly",
+        "amount": "400.00",
+        "scope": "class_group",
+        "class_group_code": "adult-vinicius"
+      }
+    ]
+  },
+  {
+    "class_group_code": "adult-lauro",
+    "monthly_salary": "0.00",
+    "payment_day": 28,
+    "rules": []
+  },
+  {
+    "class_group_code": "kids-andre",
+    "monthly_salary": "0.00",
+    "payment_day": 28,
+    "rules": []
+  },
+  {
+    "class_group_code": "women-vannessa",
+    "monthly_salary": "0.00",
+    "payment_day": 28,
+    "rules": []
+  }
+]

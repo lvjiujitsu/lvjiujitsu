@@ -67,6 +67,22 @@
     creditCardFeePassThrough: true, pixFeePassThrough: true
   };
 
+  function applyFeePassThroughToBase(base, methodKey) {
+    var b = Number(base);
+    if (!Number.isFinite(b) || b <= 0) return 0;
+    if (methodKey === 'pix' && feeConfig.pixFeePassThrough) {
+      return Math.round((b + feeConfig.pixFixedFee) * 100) / 100;
+    }
+    if (methodKey === 'credit_card' && feeConfig.creditCardFeePassThrough) {
+      var denom = 1 - feeConfig.creditCardPercentFee;
+      if (!Number.isFinite(denom) || denom <= 0) {
+        return Math.round(b * 100) / 100;
+      }
+      return Math.round(((b + feeConfig.creditCardFixedFee) / denom) * 100) / 100;
+    }
+    return Math.round(b * 100) / 100;
+  }
+
   var checkoutActionInput = document.getElementById('checkout-action');
   var checkoutActionButtons = Array.from(form.querySelectorAll('[data-checkout-action]'));
   var checkoutActionHelp = form.querySelector('[data-checkout-action-help]');
@@ -93,6 +109,7 @@
   var draftSaveTimeout = null;
   var activeMaterialCategory = null;
   var postPaymentMaterialsMethod = '';
+  var cartItemDetailDialog = null;
 
   // ============================================================================
   // Step Definitions
@@ -227,7 +244,7 @@
     summary: {
       key: 'summary',
       label: 'Resumo',
-      title: 'Resumo',
+      title: 'Resumo da compra',
       panelSelector: '[data-panel="summary"]',
       requiredFields: []
     },
@@ -303,17 +320,39 @@
       trimExtraDependentsToCount(1);
     }
 
-    // Em modo pós-pagamento, adiciona etapas de conclusão ao fluxo normal
-    // para que o usuário veja o contexto completo do seu cadastro.
+    var hasPlanStep = steps.some(function (s) {
+      return s.key === 'plan';
+    });
+
     if (postMaterialsPaymentComplete) {
+      steps.push(STEP_DEFINITIONS.summary);
       steps.push(STEP_DEFINITIONS.finalize_step);
     } else if (postPlanPaymentComplete) {
       steps.push(STEP_DEFINITIONS.materials_post_payment);
+      steps.push(STEP_DEFINITIONS.summary);
       steps.push(STEP_DEFINITIONS.finalize_step);
+    } else if (hasPlanStep) {
+      steps.push(
+        Object.assign({}, STEP_DEFINITIONS.materials_post_payment, { phaseLocked: true }),
+        Object.assign({}, STEP_DEFINITIONS.summary, { phaseLocked: true }),
+        Object.assign({}, STEP_DEFINITIONS.finalize_step, { phaseLocked: true })
+      );
     }
 
     syncExtraDependentsPayload();
     return steps;
+  }
+
+  function getLastPrePaymentNavigableIndex() {
+    if (isPostPayment) {
+      return Math.max(0, activeSteps.length - 1);
+    }
+    for (var i = 0; i < activeSteps.length; i += 1) {
+      if (activeSteps[i].phaseLocked) {
+        return Math.max(0, i - 1);
+      }
+    }
+    return Math.max(0, activeSteps.length - 1);
   }
 
   function getSelectedProfile() {
@@ -347,7 +386,11 @@
       button.className = 'wizard-progress-step';
       button.type = 'button';
       button.dataset.stepIndex = index;
-      
+      if (step.phaseLocked) {
+        button.classList.add('is-locked');
+        button.setAttribute('title', 'Disponível após o pagamento do plano');
+      }
+
       if (index === currentStepIndex) {
         button.classList.add('is-active');
       } else if (index < currentStepIndex) {
@@ -364,7 +407,9 @@
       button.appendChild(indexSpan);
       button.appendChild(labelSmall);
       button.addEventListener('click', function () {
-        // Em modo pós-pagamento, permite clicar em qualquer etapa (para ver dados)
+        if (activeSteps[index].phaseLocked) {
+          return;
+        }
         if (isPostPayment || index < currentStepIndex) {
           goToStep(index);
         }
@@ -420,6 +465,9 @@
     if (currentStep.key === 'materials_post_payment') {
       renderPostPaymentProductList();
     }
+    if (currentStep.key === 'summary') {
+      renderPostPaymentSummaryPanel();
+    }
     if (currentStep.key === 'finalize_step') {
       renderFinalizePanel();
     }
@@ -433,8 +481,9 @@
 
   function updateNavigation() {
     var isFirstStep = currentStepIndex === 0;
-    var isLastStep = currentStepIndex === activeSteps.length - 1;
     var currentStep = activeSteps[currentStepIndex];
+    var lastNav = getLastPrePaymentNavigableIndex();
+    var isLastInteractive = currentStepIndex >= lastNav;
 
     // Modo pós-pagamento: exibe todas as etapas do fluxo normal
     // como contexto; permite navegar pelo histórico e avançar até a conclusão.
@@ -467,12 +516,12 @@
     }
 
     if (nextButton) {
-      nextButton.classList.toggle('is-hidden', isLastStep);
-      nextButton.hidden = isLastStep;
+      nextButton.classList.toggle('is-hidden', isLastInteractive);
+      nextButton.hidden = isLastInteractive;
     }
 
     if (submitButton) {
-      var showSubmit = isLastStep && !(currentStep && currentStep.key === 'plan');
+      var showSubmit = isLastInteractive && !(currentStep && currentStep.key === 'plan');
       submitButton.classList.toggle('is-hidden', !showSubmit);
       submitButton.hidden = !showSubmit;
     }
@@ -834,6 +883,9 @@
   // ============================================================================
   function goToStep(index) {
     if (index < 0 || index >= activeSteps.length) return;
+    if (activeSteps[index].phaseLocked) {
+      return;
+    }
     persistStepDependentData(activeSteps[currentStepIndex]);
     currentStepIndex = index;
     updateUI();
@@ -860,7 +912,8 @@
       return;
     }
     
-    if (currentStepIndex < activeSteps.length - 1) {
+    var maxNav = getLastPrePaymentNavigableIndex();
+    if (currentStepIndex < maxNav) {
       goToStep(currentStepIndex + 1);
       saveDraft();
     }
@@ -980,6 +1033,9 @@
   function validateStep(index) {
     var step = activeSteps[index];
     if (!step) return true;
+    if (step.phaseLocked) {
+      return true;
+    }
 
     if (step.key === 'type') {
       return validateTypeStep();
@@ -1209,7 +1265,7 @@
       // Restore step
       activeSteps = computeActiveSteps();
       syncExtraDependentsPayload();
-      currentStepIndex = Math.min(draft.currentStep || 0, activeSteps.length - 1);
+      currentStepIndex = Math.min(draft.currentStep || 0, getLastPrePaymentNavigableIndex());
 
       updateUI();
       updateDraftNoteVisibility();
@@ -1314,7 +1370,7 @@
   if (dependentToggle) {
     dependentToggle.addEventListener('change', function () {
       activeSteps = computeActiveSteps();
-      currentStepIndex = Math.min(currentStepIndex, activeSteps.length - 1);
+      currentStepIndex = Math.min(currentStepIndex, getLastPrePaymentNavigableIndex());
       updateUI();
       saveDraft();
     });
@@ -1323,7 +1379,7 @@
   if (dependentCountSelect) {
     dependentCountSelect.addEventListener('change', function () {
       activeSteps = computeActiveSteps();
-      currentStepIndex = Math.min(currentStepIndex, activeSteps.length - 1);
+      currentStepIndex = Math.min(currentStepIndex, getLastPrePaymentNavigableIndex());
       updateUI();
       saveDraft();
     });
@@ -1390,7 +1446,7 @@
       return;
     }
     persistStepDependentData(activeSteps[currentStepIndex]);
-    if (!validateAllStepsUpTo(activeSteps.length - 1)) {
+    if (!validateAllStepsUpTo(getLastPrePaymentNavigableIndex())) {
       event.preventDefault();
     }
   });
@@ -2339,7 +2395,7 @@
 
   var planSelectorState = {
     audience: '',
-    plan_type: '',
+    commercial_tier: '',
     weekly_frequency: null,
     billing_cycle: '',
     payment_method: ''
@@ -2354,16 +2410,35 @@
 
   var CYCLE_ORDER = ['monthly', 'quarterly', 'semiannual', 'annual'];
 
+  var COMMERCIAL_TIER_ORDER = ['individual', 'fidelity', 'family'];
+
+  function planCommercialTierKey(plan) {
+    if (plan.commercial_tier) {
+      return plan.commercial_tier;
+    }
+    return plan.is_family_plan ? 'family' : 'individual';
+  }
+
+  function commercialTierLabelForKey(tierKey, plans) {
+    var sample = plans.find(function (p) { return planCommercialTierKey(p) === tierKey; });
+    if (sample && sample.commercial_tier_label) {
+      return sample.commercial_tier_label;
+    }
+    if (tierKey === 'fidelity') return 'Fidelidade';
+    if (tierKey === 'family') return 'Fam\u00edlia';
+    return 'Individual';
+  }
+
   function getPlanDimensionOptions(plans) {
     var audiences = [];
-    var planTypes = [];
+    var tiers = [];
     var frequencies = [];
     var cycles = [];
     var methods = [];
     plans.forEach(function (plan) {
       if (audiences.indexOf(plan.audience) === -1) audiences.push(plan.audience);
-      var type = plan.is_family_plan ? 'family' : 'individual';
-      if (planTypes.indexOf(type) === -1) planTypes.push(type);
+      var tk = planCommercialTierKey(plan);
+      if (tiers.indexOf(tk) === -1) tiers.push(tk);
       var freq = Number(plan.weekly_frequency);
       if (frequencies.indexOf(freq) === -1) frequencies.push(freq);
       if (cycles.indexOf(plan.billing_cycle) === -1) cycles.push(plan.billing_cycle);
@@ -2371,7 +2446,7 @@
     });
     return {
       audiences: audiences,
-      plan_types: planTypes,
+      commercial_tiers: tiers,
       weekly_frequencies: frequencies,
       billing_cycles: cycles,
       payment_methods: methods
@@ -2383,9 +2458,10 @@
     if (!planSelectorState.audience || dims.audiences.indexOf(planSelectorState.audience) === -1) {
       planSelectorState.audience = dims.audiences.indexOf('adult') !== -1 ? 'adult' : (dims.audiences[0] || '');
     }
-    var availableTypes = dims.plan_types.slice();
-    if (!planSelectorState.plan_type || availableTypes.indexOf(planSelectorState.plan_type) === -1) {
-      planSelectorState.plan_type = availableTypes.indexOf('individual') !== -1 ? 'individual' : (availableTypes[0] || '');
+    var availableTiers = dims.commercial_tiers.slice();
+    if (!planSelectorState.commercial_tier || availableTiers.indexOf(planSelectorState.commercial_tier) === -1) {
+      planSelectorState.commercial_tier =
+        availableTiers.indexOf('individual') !== -1 ? 'individual' : (availableTiers[0] || '');
     }
     if (planSelectorState.weekly_frequency === null || dims.weekly_frequencies.indexOf(planSelectorState.weekly_frequency) === -1) {
       planSelectorState.weekly_frequency = dims.weekly_frequencies.indexOf(5) !== -1 ? 5 : (dims.weekly_frequencies[0] || null);
@@ -2398,7 +2474,7 @@
   function getPlanForState(method) {
     return planCatalog.find(function (plan) {
       return plan.audience === planSelectorState.audience
-        && (plan.is_family_plan ? 'family' : 'individual') === planSelectorState.plan_type
+        && planCommercialTierKey(plan) === planSelectorState.commercial_tier
         && Number(plan.weekly_frequency) === planSelectorState.weekly_frequency
         && plan.billing_cycle === planSelectorState.billing_cycle
         && plan.payment_method === method;
@@ -2455,16 +2531,23 @@
       }));
     }
 
-    if (dims.plan_types.length > 1) {
+    if (dims.commercial_tiers.length > 1) {
+      var sortedTiers = dims.commercial_tiers.slice().sort(function (a, b) {
+        var ai = COMMERCIAL_TIER_ORDER.indexOf(a);
+        var bi = COMMERCIAL_TIER_ORDER.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      });
       selector.appendChild(buildPlanSelectorRow({
-        label: 'Tipo de plano',
-        options: [
-          { value: 'individual', label: 'Individual' },
-          { value: 'family', label: 'Fam\u00edlia' }
-        ].filter(function (opt) { return dims.plan_types.indexOf(opt.value) !== -1; }),
-        currentValue: planSelectorState.plan_type,
+        label: 'Categoria do plano',
+        options: sortedTiers.map(function (tierKey) {
+          return {
+            value: tierKey,
+            label: commercialTierLabelForKey(tierKey, visiblePlans)
+          };
+        }),
+        currentValue: planSelectorState.commercial_tier,
         onChange: function (value) {
-          planSelectorState.plan_type = value;
+          planSelectorState.commercial_tier = value;
           planSelectorState.payment_method = '';
           renderPlanList();
         }
@@ -2599,6 +2682,20 @@
     price.className = 'plan-selector-payment-price';
     price.textContent = formatBRL(plan.price);
     info.appendChild(price);
+
+    if (plan.charge_pix && plan.charge_card) {
+      var alt = document.createElement('span');
+      alt.className = 'plan-selector-payment-alt';
+      var pixVal = parseFloat(plan.charge_pix);
+      var cardVal = parseFloat(plan.charge_card);
+      if (paymentMethod === 'pix' && cardVal > 0 && Math.abs(cardVal - pixVal) > 0.009) {
+        alt.textContent = 'Cart\u00e3o (mesmo ciclo): ' + formatBRL(cardVal);
+        info.appendChild(alt);
+      } else if (paymentMethod === 'credit_card' && pixVal > 0 && Math.abs(cardVal - pixVal) > 0.009) {
+        alt.textContent = 'PIX (mesmo ciclo): ' + formatBRL(pixVal);
+        info.appendChild(alt);
+      }
+    }
 
     if (plan.monthly_reference_price && plan.billing_cycle !== 'monthly') {
       var hint = document.createElement('span');
@@ -2767,7 +2864,9 @@
     if (plan.audience_label) {
       parts.push(plan.audience_label);
     }
-    if (plan.is_family_plan) {
+    if (plan.commercial_tier_label) {
+      parts.push(plan.commercial_tier_label);
+    } else if (plan.is_family_plan) {
       parts.push('Família');
     } else {
       parts.push('Individual');
@@ -2983,11 +3082,22 @@
     metaEl.textContent = product.description || product.category;
     info.appendChild(nameEl);
     info.appendChild(metaEl);
-    var priceEl = document.createElement('span');
-    priceEl.className = 'catalog-product-item-price';
-    priceEl.textContent = formatBRL(product.price);
     top.appendChild(info);
-    top.appendChild(priceEl);
+    var priceWrap = document.createElement('div');
+    priceWrap.className = 'catalog-product-item-prices';
+    var netEl = document.createElement('span');
+    netEl.className = 'catalog-product-item-price catalog-product-item-price--net';
+    netEl.textContent = formatBRL(product.price);
+    priceWrap.appendChild(netEl);
+    if (product.charge_pix && product.charge_card) {
+      var payEl = document.createElement('span');
+      payEl.className = 'catalog-product-item-price-pay';
+      payEl.textContent =
+        'PIX ' + formatBRL(parseFloat(product.charge_pix)) +
+        ' · Cartão ' + formatBRL(parseFloat(product.charge_card)) + ' (1 un.)';
+      priceWrap.appendChild(payEl);
+    }
+    top.appendChild(priceWrap);
     card.appendChild(top);
 
     if (!hasAvailableProductVariants(product)) {
@@ -3217,15 +3327,100 @@
     };
   }
 
+  function truncateCartLineLabel(text, maxLen) {
+    var t = String(text || '');
+    var n = typeof maxLen === 'number' ? maxLen : 40;
+    if (t.length <= n) return t;
+    return t.slice(0, n - 1) + '\u2026';
+  }
+
+  function ensureCartItemDetailDialog() {
+    if (cartItemDetailDialog) return cartItemDetailDialog;
+    var dlg = document.createElement('dialog');
+    dlg.className = 'cart-item-detail-dialog';
+    var inner = document.createElement('div');
+    inner.className = 'cart-item-detail-dialog-inner';
+    var head = document.createElement('h3');
+    head.className = 'cart-item-detail-dialog-title';
+    head.id = 'cart-item-detail-dialog-heading';
+    head.textContent = 'Detalhes do material';
+    var body = document.createElement('div');
+    body.className = 'cart-item-detail-dialog-body';
+    body.dataset.cartDetailBody = 'true';
+    var foot = document.createElement('div');
+    foot.className = 'cart-item-detail-dialog-actions';
+    var closeForm = document.createElement('form');
+    closeForm.method = 'dialog';
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'submit';
+    closeBtn.className = 'secondary-button';
+    closeBtn.textContent = 'Fechar';
+    closeForm.appendChild(closeBtn);
+    foot.appendChild(closeForm);
+    inner.appendChild(head);
+    inner.appendChild(body);
+    inner.appendChild(foot);
+    dlg.appendChild(inner);
+    dlg.setAttribute('aria-labelledby', 'cart-item-detail-dialog-heading');
+    document.body.appendChild(dlg);
+    cartItemDetailDialog = dlg;
+    return dlg;
+  }
+
+  function fillCartItemDetailBody(entry) {
+    var dlg = ensureCartItemDetailDialog();
+    var body = dlg.querySelector('[data-cart-detail-body]');
+    if (!body) return;
+    while (body.firstChild) {
+      body.removeChild(body.firstChild);
+    }
+    function addRow(label, value) {
+      var row = document.createElement('div');
+      row.className = 'cart-item-detail-kv';
+      var k = document.createElement('span');
+      k.className = 'cart-item-detail-k';
+      k.textContent = label;
+      var v = document.createElement('span');
+      v.className = 'cart-item-detail-v';
+      v.textContent = value;
+      row.appendChild(k);
+      row.appendChild(v);
+      body.appendChild(row);
+    }
+    addRow('Item', entry.displayName || entry.productName || '—');
+    addRow('Produto', entry.productName || '—');
+    addRow('Cor', entry.color || '—');
+    addRow('Tamanho', entry.size || '—');
+    addRow('Quantidade', String(entry.quantity));
+    addRow('Valor unitário (sem taxas)', formatBRL(entry.unitPrice));
+    addRow('Subtotal linha (sem taxas)', formatBRL(entry.unitPrice * entry.quantity));
+    var note = document.createElement('p');
+    note.className = 'cart-item-detail-note';
+    note.textContent =
+      'As taxas de PIX ou cartão são calculadas sobre o total do carrinho na forma de pagamento escolhida.';
+    body.appendChild(note);
+  }
+
+  function openCartItemDetailDialog(entry) {
+    ensureCartItemDetailDialog();
+    fillCartItemDetailBody(entry);
+    if (typeof cartItemDetailDialog.showModal === 'function') {
+      cartItemDetailDialog.showModal();
+    }
+  }
+
   function buildSelectedProductCartPreview() {
     var entries = getSelectedProductEntries();
     var wrapper = document.createElement('div');
     wrapper.className = 'catalog-cart-preview';
 
-    var title = document.createElement('h3');
-    title.className = 'checkout-section-title';
-    title.textContent = 'Carrinho de materiais';
-    wrapper.appendChild(title);
+    var head = document.createElement('div');
+    head.className = 'catalog-cart-preview-head';
+    var title = document.createElement('span');
+    title.className = 'catalog-cart-preview-head-title';
+    title.textContent = 'Carrinho';
+    head.appendChild(title);
+    wrapper.appendChild(head);
 
     if (entries.length === 0) {
       var empty = document.createElement('p');
@@ -3236,26 +3431,33 @@
     }
 
     var list = document.createElement('div');
-    list.className = 'catalog-cart-preview-list';
+    list.className = 'catalog-cart-preview-list catalog-cart-preview-list--compact';
     entries.forEach(function (entry) {
       var row = document.createElement('div');
-      row.className = 'catalog-cart-preview-row';
+      row.className = 'catalog-cart-preview-row catalog-cart-preview-row--compact';
 
-      var text = document.createElement('span');
-      text.className = 'catalog-cart-preview-label';
-      text.textContent = entry.displayName + ' x' + entry.quantity;
+      var label = document.createElement('span');
+      label.className = 'catalog-cart-preview-label catalog-cart-preview-label--truncate';
+      label.textContent = truncateCartLineLabel(entry.displayName, 40) + ' ×' + entry.quantity;
 
-      var actions = document.createElement('div');
-      actions.className = 'catalog-cart-preview-actions';
+      var amount = document.createElement('span');
+      amount.className = 'catalog-cart-preview-amount';
+      amount.textContent = formatBRL(entry.unitPrice * entry.quantity);
 
-      var subtotal = document.createElement('span');
-      subtotal.className = 'catalog-cart-preview-value';
-      subtotal.textContent = formatBRL(entry.unitPrice * entry.quantity);
+      var infoBtn = document.createElement('button');
+      infoBtn.type = 'button';
+      infoBtn.className = 'catalog-cart-preview-info';
+      infoBtn.setAttribute('aria-label', 'Informações do item');
+      infoBtn.textContent = 'i';
+      infoBtn.addEventListener('click', function () {
+        openCartItemDetailDialog(entry);
+      });
 
       var removeButton = document.createElement('button');
       removeButton.type = 'button';
-      removeButton.className = 'catalog-cart-preview-remove';
-      removeButton.textContent = 'Remover';
+      removeButton.className = 'catalog-cart-preview-remove catalog-cart-preview-remove--icon';
+      removeButton.setAttribute('aria-label', 'Remover item');
+      removeButton.textContent = '\u00d7';
       removeButton.addEventListener('click', function () {
         delete selectedProducts[String(entry.variantId)];
         syncCheckoutHiddenFields();
@@ -3268,10 +3470,10 @@
         }
       });
 
-      actions.appendChild(subtotal);
-      actions.appendChild(removeButton);
-      row.appendChild(text);
-      row.appendChild(actions);
+      row.appendChild(label);
+      row.appendChild(amount);
+      row.appendChild(infoBtn);
+      row.appendChild(removeButton);
       list.appendChild(row);
     });
     wrapper.appendChild(list);
@@ -3349,19 +3551,14 @@
 
   function calcMaterialsTotalForMethod(method) {
     var base = getMaterialsCartTotal();
-    if (base <= 0) return 0;
-    if (method === 'pix' && feeConfig.pixFeePassThrough) {
-      return Math.round((base + feeConfig.pixFixedFee) * 100) / 100;
-    }
-    if (method === 'credit_card' && feeConfig.creditCardFeePassThrough) {
-      return Math.round(((base + feeConfig.creditCardFixedFee) / (1 - feeConfig.creditCardPercentFee)) * 100) / 100;
-    }
-    return base;
+    var key = method === 'credit_card' ? 'credit_card' : 'pix';
+    return applyFeePassThroughToBase(base, key);
   }
 
   function buildMaterialsPaymentCard(method) {
     var cartTotal = getMaterialsCartTotal();
-    var charged = cartTotal > 0 ? calcMaterialsTotalForMethod(method) : 0;
+    var methodKey = method === 'credit_card' ? 'credit_card' : 'pix';
+    var charged = cartTotal > 0 ? applyFeePassThroughToBase(cartTotal, methodKey) : 0;
 
     var card = document.createElement('button');
     card.type = 'button';
@@ -3391,8 +3588,7 @@
 
     var priceEl = document.createElement('span');
     priceEl.className = 'plan-selector-payment-price';
-    var isSelected = postPaymentMaterialsMethod === method;
-    priceEl.textContent = (cartTotal > 0 && isSelected) ? formatBRL(charged) : '—';
+    priceEl.textContent = cartTotal > 0 ? formatBRL(charged) : '—';
     info.appendChild(priceEl);
 
     card.appendChild(info);
@@ -3444,7 +3640,7 @@
     } else {
       var hint = document.createElement('p');
       hint.className = 'plan-selector-hint';
-      hint.textContent = 'Escolha PIX ou Cartão para confirmar os materiais.';
+      hint.textContent = 'Os valores abaixo são o total do carrinho com taxas (PIX fixa ou cartão). Escolha um método para pagar.';
       wrapper.appendChild(hint);
     }
 
@@ -3524,6 +3720,93 @@
     return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function buildPostPaymentOrderSummaryEl() {
+    var planOrder = postPaymentData.planOrder;
+    var materialsOrder = postPaymentData.materialsOrder;
+    if (!planOrder && !(materialsOrder && materialsOrder.items && materialsOrder.items.length)) {
+      return null;
+    }
+    var summary = document.createElement('div');
+    summary.className = 'finalize-order-summary';
+
+    if (planOrder) {
+      var planSection = document.createElement('div');
+      planSection.className = 'finalize-order-section';
+
+      var planTitle = document.createElement('div');
+      planTitle.className = 'finalize-order-section-title';
+      planTitle.textContent = 'Plano';
+      planSection.appendChild(planTitle);
+
+      var planRow = document.createElement('div');
+      planRow.className = 'finalize-order-row';
+      var planLabel = document.createElement('span');
+      planLabel.textContent = planOrder.plan_name || 'Mensalidade';
+      var planValue = document.createElement('span');
+      planValue.textContent = 'R$ ' + fmtCurrency(planOrder.plan_price || planOrder.total);
+      planRow.appendChild(planLabel);
+      planRow.appendChild(planValue);
+      planSection.appendChild(planRow);
+
+      summary.appendChild(planSection);
+    }
+
+    if (materialsOrder && materialsOrder.items && materialsOrder.items.length > 0) {
+      var matSection = document.createElement('div');
+      matSection.className = 'finalize-order-section';
+
+      var matTitle = document.createElement('div');
+      matTitle.className = 'finalize-order-section-title';
+      matTitle.textContent = 'Materiais';
+      matSection.appendChild(matTitle);
+
+      materialsOrder.items.forEach(function (item) {
+        var r = document.createElement('div');
+        r.className = 'finalize-order-row';
+        var lbl = document.createElement('span');
+        lbl.textContent = item.name + (item.quantity > 1 ? ' x' + item.quantity : '');
+        var val = document.createElement('span');
+        val.textContent = 'R$ ' + fmtCurrency(item.subtotal);
+        r.appendChild(lbl);
+        r.appendChild(val);
+        matSection.appendChild(r);
+      });
+
+      var totalRow = document.createElement('div');
+      totalRow.className = 'finalize-order-row finalize-order-row--total';
+      var totalLabel = document.createElement('span');
+      totalLabel.textContent = 'Total materiais';
+      var totalValue = document.createElement('span');
+      totalValue.textContent = 'R$ ' + fmtCurrency(materialsOrder.total);
+      totalRow.appendChild(totalLabel);
+      totalRow.appendChild(totalValue);
+      matSection.appendChild(totalRow);
+
+      summary.appendChild(matSection);
+    }
+
+    return summary;
+  }
+
+  function renderPostPaymentSummaryPanel() {
+    var container = form.querySelector('[data-post-payment-summary-content]');
+    if (!container) return;
+    container.innerHTML = '';
+    var intro = document.createElement('p');
+    intro.className = 'checkout-section-description';
+    intro.textContent = 'Confira o plano contratado e os materiais adquiridos. Você pode voltar à etapa de materiais pelos indicadores no topo, se precisar ajustar.';
+    container.appendChild(intro);
+    var box = buildPostPaymentOrderSummaryEl();
+    if (box) {
+      container.appendChild(box);
+    } else {
+      var empty = document.createElement('p');
+      empty.className = 'checkout-empty-note';
+      empty.textContent = 'Nenhum detalhe de pedido disponível.';
+      container.appendChild(empty);
+    }
+  }
+
   function renderFinalizePanel() {
     var container = form.querySelector('[data-finalize-content]');
     if (!container) return;
@@ -3553,72 +3836,9 @@
 
     container.appendChild(statusList);
 
-    if (planOrder || materialsOrder) {
-      var summary = document.createElement('div');
-      summary.className = 'finalize-order-summary';
-
-      if (planOrder) {
-        var planSection = document.createElement('div');
-        planSection.className = 'finalize-order-section';
-
-        var planTitle = document.createElement('div');
-        planTitle.className = 'finalize-order-section-title';
-        planTitle.textContent = 'Plano';
-        planSection.appendChild(planTitle);
-
-        var planRow = document.createElement('div');
-        planRow.className = 'finalize-order-row';
-        var planLabel = document.createElement('span');
-        planLabel.textContent = planOrder.plan_name || 'Mensalidade';
-        var planValue = document.createElement('span');
-        planValue.textContent = 'R$ ' + fmtCurrency(planOrder.plan_price || planOrder.total);
-        planRow.appendChild(planLabel);
-        planRow.appendChild(planValue);
-        planSection.appendChild(planRow);
-
-        summary.appendChild(planSection);
-      }
-
-      if (materialsOrder && materialsOrder.items && materialsOrder.items.length > 0) {
-        var matSection = document.createElement('div');
-        matSection.className = 'finalize-order-section';
-
-        var matTitle = document.createElement('div');
-        matTitle.className = 'finalize-order-section-title';
-        matTitle.textContent = 'Materiais';
-        matSection.appendChild(matTitle);
-
-        materialsOrder.items.forEach(function (item) {
-          var r = document.createElement('div');
-          r.className = 'finalize-order-row';
-          var lbl = document.createElement('span');
-          lbl.textContent = item.name + (item.quantity > 1 ? ' x' + item.quantity : '');
-          var val = document.createElement('span');
-          val.textContent = 'R$ ' + fmtCurrency(item.subtotal);
-          r.appendChild(lbl);
-          r.appendChild(val);
-          matSection.appendChild(r);
-        });
-
-        var totalRow = document.createElement('div');
-        totalRow.className = 'finalize-order-row finalize-order-row--total';
-        var totalLabel = document.createElement('span');
-        totalLabel.textContent = 'Total materiais';
-        var totalValue = document.createElement('span');
-        totalValue.textContent = 'R$ ' + fmtCurrency(materialsOrder.total);
-        totalRow.appendChild(totalLabel);
-        totalRow.appendChild(totalValue);
-        matSection.appendChild(totalRow);
-
-        summary.appendChild(matSection);
-      }
-
-      container.appendChild(summary);
-    }
-
     var msg = document.createElement('p');
     msg.className = 'finalize-description';
-    msg.textContent = 'Tudo pronto! Clique em "Finalizar cadastro" para ativar sua conta e acessar o portal.';
+    msg.textContent = 'Clique em "Finalizar cadastro" para ativar sua conta e acessar o portal.';
     container.appendChild(msg);
   }
 
@@ -3700,7 +3920,7 @@
       syncExtraDependentsPayload();
 
       // Salta direto para a primeira etapa pós-pagamento
-      var targetKey = postMaterialsPaymentComplete ? 'finalize_step' : 'materials_post_payment';
+      var targetKey = postMaterialsPaymentComplete ? 'summary' : 'materials_post_payment';
       var targetIndex = -1;
       for (var i = 0; i < activeSteps.length; i++) {
         if (activeSteps[i].key === targetKey) { targetIndex = i; break; }

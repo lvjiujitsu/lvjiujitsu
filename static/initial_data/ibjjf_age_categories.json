@@ -1,0 +1,178 @@
+[
+  {
+    "code": "pre-mirim-1",
+    "display_name": "Pré-Mirim 1",
+    "audience": "kids",
+    "minimum_age": 4,
+    "maximum_age": 4,
+    "display_order": 1
+  },
+  {
+    "code": "pre-mirim-2",
+    "display_name": "Pré-Mirim 2",
+    "audience": "kids",
+    "minimum_age": 5,
+    "maximum_age": 5,
+    "display_order": 2
+  },
+  {
+    "code": "pre-mirim-3",
+    "display_name": "Pré-Mirim 3",
+    "audience": "kids",
+    "minimum_age": 6,
+    "maximum_age": 6,
+    "display_order": 3
+  },
+  {
+    "code": "mirim-1",
+    "display_name": "Mirim 1",
+    "audience": "kids",
+    "minimum_age": 7,
+    "maximum_age": 7,
+    "display_order": 4
+  },
+  {
+    "code": "mirim-2",
+    "display_name": "Mirim 2",
+    "audience": "kids",
+    "minimum_age": 8,
+    "maximum_age": 8,
+    "display_order": 5
+  },
+  {
+    "code": "mirim-3",
+    "display_name": "Mirim 3",
+    "audience": "kids",
+    "minimum_age": 9,
+    "maximum_age": 9,
+    "display_order": 6
+  },
+  {
+    "code": "infantil-1",
+    "display_name": "Infantil 1",
+    "audience": "kids",
+    "minimum_age": 10,
+    "maximum_age": 10,
+    "display_order": 7
+  },
+  {
+    "code": "infantil-2",
+    "display_name": "Infantil 2",
+    "audience": "kids",
+    "minimum_age": 11,
+    "maximum_age": 11,
+    "display_order": 8
+  },
+  {
+    "code": "infantil-3",
+    "display_name": "Infantil 3",
+    "audience": "kids",
+    "minimum_age": 12,
+    "maximum_age": 12,
+    "display_order": 9
+  },
+  {
+    "code": "infanto-juvenil-1",
+    "display_name": "Infanto-Juvenil 1",
+    "audience": "kids",
+    "minimum_age": 13,
+    "maximum_age": 13,
+    "display_order": 10
+  },
+  {
+    "code": "infanto-juvenil-2",
+    "display_name": "Infanto-Juvenil 2",
+    "audience": "kids",
+    "minimum_age": 14,
+    "maximum_age": 14,
+    "display_order": 11
+  },
+  {
+    "code": "infanto-juvenil-3",
+    "display_name": "Infanto-Juvenil 3",
+    "audience": "kids",
+    "minimum_age": 15,
+    "maximum_age": 15,
+    "display_order": 12
+  },
+  {
+    "code": "juvenile-1",
+    "display_name": "Juvenil 1",
+    "audience": "juvenile",
+    "minimum_age": 16,
+    "maximum_age": 16,
+    "display_order": 13
+  },
+  {
+    "code": "juvenile-2",
+    "display_name": "Juvenil 2",
+    "audience": "juvenile",
+    "minimum_age": 17,
+    "maximum_age": 17,
+    "display_order": 14
+  },
+  {
+    "code": "adult",
+    "display_name": "Adulto",
+    "audience": "adult",
+    "minimum_age": 18,
+    "maximum_age": 29,
+    "display_order": 15
+  },
+  {
+    "code": "master-1",
+    "display_name": "Master 1",
+    "audience": "adult",
+    "minimum_age": 30,
+    "maximum_age": 35,
+    "display_order": 16
+  },
+  {
+    "code": "master-2",
+    "display_name": "Master 2",
+    "audience": "adult",
+    "minimum_age": 36,
+    "maximum_age": 40,
+    "display_order": 17
+  },
+  {
+    "code": "master-3",
+    "display_name": "Master 3",
+    "audience": "adult",
+    "minimum_age": 41,
+    "maximum_age": 45,
+    "display_order": 18
+  },
+  {
+    "code": "master-4",
+    "display_name": "Master 4",
+    "audience": "adult",
+    "minimum_age": 46,
+    "maximum_age": 50,
+    "display_order": 19
+  },
+  {
+    "code": "master-5",
+    "display_name": "Master 5",
+    "audience": "adult",
+    "minimum_age": 51,
+    "maximum_age": 55,
+    "display_order": 20
+  },
+  {
+    "code": "master-6",
+    "display_name": "Master 6",
+    "audience": "adult",
+    "minimum_age": 56,
+    "maximum_age": 60,
+    "display_order": 21
+  },
+  {
+    "code": "master-7",
+    "display_name": "Master 7",
+    "audience": "adult",
+    "minimum_age": 61,
+    "maximum_age": null,
+    "display_order": 22
+  }
+]

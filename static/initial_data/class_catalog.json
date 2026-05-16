@@ -1,0 +1,200 @@
+[
+  {
+    "code": "adult-layon",
+    "display_name": "Jiu Jitsu",
+    "class_category": "adult",
+    "description": "Turma adulta com o professor Layon Quirino.",
+    "teacher": {
+      "full_name": "Layon Quirino",
+      "cpf": "92000000001",
+      "email": "layon.quirino@lvjiujitsu.test",
+      "phone": "(62) 98888-1001"
+    },
+    "schedules": [
+      {
+        "weekday": "monday",
+        "training_style": "gi",
+        "start_time": "06:30",
+        "display_order": 1
+      },
+      {
+        "weekday": "tuesday",
+        "training_style": "gi",
+        "start_time": "06:30",
+        "display_order": 2
+      },
+      {
+        "weekday": "wednesday",
+        "training_style": "no_gi",
+        "start_time": "06:30",
+        "display_order": 3
+      },
+      {
+        "weekday": "thursday",
+        "training_style": "gi",
+        "start_time": "06:30",
+        "display_order": 4
+      },
+      {
+        "weekday": "friday",
+        "training_style": "gi",
+        "start_time": "06:30",
+        "display_order": 5
+      }
+    ]
+  },
+  {
+    "code": "adult-vinicius",
+    "display_name": "Jiu Jitsu",
+    "class_category": "adult",
+    "description": "Turma adulta com o professor Vinicius Antonio.",
+    "teacher": {
+      "full_name": "Vinicius Antonio",
+      "cpf": "92000000002",
+      "email": "vinicius.antonio@lvjiujitsu.test",
+      "phone": "(62) 98888-1002"
+    },
+    "schedules": [
+      {
+        "weekday": "monday",
+        "training_style": "gi",
+        "start_time": "11:00",
+        "display_order": 1
+      },
+      {
+        "weekday": "wednesday",
+        "training_style": "gi",
+        "start_time": "11:00",
+        "display_order": 2
+      },
+      {
+        "weekday": "friday",
+        "training_style": "no_gi",
+        "start_time": "11:00",
+        "display_order": 3
+      }
+    ]
+  },
+  {
+    "code": "adult-lauro",
+    "display_name": "Jiu Jitsu",
+    "class_category": "adult",
+    "description": "Turma adulta com o professor Lauro Viana.",
+    "teacher": {
+      "full_name": "Lauro Viana",
+      "cpf": "92000000003",
+      "email": "lauro.viana@lvjiujitsu.test",
+      "phone": "(62) 98888-1003"
+    },
+    "schedules": [
+      {
+        "weekday": "monday",
+        "training_style": "gi",
+        "start_time": "19:00",
+        "display_order": 1
+      },
+      {
+        "weekday": "tuesday",
+        "training_style": "gi",
+        "start_time": "19:00",
+        "display_order": 2
+      },
+      {
+        "weekday": "wednesday",
+        "training_style": "no_gi",
+        "start_time": "19:00",
+        "display_order": 3
+      },
+      {
+        "weekday": "thursday",
+        "training_style": "gi",
+        "start_time": "19:00",
+        "display_order": 4
+      },
+      {
+        "weekday": "friday",
+        "training_style": "gi",
+        "start_time": "19:00",
+        "display_order": 5
+      }
+    ]
+  },
+  {
+    "code": "kids-andre",
+    "display_name": "Jiu Jitsu",
+    "class_category": "kids",
+    "description": "Turma kids com o professor Andre Oliveira.",
+    "teacher": {
+      "full_name": "Andre Oliveira",
+      "cpf": "92000000004",
+      "email": "andre.oliveira@lvjiujitsu.test",
+      "phone": "(62) 98888-1004"
+    },
+    "schedules": [
+      {
+        "weekday": "tuesday",
+        "training_style": "gi",
+        "start_time": "18:00",
+        "display_order": 1
+      },
+      {
+        "weekday": "thursday",
+        "training_style": "gi",
+        "start_time": "18:00",
+        "display_order": 2
+      }
+    ]
+  },
+  {
+    "code": "juvenile-layon",
+    "display_name": "Jiu Jitsu",
+    "class_category": "juvenile",
+    "description": "Turma juvenil com o professor Layon Quirino.",
+    "teacher": {
+      "full_name": "Layon Quirino",
+      "cpf": "92000000001",
+      "email": "layon.quirino@lvjiujitsu.test",
+      "phone": "(62) 98888-1001"
+    },
+    "schedules": [
+      {
+        "weekday": "monday",
+        "training_style": "gi",
+        "start_time": "18:00",
+        "display_order": 1
+      },
+      {
+        "weekday": "wednesday",
+        "training_style": "gi",
+        "start_time": "18:00",
+        "display_order": 2
+      },
+      {
+        "weekday": "friday",
+        "training_style": "gi",
+        "start_time": "18:00",
+        "display_order": 3
+      }
+    ]
+  },
+  {
+    "code": "women-vannessa",
+    "display_name": "Jiu Jitsu",
+    "class_category": "women",
+    "description": "Turma feminina com a professora Vanessa Ferro.",
+    "teacher": {
+      "full_name": "Vanessa Ferro",
+      "cpf": "92000000005",
+      "email": "vanessa.ferro@lvjiujitsu.test",
+      "phone": "(62) 98888-1005"
+    },
+    "schedules": [
+      {
+        "weekday": "saturday",
+        "training_style": "gi",
+        "start_time": "10:30",
+        "display_order": 1
+      }
+    ]
+  }
+]

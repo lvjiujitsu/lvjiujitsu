@@ -1,0 +1,22 @@
+[
+  {
+    "code": "belts",
+    "display_name": "Faixas",
+    "display_order": 1
+  },
+  {
+    "code": "kimonos",
+    "display_name": "Kimonos",
+    "display_order": 2
+  },
+  {
+    "code": "rashguards",
+    "display_name": "Rash Guard",
+    "display_order": 3
+  },
+  {
+    "code": "patches",
+    "display_name": "Patches",
+    "display_order": 4
+  }
+]

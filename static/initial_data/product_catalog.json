@@ -1,0 +1,32 @@
+[
+  {
+    "sku": "belt-lv",
+    "display_name": "Faixa LV",
+    "category": "belts",
+    "description": "Faixa oficial LV Jiu Jitsu com graduação IBJJF: adulto A1-A4 e infantil M1-M3. Preço base; taxas de PIX ou cartão entram no total no checkout."
+  },
+  {
+    "sku": "gi-lv-adulto",
+    "display_name": "Kimono LV Tradicional Adulto",
+    "category": "kimonos",
+    "description": "Kimono LV adulto nas cores tradicionais Branco, Azul e Preto, com tamanhos A1 a A4. Preço base; taxas de PIX ou cartão entram no total no checkout."
+  },
+  {
+    "sku": "gi-lv-infantil",
+    "display_name": "Kimono LV Tradicional Infantil",
+    "category": "kimonos",
+    "description": "Kimono LV infantil nas cores tradicionais Branco, Azul e Preto, com tamanhos M1 a M3. Preço base; taxas de PIX ou cartão entram no total no checkout."
+  },
+  {
+    "sku": "rash-lv",
+    "display_name": "Rash Guard LV",
+    "category": "rashguards",
+    "description": "Rash guard oficial LV Jiu Jitsu. Tamanhos PP ao GG. Preço base; taxas de PIX ou cartão entram no total no checkout."
+  },
+  {
+    "sku": "patch-kit-3",
+    "display_name": "Kit 3 Patch's Kimono",
+    "category": "patches",
+    "description": "Kit com 3 patches oficiais LV para kimono. Preço base; taxas de PIX ou cartão entram no total no checkout."
+  }
+]

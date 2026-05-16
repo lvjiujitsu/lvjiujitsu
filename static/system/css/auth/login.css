@@ -610,6 +610,12 @@ h1 {
   color: var(--text);
 }
 
+.wizard-progress-step.is-locked {
+  opacity: 0.42;
+  cursor: default;
+  pointer-events: none;
+}
+
 .wizard-progress-step small {
   font-size: 0.74rem;
   font-weight: 700;
@@ -2639,6 +2645,26 @@ h1 {
   white-space: nowrap;
 }
 
+.catalog-product-item-prices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.catalog-product-item-price--net {
+  font-size: 0.95rem;
+}
+
+.catalog-product-item-price-pay {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.25;
+  max-width: 11rem;
+}
+
 .catalog-product-config-grid {
   display: grid;
   gap: 12px;
@@ -2751,6 +2777,78 @@ h1 {
   gap: 10px;
 }
 
+.catalog-cart-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.catalog-cart-preview-head-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.catalog-cart-preview-list--compact {
+  gap: 0;
+}
+
+.catalog-cart-preview-row--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+.catalog-cart-preview-row--compact:last-child {
+  border-bottom: none;
+}
+
+.catalog-cart-preview-label--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-cart-preview-amount {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.catalog-cart-preview-info {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.catalog-cart-preview-remove--icon {
+  min-height: 24px;
+  min-width: 28px;
+  padding: 0 6px;
+  font-size: 1.05rem;
+  line-height: 1;
+  border-radius: 8px;
+}
+
 .catalog-cart-preview-row {
   display: flex;
   align-items: center;
@@ -2802,27 +2900,89 @@ h1 {
   font-weight: 700;
 }
 
+.cart-item-detail-dialog {
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  max-width: min(92vw, 420px);
+  background: var(--panel-solid);
+  color: var(--text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.cart-item-detail-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.cart-item-detail-dialog-inner {
+  padding: 18px 18px 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.cart-item-detail-dialog-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.cart-item-detail-dialog-body {
+  display: grid;
+  gap: 8px;
+  max-height: min(60vh, 360px);
+  overflow: auto;
+}
+
+.cart-item-detail-kv {
+  display: grid;
+  grid-template-columns: minmax(0, 130px) minmax(0, 1fr);
+  gap: 8px;
+  font-size: 0.86rem;
+}
+
+.cart-item-detail-k {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cart-item-detail-v {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.cart-item-detail-note {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.cart-item-detail-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (min-width: 768px) {
   .catalog-product-config-grid {
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: end;
   }
 
-  .catalog-cart-preview-row {
+  .catalog-cart-preview-row:not(.catalog-cart-preview-row--compact) {
     gap: 18px;
   }
 }
 
 @media (max-width: 560px) {
   .catalog-product-item-top,
-  .catalog-cart-preview-row,
+  .catalog-cart-preview-row:not(.catalog-cart-preview-row--compact),
   .catalog-cart-preview-actions {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .catalog-product-add-button,
-  .catalog-cart-preview-remove {
+  .catalog-cart-preview-remove:not(.catalog-cart-preview-remove--icon) {
     width: 100%;
   }
 }

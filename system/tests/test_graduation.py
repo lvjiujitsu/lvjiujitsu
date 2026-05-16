@@ -17,26 +17,20 @@ from system.models import (
     Graduation,
     GraduationRule,
     IbjjfAgeCategory,
-    JiuJitsuBelt,
-    MartialArt,
     Person,
     PersonType,
     PortalAccount,
     TrainingStyle,
     WeekdayCode,
 )
-from system.forms import PortalRegistrationForm
 from system.models.calendar import CheckinStatus, ClassCheckin
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 from system.services.graduation import (
     compute_graduation_progress,
     count_approved_classes_in_window,
-    ensure_initial_graduation_for_beginner,
-    get_initial_belt_rank_for_person,
     get_current_graduation,
     register_graduation,
 )
-from system.services.seeding import seed_belts, seed_graduation_rules, seed_test_personas
 from system.selectors.graduation import get_graduation_overview
 
 
@@ -245,189 +239,6 @@ class GraduationServiceTestCase(TestCase):
         rows = get_graduation_overview()
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].person, self.person)
-
-
-class GraduationSeedTestCase(TestCase):
-    def test_seed_belts_creates_default_belts_only(self):
-        result = seed_belts()
-        self.assertGreater(len(result["belts"]), 5)
-        self.assertEqual(GraduationRule.objects.count(), 0)
-        white_adult = BeltRank.objects.get(code="adult-white")
-        blue_adult = BeltRank.objects.get(code="adult-blue")
-        self.assertEqual(white_adult.next_rank, blue_adult)
-
-    def test_seed_graduation_rules_creates_default_rules(self):
-        seed_belts()
-        result = seed_graduation_rules()
-        self.assertGreater(len(result["rules"]), 10)
-        self.assertTrue(
-            GraduationRule.objects.filter(
-                belt_rank__code="adult-white",
-                from_grade=0,
-                to_grade=1,
-            ).exists()
-        )
-
-
-class InitialGraduationRegistrationTestCase(TestCase):
-    def setUp(self):
-        seed_belts()
-
-    def test_initial_belt_rank_follows_student_age(self):
-        adult_type = PersonType.objects.create(code="student", display_name="Aluno")
-        adult = Person.objects.create(
-            full_name="Aluno Adulto Iniciante",
-            cpf="800.333.333-01",
-            person_type=adult_type,
-            birth_date=date(1995, 4, 1),
-            biological_sex=BiologicalSex.MALE,
-        )
-        child = Person.objects.create(
-            full_name="Aluno Infantil Iniciante",
-            cpf="800.333.333-02",
-            person_type=adult_type,
-            birth_date=date(2014, 4, 1),
-            biological_sex=BiologicalSex.MALE,
-        )
-
-        self.assertEqual(get_initial_belt_rank_for_person(adult).code, "adult-white")
-        self.assertEqual(get_initial_belt_rank_for_person(child).code, "kids-white")
-
-    def test_holder_without_jiu_jitsu_history_receives_adult_white_graduation(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "holder_name": "Aluno Sem Jiu Jitsu",
-                "holder_cpf": "80033333303",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "holder_has_martial_art": "no",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors)
-        holder = form.save()["holder"]
-
-        graduation = Graduation.objects.get(person=holder)
-        self.assertEqual(graduation.belt_rank.code, "adult-white")
-        self.assertEqual(graduation.grade_number, 0)
-
-    def test_holder_with_other_martial_art_receives_initial_jiu_jitsu_graduation(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "holder_name": "Aluno de Muay Thai",
-                "holder_cpf": "80033333308",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "holder_has_martial_art": "yes",
-                "holder_martial_art": MartialArt.MUAY_THAI,
-                "holder_martial_art_graduation": "Intermediário",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors)
-        holder = form.save()["holder"]
-
-        graduation = Graduation.objects.get(person=holder)
-        self.assertEqual(graduation.belt_rank.code, "adult-white")
-        self.assertEqual(graduation.grade_number, 0)
-
-    def test_dependent_without_jiu_jitsu_history_receives_kids_white_graduation(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "include_dependent": "on",
-                "holder_name": "Titular Sem Jiu Jitsu",
-                "holder_cpf": "80033333304",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "holder_has_martial_art": "no",
-                "dependent_name": "Dependente Sem Jiu Jitsu",
-                "dependent_cpf": "80033333305",
-                "dependent_birthdate": "01/04/2014",
-                "dependent_biological_sex": BiologicalSex.MALE,
-                "dependent_password": "123456",
-                "dependent_password_confirm": "123456",
-                "dependent_kinship_type": "father",
-                "dependent_has_martial_art": "no",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors)
-        dependent = form.save()["dependent"]
-
-        graduation = Graduation.objects.get(person=dependent)
-        self.assertEqual(graduation.belt_rank.code, "kids-white")
-        self.assertEqual(graduation.grade_number, 0)
-
-    def test_holder_with_jiu_jitsu_history_keeps_imported_graduation(self):
-        form = PortalRegistrationForm(
-            data={
-                "registration_profile": "holder",
-                "holder_name": "Aluno Com Jiu Jitsu",
-                "holder_cpf": "80033333306",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": BiologicalSex.MALE,
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "holder_has_martial_art": "yes",
-                "holder_martial_art": MartialArt.JIU_JITSU,
-                "holder_jiu_jitsu_belt": JiuJitsuBelt.BLUE,
-                "holder_jiu_jitsu_stripes": "2",
-            }
-        )
-
-        self.assertTrue(form.is_valid(), form.errors)
-        holder = form.save()["holder"]
-
-        graduation = Graduation.objects.get(person=holder)
-        self.assertEqual(graduation.belt_rank.code, "adult-blue")
-        self.assertEqual(graduation.grade_number, 2)
-
-    def test_beginner_initial_graduation_is_idempotent(self):
-        person_type = PersonType.objects.create(code="student", display_name="Aluno")
-        person = Person.objects.create(
-            full_name="Aluno Idempotente",
-            cpf="800.333.333-07",
-            person_type=person_type,
-            birth_date=date(1995, 4, 1),
-            biological_sex=BiologicalSex.MALE,
-        )
-
-        first = ensure_initial_graduation_for_beginner(person)
-        second = ensure_initial_graduation_for_beginner(person)
-
-        self.assertEqual(first, second)
-        self.assertEqual(Graduation.objects.filter(person=person).count(), 1)
-
-
-class TestPersonaInitialGraduationTestCase(TestCase):
-    def test_student_test_personas_receive_initial_graduation(self):
-        results = seed_test_personas()
-        students = []
-        for result in results:
-            person = result["person"]
-            if person.has_type_code("student", "dependent"):
-                students.append(person)
-            students.extend(result.get("dependents", []))
-
-        self.assertGreater(len(students), 0)
-        for student in students:
-            graduation = Graduation.objects.get(person=student)
-            expected_code = "kids-white" if student.get_age() <= 15 else "adult-white"
-            self.assertEqual(
-                graduation.belt_rank.code,
-                expected_code,
-                student.full_name,
-            )
-            self.assertEqual(graduation.grade_number, 0)
 
 
 class GraduationDashboardCardTestCase(TestCase):

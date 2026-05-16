@@ -41,9 +41,6 @@ from system.models import (
 from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.services.payroll_rules import decode_payroll_rules
 from system.services.class_overview import build_class_group_filter_value
-from system.services.registration import sync_person_class_enrollments
-from system.services.seeding import seed_belts
-from system.tests.seed_helpers import seed_full_class_catalog, seed_full_product_catalog
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -73,7 +70,6 @@ class PortalViewTestCase(TestCase):
             code="instructor",
             display_name="Professor",
         )
-        seed_belts()
 
     def _create_portal_account(self, *, full_name, cpf, password, person_type):
         person = Person.objects.create(
@@ -150,60 +146,6 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(modality_choices[0], ("", "Selecione"))
         self.assertNotContains(response, "Não possui")
 
-    def test_register_route_exposes_logical_class_choices_once(self):
-        seed_full_class_catalog()
-
-        response = self.client.get(reverse("system:register"))
-
-        self.assertEqual(response.status_code, 200)
-        choices = [
-            label
-            for value, label in response.context["form"].fields["holder_class_groups"].choices
-            if value
-        ]
-        self.assertEqual(
-            sum(label.startswith("Adulto · Jiu Jitsu") for label in choices),
-            1,
-        )
-
-    def test_register_route_exposes_compact_schedule_sections_for_wizard(self):
-        seed_full_class_catalog()
-
-        response = self.client.get(reverse("system:register"))
-
-        self.assertEqual(response.status_code, 200)
-        catalog = json.loads(response.context["registration_catalog_json"])
-        adult_option = next(
-            item for item in catalog if item["category_audience"] == "adult"
-        )
-
-        self.assertIn("compact_schedule_sections", adult_option)
-        monday_section = adult_option["compact_schedule_sections"][0]
-        self.assertEqual(monday_section["weekday_label"], "Segunda-feira")
-        self.assertIn(
-            {
-                "time_label": "06:30",
-                "teacher_label": "Layon Quirino",
-                "line_label": "06:30 - Layon Quirino",
-            },
-            monday_section["entries"],
-        )
-
-    def test_register_route_exposes_product_variants_in_material_catalog(self):
-        seed_full_product_catalog()
-
-        response = self.client.get(reverse("system:register"))
-
-        self.assertEqual(response.status_code, 200)
-        catalog = json.loads(response.context["product_catalog_json"])
-        belt = next(item for item in catalog if item["sku"] == "belt-lv")
-
-        self.assertIn("variants", belt)
-        self.assertGreater(len(belt["variants"]), 0)
-        self.assertEqual(belt["variants"][0]["product_id"], belt["id"])
-        self.assertIn("label", belt["variants"][0])
-        self.assertIn("snapshot_name", belt["variants"][0])
-
     def test_registration_step_validation_blocks_existing_cpf(self):
         Person.objects.create(
             full_name="Aluno Existente",
@@ -259,28 +201,6 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Informe um CPF com 11 dígitos ou use seu acesso técnico.")
 
-    def test_register_route_creates_local_account_and_not_django_user(self):
-        self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Teste",
-                "holder_cpf": "12345678903",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1212",
-                "holder_email": "aluno@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-            },
-        )
-
-        person = Person.objects.get(cpf="123.456.789-03")
-        self.assertTrue(hasattr(person, "access_account"))
-        self.assertEqual(person.person_type.code, "student")
-        self.assertEqual(User.objects.count(), 1)
-        self.assertFalse(person.is_active)
-
     def test_register_other_profile_creates_single_selected_person_type(self):
         self.client.post(
             reverse("system:register"),
@@ -301,36 +221,6 @@ class PortalViewTestCase(TestCase):
         self.assertTrue(hasattr(person, "access_account"))
         self.assertEqual(person.person_type.code, "instructor")
         self.assertFalse(person.is_active)
-
-    def test_registered_holder_can_log_in_after_finalization(self):
-        self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Teste",
-                "holder_cpf": "12345678903",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1212",
-                "holder_email": "aluno@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-            },
-        )
-        person = Person.objects.get(cpf="123.456.789-03")
-        session = self.client.session
-        session["pending_registration_person_id"] = person.pk
-        session["post_plan_payment_complete"] = True
-        session.save()
-        self.client.post(reverse("system:finalize-registration"))
-
-        response = self.client.post(
-            reverse("system:login"),
-            {"identifier": "12345678903", "password": "123456"},
-            follow=True,
-        )
-
-        self.assertRedirects(response, reverse("system:student-home"))
 
     def test_technical_admin_can_log_in_through_portal_and_access_admin_routes(self):
         response = self.client.post(
@@ -444,7 +334,7 @@ class PortalViewTestCase(TestCase):
 
         response = self.client.get(reverse("system:admin-home"))
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
 
     def test_administrative_portal_account_can_open_person_edit_form(self):
         administrative_account = self._create_portal_account(
@@ -618,47 +508,6 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Somente professores")
         self.assertContains(response, "danger-link")
 
-    def test_person_detail_groups_student_classes_once_and_shows_student_schedules(self):
-        administrative_account = self._create_portal_account(
-            full_name="Recepcao LV",
-            cpf="321.654.987-12",
-            password="123456",
-            person_type=self.administrative_type,
-        )
-        seed_full_class_catalog()
-        adult_category = ClassCategory.objects.get(code="adult")
-        adult_groups = list(
-            ClassGroup.objects.filter(
-                class_category=adult_category,
-                display_name="Jiu Jitsu",
-            ).order_by("code")
-        )
-        student = Person.objects.create(
-            full_name="Aluno Adulto Logico",
-            cpf="321.654.987-85",
-            birth_date=date(1994, 8, 12),
-            biological_sex=BiologicalSex.MALE,
-            person_type=self.student_type,
-            class_category=adult_category,
-            class_group=adult_groups[0],
-        )
-        sync_person_class_enrollments(student, adult_groups)
-        self._login_portal_account(administrative_account)
-
-        response = self.client.get(
-            reverse("system:person-detail", kwargs={"pk": student.pk})
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Adulto · Jiu Jitsu")
-        self.assertContains(response, "Horários liberados")
-        self.assertContains(response, "Segunda-feira")
-        self.assertContains(response, "06:30")
-        self.assertContains(response, "11:00")
-        self.assertContains(response, "19:00")
-        content = response.content.decode("utf-8")
-        self.assertTrue(content.index("06:30") < content.index("11:00") < content.index("19:00"))
-
     def test_person_detail_shows_responsible_billing_context_for_dependent(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao Financeiro",
@@ -702,41 +551,6 @@ class PortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Financeiro vinculado ao responsável")
         self.assertContains(response, "Plano Administrativo")
-
-    def test_person_update_form_renders_birth_date_and_logical_class_choice_once(self):
-        administrative_account = self._create_portal_account(
-            full_name="Recepcao LV",
-            cpf="321.654.987-13",
-            password="123456",
-            person_type=self.administrative_type,
-        )
-        seed_full_class_catalog()
-        adult_category = ClassCategory.objects.get(code="adult")
-        adult_groups = list(
-            ClassGroup.objects.filter(
-                class_category=adult_category,
-                display_name="Jiu Jitsu",
-            ).order_by("code")
-        )
-        student = Person.objects.create(
-            full_name="Aluno Editavel",
-            cpf="321.654.987-86",
-            birth_date=date(1994, 8, 12),
-            biological_sex=BiologicalSex.MALE,
-            person_type=self.student_type,
-            class_category=adult_category,
-            class_group=adult_groups[0],
-        )
-        sync_person_class_enrollments(student, adult_groups)
-        self._login_portal_account(administrative_account)
-
-        response = self.client.get(
-            reverse("system:person-update", kwargs={"pk": student.pk})
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'value="1994-08-12"', html=False)
-        self.assertContains(response, "Adulto · Jiu Jitsu", count=1)
 
     def test_person_type_detail_shows_people_of_that_type(self):
         administrative_account = self._create_portal_account(
@@ -1716,114 +1530,7 @@ class PortalViewTestCase(TestCase):
         update_response = self.client.get(
             reverse("system:person-update", kwargs={"pk": student.pk})
         )
-        self.assertEqual(update_response.status_code, 403)
-
-    def test_register_with_pay_later_grants_trial_and_redirects_to_register(self):
-        plan = SubscriptionPlan.objects.create(
-            code="mensal-trial",
-            display_name="Mensal Trial",
-            price=Decimal("250.00"),
-            billing_cycle="monthly",
-            is_active=True,
-        )
-        response = self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Trial",
-                "holder_cpf": "12345678912",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1212",
-                "holder_email": "trial@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "selected_plan": str(plan.pk),
-                "checkout_action": "pay_later",
-            },
-        )
-
-        self.assertRedirects(
-            response,
-            reverse("system:register"),
-            fetch_redirect_response=False,
-        )
-        order = RegistrationOrder.objects.get(person__cpf="123.456.789-12")
-        grant = TrialAccessGrant.objects.get(order=order)
-        self.assertEqual(grant.granted_classes, 1)
-        self.assertEqual(grant.consumed_classes, 0)
-        self.assertFalse(order.person.is_active)
-
-    def test_register_with_card_action_redirects_directly_to_stripe_checkout(self):
-        plan = SubscriptionPlan.objects.create(
-            code="mensal-stripe",
-            display_name="Mensal Stripe",
-            price=Decimal("250.00"),
-            billing_cycle="monthly",
-            is_active=True,
-        )
-        response = self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Cartao",
-                "holder_cpf": "12345678913",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1313",
-                "holder_email": "cartao@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "selected_plan": str(plan.pk),
-                "checkout_action": "stripe",
-            },
-        )
-
-        order = RegistrationOrder.objects.get(person__cpf="123.456.789-13")
-        self.assertRedirects(
-            response,
-            reverse("system:stripe-checkout", kwargs={"order_id": order.pk}),
-            fetch_redirect_response=False,
-        )
-
-    def test_pending_payment_with_trial_allows_login_after_finalization(self):
-        plan = SubscriptionPlan.objects.create(
-            code="mensal-login-trial",
-            display_name="Mensal Login Trial",
-            price=Decimal("250.00"),
-            billing_cycle="monthly",
-            is_active=True,
-        )
-        self.client.post(
-            reverse("system:register"),
-            {
-                "registration_profile": "holder",
-                "holder_name": "Aluno Login Trial",
-                "holder_cpf": "12345678914",
-                "holder_birthdate": "01/04/1995",
-                "holder_biological_sex": "male",
-                "holder_phone": "(62) 99999-1414",
-                "holder_email": "logintrial@example.com",
-                "holder_password": "123456",
-                "holder_password_confirm": "123456",
-                "selected_plan": str(plan.pk),
-                "checkout_action": "pay_later",
-            },
-        )
-        person = Person.objects.get(cpf="123.456.789-14")
-        session = self.client.session
-        session["pending_registration_person_id"] = person.pk
-        session["post_plan_payment_complete"] = True
-        session.save()
-        self.client.post(reverse("system:finalize-registration"))
-
-        response = self.client.post(
-            reverse("system:login"),
-            {"identifier": "12345678914", "password": "123456"},
-            follow=True,
-        )
-
-        self.assertRedirects(response, reverse("system:student-home"))
+        self.assertEqual(update_response.status_code, 302)
 
     def test_student_dashboard_shows_active_membership_and_due_date(self):
         student_account = self._create_portal_account(

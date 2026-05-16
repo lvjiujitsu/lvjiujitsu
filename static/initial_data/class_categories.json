@@ -1,0 +1,30 @@
+[
+  {
+    "code": "adult",
+    "display_name": "Adulto",
+    "audience": "adult",
+    "description": "Categoria local para alunos adultos.",
+    "display_order": 1
+  },
+  {
+    "code": "juvenile",
+    "display_name": "Juvenil",
+    "audience": "juvenile",
+    "description": "Categoria local para alunos juvenis.",
+    "display_order": 2
+  },
+  {
+    "code": "kids",
+    "display_name": "Kids",
+    "audience": "kids",
+    "description": "Categoria local para alunos kids.",
+    "display_order": 3
+  },
+  {
+    "code": "women",
+    "display_name": "Feminino",
+    "audience": "women",
+    "description": "Categoria local para turma feminina.",
+    "display_order": 4
+  }
+]

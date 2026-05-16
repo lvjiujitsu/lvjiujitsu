@@ -1,0 +1,418 @@
+[
+  {
+    "belt_code": "adult-white",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-white",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-white",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-white",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-white",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-blue",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-blue",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-blue",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-blue",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-blue",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 24,
+    "min_classes": 120,
+    "window_months": 24
+  },
+  {
+    "belt_code": "adult-purple",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-purple",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-purple",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-purple",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-purple",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 18,
+    "min_classes": 96,
+    "window_months": 18
+  },
+  {
+    "belt_code": "adult-brown",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-brown",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-brown",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-brown",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 6,
+    "min_classes": 48,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-brown",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 12,
+    "min_classes": 80,
+    "window_months": 12
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 36,
+    "min_classes": 192,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 36,
+    "min_classes": 192,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 36,
+    "min_classes": 192,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 60,
+    "min_classes": 240,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 4,
+    "to_grade": 5,
+    "min_months": 60,
+    "min_classes": 240,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 5,
+    "to_grade": 6,
+    "min_months": 60,
+    "min_classes": 240,
+    "window_months": 36
+  },
+  {
+    "belt_code": "adult-black",
+    "from_grade": 6,
+    "to_grade": null,
+    "min_months": 84,
+    "min_classes": 288,
+    "window_months": 36
+  },
+  {
+    "belt_code": "kids-white",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-white",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-white",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-white",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-white",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-grey",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-grey",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-grey",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-grey",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-grey",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-yellow",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-yellow",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-yellow",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-yellow",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-yellow",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-orange",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-orange",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-orange",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-orange",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 3,
+    "min_classes": 24,
+    "window_months": 6
+  },
+  {
+    "belt_code": "kids-orange",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-green",
+    "from_grade": 0,
+    "to_grade": 1,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-green",
+    "from_grade": 1,
+    "to_grade": 2,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-green",
+    "from_grade": 2,
+    "to_grade": 3,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-green",
+    "from_grade": 3,
+    "to_grade": 4,
+    "min_months": 4,
+    "min_classes": 32,
+    "window_months": 12
+  },
+  {
+    "belt_code": "kids-green",
+    "from_grade": 4,
+    "to_grade": null,
+    "min_months": 6,
+    "min_classes": 32,
+    "window_months": 12
+  }
+]

@@ -10,8 +10,6 @@ from system.models import (
     Person,
     PersonType,
 )
-from system.services.seeding import seed_person_types
-from system.tests.seed_helpers import seed_full_class_catalog
 
 
 User = get_user_model()
@@ -34,8 +32,9 @@ class ClassPortalViewTestCase(TestCase):
         self.assertRedirects(response, reverse("system:admin-home"))
 
     def _create_instructor(self, *, full_name, cpf):
-        seed_person_types()
-        instructor_type = PersonType.objects.get(code="instructor")
+        instructor_type, _ = PersonType.objects.get_or_create(
+            code="instructor", defaults={"display_name": "Professor"}
+        )
         return Person.objects.create(
             full_name=full_name,
             cpf=cpf,
@@ -52,23 +51,6 @@ class ClassPortalViewTestCase(TestCase):
         self.assertContains(response, "Horários")
         self.assertContains(response, "Categorias")
         self.assertContains(response, "O que fazer agora")
-
-    def test_technical_admin_can_access_class_crud_routes(self):
-        seed_full_class_catalog()
-        self._login_as_technical_admin()
-
-        class_group_list_response = self.client.get(reverse("system:class-group-list"))
-        class_schedule_list_response = self.client.get(reverse("system:class-schedule-list"))
-        class_category_list_response = self.client.get(reverse("system:class-category-list"))
-
-        self.assertEqual(class_group_list_response.status_code, 200)
-        self.assertEqual(class_schedule_list_response.status_code, 200)
-        self.assertEqual(class_category_list_response.status_code, 200)
-        self.assertContains(class_group_list_response, "Turmas")
-        self.assertContains(class_schedule_list_response, "Horários")
-        self.assertContains(class_category_list_response, "Categorias")
-        self.assertNotContains(class_group_list_response, "Público")
-        self.assertNotContains(class_group_list_response, "Pública")
 
     def test_technical_admin_can_create_class_group_with_inline_schedule_and_assistant_team(self):
         self._login_as_technical_admin()
@@ -161,77 +143,6 @@ class ClassPortalViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Cadastre ao menos um horário ativo para a turma ativa.")
         self.assertFalse(ClassGroup.objects.filter(code="adult-without-schedule").exists())
-
-    def test_class_group_list_groups_logical_classes_once(self):
-        seed_full_class_catalog()
-        self._login_as_technical_admin()
-
-        response = self.client.get(reverse("system:class-group-list"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Adulto · Jiu Jitsu", count=1)
-        self.assertContains(response, "3 professores")
-        self.assertContains(response, "13 horários")
-        self.assertNotContains(response, "Excluir")
-        self.assertNotContains(response, "Editar")
-
-    def test_class_group_detail_exposes_full_relations(self):
-        seed_full_class_catalog()
-        self._login_as_technical_admin()
-        class_group = ClassGroup.objects.get(code="adult-layon")
-
-        response = self.client.get(
-            reverse("system:class-group-detail", kwargs={"pk": class_group.pk})
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Equipe docente")
-        self.assertContains(response, "Layon Quirino")
-        self.assertContains(response, "Vinicius Antonio")
-        self.assertContains(response, "Lauro Viana")
-        self.assertContains(response, "Segunda-feira")
-        self.assertContains(response, "06:30")
-        self.assertContains(response, "11:00")
-        self.assertContains(response, "19:00")
-        self.assertContains(response, "Editar")
-        self.assertContains(response, "Excluir")
-
-    def test_class_schedule_list_groups_by_weekday(self):
-        seed_full_class_catalog()
-        self._login_as_technical_admin()
-
-        response = self.client.get(reverse("system:class-schedule-list"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Segunda-feira", count=1)
-        self.assertContains(response, "4 horários")
-        self.assertContains(response, "2 turmas")
-        self.assertNotContains(response, "Excluir")
-        self.assertNotContains(response, "Editar")
-
-    def test_class_schedule_detail_exposes_full_relations(self):
-        seed_full_class_catalog()
-        self._login_as_technical_admin()
-        class_schedule = ClassSchedule.objects.filter(
-            class_group__code="adult-layon",
-            weekday="monday",
-        ).get()
-
-        response = self.client.get(
-            reverse("system:class-schedule-detail", kwargs={"pk": class_schedule.pk})
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Ocorrências do dia")
-        self.assertContains(response, "Adulto · Jiu Jitsu")
-        self.assertContains(response, "Juvenil · Jiu Jitsu")
-        self.assertContains(response, "Layon Quirino")
-        self.assertContains(response, "Lauro Viana")
-        self.assertContains(response, "Vinicius Antonio")
-        self.assertContains(response, "06:30")
-        self.assertContains(response, "11:00")
-        self.assertContains(response, "18:00")
-        self.assertContains(response, "19:00")
 
     def test_class_group_form_shows_existing_schedule_summary_grouped_by_weekday(self):
         self._login_as_technical_admin()

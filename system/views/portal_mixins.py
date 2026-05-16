@@ -1,5 +1,5 @@
 from django.contrib.auth.views import redirect_to_login
-from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from django.urls import reverse
 
 
@@ -24,7 +24,7 @@ class PortalRoleRequiredMixin(PortalLoginRequiredMixin):
         ):
             return super().dispatch(request, *args, **kwargs)
         if not self.has_allowed_role():
-            raise PermissionDenied
+            return redirect(reverse("system:dashboard-redirect"))
         return super().dispatch(request, *args, **kwargs)
 
     def has_allowed_role(self) -> bool:

@@ -6,7 +6,8 @@ from django.conf import settings
 from django.db import transaction
 
 from system.constants import CheckoutAction
-from system.models.plan import SubscriptionPlan
+from system.models.plan import PlanPaymentMethod, SubscriptionPlan
+from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
 from system.models.product import Product, ProductVariant
 from system.models.registration_order import RegistrationOrder, RegistrationOrderItem, PaymentProvider
 from system.services.financial_transactions import (
@@ -14,6 +15,7 @@ from system.services.financial_transactions import (
     calculate_gross_for_net,
     resolve_payment_provider_for_plan,
 )
+from system.services.pricing import catalog_unit_charges_for_display
 
 
 ORDER_STOCK_APPLIED_MARKER = "[stock_applied]"
@@ -74,37 +76,69 @@ def _build_installment_label(plan):
     return f"{n}x"
 
 
-def get_plan_catalog_payload():
-    plans = SubscriptionPlan.objects.filter(is_active=True).exclude(
-        requires_special_authorization=True
+def _plan_charge_group_key(plan):
+    tier = resolve_commercial_tier(
+        code=plan.code, audience=plan.audience, is_family_plan=plan.is_family_plan
     )
-    return [
-        {
-            "id": plan.pk,
-            "code": plan.code,
-            "name": plan.display_name,
-            "price": str(plan.price),
-            "monthly_reference_price": (
-                str(plan.monthly_reference_price)
-                if plan.monthly_reference_price is not None
-                else ""
-            ),
-            "cycle": plan.get_billing_cycle_display(),
-            "billing_cycle": plan.billing_cycle,
-            "payment_method": plan.payment_method,
-            "payment_method_label": plan.get_payment_method_display(),
-            "is_family_plan": plan.is_family_plan,
-            "audience": plan.audience,
-            "audience_label": plan.get_audience_display(),
-            "weekly_frequency": plan.weekly_frequency,
-            "weekly_frequency_label": plan.get_weekly_frequency_display(),
-            "teacher_commission_percentage": str(plan.teacher_commission_percentage),
-            "requires_special_authorization": plan.requires_special_authorization,
-            "installment_label": _build_installment_label(plan),
-            "installment_count": _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1) if plan.payment_method == "credit_card" else 0,
-        }
-        for plan in plans
-    ]
+    return (plan.audience, tier, plan.weekly_frequency, plan.is_family_plan, plan.billing_cycle)
+
+
+def get_plan_catalog_payload():
+    plans = list(
+        SubscriptionPlan.objects.filter(is_active=True)
+        .exclude(requires_special_authorization=True)
+        .order_by("display_order", "price")
+    )
+    groups = {}
+    for plan in plans:
+        slot = groups.setdefault(_plan_charge_group_key(plan), {})
+        slot[plan.payment_method] = plan
+    cent = Decimal("0.01")
+    payload = []
+    for plan in plans:
+        slot = groups[_plan_charge_group_key(plan)]
+        pix_plan = slot.get(PlanPaymentMethod.PIX)
+        card_plan = slot.get(PlanPaymentMethod.CREDIT_CARD)
+        charge_pix = str(pix_plan.price.quantize(cent)) if pix_plan else "0.00"
+        charge_card = str(card_plan.price.quantize(cent)) if card_plan else "0.00"
+        tier = resolve_commercial_tier(
+            code=plan.code, audience=plan.audience, is_family_plan=plan.is_family_plan
+        )
+        payload.append(
+            {
+                "id": plan.pk,
+                "code": plan.code,
+                "name": plan.display_name,
+                "commercial_tier": tier,
+                "commercial_tier_label": COMMERCIAL_TIER_LABELS.get(tier, tier),
+                "price": str(plan.price),
+                "charge_pix": charge_pix,
+                "charge_card": charge_card,
+                "monthly_reference_price": (
+                    str(plan.monthly_reference_price)
+                    if plan.monthly_reference_price is not None
+                    else ""
+                ),
+                "cycle": plan.get_billing_cycle_display(),
+                "billing_cycle": plan.billing_cycle,
+                "payment_method": plan.payment_method,
+                "payment_method_label": plan.get_payment_method_display(),
+                "is_family_plan": plan.is_family_plan,
+                "audience": plan.audience,
+                "audience_label": plan.get_audience_display(),
+                "weekly_frequency": plan.weekly_frequency,
+                "weekly_frequency_label": plan.get_weekly_frequency_display(),
+                "teacher_commission_percentage": str(plan.teacher_commission_percentage),
+                "requires_special_authorization": plan.requires_special_authorization,
+                "installment_label": _build_installment_label(plan),
+                "installment_count": (
+                    _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1)
+                    if plan.payment_method == "credit_card"
+                    else 0
+                ),
+            }
+        )
+    return payload
 
 
 def get_product_catalog_payload():
@@ -122,12 +156,15 @@ def get_product_catalog_payload():
             _build_product_variant_payload(product, variant)
             for variant in _get_active_variants(product)
         ]
+        charges = catalog_unit_charges_for_display(product.unit_price)
         payload.append(
             {
                 "id": product.pk,
                 "sku": product.sku,
                 "name": product.display_name,
                 "price": str(product.unit_price),
+                "charge_pix": charges["charge_pix"],
+                "charge_card": charges["charge_card"],
                 "category": str(product.category),
                 "category_code": product.category.code,
                 "category_order": product.category.display_order,

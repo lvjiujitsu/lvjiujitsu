@@ -626,7 +626,24 @@ Não editar migrations manualmente. Se comando não existir, reportar.
 
 ---
 
-## 25. Fonte de verdade
+## 25. Política de seeds (management commands de dados iniciais)
+
+Seeds são comandos de setup opcionais que criam dados de referência no banco.
+Elas **nunca** são requisito de boot do sistema.
+
+### Regras obrigatórias para seeds neste projeto
+
+- **Sem argumentos `--` na linha de comando.** Toda configuração (senhas, flags, caminhos) vem de variáveis de ambiente definidas no `.env` e lidas via `settings.py`.
+- **Uma responsabilidade por seed.** Se há outra funcionalidade, cria outro arquivo.
+- **Dependências explícitas.** Se a seed depende de outra, ela deve falhar com `CommandError` claro se a dependência não foi satisfeita.
+- **Idempotente.** Rodar duas vezes não deve duplicar dados — usar `get_or_create` ou equivalente.
+- **Audit log.** Toda seed deve imprimir o que criou/já existia, linha a linha.
+- **Dados JSON** vivem em `static/initial_data/` com nomes no padrão `initial_<dominio>.json`.
+- **Variáveis de ambiente** de seed seguem o padrão `SEED_<DOMINIO>_<CAMPO>`.
+
+---
+
+## 26. Fonte de verdade
 
 | O quê | Onde |
 |---|---|
