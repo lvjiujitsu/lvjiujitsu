@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from system.models import (
     BiologicalSex,
+    BeltRank,
     CheckinStatus,
     ClassCategory,
     ClassCheckin,
@@ -20,6 +21,8 @@ from system.models import (
     ClassSchedule,
     ClassSession,
     DepositStatus,
+    Graduation,
+    GraduationRule,
     Membership,
     MembershipStatus,
     PaymentProvider,
@@ -55,20 +58,16 @@ class PortalViewTestCase(TestCase):
             password="admin",
         )
         self.student_type = PersonType.objects.create(
-            code="student",
-            display_name="Aluno",
+            code="student", display_name="Aluno",
         )
         self.administrative_type = PersonType.objects.create(
-            code="administrative-assistant",
-            display_name="Auxiliar administrativo",
+            code="administrative-assistant", display_name="Auxiliar administrativo",
         )
         self.dependent_type = PersonType.objects.create(
-            code="dependent",
-            display_name="Dependente",
+            code="dependent", display_name="Dependente",
         )
         self.instructor_type = PersonType.objects.create(
-            code="instructor",
-            display_name="Professor",
+            code="instructor", display_name="Professor",
         )
 
     def _create_portal_account(self, *, full_name, cpf, password, person_type):
@@ -252,12 +251,15 @@ class PortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'aria-label="Usuário logado"')
+        self.assertNotContains(response, "topbar-back-link")
         self.assertContains(response, "Aluno Menu Lateral")
         self.assertContains(
             response,
             '<span class="drawer-account-role">Aluno</span>',
             html=True,
         )
+        self.assertContains(response, "Loja")
+        self.assertContains(response, "Comprar materiais")
 
     def test_drawer_shows_technical_admin_identity(self):
         response = self.client.post(
@@ -268,12 +270,19 @@ class PortalViewTestCase(TestCase):
 
         self.assertRedirects(response, reverse("system:admin-home"))
         self.assertContains(response, 'aria-label="Usuário logado"')
+        self.assertNotContains(response, "topbar-back-link")
         self.assertContains(response, "admin")
         self.assertContains(
             response,
             '<span class="drawer-account-role">Administrador técnico</span>',
             html=True,
         )
+        self.assertContains(response, "Cadastros")
+        self.assertContains(response, "Tatame")
+        self.assertContains(response, "Materiais")
+        self.assertContains(response, "Graduação")
+        self.assertContains(response, "Financeiro")
+        self.assertContains(response, "Técnico")
 
     def test_public_route_does_not_render_logged_user_identity(self):
         response = self.client.get(reverse("system:root"))
@@ -323,6 +332,129 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Controle de estoque")
         self.assertContains(response, "Cronograma")
 
+    def test_master_dashboard_shows_all_shortcuts_without_toggle(self):
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "admin", "password": "admin"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:admin-home"))
+        self.assertContains(response, "Painel master")
+        self.assertContains(response, "Pessoas")
+        self.assertContains(response, "Categorias")
+        self.assertContains(response, "Django Admin")
+        self.assertNotContains(response, "Mostrar mais")
+        self.assertNotContains(response, "dashboard-actions-toggle")
+        self.assertNotContains(response, "admin-dashboard.js")
+
+    def test_master_dashboard_uses_contextual_command_blocks(self):
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "admin", "password": "admin"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:admin-home"))
+        self.assertContains(response, "system/css/portal/workbench.css")
+        self.assertContains(response, "workbench-shell")
+        self.assertContains(response, "workbench-context-grid")
+        self.assertContains(response, "workbench-context-block")
+        for block in (
+            "Pessoas e acesso",
+            "Academia",
+            "Materiais",
+            "Graduação",
+            "Financeiro",
+            "Técnico",
+        ):
+            self.assertContains(response, block)
+        self.assertContains(response, "workbench-command-grid")
+        self.assertContains(response, "workbench-command")
+        self.assertNotContains(response, "workbench-module-grid")
+        self.assertEqual(response.content.decode().count("workbench-command--technical"), 1)
+        for shortcut in (
+            "Pessoas",
+            "Tipos",
+            "Planos",
+            "Categorias",
+            "Turmas",
+            "Horários",
+            "Cronograma",
+            "Estoque",
+            "Pré-pedidos",
+            "Panorama",
+            "Faixas",
+            "Regras",
+            "Histórico",
+            "Controle financeiro",
+            "Aprovações",
+            "Pagamentos pendentes",
+            "Folha de professores",
+            "Fila de pagamentos",
+            "Django Admin",
+        ):
+            self.assertContains(response, shortcut)
+
+    def test_drawer_uses_icon_navigation_without_collapsible_groups(self):
+        response = self.client.post(
+            reverse("system:login"),
+            {"identifier": "admin", "password": "admin"},
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse("system:admin-home"))
+        self.assertContains(response, "drawer-icon")
+        self.assertContains(response, 'href="#icon-users"')
+        self.assertContains(response, 'href="#icon-finance"')
+        self.assertNotContains(response, "drawer-group")
+        self.assertNotContains(response, "<summary")
+
+    def test_dashboards_and_people_home_use_fullscreen_workbench_contract(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Workbench",
+            cpf="321.654.987-65",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        instructor_account = self._create_portal_account(
+            full_name="Professor Workbench",
+            cpf="321.654.987-66",
+            password="123456",
+            person_type=self.instructor_type,
+        )
+        student_account = self._create_portal_account(
+            full_name="Aluno Workbench",
+            cpf="321.654.987-67",
+            password="123456",
+            person_type=self.student_type,
+        )
+
+        self._login_portal_account(administrative_account)
+        administrative_response = self.client.get(reverse("system:administrative-home"))
+        people_response = self.client.get(reverse("system:person-list"))
+        self.assertContains(administrative_response, "workbench-shell")
+        self.assertContains(administrative_response, "workbench-module")
+        self.assertContains(administrative_response, "Pessoas")
+        self.assertContains(administrative_response, "Controle financeiro")
+        self.assertContains(people_response, "people-home-shell")
+        self.assertContains(people_response, "workbench-module")
+        self.assertContains(people_response, "Indicadores de pessoas")
+
+        self._login_portal_account(instructor_account)
+        instructor_response = self.client.get(reverse("system:instructor-home"))
+        self.assertContains(instructor_response, "workbench-shell")
+        self.assertContains(instructor_response, "Aulas do dia")
+        self.assertContains(instructor_response, "Cadastrar aluno")
+        self.assertContains(instructor_response, "Meu financeiro")
+
+        self._login_portal_account(student_account)
+        student_response = self.client.get(reverse("system:student-home"))
+        self.assertContains(student_response, "workbench-shell")
+        self.assertContains(student_response, "Mensalidades")
+        self.assertContains(student_response, "Aulas do dia")
+        self.assertContains(student_response, "Materiais")
+
     def test_administrative_portal_account_cannot_access_master_dashboard(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao LV",
@@ -370,12 +502,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-test",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-context",
             display_name="Jiu Jitsu",
             class_category=adult_category,
             main_teacher=instructor,
@@ -415,7 +546,7 @@ class PortalViewTestCase(TestCase):
             person_type=self.administrative_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-filter",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
@@ -435,7 +566,6 @@ class PortalViewTestCase(TestCase):
             person_type=self.student_type,
         )
         class_group = ClassGroup.objects.create(
-            code="adult-filter-group",
             display_name="Jiu Jitsu",
             class_category=adult_category,
             main_teacher=instructor,
@@ -508,6 +638,172 @@ class PortalViewTestCase(TestCase):
         self.assertContains(response, "Somente professores")
         self.assertContains(response, "danger-link")
 
+    def test_people_screens_render_responsive_contract_sections(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Visual",
+            cpf="321.654.987-17",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        person = Person.objects.create(
+            full_name="Aluno Visual",
+            cpf="321.654.987-18",
+            person_type=self.student_type,
+        )
+        white_belt = BeltRank.objects.create(
+            code="adult-white-visual",
+            display_name="Branca Visual",
+            color_hex="#ffffff",
+            tip_color_hex="#000000",
+            stripe_color_hex="#ffffff",
+            max_grades=4,
+            display_order=10,
+        )
+        GraduationRule.objects.create(
+            belt_rank=white_belt,
+            from_grade=1,
+            to_grade=2,
+            min_months_in_current_grade=4,
+            min_classes_required=8,
+            min_classes_window_months=12,
+            is_active=True,
+        )
+        Graduation.objects.create(
+            person=person,
+            belt_rank=white_belt,
+            grade_number=1,
+            awarded_at=date(2026, 1, 10),
+            awarded_by=administrative_account.person,
+            notes="Primeiro grau validado.",
+        )
+        self._login_portal_account(administrative_account)
+
+        list_response = self.client.get(reverse("system:person-list"))
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, "system/css/portal/people.css")
+        self.assertContains(list_response, "system/js/shared/people-list.js")
+        self.assertContains(list_response, "people-page-shell")
+        self.assertContains(list_response, "Gestão de pessoas")
+        self.assertContains(list_response, "people-record-grid")
+        self.assertContains(list_response, "data-people-dialog-target")
+        self.assertContains(list_response, "<dialog class=\"people-dialog\"", html=False)
+        self.assertNotContains(
+            list_response,
+            f'href="{reverse("system:person-detail", kwargs={"pk": person.pk})}"',
+        )
+
+        detail_response = self.client.get(
+            reverse("system:person-detail", kwargs={"pk": person.pk})
+        )
+
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "people-profile-hero")
+        self.assertContains(detail_response, "Resumo operacional")
+        self.assertContains(detail_response, "Turmas liberadas")
+
+        form_response = self.client.get(
+            reverse("system:person-update", kwargs={"pk": person.pk})
+        )
+
+        self.assertEqual(form_response.status_code, 200)
+        self.assertContains(form_response, "people-form-grid")
+        self.assertContains(form_response, "Dados pessoais")
+        self.assertContains(form_response, "Saúde e segurança")
+        self.assertContains(form_response, "Arte marcial")
+        self.assertContains(form_response, "Já praticou arte marcial?")
+        self.assertContains(form_response, "Arte marcial, faixa e evolução declarada")
+        self.assertContains(form_response, "Início no jiu jitsu")
+        self.assertContains(form_response, "Última graduação anterior")
+        self.assertContains(form_response, "Academia anterior")
+        self.assertContains(form_response, "Acesso e turmas")
+        self.assertContains(form_response, "people-class-choice-panel")
+        self.assertContains(form_response, "Graduação oficial")
+        self.assertContains(form_response, "Branca Visual")
+        self.assertContains(form_response, "Primeiro grau validado.")
+        self.assertContains(form_response, "system/js/shared/people-form.js")
+        self.assertContains(form_response, "data-martial-art-presence-select")
+        self.assertContains(form_response, "data-martial-art-detail-field")
+        self.assertNotContains(form_response, "Registrar graduação")
+        self.assertNotContains(form_response, "Histórico geral")
+        self.assertNotContains(form_response, "Evolução cadastrada")
+
+    def test_person_list_only_renders_role_sections_that_apply_to_person_type(self):
+        administrative_account = self._create_portal_account(
+            full_name="Recepcao Perfil",
+            cpf="321.654.987-19",
+            password="123456",
+            person_type=self.administrative_type,
+        )
+        student = Person.objects.create(
+            full_name="Aluno Perfil",
+            cpf="321.654.987-20",
+            person_type=self.student_type,
+        )
+        inactive_student = Person.objects.create(
+            full_name="Aluno Inativo Perfil",
+            cpf="321.654.987-22",
+            person_type=self.student_type,
+            is_active=False,
+        )
+        instructor = Person.objects.create(
+            full_name="Professor Perfil",
+            cpf="321.654.987-21",
+            person_type=self.instructor_type,
+        )
+        self._login_portal_account(administrative_account)
+
+        response = self.client.get(reverse("system:person-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["people_kpis"],
+            [
+                {"label": "Alunos", "value": 2},
+                {"label": "Professores", "value": 1},
+                {"label": "Administrativos", "value": 1},
+                {"label": "Ativos", "value": 3},
+                {"label": "Inativos", "value": 1},
+                {"label": "Pendentes", "value": 3},
+            ],
+        )
+        self.assertContains(response, "Alunos")
+        self.assertContains(response, "Professores")
+        self.assertContains(response, "Administrativos")
+        self.assertContains(response, "Ativos")
+        self.assertContains(response, "Inativos")
+        self.assertContains(response, "Pendentes")
+
+        administrative_response = self.client.get(
+            reverse("system:person-list"),
+            {"cpf": administrative_account.person.cpf},
+        )
+
+        self.assertEqual(administrative_response.status_code, 200)
+        self.assertContains(administrative_response, "Recepcao Perfil")
+        self.assertNotContains(administrative_response, "Como aluno")
+        self.assertNotContains(administrative_response, "Como professor")
+
+        student_response = self.client.get(
+            reverse("system:person-list"),
+            {"cpf": student.cpf},
+        )
+
+        self.assertEqual(student_response.status_code, 200)
+        self.assertContains(student_response, "Aluno Perfil")
+        self.assertContains(student_response, "Como aluno")
+        self.assertNotContains(student_response, "Como professor")
+
+        instructor_response = self.client.get(
+            reverse("system:person-list"),
+            {"cpf": instructor.cpf},
+        )
+
+        self.assertEqual(instructor_response.status_code, 200)
+        self.assertContains(instructor_response, "Professor Perfil")
+        self.assertContains(instructor_response, "Como professor")
+        self.assertNotContains(instructor_response, "Como aluno")
+
     def test_person_detail_shows_responsible_billing_context_for_dependent(self):
         administrative_account = self._create_portal_account(
             full_name="Recepcao Financeiro",
@@ -530,7 +826,7 @@ class PortalViewTestCase(TestCase):
             target_person=dependent,
         )
         plan = SubscriptionPlan.objects.create(
-            code="mensal-admin-responsavel",
+            code="plan-administrative",
             display_name="Plano Administrativo",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -592,12 +888,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.student_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-category-detail",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         ClassGroup.objects.create(
-            code="adult-category-group",
             display_name="Jiu Jitsu",
             class_category=adult_category,
             main_teacher=instructor,
@@ -673,12 +968,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-instructor-dashboard",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-instructor-group",
             display_name="Turma Professor",
             class_category=adult_category,
             main_teacher=instructor_account.person,
@@ -764,12 +1058,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-student-history",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-student-history-group",
             display_name="Turma Histórico",
             class_category=adult_category,
             main_teacher=instructor,
@@ -818,12 +1111,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-instructor-approve",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-instructor-approve-group",
             display_name="Turma Aprovação",
             class_category=adult_category,
             main_teacher=instructor_account.person,
@@ -933,12 +1225,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-instructor-toggle",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-instructor-toggle-group",
             display_name="Turma Cancelável",
             class_category=adult_category,
             main_teacher=instructor_account.person,
@@ -980,12 +1271,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-instructor-toggle-block",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-instructor-toggle-block-group",
             display_name="Turma Alheia",
             class_category=adult_category,
             main_teacher=owner,
@@ -1108,7 +1398,6 @@ class PortalViewTestCase(TestCase):
     def test_student_dashboard_shows_pending_after_checkin(self):
         from system.models import IbjjfAgeCategory
         IbjjfAgeCategory.objects.get_or_create(
-            code="adult-age",
             defaults={
                 "display_name": "Adulto",
                 "audience": "adult",
@@ -1131,12 +1420,11 @@ class PortalViewTestCase(TestCase):
             person_type=self.instructor_type,
         )
         adult_category = ClassCategory.objects.create(
-            code="adult-student-pending",
+            code="adult",
             display_name="Adulto",
             audience="adult",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-student-pending-group",
             display_name="Turma Pendente",
             class_category=adult_category,
             main_teacher=instructor,
@@ -1215,7 +1503,7 @@ class PortalViewTestCase(TestCase):
 
     def test_payment_checkout_without_authorization_redirects_to_home_with_message(self):
         plan = SubscriptionPlan.objects.create(
-            code="mensal-pagamento",
+            code="plan-monthly-no-auth",
             display_name="Mensal",
             price=Decimal("150.00"),
             billing_cycle="monthly",
@@ -1244,7 +1532,7 @@ class PortalViewTestCase(TestCase):
 
     def test_payment_checkout_allows_dependent_when_order_belongs_to_responsible(self):
         plan = SubscriptionPlan.objects.create(
-            code="mensal-relacao",
+            code="plan-monthly-relation",
             display_name="Mensal Relação",
             price=Decimal("150.00"),
             billing_cycle="monthly",
@@ -1291,7 +1579,7 @@ class PortalViewTestCase(TestCase):
         )
         self._login_portal_account(administrative_account)
         plan = SubscriptionPlan.objects.create(
-            code="standard-monthly-pix",
+            code="plan-monthly-pix-kpi",
             display_name="Plano mensal PIX",
             price=Decimal("240.00"),
             billing_cycle=BillingCycle.MONTHLY,
@@ -1336,7 +1624,7 @@ class PortalViewTestCase(TestCase):
         )
         self._login_portal_account(administrative_account)
         plan = SubscriptionPlan.objects.create(
-            code="standard-monthly-card-kpi",
+            code="plan-monthly-credit-kpi",
             display_name="Plano mensal cartão KPI",
             price=Decimal("250.00"),
             billing_cycle=BillingCycle.MONTHLY,
@@ -1540,7 +1828,7 @@ class PortalViewTestCase(TestCase):
             person_type=self.student_type,
         )
         plan = SubscriptionPlan.objects.create(
-            code="mensal-dashboard",
+            code="plan-monthly-stripe",
             display_name="Plano Mensal",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -1568,7 +1856,7 @@ class PortalViewTestCase(TestCase):
             person_type=self.student_type,
         )
         plan = SubscriptionPlan.objects.create(
-            code="mensal-retroativo",
+            code="plan-monthly-retroactive",
             display_name="Plano Retroativo",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -1610,7 +1898,7 @@ class PortalViewTestCase(TestCase):
             target_person=dependent_account.person,
         )
         plan = SubscriptionPlan.objects.create(
-            code="mensal-responsavel",
+            code="plan-monthly-responsible",
             display_name="Plano do Responsável",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -1636,7 +1924,7 @@ class PortalViewTestCase(TestCase):
         self, _mock_log_error
     ):
         plan = SubscriptionPlan.objects.create(
-            code="mensal-env-stripe",
+            code="plan-monthly-stripe-env",
             display_name="Mensal Env Stripe",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -1675,7 +1963,7 @@ class PortalViewTestCase(TestCase):
         self, _mock_log_error
     ):
         plan = SubscriptionPlan.objects.create(
-            code="mensal-env-pix",
+            code="plan-monthly-pix-env",
             display_name="Mensal Env PIX",
             price=Decimal("250.00"),
             billing_cycle="monthly",
@@ -1712,11 +2000,10 @@ class PortalViewTestCase(TestCase):
 class PlanChangeSelectViewTest(TestCase):
     def setUp(self):
         self.student_type = PersonType.objects.create(
-            code="student",
-            display_name="Aluno",
+            code="student", display_name="Aluno",
         )
         self.current_plan = SubscriptionPlan.objects.create(
-            code="mensal-pix-individual",
+            code="change-current-pix",
             display_name="Plano Mensal PIX",
             price=Decimal("240.00"),
             billing_cycle=BillingCycle.MONTHLY,
@@ -1725,7 +2012,7 @@ class PlanChangeSelectViewTest(TestCase):
             is_family_plan=False,
         )
         self.upgrade_plan = SubscriptionPlan.objects.create(
-            code="mensal-credito-individual",
+            code="change-upgrade-credit",
             display_name="Plano Mensal Crédito",
             price=Decimal("260.00"),
             billing_cycle=BillingCycle.MONTHLY,
@@ -1734,7 +2021,7 @@ class PlanChangeSelectViewTest(TestCase):
             is_family_plan=False,
         )
         self.downgrade_plan = SubscriptionPlan.objects.create(
-            code="mensal-pix-familia",
+            code="change-downgrade-family",
             display_name="Plano Mensal PIX Família",
             price=Decimal("180.00"),
             billing_cycle=BillingCycle.MONTHLY,

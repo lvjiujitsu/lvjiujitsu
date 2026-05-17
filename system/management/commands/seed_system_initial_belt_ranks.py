@@ -12,6 +12,7 @@ class Command(BaseCommand):
     help = "Cria as faixas iniciais a partir de static/initial_data/belt_ranks.json."
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_belt_ranks"))
         data = self._load_json()
 
         if not data:

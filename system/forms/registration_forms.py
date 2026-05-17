@@ -54,7 +54,8 @@ class PortalRegistrationForm(forms.Form):
             (RegistrationProfile.GUARDIAN, "Responsável"),
             (RegistrationProfile.OTHER, "Outro"),
         ),
-        initial=RegistrationProfile.HOLDER,
+        required=False,
+        initial='',
     )
     include_dependent = forms.BooleanField(required=False)
     other_type_code = forms.ChoiceField(required=False)

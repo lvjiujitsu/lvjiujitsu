@@ -10,6 +10,7 @@ from system.models import (
     ClassGroup,
     ClassInstructorAssignment,
     ClassSchedule,
+    Graduation,
     IbjjfAgeCategory,
     Person,
     PersonType,
@@ -20,10 +21,12 @@ from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.selectors import get_person_queryset
 from system.services.class_catalog import prepare_class_group_for_display
 from system.services.class_overview import build_class_group_filter_value
+from system.services.graduation import compute_graduation_progress, get_graduation_history
 from system.services.membership import get_active_membership, get_membership_owner
 from system.constants import (
     ADMINISTRATIVE_PERSON_TYPE_CODES,
     CLASS_ENROLLMENT_PERSON_TYPE_CODES,
+    INSTRUCTOR_PERSON_TYPE_CODES,
     PEOPLE_SUPPORT_PERSON_TYPE_CODES,
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
@@ -77,7 +80,10 @@ class PersonListView(PeopleSupportRequiredMixin, ListView):
                 "minimum_age",
             )
         )
-        for person in context["people"]:
+        people = list(context["people"])
+        context["people"] = people
+        context["people_kpis"] = _build_people_kpis(people)
+        for person in people:
             _hydrate_person_relationships(person, active_ibjjf_categories)
         return context
 
@@ -106,6 +112,26 @@ class PersonUpdateView(AdministrativeRequiredMixin, UpdateView):
     form_class = PersonForm
     template_name = "people/person_form.html"
     success_url = reverse_lazy("system:person-list")
+
+    def get_queryset(self):
+        return get_person_queryset()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        person = context["object"]
+        active_ibjjf_categories = list(
+            IbjjfAgeCategory.objects.filter(is_active=True).order_by(
+                "display_order",
+                "minimum_age",
+            )
+        )
+        _hydrate_person_relationships(person, active_ibjjf_categories)
+        context["graduation_progress"] = compute_graduation_progress(person)
+        context["graduation_history"] = get_graduation_history(person)
+        context["has_official_graduation"] = Graduation.objects.filter(
+            person=person
+        ).exists()
+        return context
 
 
 class PersonDeleteView(AdministrativeRequiredMixin, DeleteView):
@@ -137,6 +163,8 @@ class PersonDetailView(PeopleSupportRequiredMixin, DetailView):
             )
         )
         _hydrate_person_relationships(context["person"], active_ibjjf_categories)
+        context["graduation_progress"] = compute_graduation_progress(context["person"])
+        context["graduation_history"] = get_graduation_history(context["person"])
         if not context["can_manage_people"]:
             return context
         person = context["person"]
@@ -224,6 +252,7 @@ class PersonTypeDetailView(AdministrativeRequiredMixin, DetailView):
 def _hydrate_person_relationships(person, active_ibjjf_categories):
     active_enrollments = list(person.class_enrollments.all())
     student_relationships = _build_student_relationships(active_enrollments)
+    person_type_code = person.person_type.code if person.person_type_id else ""
     person.active_group_labels = student_relationships["group_labels"]
     person.active_schedule_labels = student_relationships["schedule_labels"]
     person.active_schedule_sections = student_relationships["schedule_sections"]
@@ -246,6 +275,51 @@ def _hydrate_person_relationships(person, active_ibjjf_categories):
             if person.get_age() is not None and category.matches_age(person.get_age())
         ),
         None,
+    )
+    person.show_student_context = bool(
+        person_type_code in CLASS_ENROLLMENT_PERSON_TYPE_CODES
+        or person.active_group_labels
+    )
+    person.show_teacher_context = bool(
+        person_type_code in INSTRUCTOR_PERSON_TYPE_CODES
+        or person.teaching_group_labels
+    )
+
+
+def _build_people_kpis(people):
+    return [
+        {
+            "label": "Alunos",
+            "value": _count_people_by_type(people, CLASS_ENROLLMENT_PERSON_TYPE_CODES),
+        },
+        {
+            "label": "Professores",
+            "value": _count_people_by_type(people, INSTRUCTOR_PERSON_TYPE_CODES),
+        },
+        {
+            "label": "Administrativos",
+            "value": _count_people_by_type(people, ADMINISTRATIVE_PERSON_TYPE_CODES),
+        },
+        {
+            "label": "Ativos",
+            "value": sum(1 for person in people if person.is_active),
+        },
+        {
+            "label": "Inativos",
+            "value": sum(1 for person in people if not person.is_active),
+        },
+        {
+            "label": "Pendentes",
+            "value": sum(1 for person in people if not person.has_portal_access),
+        },
+    ]
+
+
+def _count_people_by_type(people, person_type_codes):
+    return sum(
+        1
+        for person in people
+        if person.person_type_id and person.person_type.code in person_type_codes
     )
 
 

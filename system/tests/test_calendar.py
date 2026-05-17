@@ -1,4 +1,4 @@
-from datetime import date, time
+﻿from datetime import date, time
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -70,7 +70,7 @@ class ClassSessionModelTestCase(TestCase):
             code="adult", display_name="Adulto", audience=CategoryAudience.ADULT,
         )
         self.group = ClassGroup.objects.create(
-            code="test-group", display_name="Teste", class_category=self.category,
+            display_name="Teste", class_category=self.category,
         )
         self.schedule = ClassSchedule.objects.create(
             class_group=self.group, weekday=WeekdayCode.MONDAY,
@@ -106,7 +106,7 @@ class CalendarServiceTestCase(TestCase):
             minimum_age=18, maximum_age=99,
         )
         self.group = ClassGroup.objects.create(
-            code="adult-test", display_name="Turma Teste", class_category=self.category,
+            display_name="Turma Teste", class_category=self.category,
         )
         today = timezone.localdate()
         weekday_map = {
@@ -162,7 +162,7 @@ class CalendarServiceTestCase(TestCase):
 
     def test_trial_is_consumed_on_first_checkin_only(self):
         plan = SubscriptionPlan.objects.create(
-            code="mensal-calendar-trial",
+            code="monthly-trial",
             display_name="Mensal Trial",
             price=100,
             billing_cycle="monthly",
@@ -231,7 +231,7 @@ class CheckinApprovalServiceTestCase(TestCase):
             biological_sex="male",
         )
         self.group = ClassGroup.objects.create(
-            code="adult-approval", display_name="Turma Aprovação",
+            display_name="Turma Aprovação",
             class_category=self.category, main_teacher=self.instructor,
         )
         today = timezone.localdate()
@@ -386,7 +386,7 @@ class InstructorScheduleOwnershipServiceTestCase(TestCase):
             biological_sex="male",
         )
         self.group = ClassGroup.objects.create(
-            code="group-ownership", display_name="Turma do Dono",
+            display_name="Turma do Dono",
             class_category=self.category, main_teacher=self.instructor,
         )
         self.schedule = ClassSchedule.objects.create(
@@ -467,12 +467,10 @@ class SpecialCheckinApprovalServiceTestCase(TestCase):
 class InstructorHomeQuickActionsViewTestCase(TestCase):
     def setUp(self):
         self.instructor_type = PersonType.objects.create(
-            code="instructor",
-            display_name="Professor",
+            code="instructor", display_name="Professor",
         )
         self.category = ClassCategory.objects.create(
-            code="adult-home-actions",
-            display_name="Adulto",
+            code="adult", display_name="Adulto",
             audience=CategoryAudience.ADULT,
         )
         self.instructor = Person.objects.create(
@@ -486,7 +484,6 @@ class InstructorHomeQuickActionsViewTestCase(TestCase):
         self.account.set_password("123456")
         self.account.save()
         self.group = ClassGroup.objects.create(
-            code="adult-home-actions-group",
             display_name="Turma Ações",
             class_category=self.category,
             main_teacher=self.instructor,

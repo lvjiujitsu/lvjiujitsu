@@ -14,6 +14,7 @@ class Command(BaseCommand):
     help = "Cria usuários administrativos iniciais a partir de static/initial_data/initial_administrative.json."
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_administrative"))
         password = self._get_password()
         data = self._load_json()
         administrative_type = self._get_administrative_type()
@@ -95,11 +96,11 @@ class Command(BaseCommand):
             "full_name": entry["full_name"].strip(),
             "person_type": administrative_type,
         }
-        for field in ("email", "phone", "biological_sex", "jiu_jitsu_belt"):
+        for field in _person_json_string_fields():
             value = entry.get(field, "")
             if value:
                 defaults[field] = value
-        for field in ("birth_date",):
+        for field in _person_json_date_fields():
             value = entry.get(field)
             if value:
                 defaults[field] = value
@@ -110,12 +111,14 @@ class Command(BaseCommand):
     def _apply_person_updates(self, person: Person, entry: dict, administrative_type: PersonType) -> None:
         person.full_name = entry["full_name"].strip()
         person.person_type = administrative_type
-        for field in ("email", "phone", "biological_sex", "jiu_jitsu_belt"):
+        for field in _person_json_string_fields():
             value = entry.get(field, "")
             if value:
                 setattr(person, field, value)
-        if entry.get("birth_date"):
-            person.birth_date = entry["birth_date"]
+        for field in _person_json_date_fields():
+            value = entry.get(field)
+            if value:
+                setattr(person, field, value)
         if entry.get("jiu_jitsu_stripes") is not None:
             person.jiu_jitsu_stripes = entry["jiu_jitsu_stripes"]
 
@@ -158,3 +161,27 @@ class Command(BaseCommand):
                 )
                 created += 1
         return created
+
+
+def _person_json_string_fields():
+    return (
+        "email",
+        "phone",
+        "biological_sex",
+        "blood_type",
+        "allergies",
+        "previous_injuries",
+        "emergency_contact",
+        "martial_art",
+        "martial_art_graduation",
+        "jiu_jitsu_belt",
+        "previous_academy",
+    )
+
+
+def _person_json_date_fields():
+    return (
+        "birth_date",
+        "martial_art_started_at",
+        "martial_art_last_graduation_at",
+    )

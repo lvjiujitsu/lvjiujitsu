@@ -8,7 +8,6 @@ from system.constants import PersonTypeCode
 
 
 class ClassGroup(TimeStampedModel):
-    code = models.SlugField(max_length=80, unique=True)
     display_name = models.CharField(max_length=120)
     class_category = models.ForeignKey(
         ClassCategory,
@@ -27,7 +26,7 @@ class ClassGroup(TimeStampedModel):
     default_capacity = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ("code",)
+        ordering = ("class_category__display_order", "class_category__display_name", "main_teacher__full_name", "display_name")
 
     def __str__(self) -> str:
         return f"{self.display_name} - {self.class_category.display_name}"

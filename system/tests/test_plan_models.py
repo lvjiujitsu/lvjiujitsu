@@ -9,6 +9,8 @@ from system.models.plan import (
     PlanWeeklyFrequency,
     SubscriptionPlan,
 )
+
+
 class SubscriptionPlanModelTestCase(TestCase):
     def test_create_plan_uses_defaults(self):
         plan = SubscriptionPlan.objects.create(
@@ -23,6 +25,8 @@ class SubscriptionPlanModelTestCase(TestCase):
         self.assertEqual(plan.weekly_frequency, PlanWeeklyFrequency.FIVE_TIMES)
         self.assertEqual(plan.teacher_commission_percentage, Decimal("0.00"))
         self.assertFalse(plan.requires_special_authorization)
+        self.assertFalse(plan.is_loyalty_plan)
+        self.assertFalse(plan.is_family_plan)
 
     def test_unique_code(self):
         SubscriptionPlan.objects.create(
@@ -50,5 +54,78 @@ class SubscriptionPlanModelTestCase(TestCase):
         self.assertEqual(plans[0].code, "a-plan")
         self.assertEqual(plans[1].code, "z-plan")
 
+    def test_compute_price_pix_monthly(self):
+        plan = SubscriptionPlan.objects.create(
+            code="individual-2x-pix-m",
+            display_name="Individual 2x PIX Mensal",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("220.00"),
+            gateway_fixed_fee=Decimal("1.99"),
+            gateway_percentage_fee=Decimal("0.0000"),
+            cycle_discount_percentage=Decimal("0.0000"),
+        )
+        self.assertEqual(plan.price, Decimal("221.99"))
+        self.assertIsNone(plan.monthly_reference_price)
 
+    def test_compute_price_stripe_card_monthly(self):
+        plan = SubscriptionPlan.objects.create(
+            code="individual-2x-stripe-m",
+            display_name="Individual 2x Cartão Mensal",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("220.00"),
+            gateway_fixed_fee=Decimal("0.39"),
+            gateway_percentage_fee=Decimal("0.0599"),
+            cycle_discount_percentage=Decimal("0.0000"),
+        )
+        self.assertEqual(plan.price, Decimal("234.43"))
 
+    def test_compute_price_pix_quarterly_sets_monthly_reference(self):
+        plan = SubscriptionPlan.objects.create(
+            code="individual-2x-pix-q",
+            display_name="Individual 2x PIX Trimestral",
+            billing_cycle=BillingCycle.QUARTERLY,
+            base_monthly_net_price=Decimal("220.00"),
+            gateway_fixed_fee=Decimal("1.99"),
+            gateway_percentage_fee=Decimal("0.0000"),
+            cycle_discount_percentage=Decimal("0.0257"),
+        )
+        self.assertIsNotNone(plan.monthly_reference_price)
+        self.assertEqual(plan.monthly_reference_price, (plan.price / 3).quantize(Decimal("0.01")))
+
+    def test_compute_price_annual_5x_pix(self):
+        plan = SubscriptionPlan.objects.create(
+            code="individual-5x-pix-a",
+            display_name="Individual 5x PIX Anual",
+            billing_cycle=BillingCycle.ANNUAL,
+            base_monthly_net_price=Decimal("250.00"),
+            gateway_fixed_fee=Decimal("1.99"),
+            gateway_percentage_fee=Decimal("0.0000"),
+            cycle_discount_percentage=Decimal("0.1200"),
+        )
+        # (250 * 12 * (1 - 0.12) + 1.99) / 1 = 2640 + 1.99 = 2641.99
+        self.assertEqual(plan.price, Decimal("2641.99"))
+
+    def test_plan_without_base_net_keeps_manual_price(self):
+        plan = SubscriptionPlan.objects.create(
+            code="manual-price",
+            display_name="Preço Manual",
+            billing_cycle=BillingCycle.MONTHLY,
+            price=Decimal("199.90"),
+        )
+        self.assertEqual(plan.price, Decimal("199.90"))
+
+    def test_recomputes_on_update(self):
+        plan = SubscriptionPlan.objects.create(
+            code="update-test",
+            display_name="Recalcula ao editar",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("220.00"),
+            gateway_fixed_fee=Decimal("1.99"),
+            gateway_percentage_fee=Decimal("0.0000"),
+            cycle_discount_percentage=Decimal("0.0000"),
+        )
+        self.assertEqual(plan.price, Decimal("221.99"))
+
+        plan.gateway_fixed_fee = Decimal("2.49")
+        plan.save()
+        self.assertEqual(plan.price, Decimal("222.49"))

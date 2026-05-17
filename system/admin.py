@@ -172,14 +172,13 @@ class IbjjfAgeCategoryAdmin(admin.ModelAdmin):
 class ClassGroupAdmin(admin.ModelAdmin):
     list_display = (
         "display_name",
-        "code",
         "class_category",
         "main_teacher",
         "default_capacity",
         "is_active",
     )
     list_filter = ("class_category", "is_active")
-    search_fields = ("display_name", "code", "class_category__display_name")
+    search_fields = ("display_name", "class_category__display_name", "main_teacher__full_name")
     autocomplete_fields = ("class_category", "main_teacher")
     inlines = [ClassScheduleInline, ClassInstructorAssignmentInline]
 

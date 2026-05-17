@@ -1,3 +1,5 @@
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -65,6 +67,7 @@ class SubscriptionPlan(TimeStampedModel):
         "Preço",
         max_digits=10,
         decimal_places=2,
+        default=0,
         validators=[MinValueValidator(0)],
     )
     monthly_reference_price = models.DecimalField(
@@ -82,6 +85,46 @@ class SubscriptionPlan(TimeStampedModel):
         default=PlanPaymentMethod.CREDIT_CARD,
     )
     is_family_plan = models.BooleanField("Plano familiar", default=False)
+    is_loyalty_plan = models.BooleanField("Plano fidelidade", default=False)
+    base_monthly_net_price = models.DecimalField(
+        "Valor líquido mensal desejado",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text="Valor que a academia deseja receber por mês, antes das taxas do gateway.",
+    )
+    gateway_code = models.CharField(
+        "Gateway",
+        max_length=40,
+        blank=True,
+        default="",
+        help_text="Ex: asaas_pix, asaas_card, stripe_card.",
+    )
+    gateway_fixed_fee = models.DecimalField(
+        "Taxa fixa do gateway (R$)",
+        max_digits=6,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    gateway_percentage_fee = models.DecimalField(
+        "Taxa % do gateway",
+        max_digits=6,
+        decimal_places=4,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Decimal puro. Ex: 0.0429 = 4,29%.",
+    )
+    cycle_discount_percentage = models.DecimalField(
+        "Desconto do ciclo",
+        max_digits=6,
+        decimal_places=4,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Decimal puro. Ex: 0.0257 = 2,57%.",
+    )
     teacher_commission_percentage = models.DecimalField(
         "Repasse do professor (%)",
         max_digits=5,
@@ -131,6 +174,31 @@ class SubscriptionPlan(TimeStampedModel):
 
     def __str__(self):
         return self.display_name
+
+    def save(self, *args, **kwargs):
+        if self.base_monthly_net_price is not None:
+            self.price = self._compute_price()
+            n_months = CYCLE_MONTHS.get(self.billing_cycle, 1)
+            if n_months > 1:
+                self.monthly_reference_price = (
+                    self.price / Decimal(str(n_months))
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                self.monthly_reference_price = None
+        super().save(*args, **kwargs)
+
+    def _compute_price(self) -> Decimal:
+        base  = Decimal(str(self.base_monthly_net_price))
+        n     = Decimal(str(CYCLE_MONTHS.get(self.billing_cycle, 1)))
+        disc  = Decimal(str(self.cycle_discount_percentage  or 0))
+        fixed = Decimal(str(self.gateway_fixed_fee          or 0))
+        pct   = Decimal(str(self.gateway_percentage_fee     or 0))
+        net_total = base * n * (1 - disc)
+        if pct == 0:
+            gross = net_total + fixed
+        else:
+            gross = (net_total + fixed) / (1 - pct)
+        return gross.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @property
     def stripe_interval(self):

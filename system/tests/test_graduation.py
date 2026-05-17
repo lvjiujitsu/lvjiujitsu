@@ -1,7 +1,8 @@
-from datetime import date, time, timedelta
+﻿from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -135,7 +136,7 @@ class GraduationServiceTestCase(TestCase):
             biological_sex=BiologicalSex.MALE,
         )
         self.group = ClassGroup.objects.create(
-            code="grad-group", display_name="Turma",
+            display_name="Turma",
             class_category=self.category, main_teacher=self.instructor,
         )
         ClassEnrollment.objects.create(
@@ -246,7 +247,6 @@ class GraduationDashboardCardTestCase(TestCase):
         self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
         self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
         self.white = BeltRank.objects.create(
-            code="dashboard-white",
             display_name="Faixa Branca",
             audience=CategoryAudience.ADULT,
             color_hex="#ffffff",
@@ -383,3 +383,75 @@ class GraduationViewTestCase(TestCase):
         response = self.client.get(reverse("system:graduation-overview"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Panorama de graduação")
+
+
+class InitialTeacherSeedGraduationTestCase(TestCase):
+    @override_settings(SEED_INITIAL_TEACHER_PASSWORD="123456")
+    def test_teacher_seed_creates_complete_person_records_and_graduation_histories(self):
+        PersonType.objects.create(code="instructor", display_name="Professor")
+
+        call_command("seed_system_initial_belt_ranks", verbosity=0)
+        call_command("seed_system_initial_teacher", verbosity=0)
+        call_command("seed_system_initial_teacher", verbosity=0)
+
+        expected_current = {
+            "755.980.941-34": ("adult-black", 2),
+            "920.000.000-04": ("adult-black", 1),
+            "920.000.000-01": ("adult-black", 1),
+            "920.000.000-05": ("adult-brown", 4),
+            "920.000.000-02": ("adult-black", 0),
+        }
+        for cpf, (belt_code, grade_number) in expected_current.items():
+            person = Person.objects.get(cpf=cpf)
+            current = get_current_graduation(person)
+            self.assertEqual(current.belt_rank.code, belt_code)
+            self.assertEqual(current.grade_number, grade_number)
+            self.assertEqual(person.martial_art, "jiu_jitsu")
+            self.assertEqual(person.martial_art_started_at, person.graduations.order_by("awarded_at").first().awarded_at)
+            self.assertEqual(person.martial_art_last_graduation_at, current.awarded_at)
+            self.assertTrue(person.blood_type)
+            self.assertTrue(person.allergies)
+            self.assertTrue(person.previous_injuries)
+            self.assertTrue(person.emergency_contact)
+            self.assertTrue(person.previous_academy)
+            self.assertEqual(
+                person.graduations.values("belt_rank_id", "grade_number", "awarded_at")
+                .distinct()
+                .count(),
+                person.graduations.count(),
+            )
+
+        self.assertEqual(
+            Person.objects.get(cpf="920.000.000-05").graduations.count(),
+            20,
+        )
+        self.assertEqual(
+            Person.objects.get(cpf="755.980.941-34").graduations.count(),
+            23,
+        )
+
+    @override_settings(
+        SEED_INITIAL_ADMINISTRATIVE_PASSWORD="123456",
+    )
+    def test_administrative_seed_creates_complete_person_record_with_graduation_history(self):
+        PersonType.objects.create(
+            code="administrative-assistant",
+            display_name="Administrativo",
+        )
+
+        call_command("seed_system_initial_belt_ranks", verbosity=0)
+        call_command("seed_system_initial_administrative", verbosity=0)
+        call_command("seed_system_initial_administrative", verbosity=0)
+
+        person = Person.objects.get(cpf="920.000.001-01")
+        current = get_current_graduation(person)
+        self.assertEqual(current.belt_rank.code, "adult-purple")
+        self.assertEqual(current.grade_number, 1)
+        self.assertEqual(person.martial_art, "jiu_jitsu")
+        self.assertEqual(person.martial_art_started_at, date(2019, 6, 11))
+        self.assertEqual(person.martial_art_last_graduation_at, current.awarded_at)
+        self.assertEqual(person.blood_type, "O+")
+        self.assertTrue(person.allergies)
+        self.assertTrue(person.previous_injuries)
+        self.assertTrue(person.emergency_contact)
+        self.assertEqual(person.graduations.count(), 12)

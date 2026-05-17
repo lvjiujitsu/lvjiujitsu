@@ -28,6 +28,15 @@ from system.utils import ensure_formatted_cpf
 from system.constants import CLASS_STAFF_PERSON_TYPE_CODES
 
 
+MARTIAL_ART_EXPERIENCE_YES = "yes"
+MARTIAL_ART_EXPERIENCE_NO = "no"
+MARTIAL_ART_EXPERIENCE_CHOICES = [
+    ("", "Selecione"),
+    (MARTIAL_ART_EXPERIENCE_YES, "Sim"),
+    (MARTIAL_ART_EXPERIENCE_NO, "Não"),
+]
+
+
 class PersonTypeForm(forms.ModelForm):
     class Meta:
         model = PersonType
@@ -66,6 +75,35 @@ class PersonListFilterForm(forms.Form):
 
 
 class PersonForm(forms.ModelForm):
+    identity_field_names = (
+        "full_name",
+        "cpf",
+        "email",
+        "phone",
+        "birth_date",
+        "biological_sex",
+    )
+    health_field_names = (
+        "blood_type",
+        "allergies",
+        "previous_injuries",
+        "emergency_contact",
+    )
+    martial_art_field_names = (
+        "has_martial_art",
+        "martial_art",
+        "martial_art_graduation",
+        "jiu_jitsu_belt",
+        "jiu_jitsu_stripes",
+        "martial_art_started_at",
+        "martial_art_last_graduation_at",
+        "previous_academy",
+    )
+    relationship_field_names = (
+        "person_type",
+        "class_groups",
+        "is_active",
+    )
     main_field_names = (
         "full_name",
         "cpf",
@@ -77,10 +115,14 @@ class PersonForm(forms.ModelForm):
         "allergies",
         "previous_injuries",
         "emergency_contact",
+        "has_martial_art",
         "martial_art",
         "martial_art_graduation",
         "jiu_jitsu_belt",
         "jiu_jitsu_stripes",
+        "martial_art_started_at",
+        "martial_art_last_graduation_at",
+        "previous_academy",
         "person_type",
         "class_groups",
         "is_active",
@@ -98,6 +140,11 @@ class PersonForm(forms.ModelForm):
         queryset=PersonType.objects.none(),
         required=True,
         label="Tipo de vínculo",
+    )
+    has_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_EXPERIENCE_CHOICES,
+        label="Já praticou arte marcial?",
     )
     class_groups = forms.MultipleChoiceField(
         required=False,
@@ -167,6 +214,9 @@ class PersonForm(forms.ModelForm):
             "martial_art_graduation",
             "jiu_jitsu_belt",
             "jiu_jitsu_stripes",
+            "martial_art_started_at",
+            "martial_art_last_graduation_at",
+            "previous_academy",
             "person_type",
             "is_active",
         )
@@ -185,6 +235,9 @@ class PersonForm(forms.ModelForm):
             "martial_art_graduation": "Graduação/nível na modalidade",
             "jiu_jitsu_belt": "Faixa de Jiu Jitsu",
             "jiu_jitsu_stripes": "Graus na faixa (0 a 4)",
+            "martial_art_started_at": "Início no jiu jitsu",
+            "martial_art_last_graduation_at": "Última graduação anterior",
+            "previous_academy": "Academia anterior",
             "is_active": "Cadastro ativo",
         }
         widgets = {
@@ -209,12 +262,27 @@ class PersonForm(forms.ModelForm):
             "jiu_jitsu_belt": forms.Select(
                 choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
             ),
+            "martial_art_started_at": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
+            ),
+            "martial_art_last_graduation_at": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         person_type_codes = kwargs.pop("person_type_codes", None)
         self.show_payroll_fields = kwargs.pop("show_payroll_fields", True)
         super().__init__(*args, **kwargs)
+        self.fields["has_martial_art"].widget.attrs.update(
+            {"data-martial-art-presence-select": "person"}
+        )
+        for field_name in self._martial_art_detail_field_names():
+            self.fields[field_name].widget.attrs.update(
+                {"data-martial-art-detail-field": "person"}
+            )
         person_type_queryset = PersonType.objects.filter(
             is_active=True
         )
@@ -223,9 +291,24 @@ class PersonForm(forms.ModelForm):
         self.fields["person_type"].queryset = person_type_queryset.order_by("display_name")
         self.fields["class_groups"].choices = get_public_class_group_choice_options()
         if self.instance.pk:
+            self.initial["has_martial_art"] = (
+                MARTIAL_ART_EXPERIENCE_YES
+                if _person_has_martial_art_history(self.instance)
+                else MARTIAL_ART_EXPERIENCE_NO
+            )
             self.initial["birth_date"] = (
                 self.instance.birth_date.strftime("%Y-%m-%d")
                 if self.instance.birth_date
+                else ""
+            )
+            self.initial["martial_art_started_at"] = (
+                self.instance.martial_art_started_at.strftime("%Y-%m-%d")
+                if self.instance.martial_art_started_at
+                else ""
+            )
+            self.initial["martial_art_last_graduation_at"] = (
+                self.instance.martial_art_last_graduation_at.strftime("%Y-%m-%d")
+                if self.instance.martial_art_last_graduation_at
                 else ""
             )
             self.fields["class_groups"].initial = _get_initial_class_group_values(
@@ -248,10 +331,14 @@ class PersonForm(forms.ModelForm):
                 "allergies",
                 "previous_injuries",
                 "emergency_contact",
+                "has_martial_art",
                 "martial_art",
                 "martial_art_graduation",
                 "jiu_jitsu_belt",
                 "jiu_jitsu_stripes",
+                "martial_art_started_at",
+                "martial_art_last_graduation_at",
+                "previous_academy",
                 "person_type",
                 "class_groups",
                 "is_active",
@@ -270,10 +357,33 @@ class PersonForm(forms.ModelForm):
         return [self[name] for name in self.main_field_names]
 
     @property
+    def identity_fields(self):
+        return self._bound_fields(self.identity_field_names)
+
+    @property
+    def health_fields(self):
+        return self._bound_fields(self.health_field_names)
+
+    @property
+    def martial_art_fields(self):
+        return self._bound_fields(self.martial_art_field_names)
+
+    @property
+    def martial_art_history_fields(self):
+        return []
+
+    @property
+    def relationship_fields(self):
+        return self._bound_fields(self.relationship_field_names)
+
+    @property
     def payroll_fields(self):
         if not self.show_payroll_fields:
             return []
-        return [self[name] for name in self.payroll_field_names]
+        return self._bound_fields(self.payroll_field_names)
+
+    def _bound_fields(self, field_names):
+        return [self[name] for name in field_names]
 
     def clean_cpf(self):
         return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
@@ -281,10 +391,18 @@ class PersonForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         martial_art = cleaned_data.get("martial_art") or ""
+        has_martial_art = cleaned_data.get("has_martial_art") or ""
         graduation = (cleaned_data.get("martial_art_graduation") or "").strip()
         jiu_jitsu_belt = cleaned_data.get("jiu_jitsu_belt") or ""
 
-        if martial_art and not graduation:
+        if has_martial_art != MARTIAL_ART_EXPERIENCE_YES:
+            self._clear_martial_art_history(cleaned_data)
+            martial_art = ""
+            graduation = ""
+            jiu_jitsu_belt = ""
+        elif not martial_art:
+            self.add_error("martial_art", "Selecione a arte marcial praticada.")
+        if martial_art and martial_art != MartialArt.JIU_JITSU and not graduation:
             self.add_error("martial_art_graduation", "Informe a graduação/nível na arte marcial.")
         if martial_art == MartialArt.JIU_JITSU and not jiu_jitsu_belt:
             self.add_error("jiu_jitsu_belt", "Informe a faixa atual de Jiu Jitsu.")
@@ -323,6 +441,22 @@ class PersonForm(forms.ModelForm):
         cleaned_data["class_groups"] = class_groups
         self._clean_payroll_config(cleaned_data)
         return cleaned_data
+
+    def _clear_martial_art_history(self, cleaned_data):
+        cleaned_data["martial_art"] = ""
+        cleaned_data["martial_art_graduation"] = ""
+        cleaned_data["jiu_jitsu_belt"] = ""
+        cleaned_data["jiu_jitsu_stripes"] = None
+        cleaned_data["martial_art_started_at"] = None
+        cleaned_data["martial_art_last_graduation_at"] = None
+        cleaned_data["previous_academy"] = ""
+
+    def _martial_art_detail_field_names(self):
+        return [
+            field_name
+            for field_name in self.martial_art_field_names
+            if field_name != "has_martial_art"
+        ]
 
     def save(self, commit=True):
         person = super().save(commit=False)
@@ -398,3 +532,17 @@ def _get_initial_class_group_values(person):
         logical_values.append(filter_value)
         seen_values.add(filter_value)
     return logical_values
+
+
+def _person_has_martial_art_history(person):
+    return any(
+        (
+            person.martial_art,
+            person.martial_art_graduation,
+            person.jiu_jitsu_belt,
+            person.jiu_jitsu_stripes is not None,
+            person.martial_art_started_at,
+            person.martial_art_last_graduation_at,
+            person.previous_academy,
+        )
+    )

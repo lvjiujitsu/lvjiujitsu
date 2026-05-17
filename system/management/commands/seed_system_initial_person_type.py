@@ -8,6 +8,7 @@ class Command(BaseCommand):
     help = "Cria os tipos de pessoa base definidos em system/constants.py."
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_person_type"))
         created_count = 0
         for code, attrs in DEFAULT_PERSON_TYPE_DEFINITIONS.items():
             _, created = PersonType.objects.get_or_create(

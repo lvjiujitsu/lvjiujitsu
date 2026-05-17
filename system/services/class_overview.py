@@ -107,7 +107,6 @@ def get_registration_catalog_payload():
         payload.append(
             {
                 "id": card.filter_value,
-                "code": card.filter_value,
                 "display_name": card.display_name,
                 "category_id": card.class_category.pk,
                 "category_name": card.class_category.display_name,
@@ -140,7 +139,6 @@ def _serialize_physical_group(class_group):
     return {
         "display_name": class_group.display_name,
         "category_name": class_group.class_category.display_name,
-        "code": class_group.code,
         "teaching_team": [
             {
                 "full_name": member["full_name"],

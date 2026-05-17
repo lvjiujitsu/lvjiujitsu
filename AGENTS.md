@@ -430,14 +430,22 @@ Só são aceitáveis quando **estritamente necessários** para:
 
 ## 15. Política de migração
 
-**Nunca criar migrações por padrão.**
+**Nunca escrever migrações — nem manualmente, nem via `makemigrations` autônomo.**
 
-Correções e implementações devem priorizar:
+O agente **não pode**:
+- criar arquivos `000N_*.py` em nenhuma pasta `migrations/`
+- executar `manage.py makemigrations` por conta própria
+- executar `manage.py migrate` por conta própria
 
-- serviço, formulário, consulta, template, view, configuração, fluxo, contrato existente e organização do código
+Quando uma mudança de schema for necessária, o fluxo obrigatório é:
 
-Se a única solução aparente exigir alteração de schema, isso deve ser tratado como **bloqueio ou exceção explícita** do projeto.
-Sem autorização expressa, não criar migrações.
+1. o agente corrige o código (model, form, service, template, testes)
+2. o agente solicita ao usuário que rode o ciclo destrutivo descrito em `CLAUDE.md`
+3. o usuário executa o ciclo e valida que `0001_initial.py` foi regenerado corretamente
+4. o agente confirma o resultado via `manage.py check`
+
+Esse ciclo é o único caminho válido para mudanças de schema.
+Migrações incrementais (`0002`, `0003`…) são **proibidas neste projeto**.
 
 ---
 
@@ -604,25 +612,37 @@ pip install -r requirements.txt
 
 ---
 
-## 24. Reset destrutivo local (somente sob pedido explícito)
+## 24. Ciclo destrutivo local
 
-**Não é o fluxo padrão.** Somente quando o usuário pedir e `CLAUDE.md` declarar banco descartável.
+Este ciclo é o **único mecanismo de atualização de schema** no projeto.
+O agente **nunca o executa** — apenas instrui o usuário a rodar quando o código estiver correto.
 
-Executar na ordem definida em `CLAUDE.md`, usando **apenas comandos reais do projeto**.
+### Quando usar
 
-Exemplo típico (adaptar conforme `CLAUDE.md`):
+- após qualquer mudança em `system/models/` que altere campos, constraints ou relacionamentos
+- o agente termina as alterações de código e então diz: _"código corrigido — rode o ciclo destrutivo"_
+
+### Sequência obrigatória (executada pelo usuário)
 
 ```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
 .\.venv\Scripts\python.exe manage.py makemigrations
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py <comando_superuser>
-.\.venv\Scripts\python.exe manage.py <comando_seed>
-.\.venv\Scripts\python.exe manage.py runserver <HOST:PORT>
 ```
 
-Não editar migrations manualmente. Se comando não existir, reportar.
+Após migrar, re-executar as seeds necessárias (ver `CLAUDE.md`).
+
+### O que o agente faz após o ciclo
+
+- executa `manage.py check` para confirmar que o schema e o código estão coerentes
+- registra o resultado como evidência de conclusão
+
+### Proibido
+
+- o agente não edita arquivos em `migrations/` manualmente
+- o agente não executa `makemigrations` ou `migrate` por conta própria
+- migrações incrementais (`0002`, `0003`…) não existem neste projeto
 
 ---
 
@@ -650,4 +670,5 @@ Elas **nunca** são requisito de boot do sistema.
 | Como o agente trabalha | Este `AGENTS.md` |
 | O que o projeto é | `CLAUDE.md` |
 | Requisitos de mudança | PRDs em `docs/prd/` |
+| Contratos específicos de UI/UX | Documento indicado em `CLAUDE.md` |
 | Fluxos reais | Código e testes |

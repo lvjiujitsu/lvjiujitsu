@@ -1,0 +1,32 @@
+[
+  {
+    "code": "individual",
+    "display_name": "Individual",
+    "audience": "adult",
+    "is_family_plan": false,
+    "is_loyalty_plan": false,
+    "description": "Plano individual para alunos adultos.",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "loyalty",
+    "display_name": "Fidelidade",
+    "audience": "adult",
+    "is_family_plan": false,
+    "is_loyalty_plan": true,
+    "description": "Plano com compromisso de fidelidade — desconto progressivo por ciclo.",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "family",
+    "display_name": "Família",
+    "audience": "adult",
+    "is_family_plan": true,
+    "is_loyalty_plan": false,
+    "description": "Plano familiar para irmãos ou pais e filhos.",
+    "display_order": 3,
+    "is_active": true
+  }
+]

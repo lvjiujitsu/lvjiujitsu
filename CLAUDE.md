@@ -103,7 +103,7 @@ Monólito Django com app única (`system`) seguindo MVT com camada explícita de
 ### Proibições locais
 - não colocar regra de negócio central em template ou JS de interface
 - não editar arquivos-fonte em `staticfiles/`
-- não introduzir migrações por padrão sem autorização explícita
+- **nunca escrever migrações** — nem manualmente, nem via `makemigrations` autônomo; mudanças de schema requerem o ciclo destrutivo executado pelo usuário
 
 ---
 
@@ -163,6 +163,16 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 | `seed_system_initial_teacher` | cria professores iniciais + contas de portal | `seed_system_initial_person_type` | ativo |
 | `seed_system_initial_belt_ranks` | cria as 13 faixas com progressão e cores | — | ativo |
 | `seed_system_initial_administrative` | cria usuários administrativos + histórico de graduação | `seed_system_initial_person_type`, `seed_system_initial_belt_ranks` | ativo |
+| `seed_system_initial_class_categories` | cria as 4 categorias de turma (Adulto, Juvenil, Kids, Feminino) | — | ativo |
+| `seed_system_initial_class_categories_teacher` | vincula cada professor à sua categoria principal | `seed_system_initial_teacher`, `seed_system_initial_class_categories` | ativo |
+| `seed_system_initial_class_categories_administrative` | vincula cada administrativo à sua categoria | `seed_system_initial_administrative`, `seed_system_initial_class_categories` | ativo |
+| `seed_system_initial_class_catalog` | cria turmas (`ClassGroup`) e horários (`ClassSchedule`) | `seed_system_initial_teacher`, `seed_system_initial_class_categories` | ativo |
+| `seed_system_initial_class_catalog_administrative` | vincula administrativos à turma principal (`Person.class_group`) | `seed_system_initial_administrative`, `seed_system_initial_class_catalog` | ativo |
+| `seed_system_initial_ibjjf_age_categories` | cria as 22 categorias de idade IBJJF (Pré-Mirim a Master 7) | — | ativo |
+| `seed_system_initial_graduation_rules` | cria as 52 regras de graduação (adulto e infantil) | `seed_system_initial_belt_ranks` | ativo |
+| `seed_system_initial_product_categories` | cria as 4 categorias de produto (Faixas, Kimonos, Rash Guard, Patches) | — | ativo |
+| `seed_system_initial_product_catalog` | cria 5 produtos e 62 variantes com estoque inicial | `seed_system_initial_product_categories` | ativo |
+| `seed_system_initial_subscription_plans` | cria 72 planos de assinatura (3 categorias × 2 frequências × 3 gateways × 4 ciclos) com precificação dinâmica | — | ativo |
 
 ### Arquitetura de seeds
 
@@ -212,11 +222,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 - seeds são recriadas incrementalmente com validação manual; a lista de comandos no CLAUDE.md reflete apenas os existentes
 
 ### Schema
-- existe apenas `system/migrations/0001_initial.py`
-- migrações novas continuam proibidas por padrão
-- reset destrutivo local é permitido **somente sob pedido explícito**
+- existe apenas `system/migrations/0001_initial.py` (gerada pelo ciclo destrutivo)
+- **é proibido escrever migrações manualmente** — nem `0001`, nem `0002`, nunca
+- quando o modelo mudar, o agente deve: (1) corrigir o código, (2) solicitar ao usuário que rode o ciclo destrutivo
+- o agente **nunca** executa o ciclo destrutivo por conta própria — apenas instrui o usuário a rodar
 
-### Reset destrutivo local
+### Ciclo destrutivo (solicitado ao usuário, nunca executado pelo agente)
 
 ```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
@@ -224,6 +235,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
 .\.venv\Scripts\python.exe manage.py migrate
 ```
+
+Após migrar, re-rodar as seeds necessárias.
 
 ---
 
@@ -254,7 +267,35 @@ Marcar como não concluída quando houver:
 
 ---
 
-## 11. Regra final de manutenção
+## 11. Contrato local de UI e redesign
+
+O redesign visual e responsivo do sistema é governado por:
+
+- `docs/UI-SCREEN-CONTRACT.md`
+- PRDs específicas em `docs/prd/`
+
+### Regras locais para rework de tela
+
+- nenhuma tela pode ser reimplementada sem PRD ou item explícito em PRD
+- nenhuma funcionalidade existente pode ser removida, escondida ou substituída por aparência
+- tema claro e escuro são obrigatórios em toda tela alterada
+- telas devem ser validadas em desktop e mobile antes de conclusão
+- telas administrativas devem priorizar densidade, escaneabilidade e operação real
+- telas públicas podem usar assets visuais LV, mas sem quebrar cadastro, login ou pagamento
+- é proibido criar novas pastas; novos arquivos só podem ser criados dentro de pastas já existentes
+- `staticfiles/` continua sendo saída gerada e não deve ser editado
+- quando CSS/JS versionado por `?v=` for alterado, o template correspondente deve atualizar a versão
+- JavaScript e CSS inline existentes devem ser tratados quando a tela correspondente entrar no escopo, sem criar regra de negócio no frontend
+
+### Fonte de verdade de UI
+
+O contrato de UI documenta os papéis reais do sistema (`student`, `guardian`, `dependent`, `instructor`, `administrative-assistant` e admin técnico), os módulos de tela, responsividade, componentes mínimos, validação visual e critérios de parada.
+
+Se houver divergência entre `docs/UI-SCREEN-CONTRACT.md`, PRD da tela, `CLAUDE.md`, `AGENTS.md` e o código real, a tarefa deve parar até a divergência ser resolvida.
+
+---
+
+## 12. Regra final de manutenção
 
 Atualizar este arquivo quando houver:
 
@@ -262,6 +303,7 @@ Atualizar este arquivo quando houver:
 - nova integração externa
 - mudança na estrutura principal do app `system/`
 - mudança no padrão de assets estáticos versionados manualmente
+- mudança no contrato local de UI e redesign
 
 ### Changelog da spec
 
@@ -273,4 +315,10 @@ Atualizar este arquivo quando houver:
 - **[2026-05-12]** Seeds atomicas e manuais; removidos `initial_load`/`seeding` como arquitetura oficial e agregadores de seed.
 - **[2026-05-16]** Sistema reestruturado para subir como casca sem codependência com seeds; package `system/management/seeders/` removido; seeds serão recriadas incrementalmente; testes seed-dependentes eliminados da suite.
 - **[2026-05-16]** Seeds passam a não aceitar argumentos `--`; toda configuração via `.env`. Implementadas `seed_system_initial_person_type` e `seed_system_initial_teacher`. Dados JSON em `static/initial_data/`.
+- **[2026-05-16]** Criado contrato local de UI e redesign responsivo em `docs/UI-SCREEN-CONTRACT.md`; reworks de tela passam a exigir PRD por etapa, preservação de funcionalidades e validação visual desktop/mobile.
+- **[2026-05-16]** Implementadas `seed_system_initial_belt_ranks`, `seed_system_initial_administrative`, `seed_system_initial_class_categories`, `seed_system_initial_class_categories_teacher`, `seed_system_initial_class_categories_administrative`, `seed_system_initial_class_catalog`, `seed_system_initial_class_catalog_administrative`. Dados JSON em `static/initial_data/`.
+- **[2026-05-16]** Removido `ClassGroup.code` (SlugField hardcoded); identificação de turmas passa a ser feita por relacionamentos (`class_category` + `main_teacher`). Payroll rules migrado de `class_group_code` para `class_group_id`.
+- **[2026-05-16]** Regra definitiva: **nunca escrever migrations**. Mudanças de schema exigem ciclo destrutivo (`clear_migrations.py` → `makemigrations` → `migrate`) executado **pelo usuário**, nunca pelo agente.
+- **[2026-05-17]** Implementadas `seed_system_initial_ibjjf_age_categories`, `seed_system_initial_graduation_rules`, `seed_system_initial_product_categories`, `seed_system_initial_product_catalog`. Preço unitário dos produtos inicializado como R$ 0,00 — configurar via admin.
+- **[2026-05-17]** Implementada `seed_system_initial_subscription_plans` com 72 planos (Individual, Fidelidade, Família × 2x/5x × Asaas PIX, Asaas Cartão, Stripe Cartão × 4 ciclos). Modelo `SubscriptionPlan` expandido com campos de precificação dinâmica (`base_monthly_net_price`, `gateway_fixed_fee`, `gateway_percentage_fee`, `cycle_discount_percentage`, `is_loyalty_plan`); `price` calculado automaticamente em `save()`. Requer ciclo destrutivo.
 ```

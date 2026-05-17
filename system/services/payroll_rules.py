@@ -247,7 +247,7 @@ def calculate_monthly_payroll(person, *, reference_month=None, as_of_date=None):
         return calculation
 
     rules = _get_effective_rules(config)
-    person_group_ids_by_code = _get_staff_class_group_ids_by_code(person)
+    person_group_ids = _get_staff_class_group_ids(person)
     entries_by_rule = []
     held_entries = []
     refund_entries = []
@@ -259,7 +259,7 @@ def calculate_monthly_payroll(person, *, reference_month=None, as_of_date=None):
 
     for rule in rules:
         method = rule["method"]
-        group_ids = _matching_group_ids(rule, person_group_ids_by_code)
+        group_ids = _matching_group_ids(rule, person_group_ids)
         if method == PAYROLL_METHOD_FIXED_MONTHLY:
             if _rule_applies_to_person(rule, group_ids):
                 fixed_total += _money(rule["amount"])
@@ -370,7 +370,7 @@ def format_payroll_rules(config):
     for rule in rules:
         method_label = PAYROLL_METHOD_LABELS.get(rule["method"], rule["method"])
         value = _rule_value_label(rule)
-        scope = rule.get("class_group_code") or "todas as turmas"
+        scope = rule.get("class_group_id") or "todas as turmas"
         summaries.append(
             {
                 "method": rule["method"],
@@ -435,10 +435,13 @@ def _normalize_rule(rule):
     if normalized["scope"] not in (PAYROLL_SCOPE_ALL, PAYROLL_SCOPE_CLASS_GROUP):
         raise PayrollRuleError("Escopo de repasse inválido.")
     if normalized["scope"] == PAYROLL_SCOPE_CLASS_GROUP:
-        class_group_code = (rule.get("class_group_code") or "").strip()
-        if not class_group_code:
-            raise PayrollRuleError("Regra por turma exige class_group_code.")
-        normalized["class_group_code"] = class_group_code
+        class_group_id = rule.get("class_group_id")
+        if not class_group_id:
+            raise PayrollRuleError("Regra por turma exige class_group_id.")
+        try:
+            normalized["class_group_id"] = int(class_group_id)
+        except (TypeError, ValueError):
+            raise PayrollRuleError("class_group_id deve ser um número inteiro.")
     if method in (
         PAYROLL_METHOD_FIXED_MONTHLY,
         PAYROLL_METHOD_PER_STUDENT_FIXED,
@@ -466,23 +469,25 @@ def _get_effective_rules(config):
     return []
 
 
-def _get_staff_class_group_ids_by_code(person):
-    group_map = {
-        group.code: group.pk
-        for group in person.primary_class_groups.filter(is_active=True).only("pk", "code")
-    }
-    for assignment in person.class_instructor_assignments.select_related("class_group").filter(
-        class_group__is_active=True,
-    ):
-        group_map[assignment.class_group.code] = assignment.class_group_id
-    return group_map
+def _get_staff_class_group_ids(person):
+    primary_ids = set(
+        person.primary_class_groups.filter(is_active=True).values_list("pk", flat=True)
+    )
+    assignment_ids = set(
+        person.class_instructor_assignments
+        .filter(class_group__is_active=True)
+        .values_list("class_group_id", flat=True)
+    )
+    return primary_ids | assignment_ids
 
 
-def _matching_group_ids(rule, person_group_ids_by_code):
+def _matching_group_ids(rule, person_group_ids):
     if rule["scope"] == PAYROLL_SCOPE_ALL:
-        return set(person_group_ids_by_code.values())
-    group_id = person_group_ids_by_code.get(rule.get("class_group_code"))
-    return {group_id} if group_id else set()
+        return person_group_ids
+    group_id = rule.get("class_group_id")
+    if group_id and int(group_id) in person_group_ids:
+        return {int(group_id)}
+    return set()
 
 
 def _rule_applies_to_person(rule, group_ids):

@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from system.forms import PortalRegistrationForm
+from system.forms import PersonForm, PortalRegistrationForm
 from system.models import BiologicalSex
 
 
@@ -45,3 +45,77 @@ class PortalRegistrationFormMartialArtTestCase(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("holder_martial_art", form.errors)
+
+
+class PersonFormLayoutContractTestCase(TestCase):
+    def test_exposes_fields_grouped_by_people_screen_contract(self):
+        form = PersonForm()
+
+        self.assertEqual(
+            [field.name for field in form.identity_fields],
+            [
+                "full_name",
+                "cpf",
+                "email",
+                "phone",
+                "birth_date",
+                "biological_sex",
+            ],
+        )
+        self.assertEqual(
+            [field.name for field in form.health_fields],
+            ["blood_type", "allergies", "previous_injuries", "emergency_contact"],
+        )
+        self.assertEqual(
+            [field.name for field in form.martial_art_fields],
+            [
+                "has_martial_art",
+                "martial_art",
+                "martial_art_graduation",
+                "jiu_jitsu_belt",
+                "jiu_jitsu_stripes",
+                "martial_art_started_at",
+                "martial_art_last_graduation_at",
+                "previous_academy",
+            ],
+        )
+        self.assertEqual(
+            [field.name for field in form.relationship_fields],
+            ["person_type", "class_groups", "is_active"],
+        )
+
+    def test_clears_person_martial_art_history_when_answer_is_no(self):
+        form = PersonForm(
+            data={
+                "full_name": "Aluno Sem Tatame",
+                "cpf": "12345678915",
+                "email": "",
+                "phone": "",
+                "birth_date": "",
+                "biological_sex": "",
+                "blood_type": "",
+                "allergies": "",
+                "previous_injuries": "",
+                "emergency_contact": "",
+                "has_martial_art": "no",
+                "martial_art": "jiu_jitsu",
+                "martial_art_graduation": "Roxa",
+                "jiu_jitsu_belt": "purple",
+                "jiu_jitsu_stripes": "2",
+                "martial_art_started_at": "2020-01-01",
+                "martial_art_last_graduation_at": "2025-01-01",
+                "previous_academy": "Academia anterior",
+                "person_type": "",
+                "class_groups": [],
+                "is_active": "on",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.cleaned_data["martial_art"], "")
+        self.assertEqual(form.cleaned_data["martial_art_graduation"], "")
+        self.assertEqual(form.cleaned_data["jiu_jitsu_belt"], "")
+        self.assertIsNone(form.cleaned_data["jiu_jitsu_stripes"])
+        self.assertIsNone(form.cleaned_data["martial_art_started_at"])
+        self.assertIsNone(form.cleaned_data["martial_art_last_graduation_at"])
+        self.assertEqual(form.cleaned_data["previous_academy"], "")

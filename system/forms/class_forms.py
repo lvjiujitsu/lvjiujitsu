@@ -25,7 +25,6 @@ class ClassGroupForm(forms.ModelForm):
     class Meta:
         model = ClassGroup
         fields = (
-            "code",
             "display_name",
             "class_category",
             "main_teacher",
@@ -34,7 +33,6 @@ class ClassGroupForm(forms.ModelForm):
             "is_active",
         )
         labels = {
-            "code": "Código técnico",
             "display_name": "Nome base da turma",
             "class_category": "Categoria da turma",
             "main_teacher": "Professor principal",

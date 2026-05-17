@@ -37,7 +37,7 @@ def get_admin_class_group_queryset():
         .order_by(
             "class_category__display_order",
             "class_category__display_name",
-            "code",
+            "main_teacher__full_name",
         )
     )
     return [_prepare_class_group(class_group) for class_group in queryset]
@@ -63,7 +63,7 @@ def get_admin_class_schedule_queryset():
         .order_by(
             "class_group__class_category__display_order",
             "class_group__class_category__display_name",
-            "class_group__code",
+            "class_group__main_teacher__full_name",
             "weekday",
             "start_time",
         )
@@ -106,7 +106,6 @@ def get_info_class_group_queryset():
             "class_category__display_order",
             "class_category__display_name",
             "main_teacher__full_name",
-            "code",
         )
     )
     return [_prepare_class_group(class_group) for class_group in queryset]
@@ -126,7 +125,7 @@ def get_registration_catalog_payload():
                 queryset=_get_assignment_queryset(),
             ),
         )
-        .order_by("class_category__display_order", "code")
+        .order_by("class_category__display_order", "class_category__display_name", "main_teacher__full_name")
     )
 
     payload = []
@@ -135,7 +134,6 @@ def get_registration_catalog_payload():
         payload.append(
             {
                 "id": prepared_group.pk,
-                "code": prepared_group.code,
                 "display_name": prepared_group.display_name,
                 "category_id": prepared_group.class_category_id,
                 "category_name": prepared_group.class_category.display_name,

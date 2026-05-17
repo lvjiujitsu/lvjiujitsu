@@ -1,4 +1,4 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -239,7 +239,6 @@ class PayrollRulesServiceTestCase(TestCase):
             audience=CategoryAudience.JUVENILE,
         )
         self.group = ClassGroup.objects.create(
-            code="juvenile-rules",
             display_name="Jiu Jitsu",
             class_category=self.category,
             main_teacher=self.teacher,
@@ -277,13 +276,13 @@ class PayrollRulesServiceTestCase(TestCase):
                         "method": PAYROLL_METHOD_FIXED_MONTHLY,
                         "amount": "400.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                     {
                         "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
                         "percentage": "50.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                 ]
             ),
@@ -326,7 +325,7 @@ class PayrollRulesServiceTestCase(TestCase):
                         "method": PAYROLL_METHOD_PER_CLASS_ATTENDANCE,
                         "amount": "25.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                 ]
             ),
@@ -355,7 +354,7 @@ class PayrollRulesServiceTestCase(TestCase):
                         "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
                         "percentage": "50.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                 ]
             ),
@@ -383,7 +382,7 @@ class PayrollRulesServiceTestCase(TestCase):
                         "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
                         "percentage": "50.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                 ]
             ),
@@ -423,7 +422,7 @@ class PayrollRulesServiceTestCase(TestCase):
                         "method": PAYROLL_METHOD_STUDENT_PERCENTAGE,
                         "percentage": "50.00",
                         "scope": "class_group",
-                        "class_group_code": self.group.code,
+                        "class_group_id": self.group.pk,
                     },
                 ]
             ),

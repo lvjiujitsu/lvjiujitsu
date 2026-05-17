@@ -47,10 +47,15 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.get(reverse("system:admin-home"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "workbench-context-grid")
+        self.assertContains(response, "workbench-command-grid")
+        self.assertContains(response, "Academia")
         self.assertContains(response, "Turmas")
         self.assertContains(response, "Horários")
         self.assertContains(response, "Categorias")
-        self.assertContains(response, "O que fazer agora")
+        self.assertContains(response, "Tatame")
+        self.assertContains(response, "Cronograma")
+        self.assertNotContains(response, "Grade de aulas")
 
     def test_technical_admin_can_create_class_group_with_inline_schedule_and_assistant_team(self):
         self._login_as_technical_admin()
@@ -71,7 +76,6 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.post(
             reverse("system:class-group-create"),
             {
-                "code": "audit-test-class",
                 "display_name": "Jiu Jitsu",
                 "class_category": adult_category.pk,
                 "main_teacher": main_teacher.pk,
@@ -94,7 +98,7 @@ class ClassPortalViewTestCase(TestCase):
         )
 
         self.assertRedirects(response, reverse("system:class-group-list"))
-        class_group = ClassGroup.objects.get(code="audit-test-class")
+        class_group = ClassGroup.objects.get(main_teacher=main_teacher, class_category=adult_category)
         self.assertEqual(class_group.display_name, "Jiu Jitsu")
         self.assertEqual(class_group.main_teacher, main_teacher)
         self.assertTrue(
@@ -126,7 +130,6 @@ class ClassPortalViewTestCase(TestCase):
         response = self.client.post(
             reverse("system:class-group-create"),
             {
-                "code": "adult-without-schedule",
                 "display_name": "Jiu Jitsu",
                 "class_category": adult_category.pk,
                 "main_teacher": main_teacher.pk,
@@ -142,7 +145,7 @@ class ClassPortalViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Cadastre ao menos um horário ativo para a turma ativa.")
-        self.assertFalse(ClassGroup.objects.filter(code="adult-without-schedule").exists())
+        self.assertFalse(ClassGroup.objects.filter(main_teacher=main_teacher, class_category=adult_category).exists())
 
     def test_class_group_form_shows_existing_schedule_summary_grouped_by_weekday(self):
         self._login_as_technical_admin()
@@ -156,7 +159,6 @@ class ClassPortalViewTestCase(TestCase):
             cpf="100.000.000-13",
         )
         class_group = ClassGroup.objects.create(
-            code="adult-summary-class",
             display_name="Jiu Jitsu",
             class_category=adult_category,
             main_teacher=main_teacher,
