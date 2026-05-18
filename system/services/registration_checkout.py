@@ -124,6 +124,7 @@ def get_plan_catalog_payload():
                 "payment_method": plan.payment_method,
                 "payment_method_label": plan.get_payment_method_display(),
                 "is_family_plan": plan.is_family_plan,
+                "is_loyalty_plan": plan.is_loyalty_plan,
                 "audience": plan.audience,
                 "audience_label": plan.get_audience_display(),
                 "weekly_frequency": plan.weekly_frequency,

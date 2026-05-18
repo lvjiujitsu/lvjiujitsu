@@ -101,7 +101,13 @@
       "Bash(powershell -Command ' *)",
       "Bash(curl -s \"http://127.0.0.1:8000/nao-existe-404/\")",
       "Bash(curl -s -H \"Cache-Control: no-cache\" -H \"Pragma: no-cache\" \"http://127.0.0.1:8000/register/\")",
-      "Bash(# Find ALL register.html files anywhere on this machine that Django might find *)"
+      "Bash(# Find ALL register.html files anywhere on this machine that Django might find *)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_class_catalog)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_class_categories)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_teacher)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_person_type)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_belt_ranks)",
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_ibjjf_age_categories)"
     ]
   },
   "model": "claude-sonnet-4-6",
