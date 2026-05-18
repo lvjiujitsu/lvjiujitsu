@@ -8,15 +8,18 @@ from django.db import transaction
 from system.models.plan import SubscriptionPlan
 
 
+DATA_FILENAME = "seed_system_initial_subscription_plans.json"
+
+
 class Command(BaseCommand):
-    help = "Cria os 3 planos de assinatura base (Individual, Fidelidade, Família) a partir de static/initial_data/subscription_plans.json."
+    help = f"Cria os 3 planos de assinatura base (Individual, Fidelidade, Família) a partir de static/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_subscription_plans"))
         data = self._load_json()
 
         if not data:
-            self.stdout.write(self.style.WARNING("Nenhum plano encontrado no arquivo subscription_plans.json."))
+            self.stdout.write(self.style.WARNING(f"Nenhum plano encontrado no arquivo {DATA_FILENAME}."))
             return
 
         created_count = 0
@@ -51,7 +54,7 @@ class Command(BaseCommand):
         )
 
     def _load_json(self) -> list:
-        path = Path(settings.BASE_DIR) / "static" / "initial_data" / "subscription_plans.json"
+        path = Path(settings.BASE_DIR) / "static" / "initial_data" / DATA_FILENAME
         if not path.exists():
             raise CommandError(f"Arquivo não encontrado: {path}")
         with path.open(encoding="utf-8") as f:

@@ -1,6 +1,6 @@
 [
   {
-    "class_group_code": "adult-layon",
+    "teacher_cpf": "92000000001",
     "monthly_salary": "400.00",
     "payment_day": 28,
     "rules": [
@@ -8,18 +8,20 @@
         "method": "fixed_monthly",
         "amount": "400.00",
         "scope": "class_group",
-        "class_group_code": "adult-layon"
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000001"
       },
       {
         "method": "student_percentage",
         "percentage": "50.00",
         "scope": "class_group",
-        "class_group_code": "juvenile-layon"
+        "class_group_category": "juvenile",
+        "class_group_teacher_cpf": "92000000001"
       }
     ]
   },
   {
-    "class_group_code": "adult-vinicius",
+    "teacher_cpf": "92000000002",
     "monthly_salary": "400.00",
     "payment_day": 28,
     "rules": [
@@ -27,24 +29,25 @@
         "method": "fixed_monthly",
         "amount": "400.00",
         "scope": "class_group",
-        "class_group_code": "adult-vinicius"
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000002"
       }
     ]
   },
   {
-    "class_group_code": "adult-lauro",
+    "teacher_cpf": "75598094134",
     "monthly_salary": "0.00",
     "payment_day": 28,
     "rules": []
   },
   {
-    "class_group_code": "kids-andre",
+    "teacher_cpf": "92000000004",
     "monthly_salary": "0.00",
     "payment_day": 28,
     "rules": []
   },
   {
-    "class_group_code": "women-vannessa",
+    "teacher_cpf": "92000000005",
     "monthly_salary": "0.00",
     "payment_day": 28,
     "rules": []

@@ -9,15 +9,18 @@ from system.models import ClassCategory, ClassGroup, ClassSchedule, Person
 from system.utils import ensure_formatted_cpf
 
 
+DATA_FILENAME = "seed_system_initial_class_catalog.json"
+
+
 class Command(BaseCommand):
-    help = "Cria turmas e horários a partir de static/initial_data/class_catalog.json."
+    help = f"Cria turmas e horários a partir de static/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_class_catalog"))
         data = self._load_json()
 
         if not data:
-            self.stdout.write(self.style.WARNING("Nenhuma turma encontrada no arquivo class_catalog.json."))
+            self.stdout.write(self.style.WARNING(f"Nenhuma turma encontrada no arquivo {DATA_FILENAME}."))
             return
 
         groups_created = 0
@@ -64,7 +67,7 @@ class Command(BaseCommand):
         )
 
     def _load_json(self) -> list:
-        path = Path(settings.BASE_DIR) / "static" / "initial_data" / "class_catalog.json"
+        path = Path(settings.BASE_DIR) / "static" / "initial_data" / DATA_FILENAME
         if not path.exists():
             raise CommandError(f"Arquivo não encontrado: {path}")
         with path.open(encoding="utf-8") as f:

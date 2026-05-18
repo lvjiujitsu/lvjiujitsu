@@ -8,15 +8,18 @@ from django.db import transaction
 from system.models import ProductCategory
 
 
+DATA_FILENAME = "seed_system_initial_product_categories.json"
+
+
 class Command(BaseCommand):
-    help = "Cria as categorias de produto a partir de static/initial_data/product_categories.json."
+    help = f"Cria as categorias de produto a partir de static/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_product_categories"))
         data = self._load_json()
 
         if not data:
-            self.stdout.write(self.style.WARNING("Nenhuma categoria encontrada no arquivo product_categories.json."))
+            self.stdout.write(self.style.WARNING(f"Nenhuma categoria encontrada no arquivo {DATA_FILENAME}."))
             return
 
         created_count = 0
@@ -50,7 +53,7 @@ class Command(BaseCommand):
         )
 
     def _load_json(self) -> list:
-        path = Path(settings.BASE_DIR) / "static" / "initial_data" / "product_categories.json"
+        path = Path(settings.BASE_DIR) / "static" / "initial_data" / DATA_FILENAME
         if not path.exists():
             raise CommandError(f"Arquivo não encontrado: {path}")
         with path.open(encoding="utf-8") as f:

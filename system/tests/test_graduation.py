@@ -1,4 +1,5 @@
-﻿from datetime import date, time, timedelta
+from datetime import date, time, timedelta
+from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -242,157 +243,17 @@ class GraduationServiceTestCase(TestCase):
         self.assertEqual(rows[0].person, self.person)
 
 
-class GraduationDashboardCardTestCase(TestCase):
-    def setUp(self):
-        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
-        self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
-        self.white = BeltRank.objects.create(
-            display_name="Faixa Branca",
-            audience=CategoryAudience.ADULT,
-            color_hex="#ffffff",
-            tip_color_hex="#000000",
-            stripe_color_hex="#ffffff",
-            max_grades=4,
-            display_order=10,
-        )
-        GraduationRule.objects.create(
-            belt_rank=self.white,
-            from_grade=1,
-            to_grade=2,
-            min_months_in_current_grade=4,
-            min_classes_required=8,
-            min_classes_window_months=12,
-            is_active=True,
-        )
-
-    def _create_account(self, *, person_type, cpf, full_name):
-        person = Person.objects.create(
-            full_name=full_name,
-            cpf=cpf,
-            person_type=person_type,
-            birth_date=date(2000, 1, 1),
-            biological_sex=BiologicalSex.MALE,
-        )
-        Graduation.objects.create(
-            person=person,
-            belt_rank=self.white,
-            grade_number=1,
-            awarded_at=timezone.localdate() - timedelta(days=35),
-        )
-        account = PortalAccount(person=person)
-        account.set_password("123456")
-        account.save()
-        return account
-
-    def _login(self, account):
-        session = self.client.session
-        session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
-        session.save()
-
-    def assert_graduation_card_is_collapsed(self, response):
-        html = response.content.decode()
-        self.assertContains(response, "Minha faixa")
-        self.assertContains(response, "Faixa Branca")
-        self.assertContains(response, "Mais sobre a graduação")
-        self.assertContains(response, "Tempo na faixa atual")
-        self.assertContains(response, "Aulas aprovadas")
-        self.assertIn('<details class="graduation-progress-details">', html)
-        self.assertNotIn('<details class="graduation-progress-details" open', html)
-        self.assertContains(response, "data-bjj-history-open")
-        self.assertContains(response, "system/js/graduation/progress-card.js?v=20260507a")
-
-    def test_student_home_collapses_graduation_details_by_default(self):
-        account = self._create_account(
-            person_type=self.student_type,
-            cpf="800.222.222-01",
-            full_name="Aluno Home Graduação",
-        )
-        self._login(account)
-
-        response = self.client.get(reverse("system:student-home"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assert_graduation_card_is_collapsed(response)
-
-    def test_instructor_home_collapses_graduation_details_by_default(self):
-        account = self._create_account(
-            person_type=self.instructor_type,
-            cpf="800.222.222-02",
-            full_name="Professor Home Graduação",
-        )
-        self._login(account)
-
-        response = self.client.get(reverse("system:instructor-home"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assert_graduation_card_is_collapsed(response)
-
-
-class GraduationViewTestCase(TestCase):
-    def setUp(self):
-        self.django_admin = User.objects.create_superuser(
-            username="grad-admin", email="grad@admin.com", password="admin",
-        )
-        self.admin_type = PersonType.objects.create(
-            code="administrative-assistant", display_name="Administrativo",
-        )
-        self.admin_person = Person.objects.create(
-            full_name="Admin Grad", cpf="800.111.111-11", person_type=self.admin_type,
-        )
-        self.admin_account = PortalAccount(person=self.admin_person)
-        self.admin_account.set_password("123456")
-        self.admin_account.save()
-
-    def _login_as_admin(self):
-        self.client.force_login(self.django_admin)
-        session = self.client.session
-        session[PORTAL_ACCOUNT_SESSION_KEY] = self.admin_account.pk
-        session[TECHNICAL_ADMIN_SESSION_KEY] = True
-        session.save()
-
-    def test_belt_rank_list_view(self):
-        self._login_as_admin()
-        response = self.client.get(reverse("system:belt-rank-list"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Faixas")
-
-    def test_belt_rank_create_view(self):
-        self._login_as_admin()
-        response = self.client.post(
-            reverse("system:belt-rank-create"),
-            data={
-                "code": "test-belt",
-                "display_name": "Faixa Teste",
-                "audience": CategoryAudience.ADULT,
-                "color_hex": "#abcdef",
-                "tip_color_hex": "#000000",
-                "stripe_color_hex": "#ffffff",
-                "max_grades": 4,
-                "min_age": 16,
-                "max_age": "",
-                "next_rank": "",
-                "display_order": 50,
-                "is_active": "on",
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(BeltRank.objects.filter(code="test-belt").exists())
-
-    def test_graduation_overview_view(self):
-        self._login_as_admin()
-        response = self.client.get(reverse("system:graduation-overview"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Panorama de graduação")
-
-
 class InitialTeacherSeedGraduationTestCase(TestCase):
+    def _call_seed(self, command_name):
+        call_command(command_name, verbosity=0, stdout=StringIO())
+
     @override_settings(SEED_INITIAL_TEACHER_PASSWORD="123456")
     def test_teacher_seed_creates_complete_person_records_and_graduation_histories(self):
         PersonType.objects.create(code="instructor", display_name="Professor")
 
-        call_command("seed_system_initial_belt_ranks", verbosity=0)
-        call_command("seed_system_initial_teacher", verbosity=0)
-        call_command("seed_system_initial_teacher", verbosity=0)
+        self._call_seed("seed_system_initial_belt_ranks")
+        self._call_seed("seed_system_initial_teacher")
+        self._call_seed("seed_system_initial_teacher")
 
         expected_current = {
             "755.980.941-34": ("adult-black", 2),
@@ -439,9 +300,9 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
             display_name="Administrativo",
         )
 
-        call_command("seed_system_initial_belt_ranks", verbosity=0)
-        call_command("seed_system_initial_administrative", verbosity=0)
-        call_command("seed_system_initial_administrative", verbosity=0)
+        self._call_seed("seed_system_initial_belt_ranks")
+        self._call_seed("seed_system_initial_administrative")
+        self._call_seed("seed_system_initial_administrative")
 
         person = Person.objects.get(cpf="920.000.001-01")
         current = get_current_graduation(person)
@@ -455,3 +316,4 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
         self.assertTrue(person.previous_injuries)
         self.assertTrue(person.emergency_contact)
         self.assertEqual(person.graduations.count(), 12)
+

@@ -168,6 +168,8 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 | `seed_system_initial_class_categories_administrative` | vincula cada administrativo à sua categoria | `seed_system_initial_administrative`, `seed_system_initial_class_categories` | ativo |
 | `seed_system_initial_class_catalog` | cria turmas (`ClassGroup`) e horários (`ClassSchedule`) | `seed_system_initial_teacher`, `seed_system_initial_class_categories` | ativo |
 | `seed_system_initial_class_catalog_administrative` | vincula administrativos à turma principal (`Person.class_group`) | `seed_system_initial_administrative`, `seed_system_initial_class_catalog` | ativo |
+| `seed_system_initial_teacher_payroll_configs` | cria configurações iniciais de repasse dos professores | `seed_system_initial_teacher`, `seed_system_initial_class_catalog` | ativo |
+| `seed_system_initial_holidays` | cria feriados iniciais de 2026 | — | ativo |
 | `seed_system_initial_ibjjf_age_categories` | cria as 22 categorias de idade IBJJF (Pré-Mirim a Master 7) | — | ativo |
 | `seed_system_initial_graduation_rules` | cria as 52 regras de graduação (adulto e infantil) | `seed_system_initial_belt_ranks` | ativo |
 | `seed_system_initial_product_categories` | cria as 4 categorias de produto (Faixas, Kimonos, Rash Guard, Patches) | — | ativo |
@@ -181,6 +183,8 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 - cada seed deve falhar explicitamente quando uma dependência não foi executada
 - não existe orquestrador: execução é manual e sequencial
 - dados JSON das seeds vivem em `static/initial_data/`
+- quando um JSON pertence a uma única seed, o nome do arquivo deve acompanhar o comando consumidor (`seed_system_initial_<dominio>.json`)
+- JSONs compartilhados por duas ou mais seeds devem ser desmembrados por responsabilidade antes de receberem nomes específicos de seed
 - seeds **nunca** aceitam argumentos `--` na linha de comando; toda configuração vem de variáveis de ambiente definidas no `.env`
 
 ---
@@ -321,4 +325,7 @@ Atualizar este arquivo quando houver:
 - **[2026-05-16]** Regra definitiva: **nunca escrever migrations**. Mudanças de schema exigem ciclo destrutivo (`clear_migrations.py` → `makemigrations` → `migrate`) executado **pelo usuário**, nunca pelo agente.
 - **[2026-05-17]** Implementadas `seed_system_initial_ibjjf_age_categories`, `seed_system_initial_graduation_rules`, `seed_system_initial_product_categories`, `seed_system_initial_product_catalog`. Preço unitário dos produtos inicializado como R$ 0,00 — configurar via admin.
 - **[2026-05-17]** Implementada `seed_system_initial_subscription_plans` com 72 planos (Individual, Fidelidade, Família × 2x/5x × Asaas PIX, Asaas Cartão, Stripe Cartão × 4 ciclos). Modelo `SubscriptionPlan` expandido com campos de precificação dinâmica (`base_monthly_net_price`, `gateway_fixed_fee`, `gateway_percentage_fee`, `cycle_discount_percentage`, `is_loyalty_plan`); `price` calculado automaticamente em `save()`. Requer ciclo destrutivo.
+- **[2026-05-18]** JSONs de seeds com consumidor único renomeados para acompanhar o comando consumidor; JSONs compartilhados permanecem pendentes de desmembramento por responsabilidade.
+- **[2026-05-18]** Implementada `seed_system_initial_teacher_payroll_configs`; repasses de professores passam a usar JSON próprio e resolver turmas por `class_category` + CPF do professor principal, sem `ClassGroup.code`.
+- **[2026-05-18]** Implementada `seed_system_initial_holidays` para feriados iniciais de 2026 via JSON próprio, substituindo o legado `seed_holidays --year 2026` sem argumentos de linha de comando.
 ```

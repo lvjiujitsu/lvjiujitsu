@@ -10,17 +10,21 @@ from system.models import Product, ProductCategory, ProductVariant
 
 class Command(BaseCommand):
     help = (
-        "Cria produtos e variantes a partir de static/initial_data/product_catalog.json "
-        "e product_inventory.json. Depende de seed_system_initial_product_categories."
+        "Cria produtos e variantes a partir de static/initial_data/"
+        "seed_system_initial_product_catalog.json e "
+        "seed_system_initial_product_catalog_inventory.json. "
+        "Depende de seed_system_initial_product_categories."
     )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_product_catalog"))
-        catalog = self._load_json("product_catalog.json")
-        inventory = self._load_json("product_inventory.json")
+        catalog = self._load_json("seed_system_initial_product_catalog.json")
+        inventory = self._load_json("seed_system_initial_product_catalog_inventory.json")
 
         if not catalog:
-            self.stdout.write(self.style.WARNING("Nenhum produto encontrado em product_catalog.json."))
+            self.stdout.write(self.style.WARNING(
+                "Nenhum produto encontrado em seed_system_initial_product_catalog.json."
+            ))
             return
 
         self._check_categories_exist()

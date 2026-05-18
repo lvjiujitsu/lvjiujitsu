@@ -8,15 +8,18 @@ from django.db import transaction
 from system.models.graduation import BeltRank
 
 
+DATA_FILENAME = "seed_system_initial_belt_ranks.json"
+
+
 class Command(BaseCommand):
-    help = "Cria as faixas iniciais a partir de static/initial_data/belt_ranks.json."
+    help = f"Cria as faixas iniciais a partir de static/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_belt_ranks"))
         data = self._load_json()
 
         if not data:
-            self.stdout.write(self.style.WARNING("Nenhuma faixa encontrada no arquivo belt_ranks.json."))
+            self.stdout.write(self.style.WARNING(f"Nenhuma faixa encontrada no arquivo {DATA_FILENAME}."))
             return
 
         created_count = 0
@@ -68,7 +71,7 @@ class Command(BaseCommand):
         )
 
     def _load_json(self) -> list:
-        path = Path(settings.BASE_DIR) / "static" / "initial_data" / "belt_ranks.json"
+        path = Path(settings.BASE_DIR) / "static" / "initial_data" / DATA_FILENAME
         if not path.exists():
             raise CommandError(f"Arquivo não encontrado: {path}")
         with path.open(encoding="utf-8") as f:

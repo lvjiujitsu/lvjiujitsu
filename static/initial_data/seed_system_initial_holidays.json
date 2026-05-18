@@ -1,0 +1,67 @@
+[
+  {
+    "date": "2026-01-01",
+    "name": "Confraternização Universal",
+    "is_active": true
+  },
+  {
+    "date": "2026-02-16",
+    "name": "Carnaval",
+    "is_active": true
+  },
+  {
+    "date": "2026-02-17",
+    "name": "Carnaval",
+    "is_active": true
+  },
+  {
+    "date": "2026-04-03",
+    "name": "Paixão de Cristo",
+    "is_active": true
+  },
+  {
+    "date": "2026-04-21",
+    "name": "Tiradentes",
+    "is_active": true
+  },
+  {
+    "date": "2026-05-01",
+    "name": "Dia Mundial do Trabalho",
+    "is_active": true
+  },
+  {
+    "date": "2026-06-04",
+    "name": "Corpus Christi",
+    "is_active": true
+  },
+  {
+    "date": "2026-09-07",
+    "name": "Independência do Brasil",
+    "is_active": true
+  },
+  {
+    "date": "2026-10-12",
+    "name": "Nossa Senhora Aparecida",
+    "is_active": true
+  },
+  {
+    "date": "2026-11-02",
+    "name": "Finados",
+    "is_active": true
+  },
+  {
+    "date": "2026-11-15",
+    "name": "Proclamação da República",
+    "is_active": true
+  },
+  {
+    "date": "2026-11-20",
+    "name": "Dia Nacional de Zumbi e da Consciência Negra",
+    "is_active": true
+  },
+  {
+    "date": "2026-12-25",
+    "name": "Natal",
+    "is_active": true
+  }
+]
