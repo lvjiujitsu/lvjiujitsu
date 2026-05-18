@@ -6,7 +6,8 @@
   <title>Criar conta — LV Jiu Jitsu</title><!-- SENTINEL_TEST_XZ99 -->
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=4">
+  <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=6">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -608,6 +609,6 @@
     </form>
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=7" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=8" defer></script>
 </body>
 </html>

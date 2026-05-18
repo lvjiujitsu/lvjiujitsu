@@ -692,7 +692,7 @@ html[data-theme="dark"] .ibjjf-notice {
 
 .plan-filter-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -710,6 +710,37 @@ html[data-theme="dark"] .ibjjf-notice {
   cursor: pointer;
   transition: border-color .15s, background .15s, color .15s;
   white-space: nowrap;
+}
+
+.plan-filter-pill--payment {
+  min-height: 34px;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.payment-method-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.payment-method-icon {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.payment-method-icon--pix {
+  width: 18px;
+  height: 18px;
+}
+
+.payment-method-icon--brand {
+  width: 28px;
+  height: 18px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08);
 }
 .plan-filter-pill:hover {
   border-color: var(--brand-red);
@@ -735,6 +766,63 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 .plan-filter-pill--active .plan-filter-pill__badge {
   background: var(--brand-red-strong);
+}
+
+@media (max-width: 540px) {
+  .plan-filter-section {
+    margin-bottom: 1.35rem;
+  }
+
+  .plan-filter-row {
+    gap: 8px;
+  }
+
+  .plan-filter-pill {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: .9rem;
+    justify-content: center;
+  }
+
+  .plan-filter-pill[data-filter="frequency"] {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .plan-filter-pill[data-filter="cycle"] {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 52px;
+    padding: 7px 6px;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.05;
+  }
+
+  .plan-filter-pill[data-filter="cycle"] .plan-filter-pill__badge {
+    font-size: .52rem;
+    padding: 2px 5px;
+    line-height: 1.15;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .plan-filter-pill--payment {
+    min-height: 48px;
+    padding: 8px 16px;
+    gap: 10px;
+  }
+
+  .payment-method-icon--pix {
+    width: 22px;
+    height: 22px;
+  }
+
+  .payment-method-icon--brand {
+    width: 34px;
+    height: 22px;
+  }
 }
 
 /* ─── Cards de plano ────────────────────────────────────────────────────────── */

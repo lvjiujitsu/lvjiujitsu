@@ -933,6 +933,16 @@
   var CYCLE_ORDER  = ['monthly', 'quarterly', 'semiannual', 'annual'];
   var CYCLE_LABELS = { monthly: 'Mensal', quarterly: 'Trimestral', semiannual: 'Semestral', annual: 'Anual' };
   var METHOD_LABELS = { pix: 'PIX', credit_card: 'Cartão' };
+  var STATIC_URL = (window.STATIC_URL || '/static/');
+  var PAYMENT_METHOD_ICONS = {
+    pix: '<span class="payment-method-icons payment-method-icons--pix" aria-hidden="true">' +
+      '<img class="payment-method-icon payment-method-icon--pix" src="' + STATIC_URL + 'system/img/icons/pix.svg" alt="">' +
+      '</span>',
+    credit_card: '<span class="payment-method-icons payment-method-icons--card" aria-hidden="true">' +
+      '<img class="payment-method-icon payment-method-icon--brand" src="' + STATIC_URL + 'system/img/icons/mastercard.svg" alt="">' +
+      '<img class="payment-method-icon payment-method-icon--brand" src="' + STATIC_URL + 'system/img/icons/visa.svg" alt="">' +
+      '</span>',
+  };
 
   var planFilter    = { frequency: null, cycle: null, method: null };
   var selectedPlanId = null;
@@ -1012,7 +1022,8 @@
       html += '<div class="plan-filter-section"><p class="plan-filter-label">Forma de pagamento</p><div class="plan-filter-row">';
       methods.forEach(function (m) {
         var active = planFilter.method === m ? ' plan-filter-pill--active' : '';
-        html += '<button type="button" class="plan-filter-pill' + active + '" data-filter="method" data-value="' + escHtml(m) + '">' + escHtml(METHOD_LABELS[m] || m) + '</button>';
+        var icon = PAYMENT_METHOD_ICONS[m] || '';
+        html += '<button type="button" class="plan-filter-pill plan-filter-pill--payment' + active + '" data-filter="method" data-value="' + escHtml(m) + '">' + icon + '<span>' + escHtml(METHOD_LABELS[m] || m) + '</span></button>';
       });
       html += '</div></div>';
     }

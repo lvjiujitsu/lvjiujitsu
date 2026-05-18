@@ -175,6 +175,7 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 | `seed_system_initial_product_categories` | cria as 4 categorias de produto (Faixas, Kimonos, Rash Guard, Patches) | — | ativo |
 | `seed_system_initial_product_catalog` | cria 5 produtos e 62 variantes com estoque inicial | `seed_system_initial_product_categories` | ativo |
 | `seed_system_initial_subscription_plans` | cria 72 planos de assinatura (3 categorias × 2 frequências × 3 gateways × 4 ciclos) com precificação dinâmica | — | ativo |
+| `seed_system_initial_subscription_plans_values` | cria/atualiza 72 valores reais de cobrança dos planos por categoria, frequência, gateway e periodicidade | `seed_system_initial_subscription_plans` | ativo |
 
 ### Arquitetura de seeds
 
@@ -328,4 +329,5 @@ Atualizar este arquivo quando houver:
 - **[2026-05-18]** JSONs de seeds com consumidor único renomeados para acompanhar o comando consumidor; JSONs compartilhados permanecem pendentes de desmembramento por responsabilidade.
 - **[2026-05-18]** Implementada `seed_system_initial_teacher_payroll_configs`; repasses de professores passam a usar JSON próprio e resolver turmas por `class_category` + CPF do professor principal, sem `ClassGroup.code`.
 - **[2026-05-18]** Implementada `seed_system_initial_holidays` para feriados iniciais de 2026 via JSON próprio, substituindo o legado `seed_holidays --year 2026` sem argumentos de linha de comando.
+- **[2026-05-18]** Implementada `seed_system_initial_subscription_plans_values` para aplicar os valores reais dos planos enviados em planilha, preservando preço cobrado, taxas, descontos e valor líquido desejado em campos editáveis.
 ```

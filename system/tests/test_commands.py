@@ -11,7 +11,7 @@ from django.core.management import call_command, get_commands
 from django.test import SimpleTestCase, TestCase
 
 from clear_migrations import remove_runtime_artifacts
-from system.models import Holiday, TeacherPayrollConfig
+from system.models import Holiday, SubscriptionPlan, TeacherPayrollConfig
 from system.services.payroll_rules import decode_payroll_rules
 
 
@@ -69,6 +69,7 @@ class SeedCommandGovernanceTestCase(SimpleTestCase):
             "seed_system_initial_product_catalog_inventory.json",
             "seed_system_initial_teacher_payroll_configs.json",
             "seed_system_initial_subscription_plans.json",
+            "seed_system_initial_subscription_plans_values.json",
         )
 
         missing_files = [
@@ -131,5 +132,41 @@ class HolidaySeedCommandTestCase(TestCase):
 
         corpus_christi = Holiday.objects.get(date="2026-06-04")
         self.assertEqual(corpus_christi.name, "Corpus Christi")
+
+
+class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
+    def _call(self, command_name):
+        call_command(command_name, stdout=StringIO())
+
+    def test_seed_system_initial_subscription_plans_values_creates_idempotent_priced_plans(self):
+        self._call("seed_system_initial_subscription_plans")
+        self._call("seed_system_initial_subscription_plans_values")
+        self._call("seed_system_initial_subscription_plans_values")
+
+        self.assertEqual(
+            SubscriptionPlan.objects.exclude(code__in=("individual", "loyalty", "family")).count(),
+            72,
+        )
+        self.assertFalse(SubscriptionPlan.objects.get(code="individual").is_active)
+        self.assertFalse(SubscriptionPlan.objects.get(code="loyalty").is_active)
+        self.assertFalse(SubscriptionPlan.objects.get(code="family").is_active)
+
+        stripe_monthly = SubscriptionPlan.objects.get(
+            code="individual-2x-stripe-card-monthly"
+        )
+        self.assertEqual(stripe_monthly.price, Decimal("234.44"))
+        self.assertEqual(stripe_monthly.base_monthly_net_price, Decimal("220.00"))
+        self.assertEqual(stripe_monthly.gateway_code, "stripe_card")
+        self.assertEqual(stripe_monthly.gateway_percentage_fee, Decimal("0.0599"))
+        self.assertEqual(stripe_monthly.cycle_discount_percentage, Decimal("0.0000"))
+        self.assertIsNone(stripe_monthly.monthly_reference_price)
+
+        family_annual = SubscriptionPlan.objects.get(
+            code="family-5x-stripe-card-annual"
+        )
+        self.assertEqual(family_annual.price, Decimal("2617.29"))
+        self.assertEqual(family_annual.monthly_reference_price, Decimal("218.11"))
+        self.assertEqual(family_annual.cycle_discount_percentage, Decimal("0.0682"))
+        self.assertTrue(family_annual.is_family_plan)
 
 
