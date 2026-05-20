@@ -113,7 +113,20 @@
       "Bash(python3 -c \"import os; dirs = [d for d,_,_ in os.walk\\('C:/Users/whsf/Documents/GitHub/lvjiujitsu/templates'\\)]; print\\('\\\\n'.join\\(dirs\\)\\)\")",
       "Bash(cmd.exe /c \"dir C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\templates /s /b\")",
       "mcp__Claude_in_Chrome__list_connected_browsers",
-      "mcp__Claude_in_Chrome__switch_browser"
+      "mcp__Claude_in_Chrome__switch_browser",
+      "Bash(Start-Process -FilePath \".venv\\\\Scripts\\\\python.exe\" -ArgumentList \"manage.py runserver 127.0.0.1:8000\" -WindowStyle Hidden)",
+      "Bash(Start-Sleep -Seconds 2)",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(Invoke-WebRequest -Uri \"http://127.0.0.1:8000/register/\" -UseBasicParsing -TimeoutSec 5)",
+      "Bash(Select-Object -ExpandProperty StatusCode)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/register/)",
+      "mcp__Claude_in_Chrome__read_page",
+      "mcp__Claude_in_Chrome__find",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py shell -c \"from system.models.product import Product; [print\\(p.pk, p.display_name, p.unit_price\\) for p in Product.objects.all\\(\\)]\")",
+      "Read(//mnt/c/Users/whsf/Documents/GitHub/**)",
+      "Bash(.venv/bin/python manage.py show_urls)",
+      "Bash(.venv/bin/python manage.py shell -c \"from django.urls import reverse; print\\(reverse\\('system:register'\\)\\)\")",
+      "mcp__Claude_in_Chrome__form_input"
     ]
   },
   "model": "claude-sonnet-4-6",

@@ -71,6 +71,7 @@ from .asaas import (
     TeacherPayout,
     TeacherPayrollConfig,
 )
+from .pre_registration import PreRegistration, PreRegistrationStatus
 from .trial_access import TrialAccessGrant
 
 __all__ = [
@@ -123,6 +124,8 @@ __all__ = [
     "PlanWeeklyFrequency",
     "PortalAccount",
     "PortalPasswordResetToken",
+    "PreRegistration",
+    "PreRegistrationStatus",
     "ACTIVE_BACKORDER_STATUSES",
     "Product",
     "ProductBackorder",

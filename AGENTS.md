@@ -331,6 +331,74 @@ Código implementado + testes + evidências de validação
 
 Sem PRD em mudança relevante, a tarefa **não está concluída**.
 
+### Mapeamento de UX em PRDs de interface
+
+Todo PRD com tela, componente visual ou redesign deve incluir as seções abaixo, derivadas de `docs/UI-SCREEN-CONTRACT.md` — Seção 15.
+A ausência dessas seções torna o PRD **incompleto** para telas com UI.
+
+#### Seção obrigatória: `## Hierarquia Visual`
+
+```md
+## Hierarquia Visual
+
+- Padrão de leitura: F Pattern | Z Pattern
+- Título de tela: peso 700–800, token --text
+- Seções/grupos: peso 600, token --text
+- Campos/rótulos: peso 500, token --text
+- Help text/hints: peso 400, token --muted
+- Ação primária: --brand-red, peso 600
+- Ação secundária: borda --border, peso 500
+```
+
+#### Seção obrigatória: `## Wireframe`
+
+```md
+## Wireframe
+
+### Região: Topo
+- Eyebrow: <módulo>
+- Título: <objetivo da tela>
+- Ação primária: <botão> (alinhado à direita)
+
+### Região: Conteúdo principal
+- Grupo A: <nome> — campos: <lista>
+- Grupo B: <nome> — campos: <lista>
+
+### Região: Rodapé / ações
+- Cancelar (secundário, esquerda)
+- Salvar (primário, direita)
+
+### Estados da tela
+- Carregando: <descrição>
+- Vazio: <descrição>
+- Com dados: <descrição>
+- Erro: <descrição>
+```
+
+#### Seção obrigatória (quando houver componente interativo): `## Máquinas de estado`
+
+```md
+## Máquinas de estado
+
+### <Nome do componente>
+- Estados: <lista>
+- Transições: <idle → loading → success | error>
+- Representação visual: <descrição por estado>
+```
+
+#### Checklist de UX no `## Critérios de aceite`
+
+Adicionar ao menos um item de UX verificável por categoria aplicável:
+
+```md
+- [ ] Hierarquia visual: título em peso 700, rótulos em 500, hints em --muted (verificável: inspeção visual)
+- [ ] Proximidade: campos do mesmo grupo com gap ≤ 12px; grupos separados por divisor ou gap ≥ 20px (verificável: inspeção visual)
+- [ ] Affordance: botão primário com fundo --brand-red visível; pills com estado selected distinto (verificável: inspeção visual)
+- [ ] Estado disabled com opacity 0.45 e cursor not-allowed (verificável: inspeção visual)
+- [ ] Feedback de erro por campo abaixo do campo em --danger (verificável: submissão inválida)
+- [ ] Máquina de estado: todos os estados do componente têm representação visual distinta (verificável: teste + inspeção)
+```
+
 ---
 
 ## 12. Estratégia padrão de implementação

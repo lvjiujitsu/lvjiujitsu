@@ -328,6 +328,170 @@ Parar e solicitar decisão do usuário quando:
 
 ---
 
+## 15. Princípios de UX para interfaces geradas por IA
+
+> Esta seção define os princípios cognitivos e de design que **toda interface gerada ou revisada por IA deve aplicar explicitamente**. Eles devem constar nos PRDs de tela como itens verificáveis.
+
+---
+
+### 15.1 Hierarquia Visual — Fontes, Pesos e Cores
+
+A hierarquia visual comunica importância antes de o usuário ler.
+Uma tela sem hierarquia obriga o usuário a "farejar" o conteúdo — custo cognitivo evitável.
+
+**Regras obrigatórias:**
+
+| Nível | Elemento | Peso sugerido | Token |
+|---|---|---|---|
+| 1 — Título de tela | `h1` | 700–800 | `--text` grande |
+| 2 — Seção ou grupo | `h2`, label de grupo | 600 | `--text` |
+| 3 — Campo ou item | `label`, texto de linha | 400–500 | `--text` |
+| 4 — Ajuda, hint | `small`, help text | 400 | `--muted` |
+| 5 — Placeholder | `placeholder` | 400 | `--muted` com opacidade |
+
+- Vermelho (`--brand-red`) é acento — nunca base de texto corrido.
+- `--muted` é reservado para metadados, não para informação principal.
+- Peso 300 ou inferior é proibido em texto funcional.
+- Tamanho mínimo de corpo em mobile: 14px. Em desktop: 13px operacional, 15px em formulário público.
+
+**Padrões de leitura:**
+
+- **F Pattern** — dashboards e listagens operacionais: informação crítica nas primeiras linhas, identificadores à esquerda, ações à direita.
+- **Z Pattern** — telas de acesso e confirmação: atenção começa no canto superior esquerdo, cruza para o direito, desce em diagonal e termina na ação principal.
+
+**Prompts para hierarquia (uso em PRDs):**
+
+> "Organize o layout seguindo o padrão F: título e resumo no topo, listagem densa com identificador à esquerda, status ao centro, ações à direita."
+
+> "Use hierarquia tipográfica de 3 níveis: título em 700, rótulos de campo em 500, valores e help text em 400 com `--muted`."
+
+---
+
+### 15.2 Lei da Proximidade — Gestalt
+
+Elementos próximos são percebidos como grupo. Espaçamento comunica estrutura.
+
+**Regras obrigatórias:**
+
+- Campos do mesmo grupo visual têm espaçamento interno menor (`gap: 8–12px`) do que entre grupos (`gap: 20–28px`).
+- Rótulo e campo: `margin-bottom: 4–6px` — nunca separados por mais de `8px`.
+- Grupos de formulário separados por `border-top` + espaçamento, ou cabeçalho de seção.
+- Botões de ação ficam adjacentes ao conteúdo que afetam — nunca soltos no rodapé sem relação visual clara.
+- Em cards: dados descritivos do objeto ficam juntos; ações ficam num bloco separado (rodapé do card ou canto direito).
+
+**Aplicação em prompts de PRD:**
+
+> "Agrupe os campos de endereço (CEP, logradouro, número, complemento, cidade, estado) em um bloco com `gap: 10px` interno, separado do bloco de contato por um divisor ou título de seção."
+
+---
+
+### 15.3 Affordance e Feedback Visual
+
+O usuário só clica onde percebe que pode clicar. Affordance é a pista visual de "isto é acionável".
+
+**Regras obrigatórias:**
+
+- Botões primários: fundo sólido, peso 600, padding generoso, `border-radius` consistente.
+- Botões secundários: borda visível ou fundo distinto do painel — nunca igual ao fundo da tela.
+- Links acionáveis: sublinhado ou cor distinta — nunca texto corrido com `cursor: pointer` invisível.
+- Pills e chips de seleção: estado `--selected` com borda `--brand-red`, fundo `--brand-red-muted` e peso 600.
+- Estados interativos obrigatórios: `default`, `hover`, `focus-visible`, `active`, `disabled`.
+- `disabled`: opacidade 0.45 + `cursor: not-allowed` — nunca remover visualmente o elemento.
+- Feedback imediato em ação: spinner ou mudança de label em submit, não aguardar resposta HTTP em silêncio.
+- Erros de campo aparecem **abaixo do campo**, com cor `--danger`, ícone de aviso opcional.
+- Sucesso de ação aparece em mensagem persistente (não toast efêmero para ação crítica).
+
+**Affordance em componentes de seleção:**
+
+- Pill de cor: exibe a cor como fundo ou círculo colorido — nunca só texto.
+- Pill de tamanho: exibe estoque disponível abaixo do rótulo quando relevante.
+- Pill desabilitado (sem estoque): `opacity: 0.4`, linha diagonal CSS opcional, `cursor: not-allowed`.
+
+---
+
+### 15.4 Máquinas de Estado em Componentes
+
+Todo componente interativo é uma máquina de estados. Renderizar estado errado é um bug funcional.
+
+**Estados mínimos a mapear por tipo:**
+
+| Componente | Estados obrigatórios |
+|---|---|
+| Formulário | `idle` → `dirty` → `submitting` → `success` \| `error` |
+| Botão de ação | `default` → `loading` → `success` \| `error` \| `disabled` |
+| Lista/tabela | `loading` → `empty` \| `populated` \| `error` |
+| Modal/drawer | `closed` → `opening` → `open` → `closing` |
+| Pill de seleção | `unselected` → `selected` → `disabled` |
+| Step wizard | `pending` → `active` → `complete` → `error` |
+| Upload | `idle` → `selecting` → `uploading` → `success` \| `error` |
+
+**Regras obrigatórias:**
+
+- Cada estado deve ter representação visual distinta.
+- Transições de estado não devem ser instantâneas em ações assíncronas — feedback intermediário obrigatório.
+- Estado `error` nunca silencioso — sempre comunica o que falhou e o que o usuário pode fazer.
+- Componentes de wizard: cada etapa tem estado explícito; etapas anteriores permanecem navegáveis salvo regra de negócio que impeça.
+
+**Mapeamento em PRDs:**
+
+Todo PRD de tela com componentes interativos deve incluir a seção:
+
+```md
+## Máquinas de estado
+### <Nome do componente>
+- Estados: <lista>
+- Transições: <diagrama ou tabela>
+- Representação visual: <descrição ou mockup>
+```
+
+---
+
+### 15.5 Wireframes e UX Pilot
+
+Wireframes são o alicerce de qualquer tela nova ou reimplementada. Sem wireframe aprovado, a implementação parte de premissas não validadas.
+
+**Processo mínimo:**
+
+1. **Wireframe de baixa fidelidade** — estrutura, hierarquia, agrupamentos, fluxo de estados. Sem cor, sem ícone.
+2. **Revisão** com o usuário ou representante de produto.
+3. **Mockup de referência** — tokens CSS aplicados, estados principais, responsivo.
+4. **Implementação** — derivada do mockup, não do achismo.
+
+**UX Pilot (ferramenta recomendada para PRDs com IA):**
+
+Quando o PRD descrever uma tela nova ou redesign relevante, o agente deve:
+
+- Incluir no PRD uma seção `## Wireframe` com descrição estruturada da tela em formato de lista hierárquica, cobrindo: regiões da tela, grupos de campo, ações e estados.
+- A seção `## Wireframe` pode ser usada como prompt para ferramentas de geração de wireframe (UX Pilot, Figma AI, etc.).
+- O wireframe não substitui a validação visual no navegador — é pré-requisito de implementação, não substituto.
+
+**Template de wireframe para PRDs:**
+
+```md
+## Wireframe
+
+### Região: Topo
+- Eyebrow: <módulo>
+- Título: <objetivo da tela>
+- Ação primária: <botão> (alinhado à direita)
+
+### Região: Conteúdo principal
+- Grupo A: <nome> — campos: <lista>
+- Grupo B: <nome> — campos: <lista>
+
+### Região: Rodapé / ações
+- Cancelar (secundário, esquerda)
+- Salvar (primário, direita)
+
+### Estados da tela
+- Carregando: <descrição>
+- Vazio: <descrição>
+- Com dados: <descrição>
+- Erro: <descrição>
+```
+
+---
+
 ## 14. Changelog
 
 ```
@@ -335,4 +499,10 @@ Parar e solicitar decisão do usuário quando:
              Novo contrato parte do inventário real de telas a partir do zero.
              Login implementado como primeira tela (PRD-030).
              Tokens CSS redefinidos. Inventário de módulos mapeado com status explícito.
+[2026-05-20] Adicionada Seção 15 — Princípios de UX para interfaces geradas por IA:
+             15.1 Hierarquia Visual (Fontes, Pesos, Cores, F/Z Pattern, prompts para PRD).
+             15.2 Lei da Proximidade — Gestalt (agrupamento, espaçamento, aplicação em prompts).
+             15.3 Affordance e Feedback Visual (estados interativos, pills, erros, sucesso).
+             15.4 Máquinas de Estado em Componentes (tabela por tipo, regras, template de PRD).
+             15.5 Wireframes e UX Pilot (processo mínimo, template de wireframe para PRDs).
 ```

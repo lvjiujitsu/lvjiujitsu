@@ -292,6 +292,26 @@ O redesign visual e responsivo do sistema é governado por:
 - quando CSS/JS versionado por `?v=` for alterado, o template correspondente deve atualizar a versão
 - JavaScript e CSS inline existentes devem ser tratados quando a tela correspondente entrar no escopo, sem criar regra de negócio no frontend
 
+### Mapeamento de princípios de UX em PRDs
+
+Todo PRD que envolva tela nova, redesign ou componente interativo deve mapear explicitamente os princípios aplicáveis de `docs/UI-SCREEN-CONTRACT.md` — Seção 15:
+
+| Condição do PRD | Princípio obrigatório |
+|---|---|
+| Tela nova ou redesign | 15.1 Hierarquia Visual + 15.5 Wireframe |
+| Formulário ou grupo de campos | 15.2 Lei da Proximidade |
+| Botão, pill, chip, toggle ou seleção | 15.3 Affordance e Feedback Visual |
+| Qualquer componente com múltiplos estados | 15.4 Máquinas de Estado |
+| Todos os PRDs de UI | 15.1 + padrão F ou Z conforme tipo de tela |
+
+O PRD deve conter:
+- seção `## Hierarquia Visual` com nível tipográfico de cada região da tela
+- seção `## Wireframe` com estrutura hierárquica da tela (usável como prompt para UX Pilot)
+- seção `## Máquinas de estado` para cada componente interativo relevante
+- identificação explícita do padrão de leitura aplicável (F ou Z)
+
+Sem esse mapeamento, o PRD de UI está **incompleto** e a implementação não deve iniciar.
+
 ### Fonte de verdade de UI
 
 O contrato de UI documenta os papéis reais do sistema (`student`, `guardian`, `dependent`, `instructor`, `administrative-assistant` e admin técnico), os módulos de tela, responsividade, componentes mínimos, validação visual e critérios de parada.
@@ -331,4 +351,5 @@ Atualizar este arquivo quando houver:
 - **[2026-05-18]** Implementada `seed_system_initial_holidays` para feriados iniciais de 2026 via JSON próprio, substituindo o legado `seed_holidays --year 2026` sem argumentos de linha de comando.
 - **[2026-05-18]** Implementada `seed_system_initial_subscription_plans_values` para aplicar os valores reais dos planos enviados em planilha, preservando preço cobrado, taxas, descontos e valor líquido desejado em campos editáveis.
 - **[2026-05-18]** Stripe removida do fluxo operacional de cadastro/checkout e do JSON de valores dos planos. Cartão de crédito passa a usar Asaas (`CREDIT_CARD`) com redirecionamento para `invoiceUrl`; a seed de valores passa a gerar 48 planos Asaas e inativar planos `stripe_card` legados.
+- **[2026-05-20]** Adicionado mapeamento de princípios de UX em PRDs na Seção 11; PRDs de UI passam a exigir wireframe, hierarquia tipográfica e máquinas de estado mapeadas. Referencia UI-SCREEN-CONTRACT Seção 15.
 ```

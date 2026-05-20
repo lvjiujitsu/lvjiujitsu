@@ -69,6 +69,9 @@ class PortalRegisterView(FormView):
         context["materials_order_json"] = json.dumps(
             self._get_order_summary(self.request.session.get("materials_order_id")), ensure_ascii=False
         )
+        context["pending_person_json"] = json.dumps(
+            self._get_pending_person_summary(), ensure_ascii=False
+        )
         context["fee_config_json"] = json.dumps({
             "pixFixedFee": float(settings.ASAAS_PIX_FIXED_FEE),
             "creditCardPercentFee": float(settings.ASAAS_CREDIT_PERCENT_FEE),
@@ -108,6 +111,23 @@ class PortalRegisterView(FormView):
         self.request.session.pop("post_materials_payment_complete", None)
         self.request.session.pop("materials_order_id", None)
         return redirect("system:register")
+
+    def _get_pending_person_summary(self):
+        person_id = self.request.session.get("pending_registration_person_id")
+        if not person_id:
+            return None
+        try:
+            person = Person.objects.select_related("class_group__class_category").get(pk=person_id)
+        except Person.DoesNotExist:
+            return None
+        class_group_name = str(person.class_group) if person.class_group else ""
+        return {
+            "id": person.pk,
+            "full_name": person.full_name,
+            "email": person.email or "",
+            "phone": person.phone or "",
+            "class_group_name": class_group_name,
+        }
 
     def _get_order_summary(self, order_id):
         if not order_id:
@@ -292,6 +312,8 @@ class ChromeDevtoolsProbeView(View):
         return HttpResponse(status=204, content_type="application/json")
 
 
+
+
 class MaterialsCheckoutView(View):
     """Cria order de materiais para pessoa em pré-registro e redireciona para checkout."""
 
@@ -308,7 +330,7 @@ class MaterialsCheckoutView(View):
         raw_payload = request.POST.get("selected_products_payload", "")
         selected = parse_selected_products(raw_payload)
         if not selected:
-            request.session["post_plan_payment_complete"] = True
+            request.session["post_materials_payment_complete"] = True
             return redirect("system:register")
 
         try:
@@ -319,7 +341,7 @@ class MaterialsCheckoutView(View):
 
         order = create_product_only_order(person, items)
         if order is None:
-            request.session["post_plan_payment_complete"] = True
+            request.session["post_materials_payment_complete"] = True
             return redirect("system:register")
 
         request.session["pending_checkout_order_id"] = order.pk

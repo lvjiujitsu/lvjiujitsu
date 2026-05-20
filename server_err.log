@@ -1,0 +1,30 @@
+Watching for file changes with StatReloader
+[20/May/2026 18:57:17] "GET /register/ HTTP/1.1" 200 113177
+[20/May/2026 18:57:17] "GET /static/system/css/auth/register.css?v=11 HTTP/1.1" 304 0
+[20/May/2026 18:57:17] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0
+[20/May/2026 18:58:22] "GET /register/ HTTP/1.1" 200 113177
+[20/May/2026 18:59:43] "GET /register/ HTTP/1.1" 200 113177
+[20/May/2026 19:05:01] "POST /register/ HTTP/1.1" 200 114414
+[20/May/2026 19:05:01] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0
+[20/May/2026 19:13:37] "POST /register/ HTTP/1.1" 200 114442
+[20/May/2026 19:13:37] "GET /static/system/css/auth/register.css?v=11 HTTP/1.1" 304 0
+[20/May/2026 19:13:37] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0
+[20/May/2026 19:21:50] "POST /register/ HTTP/1.1" 200 114442
+[20/May/2026 19:21:50] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0
+[20/May/2026 19:21:50] "GET /favicon.ico HTTP/1.1" 302 0
+[20/May/2026 19:22:26] "GET /login/ HTTP/1.1" 200 4640
+[20/May/2026 19:22:28] "GET /login/ HTTP/1.1" 200 4640
+[20/May/2026 19:22:28] "GET /favicon.ico HTTP/1.1" 302 0
+[20/May/2026 19:31:21] "GET / HTTP/1.1" 200 4640
+[20/May/2026 19:31:24] "HEAD / HTTP/1.1" 200 4640
+[20/May/2026 19:31:24] "GET / HTTP/1.1" 200 4640
+Not Found: /login/register/
+[20/May/2026 19:31:33] "GET /login/register/ HTTP/1.1" 404 7095
+Not Found: /login/register/
+[20/May/2026 19:32:58] "GET /login/register/ HTTP/1.1" 404 7095
+[20/May/2026 19:33:20] "GET /register/ HTTP/1.1" 200 113177
+[20/May/2026 19:33:20] "GET /static/system/css/auth/register.css?v=11 HTTP/1.1" 304 0
+[20/May/2026 19:33:20] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0
+[20/May/2026 20:52:19] "POST /register/ HTTP/1.1" 200 114397
+[20/May/2026 20:52:19] "GET /static/system/css/auth/register.css?v=11 HTTP/1.1" 304 0
+[20/May/2026 20:52:19] "GET /static/system/js/auth/register.js?v=16 HTTP/1.1" 304 0

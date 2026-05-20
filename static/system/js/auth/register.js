@@ -22,8 +22,9 @@
     classSelections:      [],   // [{ids:[]}] — 1 por pessoa que precisa de turma (holder/deps ou só deps)
   };
 
-  var productCart = []; // [{variantId, variantLabel, productId, productName, qty, unitPrice}]
+  var productCart = []; // [{variantId, variantLabel, variantColor, variantSize, productId, productName, qty, unitPrice}]
   var configureProduct = null;
+  var configureColor = null;
   var configureVariantId = null;
   var configureQty = 1;
 
@@ -1010,6 +1011,13 @@
     } catch (e) { return null; }
   })();
 
+  var pendingPersonData = (function () {
+    try {
+      var el = document.getElementById('reg-pending-person-json');
+      return el ? JSON.parse(el.textContent) : null;
+    } catch (e) { return null; }
+  })();
+
   var CYCLE_ORDER  = ['monthly', 'quarterly', 'semiannual', 'annual'];
   var CYCLE_LABELS = { monthly: 'Mensal', quarterly: 'Trimestral', semiannual: 'Semestral', annual: 'Anual' };
   var METHOD_LABELS = { pix: 'PIX', credit_card: 'Cartão' };
@@ -1690,6 +1698,48 @@
 
   // ── Pós-pagamento: modo materiais e revisão ───────────────────────────────────
 
+  var CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  function renderConfirmationSummary(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+
+    var html = '<div class="reg-confirm-panel">';
+    html += '<div class="reg-confirm-panel__heading">Resumo do cadastro</div>';
+    var firstRow = true;
+
+    function addRow(label, value, meta) {
+      if (!value) return;
+      if (!firstRow) html += '<div class="reg-confirm-panel__divider"></div>';
+      firstRow = false;
+      html += '<div class="reg-confirm-panel__row">';
+      html += '<span class="reg-confirm-panel__icon reg-confirm-panel__icon--ok" aria-hidden="true">' + CHECK_ICON + '</span>';
+      html += '<div class="reg-confirm-panel__info">';
+      html += '<p class="reg-confirm-panel__label">' + label + '</p>';
+      html += '<p class="reg-confirm-panel__value">' + escHtml(value) + '</p>';
+      if (meta) html += '<p class="reg-confirm-panel__meta">' + escHtml(meta) + '</p>';
+      html += '</div>';
+      html += '</div>';
+    }
+
+    if (pendingPersonData) {
+      addRow('Nome', pendingPersonData.full_name, null);
+      addRow('E-mail', pendingPersonData.email, null);
+      addRow('Telefone', pendingPersonData.phone, null);
+      addRow('Turma', pendingPersonData.class_group_name, null);
+    }
+
+    if (planOrderData && planOrderData.plan_name) {
+      var planMeta = planOrderData.plan_price
+        ? 'R$ ' + parseFloat(planOrderData.plan_price).toFixed(2).replace('.', ',') + ' confirmado'
+        : null;
+      addRow('Plano contratado', planOrderData.plan_name, planMeta);
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
   function showPostPaymentMode(stepId) {
     var wizForm = document.getElementById('wizard-form');
     if (wizForm) wizForm.hidden = true;
@@ -1697,10 +1747,29 @@
     if (el) el.hidden = false;
     var fill = document.getElementById('wizard-progress-fill');
     if (fill) fill.style.width = stepId === 'step-review' ? '100%' : '80%';
-    var back = document.getElementById('wizard-back');
-    if (back) back.style.visibility = 'hidden';
     var progress = document.getElementById('wizard-progress');
     if (progress) progress.textContent = 'Finalizando cadastro';
+
+    var back = document.getElementById('wizard-back');
+    var backLabel = document.getElementById('wizard-back-label');
+    if (back) {
+      back.style.visibility = 'visible';
+      if (stepId === 'step-review') {
+        if (backLabel) backLabel.textContent = 'Materiais';
+        back.onclick = function (e) {
+          e.preventDefault();
+          var reviewEl = document.getElementById('step-review');
+          var productsEl = document.getElementById('step-products');
+          if (reviewEl) reviewEl.hidden = true;
+          if (productsEl) productsEl.hidden = false;
+          var fillEl = document.getElementById('wizard-progress-fill');
+          if (fillEl) fillEl.style.width = '80%';
+        };
+      } else {
+        if (backLabel) backLabel.textContent = 'Voltar';
+        back.onclick = null;
+      }
+    }
   }
 
   function fmtCurrency(value) {
@@ -1764,15 +1833,23 @@
       html += '<div class="prod-card__body">';
       html += '<div class="prod-card__header">';
       html += '<p class="prod-card__name">' + escHtml(product.name) + '</p>';
+      if (inCart) html += '<span class="prod-card__badge prod-card__badge--cart">✓ No carrinho</span>';
       html += '</div>';
       html += '<p class="prod-card__category">' + escHtml(product.category) + '</p>';
-      html += '<p class="prod-card__price">' + fmtCurrency(product.price) + '</p>';
+      if (product.description) {
+        html += '<p class="prod-card__desc">' + escHtml(product.description) + '</p>';
+      }
+      html += '<div class="prod-card__price-row">';
+      html += '<span class="prod-card__price">' + fmtCurrency(product.price) + '</span>';
       if (!hasStock) {
-        html += '<p class="prod-card__stock-msg">Sem estoque</p>';
+        html += '<span class="prod-card__stock-badge prod-card__stock-badge--out">Sem estoque</span>';
       } else {
+        html += '<span class="prod-card__stock-badge">' + product.total_stock + ' un.</span>';
+      }
+      html += '</div>';
+      if (hasStock) {
         html += '<div class="prod-card__footer">';
-        if (inCart) html += '<span class="prod-card__in-cart">✓ No carrinho</span>';
-        html += '<button type="button" class="prod-card__add-btn" data-product-id="' + product.id + '">' + (inCart ? 'Alterar' : 'Adicionar') + '</button>';
+        html += '<button type="button" class="prod-card__add-btn" data-product-id="' + product.id + '">' + (inCart ? 'Alterar seleção' : 'Adicionar') + '</button>';
         html += '</div>';
       }
       html += '</div>';
@@ -1801,22 +1878,40 @@
     }
   }
 
+  function getUniqueColors(product) {
+    var seen = {};
+    var colors = [];
+    product.variants.forEach(function (v) {
+      if (v.color && !seen[v.color]) { seen[v.color] = true; colors.push(v.color); }
+    });
+    return colors;
+  }
+
+  function getVariantsForColor(product, color) {
+    if (!color) return product.variants;
+    return product.variants.filter(function (v) { return v.color === color; });
+  }
+
   function startConfigureProduct(product) {
     configureProduct = product;
+    configureColor = null;
     configureVariantId = null;
     configureQty = 1;
 
+    // Restore from cart if already added
     for (var i = 0; i < productCart.length; i++) {
       if (productCart[i].productId === product.id) {
         configureVariantId = productCart[i].variantId;
+        configureColor = productCart[i].variantColor || null;
         configureQty = productCart[i].qty;
         break;
       }
     }
 
-    var inStockVariants = product.variants.filter(function (v) { return v.is_in_stock; });
-    if (inStockVariants.length === 1 && configureVariantId === null) {
-      configureVariantId = inStockVariants[0].id;
+    // Auto-select color if only 1 unique color
+    if (configureColor === null) {
+      var uniqueColors = getUniqueColors(product);
+      if (uniqueColors.length === 1) configureColor = uniqueColors[0];
     }
 
     renderProductsConfigure();
@@ -1828,46 +1923,113 @@
     if (!area || !configureProduct) return;
 
     var product = configureProduct;
-    var inStockVariants = product.variants.filter(function (v) { return v.is_in_stock; });
+    var uniqueColors = getUniqueColors(product);
+    var showColorPicker = uniqueColors.length > 1;
 
-    var html = '<p class="prod-configure__product-name">' + escHtml(product.name) + '</p>';
+    // Auto-select single color if not chosen yet
+    if (!configureColor && uniqueColors.length === 1) configureColor = uniqueColors[0];
 
-    if (inStockVariants.length > 1) {
-      html += '<p class="prod-configure__section-label">Tamanho / variante</p>';
-      html += '<div class="variant-pills">';
-      product.variants.forEach(function (v) {
-        var isSelected = v.id === configureVariantId;
-        var isDisabled = !v.is_in_stock;
-        html += '<button type="button" class="variant-pill' +
-          (isSelected ? ' variant-pill--selected' : '') +
-          (isDisabled ? ' variant-pill--disabled' : '') +
-          '" data-variant-id="' + v.id + '">' + escHtml(v.label) + '</button>';
-      });
-      html += '</div>';
-    } else if (inStockVariants.length === 1) {
-      html += '<p class="prod-configure__section-label">Variante</p>';
-      html += '<div class="variant-pills"><span class="variant-pill variant-pill--selected">' + escHtml(inStockVariants[0].label) + '</span></div>';
+    var variantsForColor = getVariantsForColor(product, configureColor);
+    var uniqueSizes = [];
+    var seenSizes = {};
+    variantsForColor.forEach(function (v) {
+      if (v.size && !seenSizes[v.size]) { seenSizes[v.size] = true; uniqueSizes.push(v.size); }
+    });
+    var showSizePicker = uniqueSizes.length > 0;
+
+    // Auto-select variant when no color/size selectors needed
+    if (!configureVariantId && !showColorPicker && !showSizePicker && product.variants.length > 0) {
+      for (var k = 0; k < product.variants.length; k++) {
+        if (product.variants[k].is_in_stock) { configureVariantId = product.variants[k].id; break; }
+      }
     }
 
+    // Auto-select variant when size picker present but only 1 size for chosen color
+    if (!configureVariantId && variantsForColor.length === 1 && !showSizePicker) {
+      if (variantsForColor[0].is_in_stock) configureVariantId = variantsForColor[0].id;
+    }
+
+    var html = '';
+
+    // ── Color picker ──────────────────────────────────────────────────────────
+    if (showColorPicker) {
+      html += '<div class="prod-configure__section">';
+      html += '<p class="prod-configure__section-label">Cor</p>';
+      html += '<div class="color-pills">';
+      uniqueColors.forEach(function (color) {
+        var isSelected = color === configureColor;
+        var hasStock = product.variants.some(function (v) { return v.color === color && v.is_in_stock; });
+        html += '<button type="button" class="color-pill' +
+          (isSelected ? ' color-pill--selected' : '') +
+          (!hasStock ? ' color-pill--disabled' : '') +
+          '" data-color="' + escHtml(color) + '">' + escHtml(color) + '</button>';
+      });
+      html += '</div>';
+      html += '</div>';
+    }
+
+    // ── Size picker ───────────────────────────────────────────────────────────
+    if (showSizePicker && (configureColor !== null || !showColorPicker)) {
+      html += '<div class="prod-configure__section">';
+      html += '<p class="prod-configure__section-label">Tamanho</p>';
+      html += '<div class="size-pills">';
+      variantsForColor.forEach(function (v) {
+        if (!v.size) return;
+        var isSelected = v.id === configureVariantId;
+        var stockText = v.is_in_stock ? v.stock_quantity + ' un.' : 'Esgotado';
+        html += '<button type="button" class="size-pill' +
+          (isSelected ? ' size-pill--selected' : '') +
+          (!v.is_in_stock ? ' size-pill--disabled' : '') +
+          '" data-variant-id="' + v.id + '">';
+        html += '<span class="size-pill__size">' + escHtml(v.size) + '</span>';
+        html += '<span class="size-pill__stock">' + escHtml(stockText) + '</span>';
+        html += '</button>';
+      });
+      html += '</div>';
+      html += '</div>';
+    }
+
+    // ── Quantity stepper ──────────────────────────────────────────────────────
     var selectedVariant = null;
     for (var i = 0; i < product.variants.length; i++) {
       if (product.variants[i].id === configureVariantId) { selectedVariant = product.variants[i]; break; }
     }
     var maxQty = selectedVariant ? Math.min(selectedVariant.stock_quantity, 10) : 1;
     configureQty = Math.max(1, Math.min(configureQty, maxQty));
+    var stepperDisabled = !configureVariantId;
 
+    html += '<div class="prod-configure__section">';
     html += '<div class="configure-qty-row">';
     html += '<span class="configure-qty-label">Quantidade</span>';
     html += '<div class="configure-qty-stepper">';
-    html += '<button type="button" class="configure-qty-stepper__btn" id="cfg-qty-dec" aria-label="Diminuir"' + (configureQty <= 1 ? ' disabled' : '') + '>−</button>';
+    html += '<button type="button" class="configure-qty-stepper__btn" id="cfg-qty-dec" aria-label="Diminuir"' +
+      (configureQty <= 1 || stepperDisabled ? ' disabled' : '') + '>−</button>';
     html += '<span class="configure-qty-stepper__value" id="cfg-qty-val">' + configureQty + '</span>';
-    html += '<button type="button" class="configure-qty-stepper__btn" id="cfg-qty-inc" aria-label="Aumentar"' + (configureQty >= maxQty ? ' disabled' : '') + '>+</button>';
+    html += '<button type="button" class="configure-qty-stepper__btn" id="cfg-qty-inc" aria-label="Aumentar"' +
+      (configureQty >= maxQty || stepperDisabled ? ' disabled' : '') + '>+</button>';
     html += '</div>';
+    html += '</div>';
+    if (selectedVariant) {
+      html += '<p class="prod-configure__stock-hint">' + selectedVariant.stock_quantity + ' unidade' +
+        (selectedVariant.stock_quantity !== 1 ? 's' : '') + ' disponível' +
+        (selectedVariant.stock_quantity !== 1 ? 'is' : '') + '</p>';
+    }
     html += '</div>';
 
     area.innerHTML = html;
 
-    area.querySelectorAll('.variant-pill[data-variant-id]').forEach(function (pill) {
+    // Bind color pills
+    area.querySelectorAll('.color-pill[data-color]').forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        configureColor = this.getAttribute('data-color');
+        configureVariantId = null;
+        configureQty = 1;
+        renderProductsConfigure();
+      });
+    });
+
+    // Bind size pills
+    area.querySelectorAll('.size-pill[data-variant-id]').forEach(function (pill) {
       pill.addEventListener('click', function () {
         configureVariantId = parseInt(this.getAttribute('data-variant-id'), 10);
         configureQty = 1;
@@ -1875,14 +2037,15 @@
       });
     });
 
+    // Qty stepper
     var dec = document.getElementById('cfg-qty-dec');
     var inc = document.getElementById('cfg-qty-inc');
     var valEl = document.getElementById('cfg-qty-val');
 
     function refreshStepper() {
       if (valEl) valEl.textContent = configureQty;
-      if (dec) dec.disabled = configureQty <= 1;
-      if (inc) inc.disabled = configureQty >= maxQty;
+      if (dec) dec.disabled = configureQty <= 1 || !configureVariantId;
+      if (inc) inc.disabled = configureQty >= maxQty || !configureVariantId;
     }
     if (dec) dec.addEventListener('click', function () { if (configureQty > 1) { configureQty--; refreshStepper(); } });
     if (inc) inc.addEventListener('click', function () { if (configureQty < maxQty) { configureQty++; refreshStepper(); } });
@@ -1968,10 +2131,16 @@
       for (var i = 0; i < configureProduct.variants.length; i++) {
         if (configureProduct.variants[i].id === configureVariantId) { variant = configureProduct.variants[i]; break; }
       }
+      var labelParts = [];
+      if (variant && variant.color) labelParts.push(variant.color);
+      if (variant && variant.size) labelParts.push(variant.size);
+      var variantLabel = labelParts.length ? labelParts.join(' · ') : 'Padrão';
       var unitPrice = parseFloat(configureProduct.price) || 0;
       var newItem = {
         variantId: configureVariantId,
-        variantLabel: variant ? variant.label : '',
+        variantLabel: variantLabel,
+        variantColor: variant ? (variant.color || '') : '',
+        variantSize: variant ? (variant.size || '') : '',
         productId: configureProduct.id,
         productName: configureProduct.name,
         qty: configureQty,

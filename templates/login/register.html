@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=9">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=11">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -19,6 +19,7 @@
   <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-plan-order-json">{{ plan_order_json|safe }}</script>
   <script type="application/json" id="reg-materials-order-json">{{ materials_order_json|safe }}</script>
+  <script type="application/json" id="reg-pending-person-json">{{ pending_person_json|safe }}</script>
 </head>
 <body class="register-page">
 
@@ -653,6 +654,9 @@
         <p class="wizard-step__subtitle" id="products-subtitle">Adicione kimonos ou outros itens ao seu pedido (opcional)</p>
       </div>
 
+      {# Painel de confirmação do cadastro — preenchido por JS quando regPostPlan=true #}
+      <div id="products-confirm-area"></div>
+
       {# Form único compartilhado — payload e ação definidos por JS antes do submit #}
       <form id="products-payment-form" method="post" action="{% url 'system:register-materials-checkout' %}" hidden>
         {% csrf_token %}
@@ -699,7 +703,7 @@
             <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Pagar com Cartão
           </button>
-          <button type="button" id="products-btn-pay-pix" class="btn-checkout-pay" style="background:var(--text);color:var(--panel)">
+          <button type="button" id="products-btn-pay-pix" class="btn-checkout-pay">
             <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Pagar com PIX
           </button>
@@ -727,6 +731,6 @@
 
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=13" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=16" defer></script>
 </body>
 </html>

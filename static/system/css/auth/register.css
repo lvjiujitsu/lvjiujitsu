@@ -1093,6 +1093,77 @@ html[data-theme="dark"] .ibjjf-notice {
   font-size: 0.75rem;
 }
 
+/* ─── Painel de confirmação pós-pagamento ───────────────────────────────────── */
+
+.reg-confirm-panel {
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
+.reg-confirm-panel__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.reg-confirm-panel__divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 0;
+}
+
+.reg-confirm-panel__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.reg-confirm-panel__icon--ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--success);
+}
+
+.reg-confirm-panel__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reg-confirm-panel__label {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reg-confirm-panel__value {
+  font-size: .9375rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reg-confirm-panel__meta {
+  font-size: .8125rem;
+  color: var(--success);
+  font-weight: 500;
+}
+
 /* ─── Produtos pós-pagamento — cards e wizard de seleção ────────────────────── */
 
 /* Cards de produto */
@@ -1156,7 +1227,6 @@ html[data-theme="dark"] .ibjjf-notice {
   font-weight: 800;
   color: var(--text);
   line-height: 1;
-  margin-top: 4px;
 }
 
 .prod-card__stock-msg {
@@ -1467,6 +1537,166 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--text);
   padding: 0.125rem 0;
 }
+
+/* ─── Painel de confirmação — heading ──────────────────────────────────────── */
+
+.reg-confirm-panel__heading {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* ─── Cards de produto — melhorias ─────────────────────────────────────────── */
+
+.prod-card__price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.prod-card__stock-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--brand-red-muted);
+  color: var(--brand-red);
+  letter-spacing: .02em;
+}
+.prod-card__stock-badge--out {
+  background: var(--border-soft);
+  color: var(--muted);
+}
+
+.prod-card__badge {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.prod-card__badge--cart {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--success);
+}
+
+.prod-card__desc {
+  font-size: .8125rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── Configure sub-view — section wrapper + hint ──────────────────────────── */
+
+.prod-configure__section {
+  margin-top: 1rem;
+}
+.prod-configure__section:first-child { margin-top: 0; }
+
+.prod-configure__stock-hint {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: .375rem;
+}
+
+/* ─── Seletor de cor ────────────────────────────────────────────────────────── */
+
+.color-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.color-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  font-family: inherit;
+}
+.color-pill:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.color-pill--selected {
+  border-color: var(--brand-red);
+  background: var(--brand-red-muted);
+  color: var(--brand-red);
+  font-weight: 700;
+}
+.color-pill--disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.color-pill:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ─── Seletor de tamanho com estoque ────────────────────────────────────────── */
+
+.size-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-family: inherit;
+  min-width: 52px;
+}
+.size-pill:hover { border-color: var(--brand-red); }
+.size-pill--selected {
+  border-color: var(--brand-red);
+  background: var(--brand-red-muted);
+}
+.size-pill--disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.size-pill:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.size-pill__size {
+  font-size: .9375rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.size-pill--selected .size-pill__size { color: var(--brand-red); }
+
+.size-pill__stock {
+  font-size: .65rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.size-pill--selected .size-pill__stock { color: var(--brand-red); opacity: .8; }
 
 /* ─── Responsivo ────────────────────────────────────────────────────────────── */
 
