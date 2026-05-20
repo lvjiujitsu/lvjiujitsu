@@ -19,24 +19,29 @@ def resolve_payment_provider_for_plan(plan):
     if plan.payment_method == PlanPaymentMethod.PIX:
         return PaymentProvider.ASAAS
     if plan.payment_method == PlanPaymentMethod.CREDIT_CARD:
-        return PaymentProvider.STRIPE
+        return PaymentProvider.ASAAS
     return PaymentProvider.NONE
 
 
 def resolve_checkout_action_for_plan(plan):
-    provider = resolve_payment_provider_for_plan(plan)
-    if provider == PaymentProvider.ASAAS:
+    if plan is None:
+        return CheckoutAction.PAY_LATER
+    if plan.payment_method == PlanPaymentMethod.PIX:
         return CheckoutAction.PIX
-    if provider == PaymentProvider.STRIPE:
-        return CheckoutAction.STRIPE
+    if plan.payment_method == PlanPaymentMethod.CREDIT_CARD:
+        return CheckoutAction.ASAAS_CARD
     return CheckoutAction.PAY_LATER
 
 
-def calculate_gross_for_net(net_amount, payment_provider):
+def calculate_gross_for_net(net_amount, payment_provider, *, payment_method=None):
     """Retorna o valor bruto a cobrar do cliente para que a academia receba net_amount líquido."""
     net = _money(net_amount)
     if net <= ZERO:
         return net
+    if payment_provider == PaymentProvider.ASAAS and payment_method == PlanPaymentMethod.CREDIT_CARD:
+        percent = _decimal_setting("ASAAS_CREDIT_PERCENT_FEE")
+        fixed = _decimal_setting("ASAAS_CREDIT_FIXED_FEE")
+        return _money((net + fixed) / (Decimal("1") - percent))
     if payment_provider == PaymentProvider.ASAAS:
         return _money(net + _decimal_setting("ASAAS_PIX_FIXED_FEE"))
     if payment_provider == PaymentProvider.STRIPE:
@@ -46,9 +51,9 @@ def calculate_gross_for_net(net_amount, payment_provider):
     return net
 
 
-def calculate_financial_amounts(gross_amount, payment_provider):
+def calculate_financial_amounts(gross_amount, payment_provider, *, plan=None):
     gross = _money(gross_amount)
-    fee = _calculate_fee(gross, payment_provider)
+    fee = _calculate_fee(gross, payment_provider, plan=plan)
     return {
         "gross_amount": gross,
         "administrative_fee": fee,
@@ -69,7 +74,7 @@ def apply_order_financials(
     if provider is None:
         provider = order.payment_provider or resolve_payment_provider_for_plan(order.plan)
 
-    amounts = calculate_financial_amounts(order.total or ZERO, provider)
+    amounts = calculate_financial_amounts(order.total or ZERO, provider, plan=order.plan)
     order.payment_provider = provider
     if financial_transaction_id:
         order.financial_transaction_id = financial_transaction_id
@@ -97,9 +102,13 @@ def apply_order_financials(
     return order
 
 
-def _calculate_fee(gross, payment_provider):
+def _calculate_fee(gross, payment_provider, *, plan=None):
     if gross <= ZERO:
         return ZERO
+    if plan is not None and getattr(plan, "gateway_code", "").startswith("asaas_"):
+        fixed = Decimal(str(plan.gateway_fixed_fee or ZERO))
+        percent = Decimal(str(plan.gateway_percentage_fee or ZERO))
+        return _money(min((gross * percent) + fixed, gross))
     if payment_provider == PaymentProvider.ASAAS:
         return _money(min(_decimal_setting("ASAAS_PIX_FIXED_FEE"), gross))
     if payment_provider == PaymentProvider.STRIPE:

@@ -67,17 +67,17 @@ class SubscriptionPlanModelTestCase(TestCase):
         self.assertEqual(plan.price, Decimal("221.99"))
         self.assertIsNone(plan.monthly_reference_price)
 
-    def test_compute_price_stripe_card_monthly(self):
+    def test_compute_price_asaas_card_monthly(self):
         plan = SubscriptionPlan.objects.create(
-            code="individual-2x-stripe-m",
+            code="individual-2x-asaas-card-m",
             display_name="Individual 2x Cartão Mensal",
             billing_cycle=BillingCycle.MONTHLY,
             base_monthly_net_price=Decimal("220.00"),
-            gateway_fixed_fee=Decimal("0.39"),
-            gateway_percentage_fee=Decimal("0.0599"),
+            gateway_fixed_fee=Decimal("0.49"),
+            gateway_percentage_fee=Decimal("0.0429"),
             cycle_discount_percentage=Decimal("0.0000"),
         )
-        self.assertEqual(plan.price, Decimal("234.43"))
+        self.assertEqual(plan.price, Decimal("230.37"))
 
     def test_compute_price_pix_quarterly_sets_monthly_reference(self):
         plan = SubscriptionPlan.objects.create(

@@ -22,6 +22,7 @@ from system.models import (
     TeacherPayout,
     TeacherPayrollConfig,
 )
+from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.models.registration_order import PaymentStatus
 from system.services import asaas_checkout, asaas_client, asaas_payroll, asaas_webhooks
 from system.services.asaas_client import AsaasClientError
@@ -95,13 +96,15 @@ class AsaasCheckoutTests(TestCase):
         self.person.refresh_from_db()
         self.assertEqual(self.person.asaas_customer_id, "cus_123")
 
+    @patch("system.services.asaas_checkout.asaas_client.get_payment")
     @patch("system.services.asaas_checkout.asaas_client.get_pix_qrcode")
     @patch("system.services.asaas_checkout.asaas_client.create_pix_payment")
     @patch("system.services.asaas_checkout.asaas_client.create_customer")
-    def test_reuses_pix_when_not_expired(self, m_customer, m_payment, m_qr):
+    def test_reuses_pix_when_not_expired(self, m_customer, m_payment, m_qr, m_get_payment):
         m_customer.return_value = {"id": "cus_1"}
         m_payment.return_value = {"id": "pay_1"}
         m_qr.return_value = {"payload": "code", "encodedImage": "img"}
+        m_get_payment.return_value = {"invoiceUrl": "https://sandbox.asaas.com/i/pay_1"}
 
         first = asaas_checkout.create_pix_charge_for_order(self.order)
         second = asaas_checkout.create_pix_charge_for_order(self.order)
@@ -123,6 +126,70 @@ class AsaasCheckoutTests(TestCase):
     def test_propagates_client_errors(self, _):
         with self.assertRaises(asaas_checkout.AsaasCheckoutError):
             asaas_checkout.create_pix_charge_for_order(self.order)
+
+    @patch("system.services.asaas_checkout.asaas_client.create_credit_card_payment")
+    @patch("system.services.asaas_checkout.asaas_client.create_customer")
+    def test_create_credit_card_charge_uses_asaas_invoice_url(self, m_customer, m_payment):
+        self.plan.billing_cycle = BillingCycle.SEMIANNUAL
+        self.plan.payment_method = PlanPaymentMethod.CREDIT_CARD
+        self.plan.gateway_code = "asaas_card"
+        self.plan.gateway_fixed_fee = Decimal("0.49")
+        self.plan.gateway_percentage_fee = Decimal("0.0429")
+        self.plan.save()
+        m_customer.return_value = {"id": "cus_card"}
+        m_payment.return_value = {
+            "id": "pay_card",
+            "invoiceUrl": "https://sandbox.asaas.com/i/pay_card",
+        }
+
+        payment = asaas_checkout.create_credit_card_charge_for_order(self.order)
+
+        self.assertEqual(payment["payment_id"], "pay_card")
+        self.assertEqual(payment["invoice_url"], "https://sandbox.asaas.com/i/pay_card")
+        m_payment.assert_called_once()
+        payload = m_payment.call_args.kwargs
+        self.assertEqual(payload["customer_id"], "cus_card")
+        self.assertEqual(payload["installment_count"], 6)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.asaas_payment_id, "pay_card")
+        self.assertEqual(self.order.payment_provider, PaymentProvider.ASAAS)
+        self.assertEqual(self.order.financial_transaction_id, "pay_card")
+
+    @patch("system.services.asaas_checkout.asaas_client._request")
+    def test_create_credit_card_payment_sends_total_value_only_for_installments(self, mock_request):
+        mock_request.return_value = {"id": "pay_1"}
+
+        asaas_client.create_credit_card_payment(
+            customer_id="cus_1",
+            value=Decimal("1200.00"),
+            due_date=date(2026, 5, 20),
+            description="Pedido teste",
+            external_reference=10,
+            installment_count=6,
+        )
+
+        body = mock_request.call_args.kwargs["json_body"]
+        self.assertEqual(body["billingType"], "CREDIT_CARD")
+        self.assertEqual(body["installmentCount"], 6)
+        self.assertEqual(body["totalValue"], 1200.0)
+        self.assertNotIn("value", body)
+
+    @patch("system.services.asaas_checkout.asaas_client._request")
+    def test_create_credit_card_payment_sends_value_for_single_charge(self, mock_request):
+        mock_request.return_value = {"id": "pay_1"}
+
+        asaas_client.create_credit_card_payment(
+            customer_id="cus_1",
+            value=Decimal("230.38"),
+            due_date=date(2026, 5, 20),
+            installment_count=1,
+        )
+
+        body = mock_request.call_args.kwargs["json_body"]
+        self.assertEqual(body["billingType"], "CREDIT_CARD")
+        self.assertEqual(body["value"], 230.38)
+        self.assertNotIn("installmentCount", body)
+        self.assertNotIn("totalValue", body)
 
 
 class AsaasClientTests(TestCase):

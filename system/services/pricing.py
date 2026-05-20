@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.conf import settings
 
+from system.models.plan import PlanPaymentMethod
 from system.models.registration_order import PaymentProvider
 from system.services.financial_transactions import calculate_gross_for_net
 
@@ -16,7 +17,11 @@ def catalog_unit_charges_for_display(unit_price) -> dict[str, str]:
         pix = calculate_gross_for_net(net, PaymentProvider.ASAAS)
     card = net
     if getattr(settings, "CREDIT_CARD_FEE_PASS_THROUGH", True):
-        card = calculate_gross_for_net(net, PaymentProvider.STRIPE)
+        card = calculate_gross_for_net(
+            net,
+            PaymentProvider.ASAAS,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+        )
     return {
         "charge_pix": str(pix.quantize(cent)),
         "charge_card": str(card.quantize(cent)),

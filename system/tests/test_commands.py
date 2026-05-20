@@ -145,28 +145,29 @@ class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
 
         self.assertEqual(
             SubscriptionPlan.objects.exclude(code__in=("individual", "loyalty", "family")).count(),
-            72,
+            48,
         )
         self.assertFalse(SubscriptionPlan.objects.get(code="individual").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="loyalty").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="family").is_active)
 
-        stripe_monthly = SubscriptionPlan.objects.get(
-            code="individual-2x-stripe-card-monthly"
+        asaas_card_monthly = SubscriptionPlan.objects.get(
+            code="individual-2x-asaas-card-monthly"
         )
-        self.assertEqual(stripe_monthly.price, Decimal("234.44"))
-        self.assertEqual(stripe_monthly.base_monthly_net_price, Decimal("220.00"))
-        self.assertEqual(stripe_monthly.gateway_code, "stripe_card")
-        self.assertEqual(stripe_monthly.gateway_percentage_fee, Decimal("0.0599"))
-        self.assertEqual(stripe_monthly.cycle_discount_percentage, Decimal("0.0000"))
-        self.assertIsNone(stripe_monthly.monthly_reference_price)
+        self.assertEqual(asaas_card_monthly.price, Decimal("230.38"))
+        self.assertEqual(asaas_card_monthly.base_monthly_net_price, Decimal("220.00"))
+        self.assertEqual(asaas_card_monthly.gateway_code, "asaas_card")
+        self.assertEqual(asaas_card_monthly.gateway_percentage_fee, Decimal("0.0429"))
+        self.assertEqual(asaas_card_monthly.cycle_discount_percentage, Decimal("0.0000"))
+        self.assertIsNone(asaas_card_monthly.monthly_reference_price)
 
         family_annual = SubscriptionPlan.objects.get(
-            code="family-5x-stripe-card-annual"
+            code="family-5x-asaas-card-annual"
         )
-        self.assertEqual(family_annual.price, Decimal("2617.29"))
-        self.assertEqual(family_annual.monthly_reference_price, Decimal("218.11"))
+        self.assertEqual(family_annual.price, Decimal("2570.91"))
+        self.assertEqual(family_annual.monthly_reference_price, Decimal("214.24"))
         self.assertEqual(family_annual.cycle_discount_percentage, Decimal("0.0682"))
         self.assertTrue(family_annual.is_family_plan)
+        self.assertFalse(SubscriptionPlan.objects.filter(gateway_code="stripe_card").exists())
 
 

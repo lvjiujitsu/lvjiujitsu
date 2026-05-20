@@ -36,7 +36,11 @@ from system.services.financial_dashboard import build_financial_dashboard
 from system.services.financial_transactions import (
     apply_order_financials,
     calculate_financial_amounts,
+    calculate_gross_for_net,
+    resolve_checkout_action_for_plan,
+    resolve_payment_provider_for_plan,
 )
+from system.constants import CheckoutAction
 from system.services.membership import add_billing_cycle, mark_order_manually_paid
 from system.services.payroll_rules import (
     PAYROLL_METHOD_FIXED_MONTHLY,
@@ -93,6 +97,32 @@ class FinancialTransactionServiceTestCase(TestCase):
 
         self.assertEqual(result["administrative_fee"], Decimal("13.50"))
         self.assertEqual(result["net_amount"], Decimal("236.50"))
+
+    def test_credit_card_plan_resolves_to_asaas_checkout(self):
+        card_plan = SubscriptionPlan.objects.create(
+            code="standard-monthly-asaas-card",
+            display_name="Plano mensal cartão Asaas",
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            gateway_code="asaas_card",
+            price=Decimal("230.38"),
+        )
+
+        self.assertEqual(resolve_payment_provider_for_plan(card_plan), PaymentProvider.ASAAS)
+        self.assertEqual(resolve_checkout_action_for_plan(card_plan), CheckoutAction.ASAAS_CARD)
+
+    @override_settings(
+        ASAAS_CREDIT_PERCENT_FEE="0.0429",
+        ASAAS_CREDIT_FIXED_FEE="0.49",
+    )
+    def test_calculates_asaas_credit_card_gross_from_settings(self):
+        result = calculate_gross_for_net(
+            Decimal("220.00"),
+            PaymentProvider.ASAAS,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+        )
+
+        self.assertEqual(result, Decimal("230.37"))
 
     def test_apply_order_financials_sets_transaction_fields(self):
         order = RegistrationOrder.objects.create(

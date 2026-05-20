@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=9">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -15,6 +15,10 @@
   <script type="application/json" id="reg-product-catalog-json">{{ product_catalog_json|safe }}</script>
   <script type="application/json" id="reg-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
   <script type="application/json" id="reg-fee-config-json">{{ fee_config_json|safe }}</script>
+  <script type="application/json" id="reg-post-plan-json">{{ post_plan_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-plan-order-json">{{ plan_order_json|safe }}</script>
+  <script type="application/json" id="reg-materials-order-json">{{ materials_order_json|safe }}</script>
 </head>
 <body class="register-page">
 
@@ -277,6 +281,40 @@
               </button>
             </div>
             <p class="form-field__error" id="ui-s2-password-confirm-error" hidden></p>
+          </div>
+
+          <p class="wizard-step__subtitle" style="margin-top:1rem;margin-bottom:0.25rem">Endereço <span style="font-weight:400;font-size:0.8125rem;color:var(--muted)">(opcional — pré-preenche o pagamento)</span></p>
+
+          <div class="form-row form-row--2col">
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-postal-code">CEP</label>
+              <input type="text" class="form-input" id="ui-s2-postal-code" inputmode="numeric" placeholder="00000-000" maxlength="9" autocomplete="postal-code">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-city">Cidade</label>
+              <input type="text" class="form-input" id="ui-s2-city" placeholder="Sua cidade" autocomplete="address-level2">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-address">Logradouro</label>
+            <input type="text" class="form-input" id="ui-s2-address" placeholder="Rua, Avenida…" autocomplete="street-address">
+          </div>
+
+          <div class="form-row form-row--2col">
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-address-number">Número</label>
+              <input type="text" class="form-input" id="ui-s2-address-number" placeholder="123" maxlength="20">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-address-complement">Complemento</label>
+              <input type="text" class="form-input" id="ui-s2-address-complement" placeholder="Apto, Sala…" maxlength="100" autocomplete="address-line2">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-address-neighborhood">Bairro</label>
+            <input type="text" class="form-input" id="ui-s2-address-neighborhood" placeholder="Seu bairro" maxlength="100">
           </div>
 
         </div>
@@ -607,8 +645,88 @@
       </section>{# /step-checkout #}
 
     </form>
+
+    {# ── Etapa pós-plano: escolher materiais ────────────────────────────────── #}
+    <section id="step-products" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Materiais e equipamentos</h1>
+        <p class="wizard-step__subtitle" id="products-subtitle">Adicione kimonos ou outros itens ao seu pedido (opcional)</p>
+      </div>
+
+      {# Form único compartilhado — payload e ação definidos por JS antes do submit #}
+      <form id="products-payment-form" method="post" action="{% url 'system:register-materials-checkout' %}" hidden>
+        {% csrf_token %}
+        <input type="hidden" name="selected_products_payload" id="products-payload-hidden" value="[]">
+        <input type="hidden" name="checkout_action" id="products-checkout-action-hidden" value="pay_later">
+      </form>
+
+      {# Sub-view 1: catálogo de cards #}
+      <div id="products-subview-catalog">
+        <div id="products-catalog-area" class="prod-cards"></div>
+        <div id="products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:auto;padding-top:1rem">
+          <button type="button" id="products-btn-view-cart" class="btn-next" hidden>
+            Ver carrinho
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button type="button" id="products-btn-skip-catalog" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+        </div>
+      </div>
+
+      {# Sub-view 2: configurar variante e quantidade #}
+      <div id="products-subview-configure" hidden>
+        <button type="button" class="prod-configure__back" id="products-btn-back-catalog">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Voltar ao catálogo
+        </button>
+        <div id="products-configure-area"></div>
+        <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
+          <button type="button" id="products-btn-add-to-cart" class="btn-next" disabled>
+            Adicionar ao carrinho
+          </button>
+          <button type="button" id="products-btn-cancel-configure" class="btn-checkout-later">Cancelar</button>
+        </div>
+      </div>
+
+      {# Sub-view 3: carrinho com pagamento #}
+      <div id="products-subview-cart" hidden>
+        <button type="button" class="prod-configure__back" id="products-btn-back-to-catalog">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Continuar comprando
+        </button>
+        <div id="products-cart-area"></div>
+        <div class="checkout-actions" style="margin-top:1rem">
+          <button type="button" id="products-btn-pay-card" class="btn-checkout-pay">
+            <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Pagar com Cartão
+          </button>
+          <button type="button" id="products-btn-pay-pix" class="btn-checkout-pay" style="background:var(--text);color:var(--panel)">
+            <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Pagar com PIX
+          </button>
+          <button type="button" id="products-btn-skip-cart" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+        </div>
+      </div>
+    </section>
+
+    {# ── Etapa pós-materiais: revisar e finalizar ────────────────────────────── #}
+    <section id="step-review" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Confirmar cadastro</h1>
+        <p class="wizard-step__subtitle">Revise o resumo e finalize sua conta no sistema</p>
+      </div>
+
+      <div id="review-summary-area"></div>
+
+      <form id="finalize-form" method="post" action="{% url 'system:register-finalize' %}" style="margin-top:0.5rem">
+        {% csrf_token %}
+        <button type="submit" class="btn-checkout-pay">
+          Finalizar cadastro e acessar o sistema
+        </button>
+      </form>
+    </section>
+
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=8" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=13" defer></script>
 </body>
 </html>

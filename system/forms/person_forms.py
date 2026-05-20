@@ -75,6 +75,14 @@ class PersonListFilterForm(forms.Form):
 
 
 class PersonForm(forms.ModelForm):
+    address_field_names = (
+        "postal_code",
+        "address",
+        "address_number",
+        "address_complement",
+        "address_neighborhood",
+        "city",
+    )
     identity_field_names = (
         "full_name",
         "cpf",
@@ -206,6 +214,12 @@ class PersonForm(forms.ModelForm):
             "phone",
             "birth_date",
             "biological_sex",
+            "postal_code",
+            "address",
+            "address_number",
+            "address_complement",
+            "address_neighborhood",
+            "city",
             "blood_type",
             "allergies",
             "previous_injuries",
@@ -227,6 +241,12 @@ class PersonForm(forms.ModelForm):
             "phone": "Telefone",
             "birth_date": "Data de nascimento",
             "biological_sex": "Sexo biológico",
+            "postal_code": "CEP",
+            "address": "Logradouro",
+            "address_number": "Número",
+            "address_complement": "Complemento",
+            "address_neighborhood": "Bairro",
+            "city": "Cidade",
             "blood_type": "Tipo sanguíneo",
             "allergies": "Alergias",
             "previous_injuries": "Lesões prévias",
@@ -327,6 +347,12 @@ class PersonForm(forms.ModelForm):
                 "phone",
                 "birth_date",
                 "biological_sex",
+                "postal_code",
+                "address",
+                "address_number",
+                "address_complement",
+                "address_neighborhood",
+                "city",
                 "blood_type",
                 "allergies",
                 "previous_injuries",
@@ -359,6 +385,10 @@ class PersonForm(forms.ModelForm):
     @property
     def identity_fields(self):
         return self._bound_fields(self.identity_field_names)
+
+    @property
+    def address_fields(self):
+        return self._bound_fields(self.address_field_names)
 
     @property
     def health_fields(self):

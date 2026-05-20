@@ -397,7 +397,7 @@ def create_registration_order(person, cleaned_data):
         return None
 
     payment_provider = resolve_payment_provider_for_plan(plan)
-    total = _apply_fee_pass_through(plan_price, payment_provider)
+    total = plan_price
 
     order = RegistrationOrder.objects.create(
         person=person,
@@ -410,8 +410,6 @@ def create_registration_order(person, cleaned_data):
 
 
 def _apply_fee_pass_through(base_amount, payment_provider):
-    if payment_provider == PaymentProvider.STRIPE and getattr(settings, "CREDIT_CARD_FEE_PASS_THROUGH", True):
-        return calculate_gross_for_net(base_amount, payment_provider)
     if payment_provider == PaymentProvider.ASAAS and getattr(settings, "PIX_FEE_PASS_THROUGH", True):
         return calculate_gross_for_net(base_amount, payment_provider)
     return base_amount
@@ -419,13 +417,24 @@ def _apply_fee_pass_through(base_amount, payment_provider):
 
 def gross_up_order_for_checkout(order, checkout_action):
     """Aplica gross-up de taxa ao total do pedido de acordo com o método de pagamento escolhido."""
-    if checkout_action == CheckoutAction.STRIPE:
-        provider = PaymentProvider.STRIPE
-    elif checkout_action == CheckoutAction.PIX:
+    payment_method = None
+    if checkout_action == CheckoutAction.ASAAS_CARD:
+        if not getattr(settings, "CREDIT_CARD_FEE_PASS_THROUGH", True):
+            return order
         provider = PaymentProvider.ASAAS
+        payment_method = PlanPaymentMethod.CREDIT_CARD
+    elif checkout_action == CheckoutAction.PIX:
+        if not getattr(settings, "PIX_FEE_PASS_THROUGH", True):
+            return order
+        provider = PaymentProvider.ASAAS
+        payment_method = PlanPaymentMethod.PIX
     else:
         return order
-    gross = _apply_fee_pass_through(order.total or Decimal("0"), provider)
+    gross = calculate_gross_for_net(
+        order.total or Decimal("0"),
+        provider,
+        payment_method=payment_method,
+    )
     if gross != order.total:
         order.total = gross
         order.save(update_fields=["total", "updated_at"])

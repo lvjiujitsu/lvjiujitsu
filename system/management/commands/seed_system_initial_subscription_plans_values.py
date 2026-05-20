@@ -17,6 +17,7 @@ from system.models.plan import (
 
 DATA_FILENAME = "seed_system_initial_subscription_plans_values.json"
 BASE_PLACEHOLDER_CODES = ("individual", "loyalty", "family")
+SUPPORTED_GATEWAYS = ("asaas_pix", "asaas_card")
 
 
 class Command(BaseCommand):
@@ -50,12 +51,17 @@ class Command(BaseCommand):
                 code__in=BASE_PLACEHOLDER_CODES,
                 is_active=True,
             ).update(is_active=False)
+            removed_gateway_count = SubscriptionPlan.objects.filter(
+                gateway_code="stripe_card",
+                is_active=True,
+            ).update(is_active=False)
 
         self.stdout.write(
             self.style.SUCCESS(
                 "\nValores de planos: "
                 f"{created_count} criado(s), {updated_count} atualizado(s), "
-                f"{deactivated_count} plano(s) base inativado(s)."
+                f"{deactivated_count} plano(s) base inativado(s), "
+                f"{removed_gateway_count} plano(s) Stripe inativado(s)."
             )
         )
 
@@ -118,7 +124,7 @@ class Command(BaseCommand):
     def _build_code(self, entry: dict, billing_cycle: str) -> str:
         category_code = self._required(entry, "category_code")
         weekly_frequency = self._integer(entry, "weekly_frequency")
-        gateway_slug = self._required(entry, "gateway_code").replace("_", "-")
+        gateway_slug = self._gateway_code(entry).replace("_", "-")
         return f"{category_code}-{weekly_frequency}x-{gateway_slug}-{billing_cycle}"
 
     def _build_display_name(self, entry: dict, billing_cycle: str) -> str:
@@ -145,8 +151,7 @@ class Command(BaseCommand):
         gateway_order = {
             "asaas_pix": 1,
             "asaas_card": 2,
-            "stripe_card": 3,
-        }.get(self._required(entry, "gateway_code"), 9)
+        }.get(self._gateway_code(entry), 9)
         cycle_order = {
             BillingCycle.MONTHLY: 1,
             BillingCycle.QUARTERLY: 2,
@@ -160,6 +165,14 @@ class Command(BaseCommand):
         if payment_method not in PlanPaymentMethod.values:
             raise CommandError(f"Forma de pagamento inválida: {payment_method}")
         return payment_method
+
+    def _gateway_code(self, entry: dict) -> str:
+        gateway_code = self._required(entry, "gateway_code")
+        if gateway_code not in SUPPORTED_GATEWAYS:
+            raise CommandError(
+                f"Gateway inválido: {gateway_code}. Gateways suportados: {', '.join(SUPPORTED_GATEWAYS)}"
+            )
+        return gateway_code
 
     def _required(self, entry: dict, field_name: str) -> str:
         value = entry.get(field_name, "")

@@ -67,6 +67,6 @@ PEOPLE_SUPPORT_PERSON_TYPE_CODES = (
 
 
 class CheckoutAction:
-    STRIPE = "stripe"
+    ASAAS_CARD = "asaas_card"
     PIX = "pix"
     PAY_LATER = "pay_later"

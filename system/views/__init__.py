@@ -91,16 +91,15 @@ from .product_views import (
     StudentOrderHistoryView,
 )
 from .payment_views import (
-    CreateCheckoutSessionView,
     DeferPaymentView,
     PaymentCancelView,
     PaymentMethodChoiceView,
     PaymentSuccessView,
     RetryPendingOrderView,
-    StripeWebhookView,
 )
 from .asaas_views import (
     AsaasWebhookView,
+    CreateCreditCardChargeView,
     CreatePixChargeView,
     PayoutApproveView,
     PayoutDispatchView,
@@ -179,6 +178,7 @@ __all__ = [
     "ChromeDevtoolsProbeView",
     "ApprovalQueueView",
     "AsaasWebhookView",
+    "CreateCreditCardChargeView",
     "CreatePixChargeView",
     "PayoutApproveView",
     "PayoutDispatchView",
@@ -188,7 +188,6 @@ __all__ = [
     "TeacherFinancialView",
     "CancelMembershipActionView",
     "ChangeMembershipPlanActionView",
-    "CreateCheckoutSessionView",
     "DeferPaymentView",
     "DashboardRedirectView",
     "ExemptOrderActionView",
@@ -200,7 +199,6 @@ __all__ = [
     "PendingPaymentListView",
     "RefundOrderActionView",
     "RetryPendingOrderView",
-    "StripeWebhookView",
     "InstructorHomeView",
     "PersonCreateView",
     "PersonDeleteView",

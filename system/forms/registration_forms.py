@@ -97,6 +97,12 @@ class PortalRegistrationForm(forms.Form):
     holder_martial_art_started_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
     holder_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
     holder_previous_academy = forms.CharField(required=False, max_length=200)
+    holder_postal_code = forms.CharField(required=False, max_length=9)
+    holder_address = forms.CharField(required=False, max_length=255)
+    holder_address_number = forms.CharField(required=False, max_length=20)
+    holder_address_complement = forms.CharField(required=False, max_length=100)
+    holder_address_neighborhood = forms.CharField(required=False, max_length=100)
+    holder_city = forms.CharField(required=False, max_length=100)
 
     dependent_name = forms.CharField(required=False, max_length=255)
     dependent_cpf = forms.CharField(required=False, max_length=14)
@@ -150,6 +156,12 @@ class PortalRegistrationForm(forms.Form):
     guardian_email = forms.EmailField(required=False)
     guardian_password = forms.CharField(required=False, strip=False)
     guardian_password_confirm = forms.CharField(required=False, strip=False)
+    guardian_postal_code = forms.CharField(required=False, max_length=9)
+    guardian_address = forms.CharField(required=False, max_length=255)
+    guardian_address_number = forms.CharField(required=False, max_length=20)
+    guardian_address_complement = forms.CharField(required=False, max_length=100)
+    guardian_address_neighborhood = forms.CharField(required=False, max_length=100)
+    guardian_city = forms.CharField(required=False, max_length=100)
 
     student_name = forms.CharField(required=False, max_length=255)
     student_cpf = forms.CharField(required=False, max_length=14)
@@ -198,7 +210,7 @@ class PortalRegistrationForm(forms.Form):
     checkout_action = forms.ChoiceField(
         required=False,
         choices=(
-            (CheckoutAction.STRIPE, "Pagar com cartão"),
+            (CheckoutAction.ASAAS_CARD, "Pagar com cartão"),
             (CheckoutAction.PIX, "Pagar com PIX"),
             (CheckoutAction.PAY_LATER, "Concluir e pagar depois"),
         ),

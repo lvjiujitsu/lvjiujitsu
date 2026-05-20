@@ -147,6 +147,12 @@ def _create_holder_registration(cleaned_data, person_types):
         martial_art_last_graduation_at=cleaned_data.get("holder_martial_art_last_graduation_at"),
         previous_academy=cleaned_data.get("holder_previous_academy", ""),
         class_groups=cleaned_data.get("holder_class_groups", []),
+        postal_code=cleaned_data.get("holder_postal_code", ""),
+        address=cleaned_data.get("holder_address", ""),
+        address_number=cleaned_data.get("holder_address_number", ""),
+        address_complement=cleaned_data.get("holder_address_complement", ""),
+        address_neighborhood=cleaned_data.get("holder_address_neighborhood", ""),
+        city=cleaned_data.get("holder_city", ""),
     )
     created_people = {"holder": holder}
 
@@ -203,6 +209,12 @@ def _create_guardian_registration(cleaned_data, person_types):
         biological_sex=cleaned_data.get("guardian_biological_sex", ""),
         password=cleaned_data["guardian_password"],
         person_type=person_types[PersonTypeCode.GUARDIAN],
+        postal_code=cleaned_data.get("guardian_postal_code", ""),
+        address=cleaned_data.get("guardian_address", ""),
+        address_number=cleaned_data.get("guardian_address_number", ""),
+        address_complement=cleaned_data.get("guardian_address_complement", ""),
+        address_neighborhood=cleaned_data.get("guardian_address_neighborhood", ""),
+        city=cleaned_data.get("guardian_city", ""),
     )
 
     dependents = _build_primary_dependent_payload(cleaned_data, "student")
@@ -288,6 +300,12 @@ def _create_person_with_account(
     previous_academy="",
     class_category=None,
     class_groups=None,
+    postal_code="",
+    address="",
+    address_number="",
+    address_complement="",
+    address_neighborhood="",
+    city="",
 ):
     primary_group = _get_primary_class_group(class_groups)
     person = Person.objects.create(
@@ -313,6 +331,12 @@ def _create_person_with_account(
         class_group=primary_group,
         class_schedule=None,
         is_active=False,
+        postal_code=postal_code or "",
+        address=address or "",
+        address_number=address_number or "",
+        address_complement=address_complement or "",
+        address_neighborhood=address_neighborhood or "",
+        city=city or "",
     )
     sync_person_class_enrollments(person, class_groups)
     access_account = PortalAccount(person=person)

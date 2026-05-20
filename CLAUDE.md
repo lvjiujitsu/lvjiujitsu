@@ -16,7 +16,7 @@
 - **Frontend:** templates Django server-rendered com CSS/JS por fluxo em `static/system/`
 - **Banco local:** SQLite em `db.sqlite3`
 - **Banco produção:** não documentado no repositório
-- **Integrações externas reais no código:** Stripe, Asaas
+- **Integrações externas reais no fluxo operacional:** Asaas. Stripe permanece apenas como legado técnico em campos/serviços históricos até uma limpeza de schema autorizada.
 - **Ambiente operacional padrão:** Windows + PowerShell com `.venv`
 - **Idioma técnico:** inglês
 - **Idioma da interface:** português pt-BR
@@ -174,8 +174,8 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 | `seed_system_initial_graduation_rules` | cria as 52 regras de graduação (adulto e infantil) | `seed_system_initial_belt_ranks` | ativo |
 | `seed_system_initial_product_categories` | cria as 4 categorias de produto (Faixas, Kimonos, Rash Guard, Patches) | — | ativo |
 | `seed_system_initial_product_catalog` | cria 5 produtos e 62 variantes com estoque inicial | `seed_system_initial_product_categories` | ativo |
-| `seed_system_initial_subscription_plans` | cria 72 planos de assinatura (3 categorias × 2 frequências × 3 gateways × 4 ciclos) com precificação dinâmica | — | ativo |
-| `seed_system_initial_subscription_plans_values` | cria/atualiza 72 valores reais de cobrança dos planos por categoria, frequência, gateway e periodicidade | `seed_system_initial_subscription_plans` | ativo |
+| `seed_system_initial_subscription_plans` | cria os 3 planos base (Individual, Fidelidade, Família) antes da precificação real | — | ativo |
+| `seed_system_initial_subscription_plans_values` | cria/atualiza 48 valores reais de cobrança dos planos por categoria, frequência, gateway Asaas (PIX/Cartão) e periodicidade; inativa planos Stripe legados | `seed_system_initial_subscription_plans` | ativo |
 
 ### Arquitetura de seeds
 
@@ -330,4 +330,5 @@ Atualizar este arquivo quando houver:
 - **[2026-05-18]** Implementada `seed_system_initial_teacher_payroll_configs`; repasses de professores passam a usar JSON próprio e resolver turmas por `class_category` + CPF do professor principal, sem `ClassGroup.code`.
 - **[2026-05-18]** Implementada `seed_system_initial_holidays` para feriados iniciais de 2026 via JSON próprio, substituindo o legado `seed_holidays --year 2026` sem argumentos de linha de comando.
 - **[2026-05-18]** Implementada `seed_system_initial_subscription_plans_values` para aplicar os valores reais dos planos enviados em planilha, preservando preço cobrado, taxas, descontos e valor líquido desejado em campos editáveis.
+- **[2026-05-18]** Stripe removida do fluxo operacional de cadastro/checkout e do JSON de valores dos planos. Cartão de crédito passa a usar Asaas (`CREDIT_CARD`) com redirecionamento para `invoiceUrl`; a seed de valores passa a gerar 48 planos Asaas e inativar planos `stripe_card` legados.
 ```

@@ -23,7 +23,9 @@ from system.constants import (
 )
 from system.services.asaas_checkout import (
     AsaasCheckoutError,
+    create_credit_card_charge_for_order,
     create_pix_charge_for_order,
+    get_installment_options_for_order,
 )
 from system.services.asaas_client import verify_webhook_token
 from system.services.asaas_payroll import (
@@ -94,11 +96,101 @@ class CreatePixChargeView(View):
             )
             return redirect("system:payment-checkout", order_id=order.pk)
 
-        return render(
-            request,
-            "billing/pix_checkout.html",
-            {"order": order, "pix": pix},
-        )
+        invoice_url = pix.get("invoice_url")
+        if invoice_url:
+            return redirect(invoice_url)
+
+        messages.error(request, "A Asaas não retornou a tela de pagamento PIX.")
+        return redirect("system:payment-checkout", order_id=order.pk)
+
+    def _is_authorized(self, request, order):
+        person = order.person
+        portal_person = getattr(request, "portal_person", None)
+        if portal_person and portal_person.pk == person.pk:
+            return True
+        if getattr(request, "portal_is_technical_admin", False):
+            return True
+        session_order_id = request.session.get("pending_checkout_order_id")
+        if session_order_id and int(session_order_id) == order.pk:
+            return True
+        return False
+
+
+class CreateCreditCardChargeView(View):
+    template_name = "login/installment_select.html"
+
+    def get(self, request, order_id, *args, **kwargs):
+        try:
+            order = RegistrationOrder.objects.select_related("plan", "person").get(pk=order_id)
+        except RegistrationOrder.DoesNotExist:
+            messages.error(request, "Pedido não encontrado.")
+            return redirect("system:root")
+
+        if not self._is_authorized(request, order):
+            messages.error(request, "Pedido não encontrado.")
+            return redirect("system:root")
+
+        if order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED, PaymentStatus.REFUNDED):
+            messages.info(request, "Este pedido já foi processado.")
+            return redirect("system:dashboard-redirect")
+
+        options = get_installment_options_for_order(order)
+        if len(options) <= 1:
+            # Apenas 1 parcela disponível — vai direto
+            return self._create_charge(request, order, installment_count=1)
+
+        return render(request, self.template_name, {"order": order, "options": options})
+
+    def post(self, request, order_id, *args, **kwargs):
+        try:
+            order = RegistrationOrder.objects.select_related("plan", "person").get(pk=order_id)
+        except RegistrationOrder.DoesNotExist:
+            messages.error(request, "Pedido não encontrado.")
+            return redirect("system:root")
+
+        if not self._is_authorized(request, order):
+            messages.error(request, "Pedido não encontrado.")
+            return redirect("system:root")
+
+        if order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED, PaymentStatus.REFUNDED):
+            messages.info(request, "Este pedido já foi processado.")
+            return redirect("system:dashboard-redirect")
+
+        try:
+            installment_count = int(request.POST.get("installment_count") or 1)
+        except (ValueError, TypeError):
+            installment_count = 1
+
+        return self._create_charge(request, order, installment_count=installment_count)
+
+    def _create_charge(self, request, order, installment_count):
+        from django.conf import settings
+        from django.urls import reverse
+        success_url = settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")
+        try:
+            payment = create_credit_card_charge_for_order(
+                order,
+                installment_count=installment_count,
+                success_url=success_url,
+            )
+        except AsaasCheckoutError as exc:
+            logger.error("Falha cartão Asaas: %s", exc)
+            messages.error(
+                request,
+                "Pagamento com cartão indisponível no momento. "
+                "Tente PIX ou conclua e pague depois.",
+            )
+            return redirect("system:payment-checkout", order_id=order.pk)
+        except Exception:
+            logger.exception("Erro inesperado no cartão Asaas")
+            messages.error(
+                request,
+                "Pagamento com cartão indisponível no momento. "
+                "Tente PIX ou conclua e pague depois.",
+            )
+            return redirect("system:payment-checkout", order_id=order.pk)
+
+        return redirect(payment["invoice_url"], permanent=False)
 
     def _is_authorized(self, request, order):
         person = order.person

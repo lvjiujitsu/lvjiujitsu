@@ -107,7 +107,13 @@
       "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_teacher)",
       "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_person_type)",
       "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_belt_ranks)",
-      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_ibjjf_age_categories)"
+      "Bash(\"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\.venv\\\\Scripts\\\\python.exe\" manage.py seed_system_initial_ibjjf_age_categories)",
+      "Bash(Select-Object Name)",
+      "Bash(find /mnt/c/Users/whsf/Documents/GitHub/lvjiujitsu/templates -type f -name \"*.html\" 2>/dev/null | head -30)",
+      "Bash(python3 -c \"import os; dirs = [d for d,_,_ in os.walk\\('C:/Users/whsf/Documents/GitHub/lvjiujitsu/templates'\\)]; print\\('\\\\n'.join\\(dirs\\)\\)\")",
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\lvjiujitsu\\\\templates /s /b\")",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__switch_browser"
     ]
   },
   "model": "claude-sonnet-4-6",

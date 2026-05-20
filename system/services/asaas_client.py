@@ -1,4 +1,5 @@
 import logging
+import re
 from decimal import Decimal
 
 import requests
@@ -69,14 +70,40 @@ def _request(method, path, *, json_body=None, params=None, timeout=None):
     return payload
 
 
-def create_customer(*, name, cpf_cnpj, email=None, phone=None, external_reference=None):
-    body = {"name": name, "cpfCnpj": cpf_cnpj}
+def create_customer(
+    *,
+    name,
+    cpf_cnpj,
+    email=None,
+    phone=None,
+    external_reference=None,
+    postal_code=None,
+    address=None,
+    address_number=None,
+    address_complement=None,
+    address_neighborhood=None,
+):
+    body = {"name": name, "cpfCnpj": cpf_cnpj, "notificationDisabled": False}
     if email:
         body["email"] = email
     if phone:
-        body["phone"] = phone
+        digits = re.sub(r"\D", "", phone)
+        if len(digits) == 11:
+            body["mobilePhone"] = phone
+        else:
+            body["phone"] = phone
     if external_reference is not None:
         body["externalReference"] = str(external_reference)
+    if postal_code:
+        body["postalCode"] = re.sub(r"\D", "", postal_code)
+    if address:
+        body["address"] = address
+    if address_number:
+        body["addressNumber"] = address_number
+    if address_complement:
+        body["complement"] = address_complement
+    if address_neighborhood:
+        body["province"] = address_neighborhood
     return _request("POST", "/customers", json_body=body)
 
 
@@ -103,6 +130,35 @@ def create_pix_payment(
     if external_reference is not None:
         body["externalReference"] = str(external_reference)
     return _request("POST", "/payments", json_body=body)
+
+
+def create_credit_card_payment(
+    *,
+    customer_id,
+    value,
+    due_date,
+    description="",
+    external_reference=None,
+    installment_count=1,
+    success_url=None,
+):
+    body = {
+        "customer": customer_id,
+        "billingType": "CREDIT_CARD",
+        "dueDate": due_date.strftime("%Y-%m-%d") if hasattr(due_date, "strftime") else str(due_date),
+    }
+    if int(installment_count or 1) > 1:
+        body["installmentCount"] = int(installment_count)
+        body["totalValue"] = float(Decimal(value))
+    else:
+        body["value"] = float(Decimal(value))
+    if description:
+        body["description"] = description[:500]
+    if external_reference is not None:
+        body["externalReference"] = str(external_reference)
+    if success_url:
+        body["callback"] = {"successUrl": success_url, "autoRedirect": True}
+    return _request("POST", "/payments", json_body=body, timeout=60)
 
 
 def get_payment(payment_id):

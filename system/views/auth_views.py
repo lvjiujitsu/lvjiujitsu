@@ -71,8 +71,8 @@ class PortalRegisterView(FormView):
         )
         context["fee_config_json"] = json.dumps({
             "pixFixedFee": float(settings.ASAAS_PIX_FIXED_FEE),
-            "creditCardPercentFee": float(settings.STRIPE_CREDIT_PERCENT_FEE),
-            "creditCardFixedFee": float(settings.STRIPE_CREDIT_FIXED_FEE),
+            "creditCardPercentFee": float(settings.ASAAS_CREDIT_PERCENT_FEE),
+            "creditCardFixedFee": float(settings.ASAAS_CREDIT_FIXED_FEE),
             "creditCardFeePassThrough": bool(settings.CREDIT_CARD_FEE_PASS_THROUGH),
             "pixFeePassThrough": bool(settings.PIX_FEE_PASS_THROUGH),
         }, ensure_ascii=False)
@@ -93,8 +93,8 @@ class PortalRegisterView(FormView):
         if order is not None and order.total and order.total > 0:
             self.request.session["pending_checkout_order_id"] = order.pk
             checkout_action = form.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
-            if checkout_action == CheckoutAction.STRIPE:
-                return redirect("system:stripe-checkout", order_id=order.pk)
+            if checkout_action == CheckoutAction.ASAAS_CARD:
+                return redirect("system:asaas-card-create", order_id=order.pk)
             if checkout_action == CheckoutAction.PIX:
                 return redirect("system:asaas-pix-create", order_id=order.pk)
 
@@ -325,8 +325,8 @@ class MaterialsCheckoutView(View):
         request.session["pending_checkout_order_id"] = order.pk
         checkout_action = request.POST.get("checkout_action") or CheckoutAction.PAY_LATER
         gross_up_order_for_checkout(order, checkout_action)
-        if checkout_action == CheckoutAction.STRIPE:
-            return redirect("system:stripe-checkout", order_id=order.pk)
+        if checkout_action == CheckoutAction.ASAAS_CARD:
+            return redirect("system:asaas-card-create", order_id=order.pk)
         if checkout_action == CheckoutAction.PIX:
             return redirect("system:asaas-pix-create", order_id=order.pk)
 
