@@ -550,12 +550,84 @@ Quando houver UI web, a validação mínima deve incluir:
 - usar assertions que aguardam o estado esperado (auto-retry do Playwright)
 - não declarar validação visual com base apenas em leitura de template ou screenshot isolada
 
+### Validação de fluxo de pagamento Asaas (regra específica do projeto)
+
+Quando o fluxo de validação envolver pagamento via Asaas (PIX ou Cartão de Crédito):
+
+- **ngrok é obrigatório** — o Asaas precisa de URL pública para callbacks; `localhost` não é acessível externamente
+- verificar que ngrok está ativo antes de iniciar o servidor Django
+- verificar que `SITE_BASE_URL` (ou variável equivalente) no `.env` aponta para a URL ngrok ativa
+- a validação deve ocorrer **no Chrome** (não em navegador de sandbox — limitação de MCP)
+- navegar pela interface real do Asaas: preencher dados de teste, confirmar pagamento, aguardar redirecionamento de volta ao sistema
+- não encurtar o fluxo com chamadas diretas de API — o teste deve simular o comportamento real do usuário
+- consultar `CLAUDE.md` Seção 6 para a URL ngrok atual e a sequência de inicialização
+
+#### Regra de domínio para testes Asaas com Chrome MCP
+
+O Chrome MCP bloqueia screenshot, clique e navegação em domínios externos (como `ngrok-free.dev`).
+Por isso, todo o fluxo de testes deve ocorrer em `127.0.0.1:8000`.
+
+O projeto usa `settings.SITE_BASE_URL` para gerar a `successUrl` do Asaas:
+```python
+success_url = settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")
+```
+
+A Asaas impõe duas restrições que impedem `request.build_absolute_uri()`:
+1. A `successUrl` deve ser **HTTPS** — `http://127.0.0.1` é rejeitado com erro 400
+2. O domínio da `successUrl` deve ser o **mesmo cadastrado na conta Asaas** (Minha Conta › Informações)
+
+`SITE_BASE_URL` satisfaz ambas as restrições:
+- Em dev: aponta para o ngrok (`https://...ngrok-free.dev`) = domínio registrado na conta Asaas sandbox
+- Em produção: aponta para o domínio real = domínio registrado na conta Asaas produção
+- Webhook URL (no painel Asaas) é o mesmo valor — **não muda**
+
+Em dev, após pagamento o browser é redirecionado para o ngrok → sessão `127.0.0.1` não é transmitida → usuário cai no `/login/`. Esse passo sempre exige intervenção manual com Chrome MCP.
+
+Sequência correta de validação Asaas com Chrome MCP:
+
+```
+1. Verificar que ngrok está ativo (para webhooks chegarem ao servidor)
+2. Verificar no .env: SITE_BASE_URL=https://<url-ngrok>
+3. Chrome MCP navega para http://127.0.0.1:8000/register/ (ou /login/)
+4. Completar o fluxo normalmente até o checkout
+5. Clicar "Pagar com Cartão" → browser vai para o Asaas
+6. Aguardar pagamento e redirecionamento de volta para http://127.0.0.1:8000/pagamentos/sucesso/
+7. Sessão mantida intacta — Chrome MCP pode continuar o fluxo
+```
+
+#### Regra intransigente do fluxo de cadastro público
+
+Quando a demanda envolver o wizard público de cadastro deste projeto, o contrato vigente é `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md`.
+
+Fluxo obrigatório:
+
+```
+tela de registro
+→ paga mensalidade no Asaas
+→ volta para a tela de pagamento da mensalidade com mensagem de pagamento confirmado
+→ tela de escolher materiais
+→ paga ou pula materiais
+→ resumo de tudo
+→ cria cadastro
+```
+
+Critérios obrigatórios:
+- `Person` nunca deve existir antes do resumo final e do POST explícito de finalização.
+- Não é aceitável criar `Person(is_active=False)` como pré-cadastro neste fluxo.
+- `PortalAccount`, relacionamentos familiares, turmas e acesso também só podem ser criados na finalização.
+- Retorno do Asaas deve preservar o wizard e os dados preenchidos; redirecionar para login é erro de fluxo.
+- Pagamento de materiais deve acontecer depois da confirmação da mensalidade e antes do resumo final.
+- Critério mais fraco que este fluxo deve ser tratado como incorreto e a tarefa não pode ser marcada como concluída.
+
 ### Não é aceito
 
 - declarar validação visual sem abrir navegador
 - validar apenas por leitura de template
 - usar porta alternativa para contornar erro de ambiente
 - prosseguir com Playwright quebrado sem tentar corrigir
+- declarar pagamento Asaas validado sem ngrok ativo e URL pública configurada
+- **usar `request.build_absolute_uri()` para a `successUrl`** — gera HTTP + 127.0.0.1 que a Asaas rejeita
+- **hardcodar host na `successUrl`** — usar `settings.SITE_BASE_URL` que é configurável por ambiente
 
 ---
 

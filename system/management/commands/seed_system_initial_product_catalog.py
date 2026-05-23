@@ -94,7 +94,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"\nProdutos: {products_created} criado(s), {products_updated} atualizado(s). "
                 f"Variantes: {variants_created} criada(s), {variants_updated} atualizada(s).\n"
-                f"Preço unitário inicializado como R$ 0,00 — configure os preços via admin."
+                f"Preços unitários aplicados a partir do JSON do catálogo."
             )
         )
 
@@ -116,11 +116,12 @@ class Command(BaseCommand):
         return {
             "display_name": entry["display_name"],
             "category": category,
-            "unit_price": "0.00",
+            "unit_price": entry.get("unit_price", "0.00"),
             "description": entry.get("description", ""),
         }
 
     def _apply_product_updates(self, product: Product, entry: dict, category: ProductCategory) -> None:
         product.display_name = entry["display_name"]
         product.category = category
+        product.unit_price = entry.get("unit_price", product.unit_price)
         product.description = entry.get("description", "")

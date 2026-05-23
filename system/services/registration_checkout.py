@@ -361,10 +361,6 @@ def _create_product_order_item(order, selection):
 
 
 def _count_group_members(cleaned_data):
-    """
-    Return number of participants for pricing calculations in family plans.
-    Includes holder + dependent (if present) + any extra dependents.
-    """
     count = 1
     if cleaned_data.get("dependent_name") or cleaned_data.get("dependent_cpf"):
         count += 1
@@ -374,8 +370,21 @@ def _count_group_members(cleaned_data):
     return max(count, 1)
 
 
+def _count_training_persons(cleaned_data):
+    from system.constants import RegistrationProfile
+    profile = cleaned_data.get("registration_profile") or RegistrationProfile.HOLDER
+    extras = cleaned_data.get("extra_dependents") or []
+    extra_count = len(extras) if isinstance(extras, list) else 0
+    if profile == RegistrationProfile.GUARDIAN:
+        primary = 1 if (cleaned_data.get("student_name") or cleaned_data.get("student_cpf")) else 0
+        return max(primary + extra_count, 1)
+    # HOLDER: titular + dependente opcional
+    deps = 1 if (cleaned_data.get("dependent_name") or cleaned_data.get("dependent_cpf")) else 0
+    return max(1 + deps + extra_count, 1)
+
+
 def get_registration_plan_multiplier(cleaned_data):
-    return 1
+    return _count_training_persons(cleaned_data)
 
 
 @transaction.atomic
@@ -389,9 +398,10 @@ def create_registration_order(person, cleaned_data):
     plan_price = Decimal("0")
     try:
         plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-        multiplier = 1
         if getattr(plan, "is_family_plan", False):
             multiplier = _count_group_members(cleaned_data)
+        else:
+            multiplier = _count_training_persons(cleaned_data)
         plan_price = plan.price * Decimal(multiplier)
     except SubscriptionPlan.DoesNotExist:
         return None

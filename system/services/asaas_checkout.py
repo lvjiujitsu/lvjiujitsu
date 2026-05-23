@@ -39,6 +39,7 @@ def ensure_asaas_customer(person):
             address_number=person.address_number or None,
             address_complement=person.address_complement or None,
             address_neighborhood=person.address_neighborhood or None,
+            city=person.city or None,
         )
     except asaas_client.AsaasClientError as exc:
         raise AsaasCheckoutError(str(exc)) from exc

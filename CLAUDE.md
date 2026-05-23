@@ -75,7 +75,7 @@ lvjiujitsu/
 ### Fatos estruturais importantes
 - todo o domínio aplicacional está concentrado em `system/`
 - `templates/login/` concentra home pública, login, cadastro e telas relacionadas ao portal
-- `static/system/js/auth/registration-wizard-clean.js` é a implementação ativa do wizard de cadastro
+- `static/system/js/auth/register.js` é a implementação ativa do wizard de cadastro (versão atual v16+)
 - `staticfiles/` é saída gerada por `collectstatic`; fonte editável fica em `static/`
 
 ---
@@ -124,7 +124,122 @@ Monólito Django com app única (`system`) seguindo MVT com camada explícita de
 
 ---
 
-## 6. Comandos reais do projeto
+## 6. Integrações externas e requisitos de ambiente local
+
+### Asaas — gateway de pagamento
+
+O Asaas é a integração de pagamento ativa (PIX e Cartão de Crédito). A comunicação ocorre nos dois sentidos:
+
+- **saída:** o backend cria cobranças via API Asaas e recebe de volta `invoiceUrl` / QR Code
+- **entrada (callbacks/webhooks):** o Asaas precisa alcançar o servidor para confirmar pagamentos
+
+**Em ambiente local, o Asaas não consegue alcançar `localhost:8000` diretamente.**
+Por isso, é **obrigatório usar ngrok** (ou túnel equivalente) sempre que o fluxo de pagamento Asaas for ativado.
+
+#### Configuração de ngrok para Asaas local
+
+O ngrok expõe o servidor local com uma URL pública. A URL ativa do projeto é:
+
+```
+https://dealmaker-deserve-afford.ngrok-free.dev -> http://localhost:8000
+```
+
+> A URL pública pode mudar a cada sessão ngrok (planos gratuitos) ou ser fixa (planos pagos/domínio reservado).
+> Ao iniciar uma nova sessão ngrok, verificar e atualizar a variável de ambiente correspondente no `.env`.
+
+#### Variável de ambiente
+
+O `.env` deve conter a URL base pública para que o backend gere links absolutos corretos e o Asaas possa retornar callbacks:
+
+```env
+SITE_BASE_URL=https://dealmaker-deserve-afford.ngrok-free.dev
+```
+
+Verifique o nome exato da variável em `lvjiujitsu/settings.py` — pode ser `SITE_BASE_URL`, `ASAAS_WEBHOOK_BASE_URL` ou equivalente.
+
+#### Sequência de inicialização com Asaas ativo
+
+```
+1. Iniciar ngrok:   ngrok http 8000
+2. Copiar a URL https gerada
+3. Atualizar .env com a URL pública (se mudou)
+4. Iniciar o servidor Django: .\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+```
+
+#### O que falha sem ngrok ativo
+
+- Redirect para Asaas funciona (saída), mas o Asaas não consegue confirmar pagamento de volta
+- A tela de checkout Asaas pode aparecer mas o retorno ao sistema não completa
+- Webhooks/callbacks do Asaas chegam a um endereço inacessível → pagamento nunca confirmado no banco local
+
+#### Separação entre webhook URL e redirect URL
+
+O Asaas usa dois mecanismos distintos que **não devem ser confundidos**:
+
+| Mecanismo | Papel | Quem acessa | Configuração |
+|---|---|---|---|
+| Webhook URL | Confirmação de pagamento (servidor→servidor) | Servidores do Asaas | Painel Asaas — deve ser URL pública (Ngrok) |
+| `successUrl` | Redirecionamento do browser após pagamento | Browser do usuário | Gerado via `settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")` |
+
+**Regra imutável:** a `successUrl` enviada na chamada à API Asaas é gerada com:
+```python
+success_url = settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")
+```
+
+A Asaas valida dois requisitos que impedem o uso de `request.build_absolute_uri()`:
+1. A URL deve ser **HTTPS** — `http://127.0.0.1:8000` é rejeitado
+2. O domínio deve ser o **mesmo cadastrado na conta Asaas** (Minha Conta › Informações)
+
+`SITE_BASE_URL` satisfaz ambos: em dev aponta para o ngrok (`https://...ngrok-free.dev`) que é o domínio registrado; em produção aponta para o domínio real.
+
+**Consequência em dev**: após pagamento o browser é redirecionado para o ngrok → sessão `127.0.0.1` não é transmitida → usuário cai no `/login/`. Esse passo sempre exige intervenção manual quando testando via Chrome MCP.
+
+A webhook URL no painel Asaas permanece fixa: `https://dealmaker-deserve-afford.ngrok-free.dev/pagamentos/webhook/asaas/`
+
+#### Validação de fluxo Asaas em navegador
+
+Toda validação do fluxo de pagamento Asaas deve ocorrer:
+- **no Chrome via Chrome MCP** acessando `http://127.0.0.1:8000`
+- **com ngrok ativo** (para que o Asaas consiga enviar webhooks de confirmação)
+- `SITE_BASE_URL` no `.env` aponta para a URL Ngrok; a `successUrl` é gerada com `settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")`
+- navegando pela interface real do Asaas (simular dados de cartão, aguardar redirecionamento de volta para `127.0.0.1`)
+
+#### Regra intransigente do wizard de cadastro
+
+Fonte de verdade atual: `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md`.
+
+O fluxo correto e obrigatorio do cadastro publico e:
+
+```
+tela de registro
+→ escolhe perfil e preenche dados
+→ escolhe plano
+→ paga mensalidade no Asaas
+→ volta para a tela de pagamento da mensalidade no wizard com mensagem de pagamento confirmado
+→ continua para escolher materiais
+→ paga ou pula materiais
+→ revisa o resumo completo
+→ finaliza cadastro
+→ somente aqui cria Person, PortalAccount, relacionamentos, turmas e acesso
+```
+
+Regras fixas:
+- `Person` nunca deve ser criado ao chegar no `step-plan`.
+- `Person` nunca deve ser criado ao iniciar ou concluir o pagamento da mensalidade.
+- `Person` nunca deve ser criado ao iniciar ou concluir o pagamento de materiais.
+- `Person`, `PortalAccount`, relacionamentos familiares, turmas e acesso so podem ser criados no POST final de finalizacao.
+- Criar `Person(is_active=False)` como pre-cadastro e considerado comportamento incorreto para este fluxo.
+- Dados preenchidos no wizard devem ser preservados no retorno do Asaas e revisitaveis antes da finalizacao.
+- Qualquer implementacao que pule materiais, pule resumo, redirecione para login ou crie cadastro real antes do resumo final esta fora do contrato.
+
+Guias rapidos para chegar ao `step-plan`:
+- `docs/wizard-step-plan-aluno-titular.md`
+- `docs/wizard-step-plan-aluno-com-dependente.md`
+- `docs/wizard-step-plan-responsavel-com-aluno.md`
+
+---
+
+## 7. Comandos reais do projeto
 
 ### Ambiente
 
@@ -190,7 +305,7 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 
 ---
 
-## 7. Ambiente local e ferramentas obrigatórias
+## 8. Ambiente local e ferramentas obrigatórias
 
 ### Shell padrão
 - Windows + PowerShell
@@ -215,7 +330,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 ---
 
-## 8. Política local de banco, seeds e schema
+## 9. Política local de banco, seeds e schema
 
 ### Banco local
 - SQLite descartável em `db.sqlite3`
@@ -245,7 +360,7 @@ Após migrar, re-rodar as seeds necessárias.
 
 ---
 
-## 9. Política local de validação
+## 10. Política local de validação
 
 Uma entrega com impacto relevante deve, quando aplicável:
 
@@ -260,7 +375,7 @@ Uma entrega com impacto relevante deve, quando aplicável:
 
 ---
 
-## 10. Critérios locais de falha
+## 11. Critérios locais de falha
 
 Marcar como não concluída quando houver:
 
@@ -272,7 +387,7 @@ Marcar como não concluída quando houver:
 
 ---
 
-## 11. Contrato local de UI e redesign
+## 12. Contrato local de UI e redesign
 
 O redesign visual e responsivo do sistema é governado por:
 
@@ -320,7 +435,7 @@ Se houver divergência entre `docs/UI-SCREEN-CONTRACT.md`, PRD da tela, `CLAUDE.
 
 ---
 
-## 12. Regra final de manutenção
+## 13. Regra final de manutenção
 
 Atualizar este arquivo quando houver:
 
@@ -351,5 +466,9 @@ Atualizar este arquivo quando houver:
 - **[2026-05-18]** Implementada `seed_system_initial_holidays` para feriados iniciais de 2026 via JSON próprio, substituindo o legado `seed_holidays --year 2026` sem argumentos de linha de comando.
 - **[2026-05-18]** Implementada `seed_system_initial_subscription_plans_values` para aplicar os valores reais dos planos enviados em planilha, preservando preço cobrado, taxas, descontos e valor líquido desejado em campos editáveis.
 - **[2026-05-18]** Stripe removida do fluxo operacional de cadastro/checkout e do JSON de valores dos planos. Cartão de crédito passa a usar Asaas (`CREDIT_CARD`) com redirecionamento para `invoiceUrl`; a seed de valores passa a gerar 48 planos Asaas e inativar planos `stripe_card` legados.
-- **[2026-05-20]** Adicionado mapeamento de princípios de UX em PRDs na Seção 11; PRDs de UI passam a exigir wireframe, hierarquia tipográfica e máquinas de estado mapeadas. Referencia UI-SCREEN-CONTRACT Seção 15.
+- **[2026-05-20]** Adicionado mapeamento de princípios de UX em PRDs na Seção 12; PRDs de UI passam a exigir wireframe, hierarquia tipográfica e máquinas de estado mapeadas. Referencia UI-SCREEN-CONTRACT Seção 15.
+- **[2026-05-20]** Adicionada Seção 6 documentando requisito de ngrok para testes locais com Asaas: o Asaas precisa de URL pública para callbacks/webhooks; `SITE_BASE_URL` no `.env` deve apontar para o túnel ngrok ativo. URL reservada: `https://dealmaker-deserve-afford.ngrok-free.dev`. Corrigida referência stale ao wizard JS (`registration-wizard-clean.js` → `register.js` v16+). Seções 7–12 renumeradas para 8–13.
+- **[2026-05-21]** Adicionados `SESSION_COOKIE_SAMESITE`/`CSRF_COOKIE_SAMESITE` ao `settings.py` via `.env`. Documentado que Chrome MCP opera exclusivamente em `127.0.0.1`; Ngrok fica restrito à comunicação servidor→servidor com o Asaas. AGENTS.md Seção 17 atualizada.
+- **[2026-05-21]** Sanitização: removida variável `ASAAS_REDIRECT_BASE_URL` do `settings.py` e `.env`. `asaas_views.py` passa a usar `settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")` para gerar a `successUrl` do Asaas — a Asaas rejeita URLs HTTP e domínios não cadastrados na conta; `SITE_BASE_URL` aponta para o ngrok em dev e para o domínio real em produção, satisfazendo ambas as restrições. `request.build_absolute_uri()` não funciona para este caso pois gera `http://127.0.0.1` quando acessado via localhost. AGENTS.md Seção 17 e CLAUDE.md Seção 6 atualizados.
+- **[2026-05-21]** Criado PRD-040 como fonte de verdade do cadastro publico: pagamentos de mensalidade e materiais acontecem antes de qualquer `Person`; `Person`, `PortalAccount`, relacionamentos, turmas e acesso so podem ser criados no POST final de finalizacao. Adicionados guias rapidos para chegar ao `step-plan` por tipo de cadastro.
 ```

@@ -8,7 +8,7 @@
   var MAX_DEPENDENTS   = 5;
 
   // Etapas fixas que seguem após seleção de turmas
-  var TRAILING_STEPS = ['step-plan', 'step-checkout'];
+  var TRAILING_STEPS = ['step-plan', 'step-products', 'step-review'];
 
   // ── Estado central ────────────────────────────────────────────────────────────
 
@@ -20,6 +20,7 @@
     stepIndex:            0,    // posição atual na sequência
     deps:                 [],   // [{name,cpf,birthdate,sex,phone,email,password,pwConfirm,kinship,kinshipOther,classGroups}]
     classSelections:      [],   // [{ids:[]}] — 1 por pessoa que precisa de turma (holder/deps ou só deps)
+    planSelections:       [],   // [{personIndex, label, planId}]
   };
 
   var productCart = []; // [{variantId, variantLabel, variantColor, variantSize, productId, productName, qty, unitPrice}]
@@ -137,7 +138,9 @@
         seq.push('step-martial');
       }
     } else {
-      // Guardian não treina; cada aluno tem dep + saúde + marcial
+      // Guardian: tem saúde + marcial próprios, depois cada aluno também
+      seq.push('step-health');
+      seq.push('step-martial');
       for (var i = 0; i < numDeps; i++) {
         seq.push('step-dep');
         seq.push('step-health');
@@ -228,14 +231,18 @@
     return count - 1;
   }
 
-  // person 0 com HOLDER = holder (não há dep array entry); com GUARDIAN = dep[0]
+  // person 0 com HOLDER = holder; com GUARDIAN = guardian principal (não treina como aluno)
   function isHolderPerson(personIdx) {
     return state.profile === PROFILE_HOLDER && personIdx === 0;
   }
 
-  // Retorna índice no state.deps para um personIdx
+  function isGuardianPrincipal(personIdx) {
+    return state.profile === PROFILE_GUARDIAN && personIdx === 0;
+  }
+
+  // Retorna índice no state.deps para um personIdx (personIdx=0 é sempre o principal)
   function getDepIdxForPerson(personIdx) {
-    return state.profile === PROFILE_HOLDER ? personIdx - 1 : personIdx;
+    return personIdx - 1;
   }
 
   // Retorna nome e dados da pessoa correspondente a um classPersonIdx
@@ -380,6 +387,7 @@
   var s2NameError     = document.getElementById('ui-s2-name-error');
   var s2Cpf           = document.getElementById('ui-s2-cpf');
   var s2CpfError      = document.getElementById('ui-s2-cpf-error');
+  var s2CpfAvailability = { value: '', available: true, pending: false, error: '' };
   var s2BirthdateWrap = document.getElementById('s2-birthdate-field');
   var s2Birthdate     = document.getElementById('ui-s2-birthdate');
   var s2BirthdateErr  = document.getElementById('ui-s2-birthdate-error');
@@ -444,6 +452,8 @@
       showErr(s2Cpf, s2CpfError, 'Campo obrigatório.'); valid = false;
     } else if (cpfDigits.length !== 11) {
       showErr(s2Cpf, s2CpfError, 'CPF inválido.'); valid = false;
+    } else if (s2CpfAvailability.value === s2Cpf.value && s2CpfAvailability.available === false) {
+      showErr(s2Cpf, s2CpfError, s2CpfAvailability.error || 'CPF já cadastrado no sistema.'); valid = false;
     } else clearErr(s2Cpf, s2CpfError);
 
     if (isHolder) {
@@ -498,6 +508,35 @@
     if (s2AddressNeighborhood)   setHidden('id_' + prefix + '_address_neighborhood',   s2AddressNeighborhood.value.trim());
     if (s2City)                  setHidden('id_' + prefix + '_city',                   s2City.value.trim());
     if (isHolder) setHidden('id_holder_birthdate', s2Birthdate.value);
+  }
+
+  function checkCpfAvailability(input, errorEl, stateRef) {
+    if (!input) return;
+    var cpf = input.value;
+    var digits = cpf.replace(/\D/g, '');
+    stateRef.value = cpf;
+    stateRef.available = true;
+    stateRef.error = '';
+    if (digits.length !== 11) return;
+    stateRef.pending = true;
+    fetch('/register/check-cpf/?cpf=' + encodeURIComponent(cpf), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (stateRef.value !== cpf) return;
+        stateRef.pending = false;
+        stateRef.available = !!data.available;
+        stateRef.error = data.error || '';
+        if (!data.available) {
+          showErr(input, errorEl, stateRef.error || 'CPF já cadastrado no sistema.');
+        } else {
+          clearErr(input, errorEl);
+        }
+      })
+      .catch(function () {
+        stateRef.pending = false;
+      });
   }
 
   // ── Elementos — Etapa dependente (step-dep) ───────────────────────────────────
@@ -760,8 +799,15 @@
   }
 
   function onEnterHealth(personIdx) {
-    var person = getPersonForClass(personIdx);
-    var label  = person.name || (isHolderPerson(personIdx) ? 'Você' : 'Dependente');
+    var label;
+    if (isHolderPerson(personIdx)) {
+      label = getHidden('id_holder_name') || 'Você';
+    } else if (isGuardianPrincipal(personIdx)) {
+      label = getHidden('id_guardian_name') || 'Responsável';
+    } else {
+      var p = getPersonForClass(personIdx);
+      label = p.name || 'Dependente';
+    }
     if (healthBadge) healthBadge.textContent = 'Saúde — ' + label;
     if (healthTitle) healthTitle.textContent  = 'Dados de saúde';
 
@@ -772,6 +818,13 @@
         allergies:        getHidden('id_holder_allergies'),
         injuries:         getHidden('id_holder_injuries'),
         emergencyContact: getHidden('id_holder_emergency_contact'),
+      };
+    } else if (isGuardianPrincipal(personIdx)) {
+      data = {
+        bloodType:        getHidden('id_guardian_blood_type'),
+        allergies:        getHidden('id_guardian_allergies'),
+        injuries:         getHidden('id_guardian_injuries'),
+        emergencyContact: getHidden('id_guardian_emergency_contact'),
       };
     } else {
       var dep = state.deps[getDepIdxForPerson(personIdx)] || {};
@@ -793,6 +846,11 @@
       setHidden('id_holder_allergies',         data.allergies);
       setHidden('id_holder_injuries',          data.injuries);
       setHidden('id_holder_emergency_contact', data.emergencyContact);
+    } else if (isGuardianPrincipal(personIdx)) {
+      setHidden('id_guardian_blood_type',        data.bloodType);
+      setHidden('id_guardian_allergies',         data.allergies);
+      setHidden('id_guardian_injuries',          data.injuries);
+      setHidden('id_guardian_emergency_contact', data.emergencyContact);
     } else {
       var di = getDepIdxForPerson(personIdx);
       if (di >= 0 && di < state.deps.length) {
@@ -854,33 +912,51 @@
   }
 
   function onEnterMartial(personIdx) {
-    var person = getPersonForClass(personIdx);
-    var label  = person.name || (isHolderPerson(personIdx) ? 'Você' : 'Dependente');
+    var label;
+    if (isHolderPerson(personIdx)) {
+      label = getHidden('id_holder_name') || 'Você';
+    } else if (isGuardianPrincipal(personIdx)) {
+      label = getHidden('id_guardian_name') || 'Responsável';
+    } else {
+      var p = getPersonForClass(personIdx);
+      label = p.name || 'Dependente';
+    }
     if (martialBadge) martialBadge.textContent = 'Histórico esportivo — ' + label;
 
     var data;
     if (isHolderPerson(personIdx)) {
       data = {
-        hasMartialArt:            getHidden('id_holder_has_martial_art'),
-        martialArt:               getHidden('id_holder_martial_art'),
-        martialArtGraduation:     getHidden('id_holder_martial_art_graduation'),
-        jiuJitsuBelt:             getHidden('id_holder_jiu_jitsu_belt'),
-        jiuJitsuStripes:          getHidden('id_holder_jiu_jitsu_stripes') || '0',
-        martialArtStartedAt:      getHidden('id_holder_martial_art_started_at'),
+        hasMartialArt:              getHidden('id_holder_has_martial_art'),
+        martialArt:                 getHidden('id_holder_martial_art'),
+        martialArtGraduation:       getHidden('id_holder_martial_art_graduation'),
+        jiuJitsuBelt:               getHidden('id_holder_jiu_jitsu_belt'),
+        jiuJitsuStripes:            getHidden('id_holder_jiu_jitsu_stripes') || '0',
+        martialArtStartedAt:        getHidden('id_holder_martial_art_started_at'),
         martialArtLastGraduationAt: getHidden('id_holder_martial_art_last_graduation_at'),
-        previousAcademy:          getHidden('id_holder_previous_academy'),
+        previousAcademy:            getHidden('id_holder_previous_academy'),
+      };
+    } else if (isGuardianPrincipal(personIdx)) {
+      data = {
+        hasMartialArt:              getHidden('id_guardian_has_martial_art'),
+        martialArt:                 getHidden('id_guardian_martial_art'),
+        martialArtGraduation:       getHidden('id_guardian_martial_art_graduation'),
+        jiuJitsuBelt:               getHidden('id_guardian_jiu_jitsu_belt'),
+        jiuJitsuStripes:            getHidden('id_guardian_jiu_jitsu_stripes') || '0',
+        martialArtStartedAt:        getHidden('id_guardian_martial_art_started_at'),
+        martialArtLastGraduationAt: getHidden('id_guardian_martial_art_last_graduation_at'),
+        previousAcademy:            getHidden('id_guardian_previous_academy'),
       };
     } else {
       var dep = state.deps[getDepIdxForPerson(personIdx)] || {};
       data = {
-        hasMartialArt:            dep.hasMartialArt || '',
-        martialArt:               dep.martialArt || '',
-        martialArtGraduation:     dep.martialArtGraduation || '',
-        jiuJitsuBelt:             dep.jiuJitsuBelt || '',
-        jiuJitsuStripes:          dep.jiuJitsuStripes || '0',
-        martialArtStartedAt:      dep.martialArtStartedAt || '',
+        hasMartialArt:              dep.hasMartialArt || '',
+        martialArt:                 dep.martialArt || '',
+        martialArtGraduation:       dep.martialArtGraduation || '',
+        jiuJitsuBelt:               dep.jiuJitsuBelt || '',
+        jiuJitsuStripes:            dep.jiuJitsuStripes || '0',
+        martialArtStartedAt:        dep.martialArtStartedAt || '',
         martialArtLastGraduationAt: dep.martialArtLastGraduationAt || '',
-        previousAcademy:          dep.previousAcademy || '',
+        previousAcademy:            dep.previousAcademy || '',
       };
     }
 
@@ -950,6 +1026,15 @@
       setHidden('id_holder_martial_art_started_at',         data.martialArtStartedAt);
       setHidden('id_holder_martial_art_last_graduation_at', data.martialArtLastGraduationAt);
       setHidden('id_holder_previous_academy',               data.previousAcademy);
+    } else if (isGuardianPrincipal(personIdx)) {
+      setHidden('id_guardian_has_martial_art',                data.hasMartialArt);
+      setHidden('id_guardian_martial_art',                    data.martialArt);
+      setHidden('id_guardian_martial_art_graduation',         data.martialArtGraduation);
+      setHidden('id_guardian_jiu_jitsu_belt',                 data.jiuJitsuBelt);
+      setHidden('id_guardian_jiu_jitsu_stripes',              data.jiuJitsuStripes);
+      setHidden('id_guardian_martial_art_started_at',         data.martialArtStartedAt);
+      setHidden('id_guardian_martial_art_last_graduation_at', data.martialArtLastGraduationAt);
+      setHidden('id_guardian_previous_academy',               data.previousAcademy);
     } else {
       var di = getDepIdxForPerson(personIdx);
       if (di >= 0 && di < state.deps.length) {
@@ -997,6 +1082,13 @@
     } catch (e) { return false; }
   })();
 
+  var regPostMaterialsSkipped = (function () {
+    try {
+      var el = document.getElementById('reg-post-materials-skipped-json');
+      return el ? JSON.parse(el.textContent) : false;
+    } catch (e) { return false; }
+  })();
+
   var planOrderData = (function () {
     try {
       var el = document.getElementById('reg-plan-order-json');
@@ -1034,36 +1126,126 @@
 
   var planFilter    = { frequency: null, cycle: null, method: null };
   var selectedPlanId = null;
+  var currentPlanPersonIndex = 0;
 
   function fmtPrice(val) {
     var n = parseFloat(val);
     return isNaN(n) ? 'R$ —' : 'R$ ' + n.toFixed(2).replace('.', ',');
   }
 
+  function getTrainingPersonsForPlans() {
+    var persons = [];
+    if (state.profile === PROFILE_HOLDER) {
+      persons.push({
+        label: getHidden('id_holder_name') || 'Titular',
+        birthdate: getHidden('id_holder_birthdate') || '',
+        sex: getHidden('id_holder_biological_sex') || '',
+      });
+      state.deps.forEach(function (dep, idx) {
+        persons.push({
+          label: dep.name || ('Dependente ' + (idx + 1)),
+          birthdate: dep.birthdate || '',
+          sex: dep.sex || '',
+        });
+      });
+      return persons;
+    }
+    state.deps.forEach(function (dep, idx) {
+      persons.push({
+        label: dep.name || ('Aluno ' + (idx + 1)),
+        birthdate: dep.birthdate || '',
+        sex: dep.sex || '',
+      });
+    });
+    return persons;
+  }
+
+  function ensurePlanSelections() {
+    var persons = getTrainingPersonsForPlans();
+    while (state.planSelections.length < persons.length) {
+      state.planSelections.push({ personIndex: state.planSelections.length, label: '', planId: null });
+    }
+    state.planSelections.length = persons.length;
+    persons.forEach(function (person, index) {
+      state.planSelections[index].personIndex = index;
+      state.planSelections[index].label = person.label;
+    });
+    if (currentPlanPersonIndex >= persons.length) currentPlanPersonIndex = Math.max(0, persons.length - 1);
+  }
+
+  function getEligiblePlansForCurrentPerson() {
+    var persons = getTrainingPersonsForPlans();
+    var person = persons[currentPlanPersonIndex] || persons[0] || {};
+    var audience = resolveAudience(person.birthdate);
+    return getEligiblePlans().filter(function (p) {
+      if (!audience) return true;
+      if (p.is_family_plan) return persons.length >= 2;
+      if (p.audience === 'adult') return audience === 'adult';
+      if (p.audience === 'kids_juvenile') return audience === 'kids' || audience === 'juvenile';
+      return true;
+    });
+  }
+
   function planFreqs() {
     var seen = {};
-    getEligiblePlans().forEach(function (p) { seen[p.weekly_frequency] = true; });
+    getEligiblePlansForCurrentPerson().forEach(function (p) { seen[p.weekly_frequency] = true; });
     return Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
   }
 
   function planCycles() {
     var seen = {};
-    getEligiblePlans().forEach(function (p) { seen[p.billing_cycle] = true; });
+    getEligiblePlansForCurrentPerson().forEach(function (p) { seen[p.billing_cycle] = true; });
     return CYCLE_ORDER.filter(function (c) { return seen[c]; });
   }
 
   function planMethods() {
     var seen = {};
-    getEligiblePlans().forEach(function (p) { seen[p.payment_method] = true; });
+    getEligiblePlansForCurrentPerson().forEach(function (p) { seen[p.payment_method] = true; });
     return Object.keys(seen);
   }
 
   function getFilteredPlans() {
-    return getEligiblePlans().filter(function (p) {
+    return getEligiblePlansForCurrentPerson().filter(function (p) {
       if (planFilter.frequency !== null && p.weekly_frequency !== planFilter.frequency) return false;
       if (planFilter.cycle   && p.billing_cycle   !== planFilter.cycle)   return false;
       if (planFilter.method  && p.payment_method  !== planFilter.method)  return false;
       return true;
+    });
+  }
+
+  function renderPlanPersonTabs() {
+    var area = document.getElementById('plan-person-tabs-area');
+    if (!area) {
+      var filters = document.getElementById('plan-filters-area');
+      if (!filters || !filters.parentNode) return;
+      area = document.createElement('div');
+      area.id = 'plan-person-tabs-area';
+      filters.parentNode.insertBefore(area, filters);
+    }
+    ensurePlanSelections();
+    var persons = getTrainingPersonsForPlans();
+    if (persons.length <= 1) {
+      area.innerHTML = '';
+      return;
+    }
+    var html = '<div class="plan-filter-section"><p class="plan-filter-label">Plano por aluno</p><div class="plan-filter-row">';
+    persons.forEach(function (person, index) {
+      var selected = state.planSelections[index] && state.planSelections[index].planId;
+      html += '<button type="button" class="plan-filter-pill' + (index === currentPlanPersonIndex ? ' plan-filter-pill--active' : '') + '" data-plan-person="' + index + '">';
+      html += escHtml(person.label);
+      if (selected) html += '<span class="plan-filter-pill__badge">Selecionado</span>';
+      html += '</button>';
+    });
+    html += '</div></div>';
+    area.innerHTML = html;
+    area.querySelectorAll('[data-plan-person]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentPlanPersonIndex = parseInt(this.getAttribute('data-plan-person'), 10);
+        planFilter.cycle = null;
+        planFilter.frequency = null;
+        renderPlanPersonTabs();
+        onEnterPlan();
+      });
     });
   }
 
@@ -1075,7 +1257,7 @@
     var cycles  = planCycles();
     var methods = planMethods();
 
-    var eligible = getEligiblePlans();
+    var eligible = getEligiblePlansForCurrentPerson();
     if (eligible.length === 0) { area.innerHTML = ''; return; }
 
     // Auto-seleciona quando só há uma opção
@@ -1140,7 +1322,7 @@
       var emptyMsg = planCatalog.length === 0
         ? 'Nenhum plano cadastrado ainda. Execute o seed de planos para continuar.'
         : getEligiblePlans().length === 0
-          ? 'Nenhum plano disponível para o seu perfil de cadastro.'
+          ? 'Nenhum plano disponível para esta pessoa.'
           : 'Nenhum plano disponível para os filtros selecionados.';
       area.innerHTML = '<p class="plan-cards--empty">' + emptyMsg + '</p>';
       return;
@@ -1148,7 +1330,8 @@
 
     var html = '<div class="plan-cards">';
     plans.forEach(function (plan) {
-      var isSelected = plan.id === selectedPlanId;
+      var currentSelection = state.planSelections[currentPlanPersonIndex] || {};
+      var isSelected = plan.id === currentSelection.planId;
       var price      = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
       var tierLabel  = plan.name || plan.commercial_tier_label || plan.code;
       var isFeatured = /fidel|loyal/i.test(plan.code || '');
@@ -1198,26 +1381,65 @@
 
   function selectPlan(planId) {
     selectedPlanId = planId;
+    ensurePlanSelections();
+    if (state.planSelections[currentPlanPersonIndex]) {
+      state.planSelections[currentPlanPersonIndex].planId = planId;
+    }
+    syncSelectedPlansPayload();
     setHidden('id_selected_plan', planId);
     var plan = planCatalog.find(function (p) { return p.id === planId; });
     if (plan) {
       setHidden('id_checkout_action', plan.payment_method === 'pix' ? 'pix' : 'asaas_card');
     }
+    renderPlanPersonTabs();
     renderPlanCards();
     var err = document.getElementById('plan-step-error');
     if (err) { err.hidden = true; err.textContent = ''; }
   }
 
   function validatePlan() {
-    if (!selectedPlanId) {
+    ensurePlanSelections();
+    var missing = state.planSelections.some(function (entry) { return !entry.planId; });
+    if (missing) {
       var err = document.getElementById('plan-step-error');
-      if (err) { err.textContent = 'Selecione um plano para continuar.'; err.hidden = false; }
+      if (err) { err.textContent = 'Selecione um plano para cada aluno antes de pagar.'; err.hidden = false; }
       return false;
     }
+    var methods = {};
+    state.planSelections.forEach(function (entry) {
+      var plan = planCatalog.find(function (p) { return p.id === entry.planId; });
+      if (plan) methods[plan.payment_method] = true;
+    });
+    if (Object.keys(methods).length > 1) {
+      var methodErr = document.getElementById('plan-step-error');
+      if (methodErr) {
+        methodErr.textContent = 'Para pagar todos agora, selecione planos com a mesma forma de pagamento. O período pode ser diferente por aluno.';
+        methodErr.hidden = false;
+      }
+      return false;
+    }
+    syncSelectedPlansPayload();
     return true;
   }
 
+  function syncSelectedPlansPayload() {
+    var payload = state.planSelections.map(function (entry) {
+      return {
+        person_index: entry.personIndex,
+        label: entry.label,
+        plan_id: entry.planId
+      };
+    });
+    setHidden('id_selected_plans_payload', JSON.stringify(payload));
+    if (payload.length && payload[0].plan_id) {
+      setHidden('id_selected_plan', payload[0].plan_id);
+      selectedPlanId = payload[0].plan_id;
+    }
+  }
+
   function onEnterPlan() {
+    ensurePlanSelections();
+    renderPlanPersonTabs();
     if (!planFilter.cycle) {
       var cycles = planCycles();
       if (cycles.length) planFilter.cycle = cycles[0];
@@ -1575,6 +1797,11 @@
   // ── Eventos — Etapa principal ─────────────────────────────────────────────────
 
   bindMask(s2Cpf,       maskCpf);
+  if (s2Cpf) {
+    s2Cpf.addEventListener('input', function () {
+      checkCpfAvailability(s2Cpf, s2CpfError, s2CpfAvailability);
+    });
+  }
   bindMask(s2Phone,     maskPhone);
   bindMask(s2Birthdate, maskDate);
   bindMask(s2PostalCode, maskCep);
@@ -1663,7 +1890,9 @@
   if (elStepPlanNext) {
     elStepPlanNext.addEventListener('click', function () {
       if (!validatePlan()) return;
-      goTo(state.stepIndex + 1);
+      var firstPlan = planCatalog.find(function (p) { return p.id === state.planSelections[0].planId; });
+      setHidden('id_checkout_action', (firstPlan && firstPlan.payment_method === 'pix') ? 'pix' : 'asaas_card');
+      document.getElementById('wizard-form').submit();
     });
   }
 
@@ -1745,10 +1974,30 @@
     if (wizForm) wizForm.hidden = true;
     var el = document.getElementById(stepId);
     if (el) el.hidden = false;
-    var fill = document.getElementById('wizard-progress-fill');
-    if (fill) fill.style.width = stepId === 'step-review' ? '100%' : '80%';
-    var progress = document.getElementById('wizard-progress');
-    if (progress) progress.textContent = 'Finalizando cadastro';
+
+    // Reconstrói sequência a partir dos dados do pending person (modo pós-pagamento)
+    if (state.stepSequence.length === 0 && pendingPersonData) {
+      if (pendingPersonData.person_type_code === PROFILE_GUARDIAN) {
+        state.profile = PROFILE_GUARDIAN;
+        state.guardianStudentCount = (pendingPersonData.students && pendingPersonData.students.length) || 1;
+      } else {
+        state.profile = PROFILE_HOLDER;
+        state.holderDepCount = (pendingPersonData.students && pendingPersonData.students.length) || 0;
+      }
+      buildStepSequence();
+    }
+
+    // Avança o contador: step-plan-confirmed/step-products/step-review não estão na sequência,
+    // então usa o índice do step pai correspondente para o progresso ficar correto
+    var idx = state.stepSequence.indexOf(stepId);
+    if (idx < 0) {
+      var fallbackStep = (stepId === 'step-plan-confirmed') ? 'step-plan' : 'step-plan';
+      idx = state.stepSequence.indexOf(fallbackStep);
+    }
+    if (idx >= 0) {
+      state.stepIndex = idx;
+      updateProgress();
+    }
 
     var back = document.getElementById('wizard-back');
     var backLabel = document.getElementById('wizard-back-label');
@@ -1762,8 +2011,30 @@
           var productsEl = document.getElementById('step-products');
           if (reviewEl) reviewEl.hidden = true;
           if (productsEl) productsEl.hidden = false;
-          var fillEl = document.getElementById('wizard-progress-fill');
-          if (fillEl) fillEl.style.width = '80%';
+          var pidx = state.stepSequence.indexOf('step-products');
+          if (pidx >= 0) { state.stepIndex = pidx; updateProgress(); }
+        };
+      } else if (stepId === 'step-plan-confirmed') {
+        if (backLabel) backLabel.textContent = 'Voltar';
+        back.onclick = function (e) {
+          e.preventDefault();
+          var confirmedEl = document.getElementById('step-plan-confirmed');
+          if (confirmedEl) confirmedEl.hidden = true;
+          var wf = document.getElementById('wizard-form');
+          if (wf) wf.hidden = false;
+          // Esconde todos os steps do wizard e exibe apenas step-plan
+          state.stepSequence.forEach(function (sid) {
+            var sel = document.getElementById(sid);
+            if (sel) sel.hidden = true;
+          });
+          var planEl = document.getElementById('step-plan');
+          if (planEl) planEl.hidden = false;
+          var planIdx = state.stepSequence.indexOf('step-plan');
+          if (planIdx >= 0) {
+            state.stepIndex = planIdx;
+            updateProgress();
+          }
+          onEnterPlan();
         };
       } else {
         if (backLabel) backLabel.textContent = 'Voltar';
@@ -2174,11 +2445,51 @@
     if (!area) return;
     var html = '';
 
-    if (planOrderData) {
+    // Bloco do responsável ou aluno principal
+    if (pendingPersonData) {
+      var isGuardian = pendingPersonData.person_type_code === 'guardian';
+      html += '<div class="order-review-block">';
+      html += '<p class="order-review-block__label">' + (isGuardian ? 'Responsável' : 'Aluno') + '</p>';
+      html += '<p class="order-review-block__name">' + escHtml(pendingPersonData.full_name) + '</p>';
+      if (pendingPersonData.email) {
+        html += '<p class="order-review-block__meta">' + escHtml(pendingPersonData.email) + '</p>';
+      }
+      html += '</div>';
+
+      // Alunos vinculados (perfil guardian)
+      var students = pendingPersonData.students || [];
+      var planTotal = parseFloat((planOrderData && planOrderData.total) || 0);
+      var perStudent = students.length > 0 ? planTotal / students.length : planTotal;
+      students.forEach(function (s, idx) {
+        html += '<div class="order-review-block">';
+        html += '<p class="order-review-block__label">Aluno ' + (idx + 1) + '</p>';
+        html += '<p class="order-review-block__name">' + escHtml(s.full_name) + '</p>';
+        if (s.class_group_name) {
+          html += '<p class="order-review-block__meta">Turma: ' + escHtml(s.class_group_name) + '</p>';
+        }
+        if (planOrderData && planOrderData.plan_name) {
+          html += '<p class="order-review-block__meta">Plano: ' + escHtml(planOrderData.plan_name) + '</p>';
+        }
+        if (perStudent > 0) {
+          html += '<p class="order-review-block__amount">R$ ' + perStudent.toFixed(2).replace('.', ',') + '</p>';
+        }
+        html += '</div>';
+      });
+
+      // Aluno único (perfil holder)
+      if (!isGuardian && pendingPersonData.class_group_name) {
+        html += '<div class="order-review-block">';
+        html += '<p class="order-review-block__label">Turma</p>';
+        html += '<p class="order-review-block__name">' + escHtml(pendingPersonData.class_group_name) + '</p>';
+        html += '</div>';
+      }
+    }
+
+    if (planOrderData && planOrderData.plan_name) {
       html += '<div class="order-review-block">';
       html += '<p class="order-review-block__label">Plano contratado</p>';
       html += '<p class="order-review-block__name">' + escHtml(planOrderData.plan_name || 'Plano') + '</p>';
-      html += '<p class="order-review-block__amount">R$ ' + (parseFloat(planOrderData.total || 0).toFixed(2).replace('.', ',')) + '</p>';
+      html += '<p class="order-review-block__amount">Total: R$ ' + (parseFloat(planOrderData.total || 0).toFixed(2).replace('.', ',')) + '</p>';
       html += '</div>';
     }
 
@@ -2203,14 +2514,101 @@
     area.innerHTML = html;
   }
 
+  var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+  function renderPlanConfirmed() {
+    var summaryArea = document.getElementById('plan-confirmed-summary-area');
+    var actionsArea = document.getElementById('plan-confirmed-actions-area');
+
+    var html = '<div class="checkout-confirmed-banner">';
+    html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+    html += '<span class="checkout-confirmed-banner__text">Pagamento confirmado</span>';
+    html += '</div>';
+
+    if (planOrderData) {
+      html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+      html += '<p class="checkout-summary__label">Plano contratado</p>';
+      if (planOrderData.plan_name) {
+        html += '<p class="checkout-summary__value">' + escHtml(planOrderData.plan_name) + '</p>';
+      }
+      if (planOrderData.total) {
+        html += '<p class="checkout-summary__plan-meta">Total: R$ ' + parseFloat(planOrderData.total).toFixed(2).replace('.', ',') + '</p>';
+      }
+      html += '</div></div>';
+    }
+
+    if (summaryArea) summaryArea.innerHTML = html;
+
+    if (actionsArea) {
+      actionsArea.innerHTML = '<button type="button" class="btn-checkout-pay" id="btn-plan-confirmed-continue">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
+        ' Continuar para materiais</button>';
+      var btn = document.getElementById('btn-plan-confirmed-continue');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var planConfEl = document.getElementById('step-plan-confirmed');
+          if (planConfEl) planConfEl.hidden = true;
+          showPostPaymentMode('step-products');
+          bindProductsSection();
+        });
+      }
+    }
+  }
+
+  function renderMaterialsConfirmed() {
+    var confirmArea = document.getElementById('products-confirm-area');
+    var subCatalog = document.getElementById('products-subview-catalog');
+    var subConfigure = document.getElementById('products-subview-configure');
+    var subCart = document.getElementById('products-subview-cart');
+    if (subCatalog)   subCatalog.hidden   = true;
+    if (subConfigure) subConfigure.hidden = true;
+    if (subCart)      subCart.hidden      = true;
+
+    var html = '<div class="checkout-confirmed-banner">';
+    html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+    html += '<span class="checkout-confirmed-banner__text">Materiais confirmados</span>';
+    html += '</div>';
+
+    if (materialsOrderData && materialsOrderData.items && materialsOrderData.items.length > 0) {
+      html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+      html += '<p class="checkout-summary__label">Materiais adquiridos</p>';
+      materialsOrderData.items.forEach(function (item) {
+        html += '<div class="order-review-item"><span>' + escHtml(item.name) + ' × ' + item.quantity + '</span>';
+        html += '<span>R$ ' + parseFloat(item.subtotal || 0).toFixed(2).replace('.', ',') + '</span></div>';
+      });
+      html += '<p class="checkout-summary__plan-meta" style="margin-top:.5rem">Total: R$ ' + parseFloat(materialsOrderData.total || 0).toFixed(2).replace('.', ',') + '</p>';
+      html += '</div></div>';
+    }
+
+    html += '<div class="checkout-actions" style="margin-top:1rem">';
+    html += '<button type="button" class="btn-checkout-pay" id="btn-materials-confirmed-continue">';
+    html += '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    html += ' Continuar para o resumo</button></div>';
+
+    if (confirmArea) confirmArea.innerHTML = html;
+
+    var btn = document.getElementById('btn-materials-confirmed-continue');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var productsEl = document.getElementById('step-products');
+        if (productsEl) productsEl.hidden = true;
+        showPostPaymentMode('step-review');
+        renderReview();
+      });
+    }
+  }
+
   // ── Inicialização ─────────────────────────────────────────────────────────────
 
-  if (regPostMaterials) {
+  if (regPostMaterialsSkipped) {
     showPostPaymentMode('step-review');
     renderReview();
-  } else if (regPostPlan) {
+  } else if (regPostMaterials) {
     showPostPaymentMode('step-products');
-    bindProductsSection();
+    renderMaterialsConfirmed();
+  } else if (regPostPlan) {
+    showPostPaymentMode('step-plan-confirmed');
+    renderPlanConfirmed();
   } else {
     var initialProfile = elProfileInput ? elProfileInput.value : '';
     if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {

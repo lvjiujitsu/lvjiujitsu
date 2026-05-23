@@ -1,5 +1,10 @@
 # PRD-021: Revisão completa do fluxo de cadastro — pré-registro, pagamento sequencial e finalização explícita
 
+> **SUPERADO PELO PRD-040 EM 2026-05-21.**
+> Este PRD registrava uma solucao intermediaria com `Person(is_active=False)` antes da finalizacao.
+> Essa abordagem nao e mais aceita.
+> A fonte de verdade vigente e `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md`: mensalidade e materiais devem ser pagos antes de qualquer criacao de `Person`, `PortalAccount`, relacionamentos, turmas ou acesso.
+
 ## Resumo do que será implementado
 
 Reestruturação completa do fluxo de cadastro público para que:

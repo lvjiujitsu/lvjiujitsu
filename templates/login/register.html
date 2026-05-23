@@ -17,6 +17,7 @@
   <script type="application/json" id="reg-fee-config-json">{{ fee_config_json|safe }}</script>
   <script type="application/json" id="reg-post-plan-json">{{ post_plan_payment_complete|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-post-materials-skipped-json">{{ post_materials_skipped|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-plan-order-json">{{ plan_order_json|safe }}</script>
   <script type="application/json" id="reg-materials-order-json">{{ materials_order_json|safe }}</script>
   <script type="application/json" id="reg-pending-person-json">{{ pending_person_json|safe }}</script>
@@ -72,6 +73,7 @@
 
       {# Campos de checkout #}
       <input type="hidden" name="selected_plan" id="id_selected_plan" value="{{ form.selected_plan.value|default:'' }}">
+      <input type="hidden" name="selected_plans_payload" id="id_selected_plans_payload" value="[]">
       <input type="hidden" name="selected_products_payload" id="id_selected_products_payload" value="{{ form.selected_products_payload.value|default:'[]' }}">
       <input type="hidden" name="checkout_action" id="id_checkout_action" value="{{ form.checkout_action.value|default:'pay_later' }}">
 
@@ -628,24 +630,23 @@
 
         <div class="wizard-step__actions">
           <button type="button" class="btn-next" id="step-plan-next">
-            Revisar e concluir
+            Pagar mensalidade
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
       </section>{# /step-plan #}
 
-      {# ── Etapa de checkout — resumo e pagamento ── #}
-      <section class="wizard-step" id="step-checkout" data-step="checkout" hidden>
-        <div class="wizard-step__heading">
-          <h1 class="wizard-step__title">Finalizar cadastro</h1>
-          <p class="wizard-step__subtitle">Revise o pedido e escolha como pagar</p>
-        </div>
-
-        <div id="checkout-summary-area"></div>
-        <div id="checkout-actions-area" class="checkout-actions"></div>
-      </section>{# /step-checkout #}
-
     </form>
+
+    {# ── Etapa pós-plano: confirmação de pagamento ────────────────────────── #}
+    <section id="step-plan-confirmed" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Pagamento do plano</h1>
+        <p class="wizard-step__subtitle">Revise a confirmação e avance para os materiais</p>
+      </div>
+      <div id="plan-confirmed-summary-area"></div>
+      <div id="plan-confirmed-actions-area" class="checkout-actions"></div>
+    </section>
 
     {# ── Etapa pós-plano: escolher materiais ────────────────────────────────── #}
     <section id="step-products" class="wizard-step" hidden>
@@ -731,6 +732,6 @@
 
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=16" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=20" defer></script>
 </body>
 </html>

@@ -162,6 +162,30 @@ class PortalRegistrationForm(forms.Form):
     guardian_address_complement = forms.CharField(required=False, max_length=100)
     guardian_address_neighborhood = forms.CharField(required=False, max_length=100)
     guardian_city = forms.CharField(required=False, max_length=100)
+    guardian_blood_type = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(BloodType.choices),
+    )
+    guardian_allergies = forms.CharField(required=False)
+    guardian_injuries = forms.CharField(required=False)
+    guardian_emergency_contact = forms.CharField(required=False, max_length=255)
+    guardian_has_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_EXPERIENCE_CHOICES,
+    )
+    guardian_martial_art = forms.ChoiceField(
+        required=False,
+        choices=MARTIAL_ART_MODALITY_CHOICES,
+    )
+    guardian_martial_art_graduation = forms.CharField(required=False, max_length=120)
+    guardian_jiu_jitsu_belt = forms.ChoiceField(
+        required=False,
+        choices=[("", "Selecione")] + list(JiuJitsuBelt.choices),
+    )
+    guardian_jiu_jitsu_stripes = forms.IntegerField(required=False, min_value=0, max_value=4)
+    guardian_martial_art_started_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    guardian_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
+    guardian_previous_academy = forms.CharField(required=False, max_length=200)
 
     student_name = forms.CharField(required=False, max_length=255)
     student_cpf = forms.CharField(required=False, max_length=14)
@@ -610,6 +634,7 @@ class PortalRegistrationForm(forms.Form):
             if include_dependent:
                 prefixes.append("dependent")
         elif profile == RegistrationProfile.GUARDIAN:
+            prefixes.append("guardian")
             prefixes.append("student")
 
         for prefix in prefixes:

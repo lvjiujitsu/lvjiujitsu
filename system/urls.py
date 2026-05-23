@@ -5,6 +5,7 @@ from system.views.auth_views import (
     FinalizeRegistrationView,
     MaterialsCheckoutView,
     PortalLoginView,
+    RegistrationCpfAvailabilityView,
     PortalLogoutView,
     PortalPasswordResetCompleteView,
     PortalPasswordResetConfirmView,
@@ -44,6 +45,7 @@ urlpatterns = [
     path("login/", PortalLoginView.as_view(), name="login"),
     path("logout/", PortalLogoutView.as_view(), name="logout"),
     path("register/", PortalRegisterView.as_view(), name="register"),
+    path("register/check-cpf/", RegistrationCpfAvailabilityView.as_view(), name="register-check-cpf"),
     path("register/materiais/", MaterialsCheckoutView.as_view(), name="register-materials-checkout"),
     path("register/finalizar/", FinalizeRegistrationView.as_view(), name="register-finalize"),
 

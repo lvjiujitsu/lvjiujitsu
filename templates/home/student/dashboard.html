@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Início — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/auth/login.css' %}?v=4">
+</head>
+<body class="login-page">
+  <div style="max-width:480px;margin:3rem auto;padding:2rem;text-align:center">
+    <img src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="120" style="margin-bottom:1.5rem">
+    <h1 style="font-size:1.5rem;font-weight:700;color:var(--text);margin-bottom:.5rem">Bem-vindo ao portal!</h1>
+    <p style="color:var(--muted);margin-bottom:2rem">Seu cadastro foi concluído com sucesso.</p>
+    <a href="{% url 'system:logout' %}" style="color:var(--muted);font-size:.875rem">Sair</a>
+  </div>
+</body>
+</html>

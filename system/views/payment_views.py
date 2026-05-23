@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.views import View
 
 from system.models.person import PersonRelationship, PersonRelationshipKind, PortalAccount
+from system.models import PreRegistration, PreRegistrationStatus
 from system.models.registration_order import (
     PaymentStatus,
     RegistrationOrder,
@@ -134,6 +135,10 @@ class RetryPendingOrderView(View):
 
 class PaymentSuccessView(View):
     def get(self, request, *args, **kwargs):
+        pre_registration_response = self._handle_pre_registration_success(request)
+        if pre_registration_response is not None:
+            return pre_registration_response
+
         order_id = request.session.pop("pending_checkout_order_id", None)
         order = None
 
@@ -180,6 +185,56 @@ class PaymentSuccessView(View):
 
         messages.success(request, "Pagamento confirmado!")
         return redirect("system:login")
+
+    def _handle_pre_registration_success(self, request):
+        pre_registration_id = request.GET.get("pre_registration_id") or request.session.get(
+            "pending_pre_registration_id"
+        )
+        stage = request.GET.get("stage") or ""
+
+        pre_registration = None
+        if pre_registration_id and stage in ("plan", "materials"):
+            pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
+
+        # Fallback: Asaas pode perder os query params originais e só enviar ?id=pay_xxx
+        if pre_registration is None:
+            asaas_payment_id = request.GET.get("id") or ""
+            if asaas_payment_id:
+                pr = PreRegistration.objects.filter(
+                    form_snapshot__plan_payment__asaas_payment_id=asaas_payment_id
+                ).first()
+                if pr:
+                    pre_registration = pr
+                    stage = "plan"
+                else:
+                    pr = PreRegistration.objects.filter(
+                        form_snapshot__materials_payment__asaas_payment_id=asaas_payment_id
+                    ).first()
+                    if pr:
+                        pre_registration = pr
+                        stage = "materials"
+
+        if pre_registration is None:
+            return None
+
+        request.session["pending_pre_registration_id"] = pre_registration.pk
+        snapshot = pre_registration.form_snapshot or {}
+        if stage == "plan":
+            snapshot["plan_paid"] = True
+            pre_registration.form_snapshot = snapshot
+            pre_registration.status = PreRegistrationStatus.PAYMENT_CONFIRMED
+            pre_registration.save(update_fields=["form_snapshot", "status", "updated_at"])
+            request.session["post_plan_payment_complete"] = True
+            request.session.pop("post_materials_payment_complete", None)
+            request.session.pop("post_materials_skipped", None)
+        else:
+            snapshot["materials_paid"] = True
+            pre_registration.form_snapshot = snapshot
+            pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+            request.session["post_materials_payment_complete"] = True
+            request.session.pop("post_materials_skipped", None)
+        messages.success(request, "Pagamento confirmado!")
+        return redirect("system:register")
 
 
 class PaymentCancelView(View):

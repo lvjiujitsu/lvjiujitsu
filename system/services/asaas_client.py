@@ -82,6 +82,7 @@ def create_customer(
     address_number=None,
     address_complement=None,
     address_neighborhood=None,
+    city=None,
 ):
     body = {"name": name, "cpfCnpj": cpf_cnpj, "notificationDisabled": False}
     if email:
@@ -104,6 +105,8 @@ def create_customer(
         body["complement"] = address_complement
     if address_neighborhood:
         body["province"] = address_neighborhood
+    if city:
+        body["city"] = city
     return _request("POST", "/customers", json_body=body)
 
 
