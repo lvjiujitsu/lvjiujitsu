@@ -17,7 +17,7 @@ from system.models import (
     WeekdayCode,
 )
 from system.models.category import CategoryAudience, ClassCategory
-from system.models.calendar import CheckinStatus, ClassCheckin
+from system.models.calendar import CheckinStatus, ClassCheckin, ClassSession
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -74,6 +74,53 @@ class HomeDashboardTestCase(TestCase):
         self.assertIn(f'data-schedule-id="{self.schedule.pk}"', content)
         self.assertNotIn('href="#"', content)
         self.assertIn("system/js/dashboard.js", content)
+
+    def test_student_home_renders_calendar_link(self):
+        self._login_portal_account(self.account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn(f'href="{reverse("system:calendar")}"', content)
+        self.assertIn(">Cronograma</a>", content)
+        self.assertNotIn("Criar aulão", content)
+
+    def test_attendance_history_modal_uses_structured_filters(self):
+        teacher = Person.objects.create(
+            full_name="Professor Home",
+            cpf="222.222.222-22",
+            person_type=self.student_type,
+            birth_date=date(1990, 1, 1),
+            biological_sex="male",
+        )
+        self.group.main_teacher = teacher
+        self.group.save(update_fields=["main_teacher"])
+        session = ClassSession.objects.create(
+            schedule=self.schedule,
+            date=timezone.localdate(),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=self.student,
+            status=CheckinStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+        self._login_portal_account(self.account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn('class="attendance-history-filters"', content)
+        self.assertIn('class="modal__select js-attendance-history-class"', content)
+        self.assertIn('class="modal__select js-attendance-history-teacher"', content)
+        self.assertIn('class="modal__select js-attendance-history-month"', content)
+        self.assertIn('class="modal__select js-attendance-history-year"', content)
+        self.assertIn('data-class-filter="Turma Teste · Adulto"', content)
+        self.assertIn('data-teacher-filter="Professor Home"', content)
+        self.assertIn(f'data-year-filter="{timezone.localdate().year}"', content)
+        self.assertNotIn('type="search"', content)
 
     def test_student_checkin_endpoint_creates_pending_checkin(self):
         self._login_portal_account(self.account)

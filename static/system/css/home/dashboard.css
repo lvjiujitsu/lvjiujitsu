@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   LV JIU JITSU — Home Dashboard  v3
+   LV JIU JITSU — Home Dashboard  v9
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* ─── Tokens ────────────────────────────────────────────────────────────────── */
@@ -733,7 +733,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 /* ─── Grid de estatísticas de graduação ─────────────────────────────────────── */
 .grad-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -936,6 +936,10 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.18);
 }
 
+.modal--wide {
+  max-width: 720px;
+}
+
 @media (min-width: 600px) {
   .modal { border-radius: 1rem; box-shadow: var(--card-shadow-hover); }
 }
@@ -959,7 +963,8 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   margin-bottom: 0.375rem;
 }
 
-.modal__input {
+.modal__input,
+.modal__select {
   width: 100%;
   padding: 0.625rem 0.875rem;
   background: var(--surface);
@@ -972,7 +977,12 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   -webkit-appearance: none;
 }
 
-.modal__input:focus {
+.modal__select {
+  appearance: none;
+}
+
+.modal__input:focus,
+.modal__select:focus {
   outline: none;
   border-color: var(--brand-red);
   box-shadow: 0 0 0 3px var(--brand-red-muted);
@@ -1104,3 +1114,409 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .system-message--success { background: var(--success-muted); border: 1px solid rgba(22,163,74,.18);  color: var(--success); }
 .system-message--warning { background: var(--warning-muted); border: 1px solid rgba(217,119,6,.18);  color: var(--warning); }
 .system-message--info    { background: var(--info-muted);    border: 1px solid rgba(37,99,235,.18);  color: var(--info);    }
+
+/* ─── Título de seção com chevron (collapse) ─────────────────────────────── */
+.section__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.section__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.125rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.section__toggle:hover { color: var(--text); }
+.section__toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
+
+.section__toggle svg {
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.section__toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+
+/* ─── Modal: cabeçalho com fechar ────────────────────────────────────────── */
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.modal__header .modal__title {
+  margin-bottom: 0;
+}
+
+.modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.modal__close:hover { background: var(--surface); color: var(--text); border-color: var(--brand-red-muted); }
+.modal__close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ─── Modal: lista de check-ins (presença) ───────────────────────────────── */
+.modal-checkin-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  max-height: 55dvh;
+  overflow-y: auto;
+}
+
+.modal-checkin-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.modal-checkin-item:last-child { border-bottom: none; }
+
+.modal-checkin-item__name {
+  flex: 1;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-checkin-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+/* ─── Modal: estado vazio dentro do modal ────────────────────────────────── */
+.modal-empty {
+  padding: 1.75rem 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ─── Modal: histórico de presenças ─────────────────────────────────────── */
+.attendance-history-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.attendance-history-filters .modal__field {
+  margin-bottom: 0;
+}
+
+.attendance-history-filters .btn {
+  align-self: end;
+}
+
+@media (min-width: 600px) {
+  .attendance-history-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .attendance-history-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+    align-items: end;
+  }
+}
+
+.attendance-history-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 48dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.attendance-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.attendance-history-item:last-child {
+  border-bottom: none;
+}
+
+.attendance-history-item__date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: 46px;
+}
+
+.attendance-history-item__day {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.attendance-history-item__time {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.attendance-history-item__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.attendance-history-item__class {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--text);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-history-item__meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.875rem;
+}
+
+.modal-pagination__status {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  flex: 1;
+}
+
+/* ─── Graduação: histórico em modal ──────────────────────────────────────── */
+.grad-history-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ─── Graduação: rodapé do card (botão histórico) ────────────────────────── */
+.grad-card__footer {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* ─── Graduação: cabeçalho compacto (visível sempre) ────────────────────── */
+.grad-compact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.grad-compact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.grad-compact-info__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.grad-compact-info__rank {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ─── Graduação: painel de detalhes expandível ───────────────────────────── */
+.grad-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ─── Graduação: rótulo de regra IBJJF nos stats ────────────────────────── */
+.grad-stat__rule {
+  font-size: 0.5625rem;
+  color: var(--muted);
+  line-height: 1.3;
+  margin-top: 0.1875rem;
+}
+
+.grad-stat__detail {
+  font-size: 0.5625rem;
+  color: var(--muted);
+  line-height: 1.3;
+  font-style: italic;
+  margin-top: 0.125rem;
+}
+
+/* ─── Graduação: rodapé do painel expandível ─────────────────────────────── */
+.grad-details__footer {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* ─── Histórico de graduações: entrada no modal ──────────────────────────── */
+.grad-history-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.grad-history-entry:last-child {
+  border-bottom: none;
+}
+
+.grad-history-entry--current {
+  background: var(--surface);
+  border-radius: 6px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-bottom: none;
+  margin-bottom: 0.125rem;
+}
+
+.grad-history-entry__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.375rem;
+  background: transparent;
+}
+
+.grad-history-entry__dot--active {
+  background: var(--success);
+}
+
+.grad-history-entry__belt {
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+}
+
+.grad-history-entry__belt-svg {
+  display: block;
+  width: 100px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.grad-history-entry__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.grad-history-entry__rank {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.grad-history-entry__dates {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.125rem;
+}
+
+.grad-history-entry__period {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--brand-red);
+  margin-bottom: 0.25rem;
+}
+
+.grad-history-entry__granter {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-bottom: 0.125rem;
+}
+
+.grad-history-entry__notes {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ─── Histórico de graduações: rodapé do modal ───────────────────────────── */
+.grad-history-modal-footer {
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  justify-content: flex-end;
+}

@@ -50,11 +50,6 @@
     return pill;
   }
 
-  function replaceButtonWithPill(button, text, modifier) {
-    var pill = createStatusPill(text, modifier);
-    button.replaceWith(pill);
-  }
-
   function showCheckinError(button, message) {
     var holder = button.closest('.class-item__action');
     if (!holder) return;
@@ -151,47 +146,65 @@
     });
   }
 
-  function bindApproveCheckins() {
+  function replaceButtonWithPill(button, text, modifier) {
+    var pill = createStatusPill(text, modifier);
+    button.replaceWith(pill);
+  }
+
+  function handleApproveCheckin(button) {
     var config = readConfig();
     var csrfToken = getCsrfToken();
+    var checkinId = button.getAttribute('data-checkin-id');
+    var isSpecial = button.getAttribute('data-is-special') === 'true';
+    var url = isSpecial ? config.instructorApproveSpecialUrl : config.instructorApproveUrl;
 
-    document.querySelectorAll('.js-approve-checkin').forEach(function (button) {
-      button.addEventListener('click', function () {
-        var checkinId = button.getAttribute('data-checkin-id');
-        var isSpecial = button.getAttribute('data-is-special') === 'true';
-        var url = isSpecial ? config.instructorApproveSpecialUrl : config.instructorApproveUrl;
+    if (!url || !checkinId) return;
 
-        if (!url || !checkinId) return;
+    button.disabled = true;
+    button.textContent = 'Aprovando…';
 
-        button.disabled = true;
-        button.textContent = 'Aprovando…';
-
-        fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-          body: JSON.stringify({ checkin_id: parseInt(checkinId, 10) })
-        })
-          .then(function (response) {
-            return response.json().then(function (data) { return { ok: response.ok, data: data }; });
-          })
-          .then(function (result) {
-            if (!result.ok || !result.data.success) {
-              button.disabled = false;
-              button.textContent = 'Aprovar';
-              return;
-            }
-            var actionsDiv = button.closest('.checkin-row__actions');
-            if (actionsDiv) {
-              var waitingPill = actionsDiv.querySelector('.status-pill--warning');
-              if (waitingPill) waitingPill.remove();
-              button.replaceWith(createStatusPill('Confirmado', 'success'));
-            }
-          })
-          .catch(function () {
-            button.disabled = false;
-            button.textContent = 'Aprovar';
-          });
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ checkin_id: parseInt(checkinId, 10) })
+    })
+      .then(function (response) {
+        return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok || !result.data.success) {
+          button.disabled = false;
+          button.textContent = 'Aprovar';
+          return;
+        }
+        // Update the row that contains the clicked button (works in modal or anywhere)
+        var row = button.closest('.modal-checkin-item, .checkin-row');
+        if (row) {
+          var waitingPill = row.querySelector('.status-pill--warning');
+          if (waitingPill) waitingPill.remove();
+          button.replaceWith(createStatusPill('Confirmado', 'success'));
+        }
+        // Mirror the update into the hidden source container so re-opening modal shows updated state
+        var sourceRow = document.querySelector('.js-checkin-source [data-checkin-id="' + checkinId + '"]');
+        if (sourceRow && sourceRow !== row) {
+          var sourcePill = sourceRow.querySelector('.status-pill--warning');
+          if (sourcePill) sourcePill.remove();
+          var sourceBtn = sourceRow.querySelector('.js-approve-checkin');
+          if (sourceBtn) sourceBtn.replaceWith(createStatusPill('Confirmado', 'success'));
+        }
+      })
+      .catch(function () {
+        button.disabled = false;
+        button.textContent = 'Aprovar';
       });
+  }
+
+  function bindApproveCheckins() {
+    // Event delegation: works for buttons in modal AND in hidden source containers
+    document.addEventListener('click', function (e) {
+      var button = e.target.closest('.js-approve-checkin');
+      if (!button) return;
+      handleApproveCheckin(button);
     });
   }
 
@@ -202,7 +215,7 @@
     var overlay = document.getElementById('special-class-modal');
     if (!openBtn || !overlay) return;
 
-    var closeBtn = overlay.querySelector('.js-close-modal');
+    var closeButtons = overlay.querySelectorAll('.js-close-modal');
     var form = overlay.querySelector('.js-special-class-form');
     var errorEl = form ? form.querySelector('.modal__error') : null;
 
@@ -217,9 +230,9 @@
       if (errorEl) errorEl.textContent = '';
     });
 
-    if (closeBtn) {
-      closeBtn.addEventListener('click', closeModal);
-    }
+    closeButtons.forEach(function (btn) {
+      btn.addEventListener('click', closeModal);
+    });
 
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay) closeModal();
@@ -280,22 +293,283 @@
     }
   }
 
-  function bindGradHistoryToggle() {
-    var btn = document.getElementById('grad-history-btn');
-    var panel = document.getElementById('grad-history-panel');
-    var chevron = document.getElementById('grad-history-chevron');
-    if (!btn || !panel) return;
+  function bindPresenceModal() {
+    var overlay = document.getElementById('class-presence-modal');
+    var modalBody = document.getElementById('presence-modal-body');
+    var modalTitle = document.getElementById('presence-modal-title');
+    if (!overlay || !modalBody || !modalTitle) return;
 
-    btn.addEventListener('click', function () {
-      var expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-      if (expanded) {
-        panel.setAttribute('hidden', '');
-        if (chevron) chevron.style.transform = '';
-      } else {
-        panel.removeAttribute('hidden');
-        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    var currentSourceId = null;
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+      modalBody.innerHTML = '';
+      currentSourceId = null;
+    }
+
+    // Open handler via event delegation (multiple buttons on page)
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-open-presence-modal');
+      if (!btn) return;
+
+      var sourceId = btn.getAttribute('data-checkins-id');
+      var sourceDiv = sourceId ? document.getElementById(sourceId) : null;
+      if (!sourceDiv) return;
+
+      currentSourceId = sourceId;
+      var className = sourceDiv.getAttribute('data-class-name') || 'Turma';
+      modalTitle.textContent = 'Presenças — ' + className;
+
+      // Clone source children into modal body
+      modalBody.innerHTML = '';
+      var children = sourceDiv.childNodes;
+      for (var i = 0; i < children.length; i += 1) {
+        modalBody.appendChild(children[i].cloneNode(true));
       }
+
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+    });
+
+    var closeBtn = overlay.querySelector('.js-close-presence-modal');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
+  function bindAttendanceHistoryModal() {
+    var overlay = document.getElementById('attendance-history-modal');
+    if (!overlay) return;
+
+    var openButtons = document.querySelectorAll('.js-open-attendance-history-modal');
+    var closeButton = overlay.querySelector('.js-close-attendance-history-modal');
+    var classFilter = overlay.querySelector('.js-attendance-history-class');
+    var teacherFilter = overlay.querySelector('.js-attendance-history-teacher');
+    var monthFilter = overlay.querySelector('.js-attendance-history-month');
+    var yearFilter = overlay.querySelector('.js-attendance-history-year');
+    var clearButton = overlay.querySelector('.js-attendance-history-clear');
+    var emptyState = overlay.querySelector('.js-attendance-history-empty');
+    var prevButton = overlay.querySelector('.js-attendance-history-prev');
+    var nextButton = overlay.querySelector('.js-attendance-history-next');
+    var pageStatus = overlay.querySelector('.js-attendance-history-page');
+    var items = Array.prototype.slice.call(overlay.querySelectorAll('[data-attendance-history-item]'));
+    var pageSize = 6;
+    var currentPage = 1;
+    var filteredItems = items.slice();
+
+    function addOption(select, value, label) {
+      if (!select || !value) return;
+      var option = document.createElement('option');
+      option.value = value;
+      option.textContent = label || value;
+      select.appendChild(option);
+    }
+
+    function uniqueOptions(attribute, labelAttribute) {
+      var values = [];
+      var seen = {};
+      items.forEach(function (item) {
+        var value = item.getAttribute(attribute) || '';
+        if (!value || seen[value]) return;
+        seen[value] = true;
+        values.push({
+          value: value,
+          label: labelAttribute ? (item.getAttribute(labelAttribute) || value) : value
+        });
+      });
+      return values.sort(function (a, b) {
+        return a.label.localeCompare(b.label, 'pt-BR', { numeric: true });
+      });
+    }
+
+    function populateFilters() {
+      uniqueOptions('data-class-filter').forEach(function (option) {
+        addOption(classFilter, option.value, option.label);
+      });
+      uniqueOptions('data-teacher-filter').forEach(function (option) {
+        addOption(teacherFilter, option.value, option.label);
+      });
+      uniqueOptions('data-month-filter', 'data-month-label').forEach(function (option) {
+        addOption(monthFilter, option.value, option.label);
+      });
+      uniqueOptions('data-year-filter').forEach(function (option) {
+        addOption(yearFilter, option.value, option.label);
+      });
+    }
+
+    function updateList() {
+      var totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      var start = (currentPage - 1) * pageSize;
+      var end = start + pageSize;
+      var visibleItems = filteredItems.slice(start, end);
+
+      items.forEach(function (item) {
+        item.hidden = true;
+      });
+      visibleItems.forEach(function (item) {
+        item.hidden = false;
+      });
+
+      if (emptyState) emptyState.hidden = filteredItems.length > 0;
+      if (prevButton) prevButton.disabled = currentPage <= 1 || filteredItems.length === 0;
+      if (nextButton) nextButton.disabled = currentPage >= totalPages || filteredItems.length === 0;
+      if (pageStatus) {
+        pageStatus.textContent = filteredItems.length
+          ? 'Página ' + currentPage + ' de ' + totalPages
+          : 'Sem resultados';
+      }
+    }
+
+    function applyFilter() {
+      var selectedClass = classFilter ? classFilter.value : '';
+      var selectedTeacher = teacherFilter ? teacherFilter.value : '';
+      var selectedMonth = monthFilter ? monthFilter.value : '';
+      var selectedYear = yearFilter ? yearFilter.value : '';
+      filteredItems = items.filter(function (item) {
+        return (!selectedClass || item.getAttribute('data-class-filter') === selectedClass)
+          && (!selectedTeacher || item.getAttribute('data-teacher-filter') === selectedTeacher)
+          && (!selectedMonth || item.getAttribute('data-month-filter') === selectedMonth)
+          && (!selectedYear || item.getAttribute('data-year-filter') === selectedYear);
+      });
+      currentPage = 1;
+      updateList();
+    }
+
+    function clearFilters() {
+      if (classFilter) classFilter.value = '';
+      if (teacherFilter) teacherFilter.value = '';
+      if (monthFilter) monthFilter.value = '';
+      if (yearFilter) yearFilter.value = '';
+      applyFilter();
+    }
+
+    function openModal() {
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+      currentPage = 1;
+      applyFilter();
+      if (classFilter) classFilter.focus();
+    }
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    openButtons.forEach(function (button) {
+      button.addEventListener('click', openModal);
+    });
+
+    if (closeButton) closeButton.addEventListener('click', closeModal);
+    if (classFilter) classFilter.addEventListener('change', applyFilter);
+    if (teacherFilter) teacherFilter.addEventListener('change', applyFilter);
+    if (monthFilter) monthFilter.addEventListener('change', applyFilter);
+    if (yearFilter) yearFilter.addEventListener('change', applyFilter);
+    if (clearButton) clearButton.addEventListener('click', clearFilters);
+    if (prevButton) {
+      prevButton.addEventListener('click', function () {
+        currentPage -= 1;
+        updateList();
+      });
+    }
+    if (nextButton) {
+      nextButton.addEventListener('click', function () {
+        currentPage += 1;
+        updateList();
+      });
+    }
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+
+    populateFilters();
+    updateList();
+  }
+
+  function bindGradHistoryModal() {
+    var overlay = document.getElementById('grad-history-modal');
+    if (!overlay) return;
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    var openBtn = document.querySelector('.js-open-grad-modal');
+    if (openBtn) {
+      openBtn.addEventListener('click', function () {
+        overlay.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+
+    var closeBtn = overlay.querySelector('.js-close-grad-modal');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
+  function bindGradDetailsToggle() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-grad-details-toggle');
+      if (!btn) return;
+      var panelId = btn.getAttribute('aria-controls');
+      var panel = panelId ? document.getElementById(panelId) : null;
+      if (!panel) return;
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      var next = !expanded;
+      btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      panel.hidden = !next;
+      var icon = btn.querySelector('.js-grad-toggle-icon');
+      if (icon) icon.textContent = next ? '−' : '+';
+    });
+  }
+
+  function bindSectionCollapse() {
+    var stored = {};
+    try { stored = JSON.parse(localStorage.getItem('lv-sections') || '{}'); } catch (e) {}
+
+    document.querySelectorAll('.section__toggle').forEach(function (btn) {
+      var key = btn.getAttribute('data-section');
+      var bodyId = btn.getAttribute('aria-controls');
+      var body = bodyId ? document.getElementById(bodyId) : null;
+      if (!body) return;
+
+      // Restore persisted state
+      if (stored[key] === false) {
+        btn.setAttribute('aria-expanded', 'false');
+        body.hidden = true;
+      }
+
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        var next = !expanded;
+        btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+        body.hidden = !next;
+
+        stored[key] = next;
+        try { localStorage.setItem('lv-sections', JSON.stringify(stored)); } catch (e) {}
+      });
     });
   }
 
@@ -304,5 +578,9 @@
   bindCheckins();
   bindApproveCheckins();
   bindSpecialClassModal();
-  bindGradHistoryToggle();
+  bindPresenceModal();
+  bindAttendanceHistoryModal();
+  bindGradHistoryModal();
+  bindGradDetailsToggle();
+  bindSectionCollapse();
 })();

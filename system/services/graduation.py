@@ -293,6 +293,8 @@ def get_graduation_history(person, reference_date=None):
         .order_by("awarded_at", "created_at")
     )
 
+    tip_start, tip_width, stripe_w, stripe_gap = 232, 88, 12, 5
+
     entries = []
     for index, graduation in enumerate(graduations):
         next_date = (
@@ -303,6 +305,19 @@ def get_graduation_history(person, reference_date=None):
         period_months = _months_between(graduation.awarded_at, next_date)
         period_days = max(0, (next_date - graduation.awarded_at).days)
         is_current = index == len(graduations) - 1
+
+        if graduation.belt_rank:
+            slots = graduation.belt_rank.get_grade_slots(graduation.grade_number)
+            n = len(slots)
+            if n > 0:
+                total_w = n * stripe_w + (n - 1) * stripe_gap
+                sx = tip_start + (tip_width - total_w) // 2
+                belt_stripes = [{"x": sx + i * (stripe_w + stripe_gap), "filled": f} for i, f in enumerate(slots)]
+            else:
+                belt_stripes = []
+        else:
+            belt_stripes = []
+
         entries.append(SimpleNamespace(
             graduation=graduation,
             belt_rank=graduation.belt_rank,
@@ -314,6 +329,7 @@ def get_graduation_history(person, reference_date=None):
             period_days=period_days,
             until_date=next_date,
             is_current=is_current,
+            belt_stripes=belt_stripes,
         ))
 
     entries.reverse()
