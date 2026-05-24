@@ -13,7 +13,7 @@ from system.constants import (
     PersonTypeCode,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
-from system.models import Person, SpecialClass
+from system.models import ClassSchedule, Person, SpecialClass
 from system.models.calendar import ClassCheckin, SpecialClassCheckin
 from system.services.class_calendar import (
     approve_class_checkin,
@@ -26,6 +26,8 @@ from system.services.class_calendar import (
     get_today_classes_for_person,
     perform_checkin,
     perform_special_class_checkin,
+    register_instructor_self_checkin,
+    register_instructor_self_special_checkin,
     toggle_session_cancel,
 )
 from system.views.person_views import AdministrativeRequiredMixin
@@ -333,6 +335,76 @@ class InstructorSpecialClassDeleteView(PortalRoleRequiredMixin, View):
 
         delete_special_class(special_id)
         return JsonResponse({"success": True})
+
+
+class InstructorSelfCheckinView(PortalRoleRequiredMixin, View):
+    allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if not person:
+            return JsonResponse({"error": "Não autenticado."}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            schedule_id = int(body["schedule_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            session, created = register_instructor_self_checkin(person, schedule_id)
+        except ClassSchedule.DoesNotExist:
+            return JsonResponse({"error": "Horário não encontrado."}, status=404)
+        except PermissionError as e:
+            return JsonResponse({"error": str(e)}, status=403)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        checked_in_at = None
+        if session.instructor_checked_in_at:
+            from django.utils import timezone as tz
+            checked_in_at = tz.localtime(session.instructor_checked_in_at).strftime("%H:%M")
+
+        return JsonResponse({
+            "success": True,
+            "created": created,
+            "checked_in_at": checked_in_at,
+        })
+
+
+class InstructorSelfSpecialCheckinView(PortalRoleRequiredMixin, View):
+    allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if not person:
+            return JsonResponse({"error": "Não autenticado."}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            special_id = int(body["special_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            special, created = register_instructor_self_special_checkin(person, special_id)
+        except SpecialClass.DoesNotExist:
+            return JsonResponse({"error": "Aulão não encontrado."}, status=404)
+        except PermissionError as e:
+            return JsonResponse({"error": str(e)}, status=403)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        checked_in_at = None
+        if special.instructor_checked_in_at:
+            from django.utils import timezone as tz
+            checked_in_at = tz.localtime(special.instructor_checked_in_at).strftime("%H:%M")
+
+        return JsonResponse({
+            "success": True,
+            "created": created,
+            "checked_in_at": checked_in_at,
+        })
 
 
 class InstructorApproveCheckinView(PortalRoleRequiredMixin, View):

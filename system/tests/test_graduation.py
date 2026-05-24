@@ -196,6 +196,31 @@ class GraduationServiceTestCase(TestCase):
         end = timezone.localdate()
         self.assertEqual(count_approved_classes_in_window(self.person, start, end), 1)
 
+    def test_count_approved_classes_same_day_counts_once(self):
+        # Two check-ins on the same day must count as 1 unique training day.
+        target_date = timezone.localdate() - timedelta(days=5)
+        session1, _ = ClassSession.objects.get_or_create(schedule=self.schedule, date=target_date)
+        ClassCheckin.objects.create(session=session1, person=self.person, status=CheckinStatus.APPROVED)
+        schedule2 = ClassSchedule.objects.create(
+            class_group=self.group,
+            weekday=self.schedule.weekday,
+            start_time=__import__("datetime").time(21, 0),
+            training_style=TrainingStyle.GI,
+        )
+        session2, _ = ClassSession.objects.get_or_create(schedule=schedule2, date=target_date)
+        ClassCheckin.objects.create(session=session2, person=self.person, status=CheckinStatus.APPROVED)
+        start = timezone.localdate() - timedelta(days=30)
+        end = timezone.localdate()
+        self.assertEqual(count_approved_classes_in_window(self.person, start, end), 1)
+
+    def test_count_approved_classes_different_days_count_separately(self):
+        self._create_approved_checkin(days_back=5)
+        self._create_approved_checkin(days_back=15)
+        self._create_approved_checkin(days_back=25)
+        start = timezone.localdate() - timedelta(days=30)
+        end = timezone.localdate()
+        self.assertEqual(count_approved_classes_in_window(self.person, start, end), 3)
+
     def test_compute_progress_with_pending_requirements(self):
         register_graduation(
             person=self.person, belt_rank=self.white, grade_number=0,

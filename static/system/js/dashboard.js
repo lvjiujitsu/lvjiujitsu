@@ -545,6 +545,22 @@
     });
   }
 
+  function bindBillingDetailsToggle() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-billing-details-toggle');
+      if (!btn) return;
+      var panelId = btn.getAttribute('aria-controls');
+      var panel = panelId ? document.getElementById(panelId) : null;
+      if (!panel) return;
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      var next = !expanded;
+      btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      panel.hidden = !next;
+      var icon = btn.querySelector('.js-billing-toggle-icon');
+      if (icon) icon.textContent = next ? '−' : '+';
+    });
+  }
+
   function bindSectionCollapse() {
     var stored = {};
     try { stored = JSON.parse(localStorage.getItem('lv-sections') || '{}'); } catch (e) {}
@@ -573,6 +589,45 @@
     });
   }
 
+  function bindInstructorSelfCheckin() {
+    var cfg = readConfig();
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-instructor-self-checkin');
+      if (!btn) return;
+
+      var isSpecial = btn.getAttribute('data-is-special') === 'true';
+      var url = isSpecial ? cfg.instructorSelfSpecialCheckinUrl : cfg.instructorSelfCheckinUrl;
+      if (!url) return;
+
+      var payload = isSpecial
+        ? { special_id: parseInt(btn.getAttribute('data-special-id'), 10) }
+        : { schedule_id: parseInt(btn.getAttribute('data-schedule-id'), 10) };
+
+      btn.disabled = true;
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.success) {
+            btn.disabled = false;
+            return;
+          }
+          var targetId = btn.getAttribute('data-presence-target');
+          var container = targetId ? document.getElementById(targetId) : null;
+          if (container) {
+            var time = data.checked_in_at ? ' · ' + data.checked_in_at : '';
+            container.innerHTML =
+              '<span class="status-pill status-pill--success">Presente' + time + '</span>';
+          }
+        })
+        .catch(function () { btn.disabled = false; });
+    });
+  }
+
   bindThemeToggle();
   bindTabs();
   bindCheckins();
@@ -582,5 +637,7 @@
   bindAttendanceHistoryModal();
   bindGradHistoryModal();
   bindGradDetailsToggle();
+  bindBillingDetailsToggle();
+  bindInstructorSelfCheckin();
   bindSectionCollapse();
 })();

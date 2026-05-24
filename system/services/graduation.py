@@ -21,19 +21,23 @@ from system.models.calendar import (
 def count_approved_classes_in_window(person, start_date, end_date):
     if start_date is None or end_date is None or end_date < start_date:
         return 0
-    regular = ClassCheckin.objects.filter(
-        person=person,
-        status=CheckinStatus.APPROVED,
-        session__date__gte=start_date,
-        session__date__lte=end_date,
-    ).count()
-    special = SpecialClassCheckin.objects.filter(
-        person=person,
-        status=CheckinStatus.APPROVED,
-        special_class__date__gte=start_date,
-        special_class__date__lte=end_date,
-    ).count()
-    return regular + special
+    regular_dates = set(
+        ClassCheckin.objects.filter(
+            person=person,
+            status=CheckinStatus.APPROVED,
+            session__date__gte=start_date,
+            session__date__lte=end_date,
+        ).values_list("session__date", flat=True)
+    )
+    special_dates = set(
+        SpecialClassCheckin.objects.filter(
+            person=person,
+            status=CheckinStatus.APPROVED,
+            special_class__date__gte=start_date,
+            special_class__date__lte=end_date,
+        ).values_list("special_class__date", flat=True)
+    )
+    return len(regular_dates | special_dates)
 
 
 def get_current_graduation(person):

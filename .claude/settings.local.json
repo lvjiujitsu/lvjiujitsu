@@ -174,7 +174,14 @@
       "Bash(powershell -Command \"& '.\\\\.venv\\\\Scripts\\\\python.exe' manage.py shell -c \\\\\"from django.urls import reverse; urls_to_check = ['system:plan-change-select','system:person-list','system:product-list','system:plan-list','system:student-checkin','system:student-schedule','system:financial-control','system:class-group-list']; [print\\(u, '→', reverse\\(u\\)\\) for u in urls_to_check]\\\\\"\")",
       "Bash(./.venv/Scripts/python.exe manage.py runserver 127.0.0.1:8000)",
       "Bash(Start-Process -NoNewWindow -FilePath \"./.venv/Scripts/python.exe\" -ArgumentList \"manage.py runserver 127.0.0.1:8000\")",
-      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)"
+      "Bash(./.venv/Scripts/python.exe manage.py shell -c ' *)",
+      "Bash(curl -s -c /tmp/lv_cookies.txt -d 'cpf=014.337.401-09&password=Teste%40123' http://localhost:8000/login/ -L --max-redirs 0)",
+      "Bash(curl -s http://localhost:8000/home/ -b \"sessionid=$\\(curl -s -c /tmp/lv_cookies.txt -d 'cpf=014.337.401-09&password=Teste%40123' http://localhost:8000/login/ -L --max-redirs 0 2>&1)",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py shell -c \"from system.models.portal import PortalAccount; from system.models.person import Person; accs = PortalAccount.objects.select_related\\('person'\\).all\\(\\); [print\\(a.username, a.person.full_name if a.person else 'n/a'\\) for a in accs]\")",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_calendar --verbosity 2)",
+      "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe C:/Users/whsf/Documents/GitHub/lvjiujitsu/manage.py test system.tests.test_calendar --verbosity 2)",
+      "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe C:/Users/whsf/Documents/GitHub/lvjiujitsu/manage.py test --verbosity 2)",
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_graduation system.tests.test_calendar --verbosity 2)"
     ]
   },
   "model": "claude-sonnet-4-6",

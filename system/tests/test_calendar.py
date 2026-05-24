@@ -41,10 +41,13 @@ from system.services.class_calendar import (
     get_calendar_month_data,
     get_instructor_checkin_history,
     get_student_checkin_history,
+    get_today_classes_for_administrative,
     get_today_classes_for_instructor,
     get_today_classes_for_person,
     perform_checkin,
     perform_special_class_checkin,
+    register_instructor_self_checkin,
+    register_instructor_self_special_checkin,
     toggle_session_cancel,
 )
 from system.services.trial_access import grant_trial_for_order
@@ -222,6 +225,46 @@ class CalendarServiceTestCase(TestCase):
         self.assertIn('id="calendar-day-modal"', content)
         self.assertIn('id="calendar-day-modal-body"', content)
 
+    def test_student_entry_has_instructor_present_false_when_no_session(self):
+        classes = get_today_classes_for_person(self.person)
+        self.assertEqual(len(classes), 1)
+        self.assertFalse(classes[0].instructor_present)
+
+    def test_student_entry_has_instructor_present_false_when_not_checked_in(self):
+        today = timezone.localdate()
+        ClassSession.objects.create(
+            schedule=self.schedule, date=today,
+            status=SessionStatus.SCHEDULED, instructor_present=False,
+        )
+        classes = get_today_classes_for_person(self.person)
+        self.assertFalse(classes[0].instructor_present)
+
+    def test_student_entry_has_instructor_present_true_when_instructor_checked_in(self):
+        from django.utils import timezone as tz
+        today = timezone.localdate()
+        ClassSession.objects.create(
+            schedule=self.schedule, date=today,
+            status=SessionStatus.SCHEDULED, instructor_present=True,
+            instructor_checked_in_at=tz.now(),
+        )
+        classes = get_today_classes_for_person(self.person)
+        self.assertTrue(classes[0].instructor_present)
+
+    def test_special_class_student_entry_has_instructor_present(self):
+        special = SpecialClass.objects.create(
+            title="Aulão Teste", date=timezone.localdate(),
+            start_time=time(10, 0), instructor_present=True,
+        )
+        classes = get_today_classes_for_person(self.person)
+        special_entries = [c for c in classes if c.is_special]
+        self.assertEqual(len(special_entries), 1)
+        self.assertTrue(special_entries[0].instructor_present)
+        special.instructor_present = False
+        special.save()
+        classes = get_today_classes_for_person(self.person)
+        special_entries = [c for c in classes if c.is_special]
+        self.assertFalse(special_entries[0].instructor_present)
+
     def _login_portal_account(self, account):
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
@@ -360,15 +403,15 @@ class CheckinApprovalServiceTestCase(TestCase):
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0].group_name, "Turma Aprovação")
 
-    def test_get_instructor_history_only_lists_approved(self):
-        checkin, _ = perform_checkin(self.student, self.schedule.pk)
+    def test_get_instructor_history_reflects_own_self_checkin(self):
         self.assertEqual(get_instructor_checkin_history(self.instructor), [])
 
-        approve_class_checkin(instructor=self.instructor, checkin_id=checkin.pk)
+        register_instructor_self_checkin(self.instructor, self.schedule.pk)
 
         history = get_instructor_checkin_history(self.instructor)
         self.assertEqual(len(history), 1)
-        self.assertEqual(history[0].attendees, ["Aluno Aprovação"])
+        self.assertEqual(history[0].group_name, "Turma Aprovação")
+        self.assertFalse(history[0].is_special)
 
     def test_today_classes_for_person_exposes_checkin_status(self):
         entries = get_today_classes_for_person(self.student)
@@ -577,4 +620,303 @@ class SpecialClassServiceTestCase(TestCase):
         self.assertEqual(day_entry.specials[0].group_name, "Aulão mês")
 
 
+class InstructorSelfCheckinServiceTestCase(TestCase):
+    def setUp(self):
+        self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
+        self.category = ClassCategory.objects.create(
+            code="adult", display_name="Adulto", audience=CategoryAudience.ADULT,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="adult-age", display_name="Adulto",
+            audience=CategoryAudience.ADULT, minimum_age=18, maximum_age=99,
+        )
+        self.instructor = Person.objects.create(
+            full_name="Prof. Self", cpf="950.000.000-01",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        self.other_instructor = Person.objects.create(
+            full_name="Prof. Outro", cpf="950.000.000-02",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        self.group = ClassGroup.objects.create(
+            display_name="Turma Self", class_category=self.category,
+            main_teacher=self.instructor,
+        )
+        today = timezone.localdate()
+        weekday_map = {
+            0: WeekdayCode.MONDAY, 1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY, 3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY, 5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        self.schedule = ClassSchedule.objects.create(
+            class_group=self.group,
+            weekday=weekday_map[today.weekday()],
+            start_time=time(19, 0),
+            training_style=TrainingStyle.GI,
+        )
+        self.instructor_account = PortalAccount(person=self.instructor)
+        self.instructor_account.set_password("123456")
+        self.instructor_account.save()
 
+    def test_self_checkin_registers_presence(self):
+        session, created = register_instructor_self_checkin(self.instructor, self.schedule.pk)
+        self.assertTrue(created)
+        self.assertTrue(session.instructor_present)
+        self.assertIsNotNone(session.instructor_checked_in_at)
+
+    def test_self_checkin_creates_session_if_not_exists(self):
+        self.assertFalse(ClassSession.objects.filter(schedule=self.schedule).exists())
+        register_instructor_self_checkin(self.instructor, self.schedule.pk)
+        self.assertTrue(ClassSession.objects.filter(schedule=self.schedule).exists())
+
+    def test_self_checkin_idempotent(self):
+        register_instructor_self_checkin(self.instructor, self.schedule.pk)
+        _, created = register_instructor_self_checkin(self.instructor, self.schedule.pk)
+        self.assertFalse(created)
+        self.assertEqual(ClassSession.objects.filter(schedule=self.schedule).count(), 1)
+
+    def test_self_checkin_blocks_other_instructor(self):
+        with self.assertRaises(PermissionError):
+            register_instructor_self_checkin(self.other_instructor, self.schedule.pk)
+
+    def test_self_checkin_blocked_on_cancelled_session(self):
+        today = timezone.localdate()
+        toggle_session_cancel(self.schedule.pk, today, "Motivo")
+        with self.assertRaises(ValueError):
+            register_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+    def test_today_classes_for_instructor_exposes_instructor_present(self):
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [e for e in entries if not e.is_special][0]
+        self.assertFalse(regular.instructor_present)
+        self.assertIsNone(regular.instructor_checked_in_at)
+
+        register_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [e for e in entries if not e.is_special][0]
+        self.assertTrue(regular.instructor_present)
+        self.assertIsNotNone(regular.instructor_checked_in_at)
+
+    def test_self_special_checkin_registers_presence(self):
+        special = create_special_class(
+            title="Aulão Self", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        result, created = register_instructor_self_special_checkin(self.instructor, special.pk)
+        self.assertTrue(created)
+        self.assertTrue(result.instructor_present)
+        self.assertIsNotNone(result.instructor_checked_in_at)
+
+    def test_self_special_checkin_blocks_other_instructor(self):
+        special = create_special_class(
+            title="Aulão Self", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        with self.assertRaises(PermissionError):
+            register_instructor_self_special_checkin(self.other_instructor, special.pk)
+
+    def test_self_special_checkin_blocked_on_wrong_date(self):
+        special = create_special_class(
+            title="Aulão Futuro", date=date(2099, 12, 31),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        with self.assertRaises(ValueError):
+            register_instructor_self_special_checkin(self.instructor, special.pk)
+
+    def test_instructor_history_shows_own_checkins(self):
+        register_instructor_self_checkin(self.instructor, self.schedule.pk)
+        history = get_instructor_checkin_history(self.instructor)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0].group_name, "Turma Self")
+        self.assertFalse(history[0].is_special)
+
+    def test_instructor_history_shows_aulao_presence(self):
+        special = create_special_class(
+            title="Aulão History", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        register_instructor_self_special_checkin(self.instructor, special.pk)
+        history = get_instructor_checkin_history(self.instructor)
+        specials = [e for e in history if e.is_special]
+        self.assertEqual(len(specials), 1)
+        self.assertEqual(specials[0].group_name, "Aulão History")
+
+    def test_instructor_history_empty_without_self_checkin(self):
+        history = get_instructor_checkin_history(self.instructor)
+        self.assertEqual(history, [])
+
+    def _login_portal_account(self, account):
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
+        session.save()
+
+    def test_self_checkin_view_returns_success(self):
+        self._login_portal_account(self.instructor_account)
+        import json
+        response = self.client.post(
+            reverse("system:instructor-self-checkin"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["created"])
+
+    def test_self_checkin_view_idempotent(self):
+        self._login_portal_account(self.instructor_account)
+        import json
+        self.client.post(
+            reverse("system:instructor-self-checkin"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+        response = self.client.post(
+            reverse("system:instructor-self-checkin"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertFalse(data["created"])
+
+
+class AdministrativeProfileTestCase(TestCase):
+    def setUp(self):
+        self.admin_type = PersonType.objects.create(code="administrative-assistant", display_name="Administrativo")
+        self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.category = ClassCategory.objects.create(
+            code="kids", display_name="Kids", audience=CategoryAudience.KIDS,
+        )
+        self.category_adult = ClassCategory.objects.create(
+            code="adult", display_name="Adulto", audience=CategoryAudience.ADULT,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="kids-age", display_name="Kids",
+            audience=CategoryAudience.KIDS, minimum_age=4, maximum_age=12,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="adult-age", display_name="Adulto",
+            audience=CategoryAudience.ADULT, minimum_age=18, maximum_age=99,
+        )
+        self.teacher = Person.objects.create(
+            full_name="Prof. Principal", cpf="920.000.002-01",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        today = timezone.localdate()
+        weekday_map = {
+            0: WeekdayCode.MONDAY, 1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY, 3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY, 5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        self.kids_group = ClassGroup.objects.create(
+            display_name="Kids", class_category=self.category, main_teacher=self.teacher,
+        )
+        self.adult_group = ClassGroup.objects.create(
+            display_name="Adulto", class_category=self.category_adult, main_teacher=self.teacher,
+        )
+        self.kids_schedule = ClassSchedule.objects.create(
+            class_group=self.kids_group,
+            weekday=weekday_map[today.weekday()],
+            start_time=time(10, 0),
+            training_style=TrainingStyle.GI,
+        )
+        self.adult_schedule = ClassSchedule.objects.create(
+            class_group=self.adult_group,
+            weekday=weekday_map[today.weekday()],
+            start_time=time(19, 0),
+            training_style=TrainingStyle.GI,
+        )
+        self.administrative = Person.objects.create(
+            full_name="Aline Admin", cpf="920.000.001-01",
+            person_type=self.admin_type, birth_date=date(1995, 1, 1),
+            biological_sex="female",
+            class_group=self.adult_group,
+        )
+        ClassInstructorAssignment.objects.create(
+            class_group=self.kids_group, person=self.administrative,
+        )
+
+    def test_managed_class_appears_as_instructor_entry(self):
+        entries = get_today_classes_for_administrative(self.administrative)
+        kids_entries = [e for e in entries if e.group_name == "Kids"]
+        self.assertEqual(len(kids_entries), 1)
+        self.assertEqual(kids_entries[0].entry_role, "instructor")
+
+    def test_enrolled_class_appears_as_student_entry(self):
+        entries = get_today_classes_for_administrative(self.administrative)
+        adult_entries = [e for e in entries if e.group_name == "Adulto"]
+        self.assertEqual(len(adult_entries), 1)
+        self.assertEqual(adult_entries[0].entry_role, "student")
+
+    def test_enrolled_class_not_duplicated_as_instructor(self):
+        entries = get_today_classes_for_administrative(self.administrative)
+        adult_entries = [e for e in entries if e.group_name == "Adulto"]
+        self.assertEqual(len(adult_entries), 1)
+
+    def test_student_entry_exposes_checkin_fields(self):
+        entries = get_today_classes_for_administrative(self.administrative)
+        adult = next(e for e in entries if e.group_name == "Adulto")
+        self.assertFalse(adult.has_checked_in)
+        self.assertFalse(adult.is_checkin_approved)
+
+        perform_checkin(self.administrative, self.adult_schedule.pk)
+        entries = get_today_classes_for_administrative(self.administrative)
+        adult = next(e for e in entries if e.group_name == "Adulto")
+        self.assertTrue(adult.has_checked_in)
+
+    def test_instructor_entry_exposes_approval_fields(self):
+        student = Person.objects.create(
+            full_name="Aluno Kids", cpf="920.000.003-01",
+            person_type=self.student_type, birth_date=date(2000, 1, 1),
+            biological_sex="male",
+        )
+        perform_checkin(student, self.kids_schedule.pk)
+
+        entries = get_today_classes_for_administrative(self.administrative)
+        kids = next(e for e in entries if e.group_name == "Kids")
+        self.assertEqual(kids.entry_role, "instructor")
+        self.assertEqual(kids.checked_count, 1)
+        self.assertEqual(kids.pending_count, 1)
+
+    def test_aulaon_where_teacher_appears_as_instructor(self):
+        special = create_special_class(
+            title="Aulão Admin", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.administrative,
+        )
+        entries = get_today_classes_for_administrative(self.administrative)
+        sp = next(e for e in entries if e.special_id == special.pk)
+        self.assertEqual(sp.entry_role, "instructor")
+
+    def test_aulaon_where_not_teacher_appears_as_student(self):
+        special = create_special_class(
+            title="Aulão Externo", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.teacher,
+        )
+        entries = get_today_classes_for_administrative(self.administrative)
+        sp = next(e for e in entries if e.special_id == special.pk)
+        self.assertEqual(sp.entry_role, "student")
+        self.assertFalse(sp.has_checked_in)
+
+    def test_no_managed_groups_returns_student_and_aulao_entries(self):
+        admin2 = Person.objects.create(
+            full_name="Admin Dois", cpf="920.000.004-01",
+            person_type=self.admin_type, birth_date=date(1995, 1, 1),
+            biological_sex="female",
+            class_group=self.adult_group,
+        )
+        create_special_class(title="Aulão Geral", date=timezone.localdate(), start_time=time(20, 0))
+        entries = get_today_classes_for_administrative(admin2)
+        adult_entries = [e for e in entries if e.group_name == "Adulto"]
+        aulaon_entries = [e for e in entries if e.group_name == "Aulão Geral"]
+        self.assertEqual(len(adult_entries), 1)
+        self.assertEqual(adult_entries[0].entry_role, "student")
+        self.assertEqual(len(aulaon_entries), 1)
+        self.assertEqual(aulaon_entries[0].entry_role, "student")

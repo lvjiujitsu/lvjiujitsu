@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=16">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
-    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}"}</script>
+    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}"}</script>
 
     {% if messages %}
     <div class="system-messages" role="alert" aria-live="assertive">
@@ -164,7 +164,7 @@
                   <div class="class-item__name">
                     {{ item.group_name|default:"Aula" }}{% if item.category_name %} · {{ item.category_name }}{% endif %}
                   </div>
-                  {% if show_instructor_area %}
+                  {% if item.entry_role == 'instructor' %}
                   <div class="class-item__sub">
                     {% if item.is_cancelled %}
                       {{ item.cancellation_reason|default:"Cancelada" }}
@@ -172,6 +172,24 @@
                       {{ item.approved_count|default:0 }} confirmado{{ item.approved_count|default:0|pluralize }}{% if item.pending_count > 0 %} · <strong>{{ item.pending_count }} pendente{{ item.pending_count|pluralize }}</strong>{% endif %}
                     {% endif %}
                   </div>
+                  {% if not item.is_cancelled %}
+                  <div class="class-item__presence" id="presence-{{ forloop.counter }}">
+                    {% if item.instructor_present %}
+                      <span class="status-pill status-pill--success">
+                        Presente{% if item.instructor_checked_in_at %} · {{ item.instructor_checked_in_at|time:"H:i" }}{% endif %}
+                      </span>
+                    {% else %}
+                      <button class="btn btn--outline btn--sm js-instructor-self-checkin"
+                              type="button"
+                              data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                              data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                              data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                              data-presence-target="presence-{{ forloop.counter }}">
+                        Registrar presença
+                      </button>
+                    {% endif %}
+                  </div>
+                  {% endif %}
                   {% elif item.teacher_name or item.cancellation_reason %}
                   <div class="class-item__sub">
                     {% if item.teacher_name %}{{ item.teacher_name }}{% endif %}{% if item.cancellation_reason %} · {{ item.cancellation_reason }}{% endif %}
@@ -181,7 +199,7 @@
                 <div class="class-item__action">
                   {% if item.is_cancelled %}
                     <span class="status-pill status-pill--neutral">Cancelada</span>
-                  {% elif show_instructor_area %}
+                  {% elif item.entry_role == 'instructor' %}
                     <button class="btn btn--secondary btn--sm js-open-presence-modal"
                             type="button"
                             data-checkins-id="cs-{{ forloop.counter }}"
@@ -189,11 +207,13 @@
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                       <span>{{ item.approved_count|default:0 }}</span>
                     </button>
-                  {% elif is_student %}
+                  {% elif item.entry_role == 'student' %}
                     {% if item.is_checkin_approved %}
                       <span class="status-pill status-pill--success">Confirmado</span>
                     {% elif item.has_checked_in %}
                       <span class="status-pill status-pill--warning">Aguardando</span>
+                    {% elif not item.instructor_present %}
+                      <span class="checkin-notice">Solicite ao professor que realize o check-in na aula para continuar</span>
                     {% else %}
                       <button
                         class="btn btn--secondary btn--sm js-checkin"
@@ -210,7 +230,7 @@
                 </div>
 
                 {# Dados de check-in para o modal (ocultos, usados pelo JS) #}
-                {% if show_instructor_area and not item.is_cancelled %}
+                {% if item.entry_role == 'instructor' and not item.is_cancelled %}
                 <div class="js-checkin-source"
                      id="cs-{{ forloop.counter }}"
                      data-class-name="{{ item.group_name }}{% if item.category_name %} · {{ item.category_name }}{% endif %}"
@@ -332,6 +352,13 @@
                   {% endif %}
                   {% endif %}
                 </div>
+                {% if is_instructor %}
+                <div class="grad-stat">
+                  <div class="grad-stat__label">Aulas presentes</div>
+                  <div class="grad-stat__value">{{ instructor_attendance_count }}<small> aulas</small></div>
+                  <div class="grad-stat__detail">presenças registradas pelo professor</div>
+                </div>
+                {% else %}
                 <div class="grad-stat">
                   <div class="grad-stat__label">Aulas aprovadas</div>
                   <div class="grad-stat__value">{{ graduation_progress.approved_classes_in_window }}<small> aulas</small></div>
@@ -342,6 +369,7 @@
                   {% endif %}
                   {% endif %}
                 </div>
+                {% endif %}
               </div>
               {% endif %}
 
@@ -397,6 +425,134 @@
     </section>
     {% endif %}
 
+    <!-- ─── Repasse (professor) ──────────────────────────────────────────── -->
+    {% if is_instructor %}
+    <section class="section" aria-labelledby="payroll-title">
+      <div class="section__header">
+        <div class="section__title-row">
+          <button class="section__toggle" type="button"
+                  data-section="payroll" aria-expanded="true" aria-controls="section-payroll"
+                  aria-label="Recolher repasse">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <h2 class="section__title" id="payroll-title">Repasse</h2>
+        </div>
+        {% if payroll_calculation.reference_month %}
+        <span class="section__link section__link--disabled" aria-disabled="true">{{ payroll_calculation.reference_month|date:"N/Y" }}</span>
+        {% endif %}
+      </div>
+      <div class="section__body" id="section-payroll">
+        <div class="panel">
+          {% if payroll_config and payroll_config.is_active %}
+
+            <div class="payroll-card">
+              <!-- Saldo a receber -->
+              <div class="payroll-balance">
+                <div class="payroll-balance__inner">
+                  <div>
+                    <div class="payroll-balance__label">Valor a receber</div>
+                    <div class="payroll-balance__amount{% if not payroll_calculation.total %} payroll-balance__amount--zero{% endif %}">
+                      R$ {{ payroll_calculation.total|floatformat:2 }}
+                    </div>
+                  </div>
+                  {% if payroll_calculation.scheduled_for %}
+                  <div class="payroll-balance__date">
+                    <span class="payroll-balance__date-label">Previsão</span>
+                    <span class="payroll-balance__date-value">{{ payroll_calculation.scheduled_for|date:"d/m" }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Detalhamento -->
+              {% if payroll_calculation.gross_total %}
+              <div class="payroll-breakdown">
+                {% if payroll_calculation.fixed_total %}
+                <div class="payroll-breakdown__row">
+                  <span class="payroll-breakdown__label">Fixo mensal</span>
+                  <span class="payroll-breakdown__value">R$ {{ payroll_calculation.fixed_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if payroll_calculation.student_total %}
+                <div class="payroll-breakdown__row">
+                  <span class="payroll-breakdown__label">Por alunos{% if payroll_calculation.student_count %} ({{ payroll_calculation.student_count }}){% endif %}</span>
+                  <span class="payroll-breakdown__value">R$ {{ payroll_calculation.student_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if payroll_calculation.class_total %}
+                <div class="payroll-breakdown__row">
+                  <span class="payroll-breakdown__label">Por presenças ({{ payroll_calculation.class_attendance_count }} aulas)</span>
+                  <span class="payroll-breakdown__value">R$ {{ payroll_calculation.class_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if payroll_calculation.refund_adjustment_total %}
+                <div class="payroll-breakdown__row payroll-breakdown__row--deduction">
+                  <span class="payroll-breakdown__label">Ajuste devoluções</span>
+                  <span class="payroll-breakdown__value">− R$ {{ payroll_calculation.refund_adjustment_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                <div class="payroll-breakdown__row payroll-breakdown__row--total">
+                  <span class="payroll-breakdown__label">Total</span>
+                  <span class="payroll-breakdown__value">R$ {{ payroll_calculation.total|floatformat:2 }}</span>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Dados bancários -->
+              {% if payroll_bank and payroll_bank.is_active %}
+              <div class="payroll-bank">
+                <span class="payroll-bank__label">Chave PIX</span>
+                <span class="payroll-bank__value">{{ payroll_bank.get_pix_key_type_display }} · {{ payroll_bank.pix_key }}</span>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Histórico de repasses -->
+            {% if payroll_recent_payouts %}
+            <div class="payroll-payout-header">Repasses recentes</div>
+            <ul class="payroll-payout-list" aria-label="Repasses recentes">
+              {% for payout in payroll_recent_payouts %}
+              <li class="payroll-payout-item">
+                <span class="payroll-payout-item__date">{{ payout.reference_month|date:"m/Y" }}</span>
+                <span class="payroll-payout-item__amount">R$ {{ payout.amount|floatformat:2 }}</span>
+                <span class="payroll-payout-item__status">
+                  {% if payout.status == "paid" %}
+                    <span class="status-pill status-pill--success">Pago</span>
+                  {% elif payout.status == "approved" %}
+                    <span class="status-pill status-pill--warning">Aprovado</span>
+                  {% elif payout.status == "sent" %}
+                    <span class="status-pill status-pill--warning">Enviado</span>
+                  {% elif payout.status == "pending" %}
+                    <span class="status-pill status-pill--neutral">Pendente</span>
+                  {% elif payout.status == "refused" or payout.status == "failed" %}
+                    <span class="status-pill status-pill--danger">{{ payout.get_status_display }}</span>
+                  {% else %}
+                    <span class="status-pill status-pill--neutral">{{ payout.get_status_display }}</span>
+                  {% endif %}
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state" style="padding: 1.5rem 1rem;">
+              <p class="empty-state__text">Nenhum repasse registrado ainda.</p>
+            </div>
+            {% endif %}
+
+          {% elif payroll_config %}
+            <div class="empty-state" role="status">
+              <p class="empty-state__text">Configuração de repasse inativa. Fale com a administração.</p>
+            </div>
+          {% else %}
+            <div class="empty-state" role="status">
+              <p class="empty-state__text">Configuração de repasse não cadastrada. Fale com a administração.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
     <!-- ─── Mensalidade (aluno / responsável) ────────────────────────────── -->
     {% if is_student and billing_tabs %}
     <section class="section" aria-labelledby="billing-title">
@@ -438,64 +594,148 @@
             <div class="billing-card">
               {% if tab.active_membership %}
                 {% with m=tab.active_membership %}
-                <div class="billing-card__header">
-                  {% if m.status == "active" %}
-                    <span class="badge badge--success">Ativo</span>
-                  {% elif m.status == "exempted" %}
-                    <span class="badge badge--success">Isento</span>
-                  {% elif m.status == "past_due" %}
-                    <span class="badge badge--danger">Em atraso</span>
-                  {% elif m.status == "canceled" %}
-                    <span class="badge badge--neutral">Cancelado</span>
-                  {% elif m.status == "expired" %}
-                    <span class="badge badge--neutral">Expirado</span>
+
+                <!-- Cabeçalho compacto sempre visível -->
+                <div class="billing-compact-header">
+                  <div class="billing-compact-info">
+                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <div class="billing-compact-info__plan">
+                      {% if m.status == "active" %}
+                        <span class="badge badge--success">Ativo</span>
+                      {% elif m.status == "exempted" %}
+                        <span class="badge badge--success">Isento</span>
+                      {% elif m.status == "past_due" %}
+                        <span class="badge badge--danger">Em atraso</span>
+                      {% elif m.status == "canceled" %}
+                        <span class="badge badge--neutral">Cancelado</span>
+                      {% elif m.status == "expired" %}
+                        <span class="badge badge--neutral">Expirado</span>
+                      {% else %}
+                        <span class="badge badge--warning">{{ m.get_status_display }}</span>
+                      {% endif %}
+                      <span class="billing-compact-info__name">{{ m.plan.display_name }}</span>
+                    </div>
+                  </div>
+                  <button class="btn btn--secondary btn--sm js-billing-details-toggle"
+                          type="button"
+                          aria-expanded="false"
+                          aria-controls="billing-details-{{ forloop.counter }}">
+                    Detalhes <span class="js-billing-toggle-icon" aria-hidden="true">+</span>
+                  </button>
+                </div>
+
+                <!-- Painel expandível (oculto por padrão) -->
+                <div class="billing-details" id="billing-details-{{ forloop.counter }}" hidden>
+
+                  {% if m.status != "exempted" %}
+                  <div class="billing-meta">
+                    <div class="billing-meta__row">
+                      <span class="billing-meta__label">Valor</span>
+                      <span class="billing-meta__value billing-meta__value--highlight">R$ {{ m.plan.price|floatformat:2 }}</span>
+                      <span class="billing-meta__value">/ {{ m.plan.get_billing_cycle_display|lower }}</span>
+                    </div>
+                    {% if m.current_period_start or m.current_period_end %}
+                    <div class="billing-meta__row">
+                      <span class="billing-meta__label">Vigência</span>
+                      <span class="billing-meta__value">
+                        {% if m.current_period_start %}{{ m.current_period_start|date:"d/m/Y" }}{% else %}—{% endif %}
+                        →
+                        {% if m.current_period_end %}{{ m.current_period_end|date:"d/m/Y" }}{% else %}—{% endif %}
+                      </span>
+                    </div>
+                    {% endif %}
+                  </div>
                   {% else %}
-                    <span class="badge badge--warning">{{ m.get_status_display }}</span>
+                  <div class="billing-meta">
+                    {% if m.current_period_end %}
+                    <div class="billing-meta__row">
+                      <span class="billing-meta__label">Válido até</span>
+                      <span class="billing-meta__value">{{ m.current_period_end|date:"d/m/Y" }}</span>
+                    </div>
+                    {% endif %}
+                  </div>
                   {% endif %}
-                  <div class="billing-card__plan">{{ m.plan.display_name }}</div>
-                </div>
-                <div class="billing-card__detail">
-                  {% if m.current_period_end %}Vencimento: {{ m.current_period_end|date:"d/m/Y" }}{% endif %}
-                </div>
-                {% if tab.billing_owner and tab.billing_owner != tab.person %}
-                <p class="billing-card__owner-note">
-                  Mensalidade vinculada ao responsável {{ tab.billing_owner.full_name }}.
-                </p>
-                {% endif %}
-                <div class="billing-card__actions">
-                  {% if m.status == "past_due" %}
-                    {% if tab.pending_order %}
+
+                  {% if tab.billing_owner and tab.billing_owner != tab.person %}
+                  <p class="billing-card__owner-note">
+                    Mensalidade vinculada ao responsável {{ tab.billing_owner.full_name }}.
+                  </p>
+                  {% endif %}
+
+                  <div class="billing-card__actions">
+                    {% if m.status == "past_due" and tab.pending_order %}
                     <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
                     {% endif %}
+                    <span class="btn btn--secondary btn--sm" aria-disabled="true" title="Em breve">Trocar plano</span>
+                  </div>
+
+                  {% if tab.recent_invoices %}
+                  <div class="billing-invoices">
+                    <div class="billing-invoices__title">Faturas pagas</div>
+                    <ul class="billing-invoice-list" aria-label="Faturas pagas">
+                      {% for invoice in tab.recent_invoices %}
+                      <li class="billing-invoice-item">
+                        <span class="billing-invoice-item__date">{{ invoice.paid_at|date:"d/m/Y"|default:"—" }}</span>
+                        <span class="billing-invoice-item__amount">R$ {{ invoice.amount_paid|floatformat:2 }}</span>
+                        <span class="billing-invoice-item__status">
+                          <span class="status-pill status-pill--success">Pago</span>
+                        </span>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
                   {% endif %}
-                  {% if m.status == "active" %}
-                  <span class="btn btn--secondary btn--sm" aria-disabled="true">Trocar plano pendente</span>
-                  {% endif %}
+
                 </div>
                 {% endwith %}
+
               {% elif tab.pending_order %}
-                <div class="billing-card__header">
-                  <span class="badge badge--warning">Pendente</span>
-                  <div class="billing-card__plan">Pagamento pendente</div>
+                <div class="billing-compact-header">
+                  <div class="billing-compact-info">
+                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <div class="billing-compact-info__plan">
+                      <span class="badge badge--warning">Pendente</span>
+                      <span class="billing-compact-info__name">Pagamento pendente</span>
+                    </div>
+                  </div>
+                  <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
                 </div>
-                <div class="billing-card__detail">Conclua o pagamento para ativar sua matrícula.</div>
-                <div class="billing-card__actions">
-                  <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Ir para pagamento</a>
+                <div class="billing-details billing-details--visible">
+                  <p class="billing-card__detail">Conclua o pagamento para ativar sua matrícula.</p>
                 </div>
+
               {% elif active_trial_access %}
-                <div class="billing-card__header">
-                  <span class="badge badge--info">Experimental</span>
-                  <div class="billing-card__plan">Acesso experimental</div>
+                <div class="billing-compact-header">
+                  <div class="billing-compact-info">
+                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <div class="billing-compact-info__plan">
+                      <span class="badge badge--info">Experimental</span>
+                      <span class="billing-compact-info__name">Acesso experimental</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="billing-card__detail">
-                  Válido até {{ active_trial_access.expires_at|date:"d/m/Y"|default:"—" }}
+                <div class="billing-details billing-details--visible">
+                  <div class="billing-meta">
+                    <div class="billing-meta__row">
+                      <span class="billing-meta__label">Válido até</span>
+                      <span class="billing-meta__value">{{ active_trial_access.expires_at|date:"d/m/Y"|default:"—" }}</span>
+                    </div>
+                  </div>
                 </div>
+
               {% else %}
-                <div class="billing-card__header">
-                  <span class="badge badge--neutral">Sem plano</span>
-                  <div class="billing-card__plan">Nenhum plano ativo</div>
+                <div class="billing-compact-header">
+                  <div class="billing-compact-info">
+                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <div class="billing-compact-info__plan">
+                      <span class="badge badge--neutral">Sem plano</span>
+                      <span class="billing-compact-info__name">Nenhum plano ativo</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="billing-card__detail">Escolha um plano para começar.</div>
+                <div class="billing-details billing-details--visible">
+                  <p class="billing-card__detail">Escolha um plano para começar.</p>
+                </div>
               {% endif %}
             </div>
           </div>
@@ -719,7 +959,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/dashboard.js' %}?v=6" defer></script>
+  <script src="{% static 'system/js/dashboard.js' %}?v=8" defer></script>
 
 </body>
 </html>

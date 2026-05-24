@@ -64,6 +64,7 @@ def get_today_classes_for_person(person):
         for sc in specials:
             checkin = special_checkins_by_special_id.get(sc.pk)
             entries.append(SimpleNamespace(
+                entry_role="student",
                 is_special=True,
                 special_class=sc,
                 special_id=sc.pk,
@@ -78,6 +79,7 @@ def get_today_classes_for_person(person):
                 group_name=sc.title,
                 is_cancelled=False,
                 cancellation_reason="",
+                instructor_present=sc.instructor_present,
                 has_checked_in=checkin is not None,
                 checkin_status=checkin.status if checkin else "",
                 is_checkin_approved=bool(checkin and checkin.is_approved),
@@ -128,6 +130,7 @@ def get_today_classes_for_person(person):
         checkin = checkins_by_session_id.get(session.pk) if session else None
 
         result.append(SimpleNamespace(
+            entry_role="student",
             is_special=False,
             special_class=None,
             special_id=None,
@@ -142,6 +145,7 @@ def get_today_classes_for_person(person):
             group_name=schedule.class_group.display_name,
             is_cancelled=is_cancelled,
             cancellation_reason=cancellation_reason,
+            instructor_present=session.instructor_present if session else False,
             has_checked_in=checkin is not None,
             checkin_status=checkin.status if checkin else "",
             is_checkin_approved=bool(checkin and checkin.is_approved),
@@ -191,6 +195,7 @@ def get_today_classes_for_instructor(person):
             cancellation_reason = session.cancellation_reason
         entries.append(
             SimpleNamespace(
+                entry_role="instructor",
                 is_special=False,
                 schedule=schedule,
                 schedule_id=schedule.pk,
@@ -208,6 +213,8 @@ def get_today_classes_for_instructor(person):
                 checked_count=len(session_checkins),
                 approved_count=sum(1 for c in session_checkins if c.is_approved),
                 pending_count=sum(1 for c in session_checkins if not c.is_approved),
+                instructor_present=session.instructor_present if session else False,
+                instructor_checked_in_at=timezone.localtime(session.instructor_checked_in_at) if (session and session.instructor_checked_in_at) else None,
             )
         )
 
@@ -227,6 +234,7 @@ def get_today_classes_for_instructor(person):
         special_class_checkins = checkins_by_special_id.get(special.pk, [])
         entries.append(
             SimpleNamespace(
+                entry_role="instructor",
                 is_special=True,
                 special_class=special,
                 special_id=special.pk,
@@ -242,9 +250,200 @@ def get_today_classes_for_instructor(person):
                 checked_count=len(special_class_checkins),
                 approved_count=sum(1 for c in special_class_checkins if c.is_approved),
                 pending_count=sum(1 for c in special_class_checkins if not c.is_approved),
+                instructor_present=special.instructor_present,
+                instructor_checked_in_at=timezone.localtime(special.instructor_checked_in_at) if special.instructor_checked_in_at else None,
             )
         )
 
+    return entries
+
+
+def get_today_classes_for_administrative(person):
+    """Today's classes for administrative-assistant.
+
+    Instructor controls for class groups they manage (main teacher or assignment).
+    Student check-in for enrolled groups not in their instructor groups.
+    Aulões: instructor role when they are the teacher, student role otherwise.
+    """
+    today = timezone.localdate()
+    weekday_code = PYTHON_WEEKDAY_TO_CODE[today.weekday()]
+    instructor_group_ids = set(_get_instructor_class_group_ids(person))
+    holiday = Holiday.objects.filter(date=today, is_active=True).first()
+    entries = []
+
+    if instructor_group_ids:
+        schedules = (
+            ClassSchedule.objects.filter(
+                class_group_id__in=instructor_group_ids,
+                weekday=weekday_code,
+                is_active=True,
+            )
+            .select_related("class_group", "class_group__class_category")
+            .order_by("start_time")
+        )
+        sessions = list(ClassSession.objects.filter(schedule__in=schedules, date=today).select_related("schedule"))
+        sessions_by_schedule_id = {s.schedule_id: s for s in sessions}
+        raw_checkins = list(
+            ClassCheckin.objects.filter(session__in=sessions)
+            .select_related("person", "session")
+            .order_by("session__schedule__start_time", "person__full_name")
+        )
+        checkins_by_session_id = {}
+        for c in raw_checkins:
+            checkins_by_session_id.setdefault(c.session_id, []).append(c)
+
+        for schedule in schedules:
+            session = sessions_by_schedule_id.get(schedule.pk)
+            session_checkins = checkins_by_session_id.get(session.pk, []) if session else []
+            is_cancelled = (session and session.is_cancelled) or bool(holiday)
+            cancellation_reason = ""
+            if holiday:
+                cancellation_reason = holiday.name
+            elif session and session.is_cancelled:
+                cancellation_reason = session.cancellation_reason
+            entries.append(SimpleNamespace(
+                entry_role="instructor",
+                is_special=False,
+                special_id=None,
+                schedule=schedule,
+                schedule_id=schedule.pk,
+                session=session,
+                session_date=today,
+                start_time=schedule.start_time.strftime("%H:%M"),
+                date=today,
+                group_name=schedule.class_group.display_name,
+                category_name=schedule.class_group.class_category.display_name,
+                duration_minutes=schedule.duration_minutes,
+                is_cancelled=is_cancelled,
+                is_holiday_cancelled=bool(holiday),
+                cancellation_reason=cancellation_reason,
+                checkins=[_instructor_checkin_view(c, is_special=False) for c in session_checkins],
+                checked_count=len(session_checkins),
+                approved_count=sum(1 for c in session_checkins if c.is_approved),
+                pending_count=sum(1 for c in session_checkins if not c.is_approved),
+                instructor_present=session.instructor_present if session else False,
+                instructor_checked_in_at=timezone.localtime(session.instructor_checked_in_at) if (session and session.instructor_checked_in_at) else None,
+            ))
+
+    training_group_id = (
+        person.class_group_id
+        if person.class_group_id and person.class_group_id not in instructor_group_ids
+        else None
+    )
+    student_group_ids = [training_group_id] if training_group_id else []
+    if student_group_ids:
+        student_schedules = (
+            ClassSchedule.objects.filter(
+                class_group_id__in=student_group_ids,
+                weekday=weekday_code,
+                is_active=True,
+            )
+            .select_related("class_group", "class_group__class_category", "class_group__main_teacher")
+            .order_by("start_time")
+        )
+        student_sessions_map = {}
+        for s in ClassSession.objects.filter(schedule__in=student_schedules, date=today):
+            student_sessions_map[s.schedule_id] = s
+        student_checkins_by_session = {
+            c.session_id: c
+            for c in ClassCheckin.objects.filter(person=person, session__date=today)
+        }
+        for schedule in student_schedules:
+            session = student_sessions_map.get(schedule.pk)
+            is_cancelled = (session and session.is_cancelled) or bool(holiday)
+            cancellation_reason = ""
+            if holiday:
+                cancellation_reason = holiday.name
+            elif session and session.is_cancelled:
+                cancellation_reason = session.cancellation_reason
+            checkin = student_checkins_by_session.get(session.pk) if session else None
+            entries.append(SimpleNamespace(
+                entry_role="student",
+                is_special=False,
+                special_class=None,
+                special_id=None,
+                schedule=schedule,
+                session=session,
+                class_group=schedule.class_group,
+                start_time=schedule.start_time.strftime("%H:%M"),
+                duration_minutes=schedule.duration_minutes,
+                training_style=schedule.get_training_style_display(),
+                teacher_name=schedule.class_group.main_teacher.full_name if schedule.class_group.main_teacher else "",
+                category_name=schedule.class_group.class_category.display_name,
+                group_name=schedule.class_group.display_name,
+                is_cancelled=is_cancelled,
+                cancellation_reason=cancellation_reason,
+                instructor_present=session.instructor_present if session else False,
+                has_checked_in=checkin is not None,
+                checkin_status=checkin.status if checkin else "",
+                is_checkin_approved=bool(checkin and checkin.is_approved),
+            ))
+
+    all_specials = list(SpecialClass.objects.filter(date=today).select_related("teacher").order_by("start_time"))
+    instructor_special_ids = [s.pk for s in all_specials if s.teacher_id == person.pk]
+    instructor_special_checkins_by_id = {}
+    if instructor_special_ids:
+        for c in (
+            SpecialClassCheckin.objects.filter(special_class_id__in=instructor_special_ids)
+            .select_related("person", "special_class")
+            .order_by("special_class__start_time", "person__full_name")
+        ):
+            instructor_special_checkins_by_id.setdefault(c.special_class_id, []).append(c)
+
+    student_special_ids = [s.pk for s in all_specials if s.teacher_id != person.pk]
+    student_special_checkins_by_id = {
+        c.special_class_id: c
+        for c in SpecialClassCheckin.objects.filter(person=person, special_class_id__in=student_special_ids)
+    }
+
+    for special in all_specials:
+        if special.teacher_id == person.pk:
+            special_class_checkins = instructor_special_checkins_by_id.get(special.pk, [])
+            entries.append(SimpleNamespace(
+                entry_role="instructor",
+                is_special=True,
+                special_class=special,
+                special_id=special.pk,
+                start_time=special.start_time.strftime("%H:%M"),
+                date=today,
+                group_name=special.title,
+                category_name="Aulão",
+                duration_minutes=special.duration_minutes,
+                is_cancelled=False,
+                is_holiday_cancelled=False,
+                cancellation_reason="",
+                checkins=[_instructor_checkin_view(c, is_special=True) for c in special_class_checkins],
+                checked_count=len(special_class_checkins),
+                approved_count=sum(1 for c in special_class_checkins if c.is_approved),
+                pending_count=sum(1 for c in special_class_checkins if not c.is_approved),
+                instructor_present=special.instructor_present,
+                instructor_checked_in_at=timezone.localtime(special.instructor_checked_in_at) if special.instructor_checked_in_at else None,
+            ))
+        else:
+            checkin = student_special_checkins_by_id.get(special.pk)
+            entries.append(SimpleNamespace(
+                entry_role="student",
+                is_special=True,
+                special_class=special,
+                special_id=special.pk,
+                schedule=None,
+                session=None,
+                class_group=None,
+                start_time=special.start_time.strftime("%H:%M"),
+                duration_minutes=special.duration_minutes,
+                training_style="",
+                teacher_name=special.teacher.full_name if special.teacher else "",
+                category_name="Aulão",
+                group_name=special.title,
+                is_cancelled=False,
+                cancellation_reason="",
+                instructor_present=special.instructor_present,
+                has_checked_in=checkin is not None,
+                checkin_status=checkin.status if checkin else "",
+                is_checkin_approved=bool(checkin and checkin.is_approved),
+            ))
+
+    entries.sort(key=lambda e: e.start_time)
     return entries
 
 
@@ -260,64 +459,92 @@ def _instructor_checkin_view(checkin, *, is_special):
 
 
 def get_instructor_checkin_history(person, limit=12):
+    """Frequência própria do professor: dias em que registrou presença explícita."""
     class_group_ids = _get_instructor_class_group_ids(person)
 
-    class_checkins = (
-        ClassCheckin.objects.filter(
-            session__schedule__class_group_id__in=class_group_ids,
-            status=CheckinStatus.APPROVED,
+    class_entries = [
+        SimpleNamespace(
+            is_special=False,
+            date=s.date,
+            start_time=s.schedule.start_time,
+            start_time_label=s.schedule.start_time.strftime("%H:%M"),
+            group_name=s.schedule.class_group.display_name,
+            category_name=s.schedule.class_group.class_category.display_name,
+            checked_in_at=timezone.localtime(s.instructor_checked_in_at) if s.instructor_checked_in_at else None,
         )
-        .select_related("person", "session__schedule__class_group", "session__schedule__class_group__class_category")
-        .order_by("-session__date", "-session__schedule__start_time", "person__full_name")
-    )
-    class_entries = []
-    class_history_by_session_id = {}
-    for checkin in class_checkins:
-        session_id = checkin.session_id
-        if session_id not in class_history_by_session_id:
-            class_history_by_session_id[session_id] = SimpleNamespace(
-                is_special=False,
-                date=checkin.session.date,
-                start_time=checkin.session.schedule.start_time,
-                start_time_label=checkin.session.schedule.start_time.strftime("%H:%M"),
-                group_name=checkin.session.schedule.class_group.display_name,
-                category_name=checkin.session.schedule.class_group.class_category.display_name,
-                attendees=[],
-            )
-            class_entries.append(class_history_by_session_id[session_id])
-        class_history_by_session_id[session_id].attendees.append(checkin.person.full_name)
+        for s in ClassSession.objects.filter(
+            schedule__class_group_id__in=class_group_ids,
+            instructor_present=True,
+        )
+        .select_related("schedule__class_group__class_category")
+        .order_by("-date", "-schedule__start_time")
+    ]
 
-    special_checkins = (
-        SpecialClassCheckin.objects.filter(
-            special_class__teacher=person,
-            status=CheckinStatus.APPROVED,
+    special_entries = [
+        SimpleNamespace(
+            is_special=True,
+            date=s.date,
+            start_time=s.start_time,
+            start_time_label=s.start_time.strftime("%H:%M"),
+            group_name=s.title,
+            category_name="Aulão",
+            checked_in_at=timezone.localtime(s.instructor_checked_in_at) if s.instructor_checked_in_at else None,
         )
-        .select_related("person", "special_class")
-        .order_by("-special_class__date", "-special_class__start_time", "person__full_name")
-    )
-    special_entries = []
-    special_history_by_class_id = {}
-    for checkin in special_checkins:
-        special_id = checkin.special_class_id
-        if special_id not in special_history_by_class_id:
-            special_history_by_class_id[special_id] = SimpleNamespace(
-                is_special=True,
-                date=checkin.special_class.date,
-                start_time=checkin.special_class.start_time,
-                start_time_label=checkin.special_class.start_time.strftime("%H:%M"),
-                group_name=checkin.special_class.title,
-                category_name="Aulão",
-                attendees=[],
-            )
-            special_entries.append(special_history_by_class_id[special_id])
-        special_history_by_class_id[special_id].attendees.append(checkin.person.full_name)
+        for s in SpecialClass.objects.filter(
+            teacher=person,
+            instructor_present=True,
+        ).order_by("-date", "-start_time")
+    ]
 
     history = class_entries + special_entries
-    history.sort(
-        key=lambda entry: (entry.date, entry.start_time),
-        reverse=True,
-    )
+    history.sort(key=lambda e: (e.date, e.start_time), reverse=True)
     return history[:limit]
+
+
+@transaction.atomic
+def register_instructor_self_checkin(instructor, schedule_id):
+    today = timezone.localdate()
+    schedule = ClassSchedule.objects.select_related("class_group").get(pk=schedule_id)
+
+    if schedule.class_group_id not in _get_instructor_class_group_ids(instructor):
+        raise PermissionError("Você não é responsável por esta turma.")
+
+    session, _ = ClassSession.objects.get_or_create(
+        schedule=schedule,
+        date=today,
+        defaults={"status": SessionStatus.SCHEDULED},
+    )
+
+    if session.is_cancelled:
+        raise ValueError("Esta aula foi cancelada.")
+
+    if session.instructor_present:
+        return session, False
+
+    session.instructor_present = True
+    session.instructor_checked_in_at = timezone.now()
+    session.save(update_fields=["instructor_present", "instructor_checked_in_at", "updated_at"])
+    return session, True
+
+
+@transaction.atomic
+def register_instructor_self_special_checkin(instructor, special_id):
+    special = SpecialClass.objects.get(pk=special_id)
+
+    if special.teacher_id != instructor.pk:
+        raise PermissionError("Você não é responsável por este aulão.")
+
+    today = timezone.localdate()
+    if special.date != today:
+        raise ValueError("Registro de presença só é permitido no dia do aulão.")
+
+    if special.instructor_present:
+        return special, False
+
+    special.instructor_present = True
+    special.instructor_checked_in_at = timezone.now()
+    special.save(update_fields=["instructor_present", "instructor_checked_in_at", "updated_at"])
+    return special, True
 
 
 def get_student_checkin_history(person, limit=12):

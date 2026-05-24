@@ -17,7 +17,7 @@ from system.models import (
     WeekdayCode,
 )
 from system.models.category import CategoryAudience, ClassCategory
-from system.models.calendar import CheckinStatus, ClassCheckin, ClassSession
+from system.models.calendar import CheckinStatus, ClassCheckin, ClassSession, SessionStatus
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
@@ -62,7 +62,24 @@ class HomeDashboardTestCase(TestCase):
             status="active",
         )
 
-    def test_student_home_renders_checkin_button_with_real_endpoint(self):
+    def test_student_home_renders_checkin_notice_when_instructor_not_present(self):
+        self._login_portal_account(self.account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("checkin-notice", content)
+        self.assertNotIn('class="btn btn--secondary btn--sm js-checkin"', content)
+
+    def test_student_home_renders_checkin_button_when_instructor_present(self):
+        ClassSession.objects.create(
+            schedule=self.schedule,
+            date=timezone.localdate(),
+            status=SessionStatus.SCHEDULED,
+            instructor_present=True,
+            instructor_checked_in_at=timezone.now(),
+        )
         self._login_portal_account(self.account)
 
         response = self.client.get(reverse("system:home"))

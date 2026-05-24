@@ -36,6 +36,8 @@ from system.views.calendar_views import (
     CalendarView,
     InstructorApproveCheckinView,
     InstructorApproveSpecialCheckinView,
+    InstructorSelfCheckinView,
+    InstructorSelfSpecialCheckinView,
     InstructorSpecialClassCreateView,
     InstructorSpecialClassDeleteView,
     InstructorToggleSessionView,
@@ -99,6 +101,8 @@ urlpatterns = [
     path("aulas/aulao/checkin/", StudentSpecialClassCheckinView.as_view(), name="student-special-checkin"),
 
     # Ações do professor (check-in, aulão, sessão)
+    path("aulas/professor/presenca/", InstructorSelfCheckinView.as_view(), name="instructor-self-checkin"),
+    path("aulas/professor/presenca-aulao/", InstructorSelfSpecialCheckinView.as_view(), name="instructor-self-special-checkin"),
     path("aulas/professor/aprovar/", InstructorApproveCheckinView.as_view(), name="instructor-approve-checkin"),
     path("aulas/professor/aprovar-aulao/", InstructorApproveSpecialCheckinView.as_view(), name="instructor-approve-special-checkin"),
     path("aulas/professor/cancelar/", InstructorToggleSessionView.as_view(), name="instructor-toggle-session"),

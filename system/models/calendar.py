@@ -57,6 +57,8 @@ class ClassSession(TimeStampedModel):
         blank=True,
         default="",
     )
+    instructor_present = models.BooleanField("Professor presente", default=False)
+    instructor_checked_in_at = models.DateTimeField("Presença registrada em", null=True, blank=True)
 
     class Meta:
         ordering = ("date", "schedule__start_time")
@@ -147,6 +149,8 @@ class SpecialClass(TimeStampedModel):
         blank=True,
     )
     notes = models.CharField("Observações", max_length=255, blank=True, default="")
+    instructor_present = models.BooleanField("Professor presente", default=False)
+    instructor_checked_in_at = models.DateTimeField("Presença registrada em", null=True, blank=True)
 
     class Meta:
         ordering = ("date", "start_time")
