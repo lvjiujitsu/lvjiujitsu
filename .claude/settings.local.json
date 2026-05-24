@@ -170,7 +170,8 @@
       "Bash(del \"templates\\\\home\\\\admin\\\\dashboard.html\")",
       "Bash(del \"templates\\\\home\\\\instructor\\\\dashboard.html\")",
       "Bash(del \"templates\\\\home\\\\student\\\\dashboard.html\")",
-      "Bash(powershell -Command \"& '.\\\\.venv\\\\Scripts\\\\python.exe' manage.py check 2>&1\")"
+      "Bash(powershell -Command \"& '.\\\\.venv\\\\Scripts\\\\python.exe' manage.py check 2>&1\")",
+      "Bash(powershell -Command \"& '.\\\\.venv\\\\Scripts\\\\python.exe' manage.py shell -c \\\\\"from django.urls import reverse; urls_to_check = ['system:plan-change-select','system:person-list','system:product-list','system:plan-list','system:student-checkin','system:student-schedule','system:financial-control','system:class-group-list']; [print\\(u, '→', reverse\\(u\\)\\) for u in urls_to_check]\\\\\"\")"
     ]
   },
   "model": "claude-sonnet-4-6",

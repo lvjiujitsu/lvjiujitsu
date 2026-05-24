@@ -72,8 +72,29 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             context["today_classes"] = get_today_classes_for_person(person)
             context["attendance_history"] = get_student_checkin_history(person)
 
-        context["graduation_progress"] = compute_graduation_progress(person)
+        gp = compute_graduation_progress(person)
+        context["graduation_progress"] = gp
         context["graduation_history"] = get_graduation_history(person)
+
+        if gp and gp.current_belt_rank:
+            belt = gp.current_belt_rank
+            grade = gp.current_grade_number or 0
+            slots = belt.get_grade_slots(grade)
+            n = len(slots)
+            tip_start, tip_width, stripe_w, stripe_gap = 232, 88, 12, 5
+            if n > 0:
+                total_w = n * stripe_w + (n - 1) * stripe_gap
+                sx = tip_start + (tip_width - total_w) // 2
+                stripes = [{"filled": f, "x": sx + i * (stripe_w + stripe_gap)} for i, f in enumerate(slots)]
+            else:
+                stripes = []
+            context["belt_rank"] = belt
+            context["belt_grade_number"] = grade
+            context["belt_stripes"] = stripes
+        else:
+            context["belt_rank"] = None
+            context["belt_grade_number"] = 0
+            context["belt_stripes"] = []
 
         if is_student:
             context["active_trial_access"] = get_active_trial_for_person(person)
@@ -110,6 +131,9 @@ def _empty_context():
         "attendance_history": [],
         "graduation_progress": None,
         "graduation_history": [],
+        "belt_rank": None,
+        "belt_grade_number": 0,
+        "belt_stripes": [],
         "active_trial_access": None,
         "billing_tabs": [],
     }
