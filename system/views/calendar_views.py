@@ -83,12 +83,11 @@ class AdminToggleSessionView(AdministrativeRequiredMixin, View):
         })
 
 
-class StudentScheduleView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES + INSTRUCTOR_PERSON_TYPE_CODES
-    template_name = "calendar/student_schedule.html"
+class CalendarView(PortalRoleRequiredMixin, TemplateView):
+    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES + CLASS_STAFF_PERSON_TYPE_CODES
+    template_name = "calendar/calendar.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def _resolve_month(self):
         year = self.kwargs.get("year") or timezone.localdate().year
         month = self.kwargs.get("month") or timezone.localdate().month
         try:
@@ -99,8 +98,41 @@ class StudentScheduleView(PortalRoleRequiredMixin, TemplateView):
         except (ValueError, TypeError):
             today = timezone.localdate()
             year, month = today.year, today.month
+        return year, month
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        year, month = self._resolve_month()
         context["calendar"] = get_calendar_month_data(year, month)
+
+        person = getattr(self.request, "portal_person", None)
+        is_instructor = (
+            person is not None
+            and person.person_type
+            and person.person_type.code in CLASS_STAFF_PERSON_TYPE_CODES
+        )
+        context["show_instructor_area"] = is_instructor
+
+        owned_schedule_ids = []
+        owned_special_ids = []
+        if is_instructor:
+            from system.services.class_calendar import _get_instructor_class_group_ids
+            from system.models import ClassSchedule
+            class_group_ids = _get_instructor_class_group_ids(person)
+            owned_schedule_ids = list(
+                ClassSchedule.objects.filter(class_group_id__in=class_group_ids)
+                .values_list("pk", flat=True)
+            )
+            owned_special_ids = list(
+                SpecialClass.objects.filter(teacher=person).values_list("pk", flat=True)
+            )
+        context["instructor_owned_schedule_ids"] = owned_schedule_ids
+        context["instructor_owned_special_ids"] = owned_special_ids
         return context
+
+
+# Kept for backward compatibility — both views now delegate to CalendarView
+StudentScheduleView = CalendarView
 
 
 class StudentCheckinView(PortalLoginRequiredMixin, View):
@@ -201,41 +233,8 @@ class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
         })
 
 
-class InstructorCalendarView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
-    template_name = "calendar/instructor_calendar.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        year = self.kwargs.get("year") or timezone.localdate().year
-        month = self.kwargs.get("month") or timezone.localdate().month
-        try:
-            year = int(year)
-            month = int(month)
-            if month < 1 or month > 12:
-                raise ValueError
-        except (ValueError, TypeError):
-            today = timezone.localdate()
-            year, month = today.year, today.month
-        context["calendar"] = get_calendar_month_data(year, month)
-
-        person = getattr(self.request, "portal_person", None)
-        owned_schedule_ids = []
-        owned_special_ids = []
-        if person:
-            from system.services.class_calendar import _get_instructor_class_group_ids
-            from system.models import ClassSchedule
-            class_group_ids = _get_instructor_class_group_ids(person)
-            owned_schedule_ids = list(
-                ClassSchedule.objects.filter(class_group_id__in=class_group_ids)
-                .values_list("pk", flat=True)
-            )
-            owned_special_ids = list(
-                SpecialClass.objects.filter(teacher=person).values_list("pk", flat=True)
-            )
-        context["instructor_owned_schedule_ids"] = owned_schedule_ids
-        context["instructor_owned_special_ids"] = owned_special_ids
-        return context
+# Alias mantido para imports existentes em urls.py
+InstructorCalendarView = CalendarView
 
 
 class InstructorToggleSessionView(PortalRoleRequiredMixin, View):

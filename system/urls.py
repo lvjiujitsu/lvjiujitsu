@@ -25,6 +25,23 @@ from system.views.home_views import (
     DashboardRedirectView,
     HomeView,
 )
+from system.views.person_views import (
+    PersonCreateView,
+    PersonDeleteView,
+    PersonDetailView,
+    PersonListView,
+    PersonUpdateView,
+)
+from system.views.calendar_views import (
+    CalendarView,
+    InstructorApproveCheckinView,
+    InstructorApproveSpecialCheckinView,
+    InstructorSpecialClassCreateView,
+    InstructorSpecialClassDeleteView,
+    InstructorToggleSessionView,
+    StudentCheckinView,
+    StudentSpecialClassCheckinView,
+)
 from system.views.payment_views import (
     DeferPaymentView,
     PaymentCancelView,
@@ -71,4 +88,24 @@ urlpatterns = [
     # Redirecionamento pós-login e home unificada
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
     path("home/", HomeView.as_view(), name="home"),
+
+    # Pessoas
+    path("pessoas/", PersonListView.as_view(), name="person-list"),
+    path("pessoas/nova/", PersonCreateView.as_view(), name="person-create"),
+    path("pessoas/<int:pk>/", PersonDetailView.as_view(), name="person-detail"),
+    path("pessoas/<int:pk>/editar/", PersonUpdateView.as_view(), name="person-update"),
+    path("pessoas/<int:pk>/excluir/", PersonDeleteView.as_view(), name="person-delete"),
+    path("aulas/checkin/", StudentCheckinView.as_view(), name="student-checkin"),
+    path("aulas/aulao/checkin/", StudentSpecialClassCheckinView.as_view(), name="student-special-checkin"),
+
+    # Ações do professor (check-in, aulão, sessão)
+    path("aulas/professor/aprovar/", InstructorApproveCheckinView.as_view(), name="instructor-approve-checkin"),
+    path("aulas/professor/aprovar-aulao/", InstructorApproveSpecialCheckinView.as_view(), name="instructor-approve-special-checkin"),
+    path("aulas/professor/cancelar/", InstructorToggleSessionView.as_view(), name="instructor-toggle-session"),
+    path("aulas/aulao/criar/", InstructorSpecialClassCreateView.as_view(), name="instructor-special-class-create"),
+    path("aulas/aulao/excluir/", InstructorSpecialClassDeleteView.as_view(), name="instructor-special-class-delete"),
+
+    # Calendário — view única para todos os perfis
+    path("cronograma/", CalendarView.as_view(), name="calendar"),
+    path("cronograma/<int:year>/<int:month>/", CalendarView.as_view(), name="calendar-month"),
 ]

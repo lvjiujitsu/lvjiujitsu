@@ -704,12 +704,30 @@ PRESENÇA RECENTE
 
 ## Implementado
 
-*(a preencher após implementação)*
+- Corrigido o recorte funcional imediato da home atual:
+  - rotas JSON `system:student-checkin` e `system:student-special-checkin` registradas em `system/urls.py`
+  - botão de check-in do aluno deixa de ser link morto e passa a usar `fetch()` com CSRF
+  - JS inline da home extraído para `static/system/js/dashboard.js`
+  - `dashboard.css` versionado no template para `?v=5`
+  - atalhos para módulos ainda não renderizáveis no estado atual deixam de ser `href="#"` e passam a aparecer como itens desabilitados
+  - botão "Trocar plano" deixa de apontar para `#` enquanto `billing/plan_change_select.html` não existe no template tree atual
+  - campo do plano no card de mensalidade ajustado para `m.plan.display_name`
+- Adicionada cobertura em `system/tests/test_home_dashboard.py` para:
+  - renderização da home de aluno com endpoint real de check-in
+  - criação de check-in pendente pelo endpoint JSON
+  - home de admin técnico sem links mortos `href="#"`
 
 ## Desvios do plano
 
-*(a preencher após implementação)*
+- Não foram restauradas as rotas visuais completas de Pessoas, Turmas, Financeiro, Graduação, Materiais e Planos neste recorte. As views existem no código, mas os templates correspondentes não existem no `templates/` atual; registrar essas rotas agora causaria erro de template.
+- Não foi criado `static/system/js/home/dashboard.js` porque a pasta `static/system/js/home/` não existe e `CLAUDE.md` proíbe criar novas pastas neste projeto. O JS foi criado em `static/system/js/dashboard.js`, dentro de pasta existente.
+- A validação visual foi feita com admin técnico e estados vazios. O fluxo visual completo de aluno com faixa, mensalidade ativa e aula do dia depende de dados locais coerentes/seeds.
 
 ## Pendências
 
-*(a preencher após implementação)*
+- PRD específico para restaurar os módulos internos completos a partir do legado sem copiar templates diretamente:
+  - recriar templates dentro do contrato atual de UI
+  - registrar rotas correspondentes
+  - validar permissões e estados por perfil
+- Reativar "Trocar plano" na home quando `billing/plan_change_select.html` for recriado no template tree atual.
+- Reativar links reais de staff quando as telas de destino existirem e passarem em validação visual.

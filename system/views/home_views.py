@@ -60,7 +60,6 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         context["is_student"] = is_student
         context["show_staff_area"] = is_admin or is_administrative
         context["show_instructor_area"] = is_admin or is_instructor
-
         if person is None:
             context.update(_empty_context())
             return context

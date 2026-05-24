@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=6">
 </head>
 <body>
 
@@ -35,6 +35,8 @@
 
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
+    <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
+    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}"}</script>
 
     {% if messages %}
     <div class="system-messages" role="alert" aria-live="assertive">
@@ -65,7 +67,7 @@
         <h2 class="section__title" id="quick-title">Acesso rápido</h2>
       </div>
       <nav class="quick-access" aria-label="Módulos do sistema">
-        <a class="quick-link" href="#">
+        <a class="quick-link" href="{% url 'system:person-list' %}">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -73,46 +75,46 @@
           </span>
           Pessoas
         </a>
-        <a class="quick-link" href="#">
+        <span class="quick-link quick-link--disabled" role="link" aria-disabled="true">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
           </span>
           Turmas
-        </a>
-        <a class="quick-link" href="#">
+        </span>
+        <span class="quick-link quick-link--disabled" role="link" aria-disabled="true">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
             </svg>
           </span>
           Financeiro
-        </a>
-        <a class="quick-link" href="#">
+        </span>
+        <span class="quick-link quick-link--disabled" role="link" aria-disabled="true">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
             </svg>
           </span>
           Graduação
-        </a>
-        <a class="quick-link" href="#">
+        </span>
+        <span class="quick-link quick-link--disabled" role="link" aria-disabled="true">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
             </svg>
           </span>
           Materiais
-        </a>
-        <a class="quick-link" href="#">
+        </span>
+        <span class="quick-link quick-link--disabled" role="link" aria-disabled="true">
           <span class="quick-link__icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
             </svg>
           </span>
           Planos
-        </a>
+        </span>
         {% if is_admin %}
         <a class="quick-link" href="/admin/" target="_blank" rel="noopener">
           <span class="quick-link__icon" aria-hidden="true">
@@ -131,20 +133,35 @@
     <section class="section" aria-labelledby="classes-title">
       <div class="section__header">
         <h2 class="section__title" id="classes-title">Turmas de hoje</h2>
+        {% if show_instructor_area %}
+        <div class="section__actions">
+          <button class="btn btn--secondary btn--sm js-open-special-modal" type="button">Criar aulão</button>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar' %}">Gerir cronograma</a>
+        </div>
+        {% else %}
         <span class="page-header__eyebrow" aria-hidden="true">{{ today_weekday }}</span>
+        {% endif %}
       </div>
       <div class="panel">
         {% if today_classes %}
           <ul class="class-list" aria-label="Aulas de hoje">
             {% for item in today_classes %}
-            <li class="class-item{% if item.is_cancelled %} class-item--cancelled{% endif %}">
+            <li class="class-item{% if item.is_cancelled %} class-item--cancelled{% endif %}{% if show_instructor_area %} class-item--instructor{% endif %}">
               <span class="class-item__time" aria-label="Horário">{{ item.start_time|default:"—" }}</span>
               <span class="class-item__dot" aria-hidden="true"></span>
               <div class="class-item__info">
                 <div class="class-item__name">
                   {{ item.group_name|default:"Aula" }}{% if item.category_name %} · {{ item.category_name }}{% endif %}
                 </div>
-                {% if item.teacher_name or item.cancellation_reason %}
+                {% if show_instructor_area %}
+                <div class="class-item__sub">
+                  {% if item.is_cancelled %}
+                    {{ item.cancellation_reason|default:"Cancelada" }}
+                  {% else %}
+                    {{ item.approved_count|default:0 }} confirmado{{ item.approved_count|default:0|pluralize }}{% if item.pending_count > 0 %} · <strong>{{ item.pending_count }} pendente{{ item.pending_count|pluralize }}</strong>{% endif %}
+                  {% endif %}
+                </div>
+                {% elif item.teacher_name or item.cancellation_reason %}
                 <div class="class-item__sub">
                   {% if item.teacher_name %}{{ item.teacher_name }}{% endif %}
                   {% if item.cancellation_reason %} · {{ item.cancellation_reason }}{% endif %}
@@ -160,12 +177,41 @@
                   {% elif item.has_checked_in %}
                     <span class="status-pill status-pill--warning">Aguardando</span>
                   {% else %}
-                    <a class="btn btn--secondary btn--sm" href="#">Check-in</a>
+                    <button
+                      class="btn btn--secondary btn--sm js-checkin"
+                      type="button"
+                      data-checkin-kind="{% if item.is_special %}special{% else %}regular{% endif %}"
+                      {% if item.is_special %}
+                      data-special-id="{{ item.special_id }}"
+                      {% else %}
+                      data-schedule-id="{{ item.schedule.pk }}"
+                      {% endif %}
+                    >Check-in</button>
                   {% endif %}
-                {% elif show_instructor_area %}
-                  <a class="btn btn--secondary btn--sm" href="#">Check-in</a>
                 {% endif %}
               </div>
+              {% if show_instructor_area and not item.is_cancelled and item.checkins %}
+              <div class="class-item__checkins">
+                {% for c in item.checkins %}
+                <div class="checkin-row">
+                  <span class="checkin-row__name">{{ c.person_name }}</span>
+                  <div class="checkin-row__actions">
+                    {% if c.is_approved %}
+                      <span class="status-pill status-pill--success">Confirmado</span>
+                    {% else %}
+                      <span class="status-pill status-pill--warning">Aguardando</span>
+                      <button
+                        class="btn btn--primary btn--sm js-approve-checkin"
+                        type="button"
+                        data-checkin-id="{{ c.pk }}"
+                        data-is-special="{% if item.is_special %}true{% else %}false{% endif %}"
+                      >Aprovar</button>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
             </li>
             {% endfor %}
           </ul>
@@ -188,35 +234,65 @@
       <div class="section__header">
         <h2 class="section__title" id="grad-title">Graduação</h2>
         {% if show_staff_area %}
-        <a class="section__link" href="#">Ver módulo</a>
+        <span class="section__link section__link--disabled" aria-disabled="true">Módulo pendente</span>
         {% endif %}
       </div>
       <div class="panel">
         {% if belt_rank %}
         <div class="grad-card">
+
+          <!-- Faixa SVG -->
           <div class="belt-visual" aria-label="{{ belt_rank.display_name }}{% if belt_grade_number %}, {{ belt_grade_number }}º grau{% endif %}">
             <svg class="belt-visual__svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" role="img" aria-hidden="true">
-              <defs>
-                <clipPath id="belt-clip">
-                  <rect x="0" y="0" width="320" height="36" rx="4" ry="4"/>
-                </clipPath>
-              </defs>
+              <defs><clipPath id="belt-clip"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
               <g clip-path="url(#belt-clip)">
                 <rect x="0" y="0" width="320" height="36" fill="{{ belt_rank.color_hex }}"/>
                 <rect x="232" y="0" width="88" height="36" fill="{{ belt_rank.tip_color_hex }}"/>
-                {% for stripe in belt_stripes %}
-                {% if stripe.filled %}
+                {% for stripe in belt_stripes %}{% if stripe.filled %}
                 <rect x="{{ stripe.x }}" y="5" width="12" height="26" fill="{{ belt_rank.stripe_color_hex }}" rx="2" ry="2"/>
-                {% endif %}
-                {% endfor %}
+                {% endif %}{% endfor %}
               </g>
             </svg>
           </div>
+
+          <!-- Nome e grau -->
           <div class="belt-info">
             <span class="belt-info__name">{{ belt_rank.display_name }}</span>
             {% if belt_grade_number %}<span class="belt-info__grade">{{ belt_grade_number }}º grau</span>{% endif %}
           </div>
+
           {% if graduation_progress %}
+
+          <!-- Data de graduação -->
+          {% if graduation_progress.current_graduation_date %}
+          <p class="grad-awarded">Faixa atual desde {{ graduation_progress.current_graduation_date|date:"d/m/Y" }}</p>
+          {% endif %}
+
+          <!-- Stats grid (apenas quando há regra aplicável) -->
+          {% if graduation_progress.applicable_rule %}
+          <div class="grad-stats">
+            <div class="grad-stat">
+              <div class="grad-stat__label">Na faixa</div>
+              <div class="grad-stat__value">{{ graduation_progress.months_in_current_grade }}<small> {% if graduation_progress.months_in_current_grade == 1 %}mês{% else %}meses{% endif %}</small></div>
+              {% if graduation_progress.required_months > 0 %}
+              <div class="grad-stat__sub">mín. {{ graduation_progress.required_months }} meses{% if graduation_progress.months_remaining > 0 %} · faltam {{ graduation_progress.months_remaining }}{% endif %}</div>
+              {% endif %}
+            </div>
+            <div class="grad-stat">
+              <div class="grad-stat__label">Aulas aprovadas</div>
+              <div class="grad-stat__value">{{ graduation_progress.approved_classes_in_window }}</div>
+              {% if graduation_progress.required_classes > 0 %}
+              <div class="grad-stat__sub">mín. {{ graduation_progress.required_classes }}{% if graduation_progress.missing_classes > 0 %} · faltam {{ graduation_progress.missing_classes }}{% endif %}</div>
+              {% endif %}
+            </div>
+            <div class="grad-stat {% if graduation_progress.is_eligible %}grad-stat--eligible{% endif %}">
+              <div class="grad-stat__label">Conclusão</div>
+              <div class="grad-stat__value">{{ graduation_progress.progress_pct|floatformat:0 }}%</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Barra de progresso -->
           <div class="progress-label">
             <span class="progress-label__name">Próximo grau</span>
             <span class="progress-label__pct">{{ graduation_progress.progress_pct|floatformat:0 }}%</span>
@@ -224,14 +300,52 @@
           <div class="progress-bar" role="progressbar"
                aria-valuenow="{{ graduation_progress.progress_pct|floatformat:0 }}"
                aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar__fill" style="width: {{ graduation_progress.progress_pct|floatformat:0 }}%"></div>
+            <div class="progress-bar__fill{% if graduation_progress.is_eligible %} progress-bar__fill--success{% endif %}"
+                 style="width: {{ graduation_progress.progress_pct|floatformat:0 }}%"></div>
           </div>
-          <p class="progress-sub">
-            {{ graduation_progress.approved_classes_in_window }}
-            aula{{ graduation_progress.approved_classes_in_window|pluralize }}
-            {% if graduation_progress.required_classes %}de {{ graduation_progress.required_classes }} necessárias{% endif %}
+
+          <!-- Mensagem de habilitação ou bloqueio -->
+          {% if graduation_progress.is_eligible %}
+          <p class="grad-message grad-message--eligible">Habilitado para a próxima graduação.</p>
+          {% elif graduation_progress.months_remaining > 0 or graduation_progress.missing_classes > 0 or graduation_progress.blocker %}
+          <p class="grad-message grad-message--blocker">
+            {% if graduation_progress.months_remaining > 0 and graduation_progress.missing_classes > 0 %}
+              Faltam {{ graduation_progress.months_remaining }} {% if graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa e {{ graduation_progress.missing_classes }} {% if graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
+            {% elif graduation_progress.months_remaining > 0 %}
+              Faltam {{ graduation_progress.months_remaining }} {% if graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa para habilitar a próxima graduação.
+            {% elif graduation_progress.missing_classes > 0 %}
+              Faltam {{ graduation_progress.missing_classes }} {% if graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
+            {% elif graduation_progress.blocker %}
+              {{ graduation_progress.blocker }}
+            {% endif %}
           </p>
           {% endif %}
+
+          <!-- Histórico de graduação recolhível -->
+          {% if graduation_history %}
+          <button class="grad-history-toggle" type="button" id="grad-history-btn"
+                  aria-expanded="false" aria-controls="grad-history-panel">
+            Ver histórico
+            <svg id="grad-history-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                 style="transition: transform 0.2s; flex-shrink:0;">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div class="grad-history-panel" id="grad-history-panel" hidden>
+            {% for entry in graduation_history %}
+            <div class="grad-history-item">
+              <span class="grad-history-item__date">{{ entry.awarded_at|date:"m/Y" }}</span>
+              <span class="grad-history-item__belt">{{ entry.belt_rank.display_name }}{% if entry.grade_number %}, {{ entry.grade_number }}º grau{% endif %}</span>
+              {% if entry.is_current %}<span class="grad-history-item__current">Atual</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% endif %}{# /graduation_progress #}
+
         </div>
         {% else %}
           <div class="empty-state" role="status">
@@ -289,7 +403,7 @@
                 {% else %}
                   <span class="badge badge--warning">{{ m.get_status_display }}</span>
                 {% endif %}
-                <div class="billing-card__plan">{{ m.plan.name }}</div>
+                <div class="billing-card__plan">{{ m.plan.display_name }}</div>
               </div>
               <div class="billing-card__detail">
                 {% if m.current_period_end %}Vencimento: {{ m.current_period_end|date:"d/m/Y" }}{% endif %}
@@ -306,7 +420,7 @@
                   {% endif %}
                 {% endif %}
                 {% if m.status == "active" %}
-                <a class="btn btn--secondary btn--sm" href="#">Trocar plano</a>
+                <span class="btn btn--secondary btn--sm" aria-disabled="true">Trocar plano pendente</span>
                 {% endif %}
               </div>
               {% endwith %}
@@ -346,7 +460,7 @@
     <section class="section" aria-labelledby="history-title">
       <div class="section__header">
         <h2 class="section__title" id="history-title">Histórico de presença</h2>
-        <a class="section__link" href="#">Ver tudo</a>
+        <span class="section__link section__link--disabled" aria-disabled="true">Histórico completo pendente</span>
       </div>
       <div class="panel">
         <ul class="attendance-list" aria-label="Últimas presenças">
@@ -373,7 +487,7 @@
     <section class="section" aria-labelledby="financial-title">
       <div class="section__header">
         <h2 class="section__title" id="financial-title">Financeiro</h2>
-        <a class="section__link" href="#">Ver módulo</a>
+        <span class="section__link section__link--disabled" aria-disabled="true">Módulo pendente</span>
       </div>
       <div class="panel">
         <div class="empty-state" role="status">
@@ -390,48 +504,40 @@
 
   </main>
 
+  <!-- ─── Modal: criar aulão ───────────────────────────────────────────────── -->
+  {% if show_instructor_area %}
+  <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-aulao-title">
+    <div class="modal">
+      <h2 class="modal__title" id="modal-aulao-title">Criar aulão</h2>
+      <form class="js-special-class-form" novalidate>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-title">Título</label>
+          <input class="modal__input" type="text" id="aulao-title" name="title" placeholder="Ex: Aulão de raspagem" autocomplete="off">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-date">Data</label>
+          <input class="modal__input" type="date" id="aulao-date" name="date" value="{{ today_iso }}">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-time">Horário</label>
+          <input class="modal__input" type="time" id="aulao-time" name="start_time">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-duration">Duração (minutos)</label>
+          <input class="modal__input" type="number" id="aulao-duration" name="duration_minutes" min="15" max="360" placeholder="Ex: 90">
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Criar aulão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script>
-    (function () {
-      var toggle = document.getElementById('theme-toggle');
-      var iconSun = document.getElementById('icon-sun');
-      var iconMoon = document.getElementById('icon-moon');
-
-      function applyTheme(t) {
-        var isDark = t === 'dark';
-        document.documentElement.setAttribute('data-theme', t);
-        localStorage.setItem('lv-theme', t);
-        if (iconSun)  iconSun.hidden  = isDark;
-        if (iconMoon) iconMoon.hidden = !isDark;
-        toggle.setAttribute('aria-label', isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro');
-      }
-
-      var current = document.documentElement.getAttribute('data-theme') || 'light';
-      applyTheme(current);
-
-      toggle.addEventListener('click', function () {
-        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-      });
-
-      var tabBtns = document.querySelectorAll('.tab-btn');
-      tabBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var idx = btn.getAttribute('data-tab');
-          tabBtns.forEach(function (b) {
-            b.classList.remove('tab-btn--active');
-            b.setAttribute('aria-selected', 'false');
-          });
-          document.querySelectorAll('.tab-panel').forEach(function (p) {
-            p.classList.remove('tab-panel--active');
-          });
-          btn.classList.add('tab-btn--active');
-          btn.setAttribute('aria-selected', 'true');
-          var panel = document.getElementById('tab-panel-' + idx);
-          if (panel) panel.classList.add('tab-panel--active');
-        });
-      });
-    })();
-  </script>
+  <script src="{% static 'system/js/dashboard.js' %}?v=2" defer></script>
 
 </body>
 </html>

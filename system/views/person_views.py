@@ -165,6 +165,7 @@ class PersonDetailView(PeopleSupportRequiredMixin, DetailView):
         _hydrate_person_relationships(context["person"], active_ibjjf_categories)
         context["graduation_progress"] = compute_graduation_progress(context["person"])
         context["graduation_history"] = get_graduation_history(context["person"])
+        context["belt_stripes_detail"] = _compute_belt_stripes(context["graduation_progress"])
         if not context["can_manage_people"]:
             return context
         person = context["person"]
@@ -441,3 +442,18 @@ def _sort_time_labels(time_labels):
         time_labels,
         key=lambda value: tuple(int(part) for part in value.split(":", 1)),
     )
+
+
+def _compute_belt_stripes(graduation_progress):
+    if graduation_progress is None or graduation_progress.current_belt_rank is None:
+        return []
+    belt = graduation_progress.current_belt_rank
+    grade = graduation_progress.current_grade_number or 0
+    slots = belt.get_grade_slots(grade)
+    n = len(slots)
+    if n == 0:
+        return []
+    tip_start, tip_width, stripe_w, stripe_gap = 232, 88, 12, 5
+    total_w = n * stripe_w + (n - 1) * stripe_gap
+    sx = tip_start + (tip_width - total_w) // 2
+    return [{"filled": f, "x": sx + i * (stripe_w + stripe_gap)} for i, f in enumerate(slots)]
