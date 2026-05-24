@@ -6,14 +6,14 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=2">
 </head>
 <body>
 
   <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
   <header class="topbar" role="banner">
     <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="32">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
       <span class="topbar__name">LV JIU JITSU</span>
     </a>
     <nav class="topbar__actions" aria-label="Ações do usuário">
@@ -31,21 +31,32 @@
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
 
+    <!-- Mensagens do sistema -->
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Cabeçalho da página -->
     <div class="page-header">
       <p class="page-header__eyebrow">{{ today_weekday }}, {{ today_date }}</p>
       <h1 class="page-header__title">
         {% if request.portal_person %}
-          Olá, {{ request.portal_person.full_name|truncatewords:1 }}
+          Olá, {{ request.portal_person.full_name|truncatewords:1 }} 👋
         {% elif request.technical_admin_user %}
-          Olá, {{ request.technical_admin_user.get_short_name|default:request.technical_admin_user.username }}
+          Olá, {{ request.technical_admin_user.get_short_name|default:request.technical_admin_user.username }} 👋
         {% else %}
           Início
         {% endif %}
       </h1>
     </div>
 
-    <!-- ─── Acesso rápido — apenas staff / admin ──────────────────────────── -->
+    <!-- ─── Acesso rápido — staff / admin ─────────────────────────────────── -->
     {% if show_staff_area %}
     <section class="section" aria-labelledby="quick-title">
       <div class="section__header">
@@ -79,7 +90,7 @@
     </section>
     {% endif %}
 
-    <!-- ─── Turmas de hoje ───────────────────────────────────────────────── -->
+    <!-- ─── Turmas de hoje ─────────────────────────────────────────────────── -->
     <section class="section" aria-labelledby="classes-title">
       <div class="section__header">
         <h2 class="section__title" id="classes-title">Turmas de hoje</h2>
@@ -93,6 +104,7 @@
               <span class="class-item__time" aria-label="Horário">
                 {{ item.start_time|default:item.time|default:"—" }}
               </span>
+              <span class="class-item__dot" aria-hidden="true"></span>
               <div class="class-item__info">
                 <div class="class-item__name">
                   {{ item.class_group__name|default:item.name|default:item.title|default:"Aula" }}
@@ -119,7 +131,7 @@
       </div>
     </section>
 
-    <!-- ─── Graduação ────────────────────────────────────────────────────── -->
+    <!-- ─── Graduação ──────────────────────────────────────────────────────── -->
     {% if graduation_progress or graduation_history %}
     <section class="section" aria-labelledby="grad-title">
       <div class="section__header">
@@ -161,7 +173,7 @@
     </section>
     {% endif %}
 
-    <!-- ─── Mensalidade — apenas perfis de aluno/responsável ─────────────── -->
+    <!-- ─── Mensalidade — aluno / responsável ─────────────────────────────── -->
     {% if is_student and billing_tabs %}
     <section class="section" aria-labelledby="billing-title">
       <div class="section__header">
@@ -248,7 +260,7 @@
     </section>
     {% endif %}
 
-    <!-- ─── Mensalidade — admin/administrativo vê resumo financeiro ──────── -->
+    <!-- ─── Financeiro — admin / administrativo ───────────────────────────── -->
     {% if show_staff_area %}
     <section class="section" aria-labelledby="financial-title">
       <div class="section__header">
@@ -267,7 +279,7 @@
   </main>
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script type="application/json" id="page-data">{"hasTabs": {{ billing_tabs|length }} > 1}</script>
+  <script type="application/json" id="page-data">{"hasTabs": {{ billing_tabs|length|default:0 }} > 1}</script>
   <script>
     (function () {
       var toggle = document.getElementById('theme-toggle');
