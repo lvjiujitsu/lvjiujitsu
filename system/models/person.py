@@ -254,7 +254,7 @@ class PersonRelationship(TimeStampedModel):
                 name="unique_person_relationship",
             ),
             models.CheckConstraint(
-                check=~Q(source_person=F("target_person")),
+                condition=~Q(source_person=F("target_person")),
                 name="prevent_self_person_relationship",
             ),
         ]
