@@ -559,7 +559,7 @@ def get_calendar_month_data(year, month):
         days.append(SimpleNamespace(
             date=current_date,
             day=day_num,
-            weekday=current_date.strftime("%a"),
+            weekday=date_format(current_date, "D"),
             is_today=current_date == timezone.localdate(),
             is_holiday=bool(holiday_name),
             holiday_name=holiday_name,

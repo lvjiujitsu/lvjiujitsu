@@ -35,3 +35,10 @@ May 24, 2026 - 10:54:51
 Django version 4.1.13, using settings 'lvjiujitsu.settings'
 Starting development server at http://127.0.0.1:8000/
 Quit the server with CTRL-BREAK.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 11:45:10
+Django version 4.1.13, using settings 'lvjiujitsu.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.

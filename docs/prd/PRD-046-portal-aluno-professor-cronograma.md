@@ -290,6 +290,14 @@ print(gp.current_graduation_date, gp.months_in_current_grade, gp.required_months
 
 ## Evidências
 
+### Iteração 2 — Responsividade do cronograma
+- Decisão de UX: `/cronograma/` deve ter largura própria em desktop, sem ficar limitado ao `max-width` da home; em mobile, a grade mensal deve virar uma lista de dias legível.
+- Decisão de interação: clicar/tocar em qualquer dia abre um modal com as informações completas daquele dia.
+- Teste Red/Green: `CalendarServiceTestCase.test_calendar_page_renders_responsive_day_detail_contract` falhou antes da implementação porque o template ainda usava a estrutura antiga e passou após a inclusão de `page--calendar`, `calendar-board`, `cal-grid--days`, botões de dia e modal `calendar-day-modal`.
+- `system/services/class_calendar.py`: `weekday` passou a usar `date_format(..., "D")` para manter rótulos de dia localizados em pt-BR.
+- Validação mobile no navegador (375px): `pageWidth=360`, `gridWidth=332`, `bodyOverflow=false`, 31 botões de dia, modal de detalhe abriu com título `1 de Maio de 2026` e lista completa de aulas/cancelamentos.
+- Validação desktop no navegador (2560px): `pageWidth=1720`, `gridWidth=1680`, colunas de ~235px, dias com ~174px de altura, `bodyOverflow=false`.
+
 ### Testes automatizados
 - `manage.py test --verbosity 2` → **168 testes, 0 falhas, 0 erros** (5.07s)
 - `manage.py check` → **System check identified no issues (0 silenced)**
@@ -347,6 +355,9 @@ print(gp.current_graduation_date, gp.months_in_current_grade, gp.required_months
 - `templates/home/dashboard.html`: seção de graduação enriquecida, checkins de instrutor, modal "Criar aulão", atualização do `home-config` JSON
 - `templates/calendar/instructor_calendar.html`: criado (nova pasta `templates/calendar/`)
 - `templates/calendar/student_schedule.html`: criado
+- `templates/calendar/calendar.html`: atualizado para layout responsivo próprio do cronograma, com detalhe de dia em modal
+- `static/system/css/home/dashboard.css`: adicionados estilos responsivos para `.page--calendar`, `.calendar-board`, `.cal-grid--days`, `.cal-day__button`, lista mobile e modal de detalhes do dia
+- `system/tests/test_calendar.py`: adicionado teste de contrato do layout responsivo do cronograma
 
 ## Desvios do plano
 

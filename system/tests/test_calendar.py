@@ -208,6 +208,25 @@ class CalendarServiceTestCase(TestCase):
         today_entry = [d for d in data.days if d.is_today]
         self.assertEqual(len(today_entry), 1)
 
+    def test_calendar_page_renders_responsive_day_detail_contract(self):
+        self._login_portal_account(self.account)
+
+        response = self.client.get(reverse("system:calendar"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn('class="page page--calendar"', content)
+        self.assertIn("calendar-board", content)
+        self.assertIn('class="cal-grid cal-grid--days"', content)
+        self.assertIn('class="cal-day__button js-open-day-detail"', content)
+        self.assertIn('id="calendar-day-modal"', content)
+        self.assertIn('id="calendar-day-modal-body"', content)
+
+    def _login_portal_account(self, account):
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
+        session.save()
+
 
 class CheckinApprovalServiceTestCase(TestCase):
     def setUp(self):

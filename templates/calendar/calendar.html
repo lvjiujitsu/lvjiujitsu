@@ -6,7 +6,7 @@
   <title>Cronograma — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=13">
 </head>
 <body>
 
@@ -34,7 +34,7 @@
   </header>
 
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
-  <main class="page" id="main-content">
+  <main class="page page--calendar" id="main-content">
 
     {% if show_instructor_area %}
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
@@ -54,18 +54,18 @@
     </div>
 
     <!-- Navegação do mês -->
-    <div class="section">
+    <section class="section calendar-board" aria-labelledby="calendar-title">
       <div class="cal-nav">
         <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.prev_year month=calendar.prev_month %}">← Mês anterior</a>
-        <span class="cal-nav__title">{{ calendar.month_name }} {{ calendar.year }}</span>
+        <span class="cal-nav__title" id="calendar-title">{{ calendar.month_name }} {{ calendar.year }}</span>
         <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.next_year month=calendar.next_month %}">Próximo mês →</a>
         {% if show_instructor_area %}
-        <button class="btn btn--primary btn--sm js-open-special-modal" type="button" style="margin-left:auto">Criar aulão</button>
+        <button class="btn btn--primary btn--sm js-open-special-modal" type="button">Criar aulão</button>
         {% endif %}
       </div>
 
       <!-- Cabeçalho da grade -->
-      <div class="cal-grid" style="margin-bottom:0.375rem">
+      <div class="cal-grid cal-grid--weekdays">
         <div class="cal-header-cell">Seg</div>
         <div class="cal-header-cell">Ter</div>
         <div class="cal-header-cell">Qua</div>
@@ -76,40 +76,86 @@
       </div>
 
       <!-- Grade de dias -->
-      <div class="cal-grid">
+      <div class="cal-grid cal-grid--days">
         {% for day in calendar.days %}
         <div class="cal-day{% if day.is_today %} cal-day--today{% endif %}{% if day.is_holiday %} cal-day--holiday{% endif %}">
-          <div class="cal-day__num" title="{% if day.holiday_name %}{{ day.holiday_name }}{% endif %}">
-            {{ day.day }}{% if day.is_holiday %} 🏖{% endif %}
+          <button class="cal-day__button js-open-day-detail" type="button" aria-haspopup="dialog" data-day-title="{{ day.day }} de {{ calendar.month_name }} de {{ calendar.year }}" data-detail-id="cal-detail-{{ forloop.counter }}">
+            <span class="cal-day__num" title="{% if day.holiday_name %}{{ day.holiday_name }}{% endif %}">
+              {{ day.day }}{% if day.is_holiday %} 🏖{% endif %}
+            </span>
+            <span class="cal-day__weekday">{{ day.weekday }}</span>
+            <span class="cal-day__events">
+              {% for class in day.classes %}
+              <span class="cal-class-pill{% if class.is_cancelled %} cal-class-pill--cancelled{% elif show_instructor_area and class.schedule_id in instructor_owned_schedule_ids %} cal-class-pill--owned{% endif %}"
+                    title="{{ class.group_name }} — {{ class.category_name }}{% if class.teacher_name %} ({{ class.teacher_name }}){% endif %}{% if class.is_cancelled %} — Cancelada{% endif %}">
+                {{ class.start_time }} {{ class.group_name }}
+              </span>
+              {% endfor %}
+              {% for special in day.specials %}
+              <span class="cal-class-pill{% if show_instructor_area and special.special_id in instructor_owned_special_ids %} cal-class-pill--special{% elif not show_instructor_area %} cal-class-pill--special{% endif %}"
+                    title="{{ special.group_name }}{% if special.teacher_name %} ({{ special.teacher_name }}){% endif %}">
+                {{ special.start_time }} ★ {{ special.group_name }}
+              </span>
+              {% endfor %}
+              {% if not day.classes and not day.specials %}
+              <span class="cal-day__empty">Sem aulas</span>
+              {% endif %}
+            </span>
+          </button>
+          <div class="calendar-day-detail" id="cal-detail-{{ forloop.counter }}" hidden>
+            {% if day.holiday_name %}
+            <p class="calendar-day-detail__holiday">{{ day.holiday_name }}</p>
+            {% endif %}
+            {% for class in day.classes %}
+            <div class="calendar-day-detail__item{% if class.is_cancelled %} calendar-day-detail__item--cancelled{% endif %}">
+              <span class="calendar-day-detail__time">{{ class.start_time }}</span>
+              <div class="calendar-day-detail__body">
+                <span class="calendar-day-detail__title">{{ class.group_name }}</span>
+                <span class="calendar-day-detail__meta">{{ class.category_name }}{% if class.teacher_name %} · {{ class.teacher_name }}{% endif %}{% if class.is_cancelled %} · Cancelada{% endif %}</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for special in day.specials %}
+            <div class="calendar-day-detail__item calendar-day-detail__item--special">
+              <span class="calendar-day-detail__time">{{ special.start_time }}</span>
+              <div class="calendar-day-detail__body">
+                <span class="calendar-day-detail__title">★ {{ special.group_name }}</span>
+                <span class="calendar-day-detail__meta">Aulão{% if special.teacher_name %} · {{ special.teacher_name }}{% endif %}</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% if not day.classes and not day.specials and not day.holiday_name %}
+            <p class="modal-empty">Sem aulas neste dia.</p>
+            {% endif %}
           </div>
-          {% for class in day.classes %}
-          <span class="cal-class-pill{% if class.is_cancelled %} cal-class-pill--cancelled{% elif show_instructor_area and class.schedule_id in instructor_owned_schedule_ids %} cal-class-pill--owned{% endif %}"
-                title="{{ class.group_name }} — {{ class.category_name }}{% if class.teacher_name %} ({{ class.teacher_name }}){% endif %}{% if class.is_cancelled %} — Cancelada{% endif %}">
-            {{ class.start_time }} {{ class.group_name }}
-          </span>
-          {% endfor %}
-          {% for special in day.specials %}
-          <span class="cal-class-pill{% if show_instructor_area and special.special_id in instructor_owned_special_ids %} cal-class-pill--special{% elif not show_instructor_area %} cal-class-pill--special{% endif %}"
-                title="{{ special.group_name }}{% if special.teacher_name %} ({{ special.teacher_name }}){% endif %}">
-            {{ special.start_time }} ★ {{ special.group_name }}
-          </span>
-          {% endfor %}
         </div>
         {% endfor %}
       </div>
 
       <!-- Legenda -->
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;font-size:0.75rem;color:var(--muted)">
+      <div class="cal-legend">
         {% if show_instructor_area %}
-        <span><span class="cal-class-pill cal-class-pill--owned" style="display:inline-block">Minhas turmas</span></span>
+        <span><span class="cal-class-pill cal-class-pill--owned">Minhas turmas</span></span>
         {% else %}
-        <span><span class="cal-class-pill" style="display:inline-block">Aula regular</span></span>
+        <span><span class="cal-class-pill">Aula regular</span></span>
         {% endif %}
-        <span><span class="cal-class-pill cal-class-pill--special" style="display:inline-block">★ Aulão</span></span>
-        <span><span class="cal-class-pill cal-class-pill--cancelled" style="display:inline-block">Cancelada</span></span>
+        <span><span class="cal-class-pill cal-class-pill--special">★ Aulão</span></span>
+        <span><span class="cal-class-pill cal-class-pill--cancelled">Cancelada</span></span>
       </div>
-    </div>
+    </section>
   </main>
+
+  <div class="modal-overlay" id="calendar-day-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-day-modal-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="calendar-day-modal-title">Dia</h2>
+        <button class="modal__close js-close-day-detail" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="calendar-day-modal-body" id="calendar-day-modal-body"></div>
+    </div>
+  </div>
 
   <!-- ─── Modal: criar aulão (apenas instrutores) ──────────────────────────── -->
   {% if show_instructor_area %}
@@ -168,6 +214,43 @@
           applyTheme(next);
         });
       }
+
+      (function () {
+        var overlay = document.getElementById('calendar-day-modal');
+        var title = document.getElementById('calendar-day-modal-title');
+        var body = document.getElementById('calendar-day-modal-body');
+        if (!overlay || !title || !body) return;
+
+        function closeModal() {
+          overlay.setAttribute('hidden', '');
+          document.body.style.overflow = '';
+          body.innerHTML = '';
+        }
+
+        document.addEventListener('click', function (event) {
+          var button = event.target.closest('.js-open-day-detail');
+          if (!button) return;
+          var detailId = button.getAttribute('data-detail-id');
+          var source = detailId ? document.getElementById(detailId) : null;
+          if (!source) return;
+          title.textContent = button.getAttribute('data-day-title') || 'Dia';
+          body.innerHTML = '';
+          Array.prototype.forEach.call(source.childNodes, function (node) {
+            body.appendChild(node.cloneNode(true));
+          });
+          overlay.removeAttribute('hidden');
+          document.body.style.overflow = 'hidden';
+        });
+
+        var closeButton = overlay.querySelector('.js-close-day-detail');
+        if (closeButton) closeButton.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (event) {
+          if (event.target === overlay) closeModal();
+        });
+        document.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+        });
+      })();
 
       {% if show_instructor_area %}
       // Modal criar aulão
