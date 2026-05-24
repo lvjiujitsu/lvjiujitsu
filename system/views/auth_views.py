@@ -21,8 +21,9 @@ from system.constants import CheckoutAction
 from system.models import Person
 from system.models import PreRegistration, PreRegistrationStatus
 from system.models import SubscriptionPlan
-from system.models.registration_order import RegistrationOrder
+from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services import asaas_client
+from system.services.coupon import CouponError, apply_coupon, mark_coupon_used, validate_coupon
 from system.services.class_catalog import get_ibjjf_age_category_payload
 from system.services.class_overview import get_registration_catalog_payload
 from system.services.registration_checkout import (
@@ -79,6 +80,7 @@ class PortalRegisterView(FormView):
             get_product_catalog_payload(), ensure_ascii=False
         )
         context["post_plan_payment_complete"] = self.request.session.get("post_plan_payment_complete", False)
+        context["plan_is_trial"] = self.request.session.get("plan_is_trial", False)
         context["post_materials_payment_complete"] = self.request.session.get("post_materials_payment_complete", False)
         context["post_materials_skipped"] = self.request.session.get("post_materials_skipped", False)
         context["plan_order_json"] = json.dumps(
@@ -109,10 +111,14 @@ class PortalRegisterView(FormView):
 
         checkout_action = form.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
         if checkout_action == CheckoutAction.PAY_LATER:
-            messages.info(
-                self.request,
-                "Cadastro salvo como rascunho. Nenhum pagamento foi confirmado.",
-            )
+            # Marca aula experimental no snapshot e avança o wizard
+            snapshot = pre_registration.form_snapshot or {}
+            snapshot["trial_requested"] = True
+            pre_registration.form_snapshot = snapshot
+            pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+            self.request.session["post_plan_payment_complete"] = True
+            self.request.session["plan_is_trial"] = True
+            self.request.session.pop("plan_order_id", None)
             return redirect("system:register")
 
         try:
@@ -156,13 +162,31 @@ class PortalRegisterView(FormView):
                 return updated
         return PreRegistration.objects.create(**defaults)
 
+    # Campos que o Django processa como lista (MultipleChoiceField) — sempre salvar como list no snapshot
+    _MULTI_VALUE_FORM_FIELDS = {
+        "holder_class_groups",
+        "dependent_class_groups",
+        "student_class_groups",
+    }
+
     def _build_form_snapshot(self):
         snapshot = {}
         for key, values in self.request.POST.lists():
             if key == "csrfmiddlewaretoken":
                 continue
-            snapshot[key] = values if len(values) > 1 else values[0]
+            if key in self._MULTI_VALUE_FORM_FIELDS:
+                snapshot[key] = values  # sempre lista para MultipleChoiceField
+            else:
+                snapshot[key] = values if len(values) > 1 else values[0]
         return snapshot
+
+    @staticmethod
+    def _snapshot_scalar(snapshot, key, default=""):
+        """Lê um campo scalar do snapshot, normalizando caso tenha sido salvo como lista."""
+        value = snapshot.get(key, default)
+        if isinstance(value, list):
+            value = value[0] if value else default
+        return value or default
 
     def _resolve_primary_cpf(self, cleaned_data):
         return (
@@ -181,6 +205,11 @@ class PortalRegisterView(FormView):
         )
 
     def _create_pre_registration_plan_payment(self, pre_registration, checkout_action):
+        from system.services.stripe_checkout import (
+            StripeCheckoutError,
+            create_subscription_session_for_pre_registration,
+        )
+
         snapshot = pre_registration.form_snapshot or {}
         selected_plans = self._parse_selected_plan_payload(snapshot)
         if not selected_plans:
@@ -199,6 +228,33 @@ class PortalRegisterView(FormView):
         if total <= 0:
             raise ValueError("Plano sem valor cobrável.")
 
+        # Aplicar cupom de desconto — válido para todos os gateways
+        coupon_code = self._snapshot_scalar(snapshot, "coupon_code")
+        coupon = None
+        discount_amount = Decimal("0.00")
+        if coupon_code:
+            try:
+                coupon = validate_coupon(coupon_code)
+                total, discount_amount = apply_coupon(coupon, total)
+            except CouponError as exc:
+                raise ValueError(str(exc))
+
+        if checkout_action == CheckoutAction.STRIPE_CARD:
+            coupon_info = (
+                {"coupon_code": coupon.code, "discount_amount": str(discount_amount)}
+                if coupon else None
+            )
+            try:
+                session = create_subscription_session_for_pre_registration(
+                    pre_registration, plans_by_id, selected_plans,
+                    final_total=total, coupon_info=coupon_info,
+                )
+            except StripeCheckoutError as exc:
+                raise ValueError(str(exc))
+            if coupon:
+                mark_coupon_used(coupon)
+            return session["url"]
+
         customer_id = self._ensure_pre_registration_asaas_customer(pre_registration)
         success_url = (
             settings.SITE_BASE_URL.rstrip("/")
@@ -215,6 +271,7 @@ class PortalRegisterView(FormView):
                 due_date=due_date,
                 description=description,
                 external_reference=f"pre-registration:{pre_registration.pk}:plan",
+                success_url=success_url,
             )
         else:
             payment = asaas_client.create_credit_card_payment(
@@ -232,6 +289,14 @@ class PortalRegisterView(FormView):
         if not invoice_url or not payment_id:
             raise asaas_client.AsaasClientError("Resposta Asaas sem invoiceUrl ou id.")
 
+        coupon_info = {}
+        if coupon:
+            coupon_info = {
+                "coupon_code": coupon.code,
+                "discount_amount": str(discount_amount),
+            }
+            mark_coupon_used(coupon)
+
         snapshot["plan_payment"] = {
             "asaas_payment_id": payment_id,
             "total": str(total),
@@ -244,6 +309,7 @@ class PortalRegisterView(FormView):
                 }
                 for item in selected_plans
             ],
+            **coupon_info,
         }
         pre_registration.form_snapshot = snapshot
         pre_registration.save(update_fields=["form_snapshot", "updated_at"])
@@ -483,6 +549,39 @@ class RegistrationStepValidationView(View):
         return JsonResponse({"valid": not errors, "errors": errors})
 
 
+class ValidateCouponView(View):
+    def post(self, request, *args, **kwargs):
+        from decimal import Decimal
+
+        code = request.POST.get("coupon_code") or ""
+        raw_total = request.POST.get("total") or "0"
+
+        try:
+            total = Decimal(raw_total)
+        except Exception:
+            return JsonResponse({"valid": False, "message": "Total inválido."}, status=400)
+
+        try:
+            coupon = validate_coupon(code)
+        except CouponError as exc:
+            return JsonResponse({"valid": False, "message": str(exc)})
+
+        discounted_total, discount_amount = apply_coupon(coupon, total)
+        from system.models.coupon import DiscountType
+        label = (
+            f"{coupon.discount_value}%"
+            if coupon.discount_type == DiscountType.PERCENT
+            else f"R$ {coupon.discount_value:.2f}".replace(".", ",")
+        )
+        return JsonResponse({
+            "valid": True,
+            "message": f"Cupom aplicado: {label} de desconto.",
+            "discount_amount": str(discount_amount),
+            "discounted_total": str(discounted_total),
+            "coupon_code": coupon.code,
+        })
+
+
 class RegistrationCpfAvailabilityView(View):
     def get(self, request, *args, **kwargs):
         raw_cpf = request.GET.get("cpf", "")
@@ -714,6 +813,7 @@ class MaterialsCheckoutView(View):
                 due_date=due_date,
                 description=description,
                 external_reference=f"pre-registration:{pre_registration.pk}:materials",
+                success_url=success_url,
             )
         else:
             payment = asaas_client.create_credit_card_payment(
@@ -747,6 +847,26 @@ class MaterialsCheckoutView(View):
         pre_registration.form_snapshot = snapshot
         pre_registration.save(update_fields=["form_snapshot", "updated_at"])
         return invoice_url
+
+
+class ResetRegistrationView(View):
+    """Limpa estado de cadastro da sessão e redireciona para /register/ limpo."""
+
+    _SESSION_KEYS = (
+        "pending_pre_registration_id",
+        "pending_registration_person_id",
+        "post_plan_payment_complete",
+        "post_materials_payment_complete",
+        "post_materials_skipped",
+        "plan_order_id",
+        "materials_order_id",
+        "plan_is_trial",
+    )
+
+    def get(self, request, *args, **kwargs):
+        for key in self._SESSION_KEYS:
+            request.session.pop(key, None)
+        return redirect("system:register")
 
 
 class FinalizeRegistrationView(View):
@@ -797,7 +917,8 @@ class FinalizeRegistrationView(View):
         if pre_registration.status == PreRegistrationStatus.FINALIZED and pre_registration.finalized_person:
             return redirect("system:dashboard-redirect")
 
-        form = PortalRegistrationForm(data=pre_registration.form_snapshot or {})
+        form_data = self._normalize_snapshot_for_form(pre_registration.form_snapshot or {})
+        form = PortalRegistrationForm(data=form_data)
         if not form.is_valid():
             messages.error(request, "Revise os dados do cadastro antes de finalizar.")
             return redirect("system:register")
@@ -821,6 +942,31 @@ class FinalizeRegistrationView(View):
             portal_account.save(update_fields=["is_active", "updated_at"])
 
         pre_registration.mark_finalized(primary_person)
+
+        # Sincroniza o pagamento já realizado no Asaas/Stripe com a RegistrationOrder criada pela finalização.
+        # form.save() → create_portal_registration() → create_registration_order() cria uma ordem PENDING para
+        # a pessoa recém-criada. Quando o pré-cadastro já teve pagamento confirmado (plan_paid=True no snapshot),
+        # essa ordem deve ser marcada como PAID para não bloquear o login do usuário.
+        snapshot = pre_registration.form_snapshot or {}
+        order = created_people.get("order")
+        if order is not None and snapshot.get("plan_paid") and order.payment_status == PaymentStatus.PENDING:
+            plan_payment = snapshot.get("plan_payment") or {}
+            asaas_payment_id = plan_payment.get("asaas_payment_id") or ""
+            order.payment_status = PaymentStatus.PAID
+            order.paid_at = timezone.now()
+            if asaas_payment_id:
+                order.asaas_payment_id = asaas_payment_id
+            order.save(update_fields=["payment_status", "paid_at", "asaas_payment_id", "updated_at"])
+            from system.services.membership import activate_membership_from_paid_order
+            activate_membership_from_paid_order(
+                order,
+                notes="Pagamento confirmado via pré-cadastro.",
+            )
+
+        # Aula experimental: criar RegistrationOrder pendente e TrialAccessGrant
+        if snapshot.get("trial_requested"):
+            self._grant_trial_for_pre_registration(pre_registration, primary_person)
+
         for key in (
             "pending_pre_registration_id",
             "pending_registration_person_id",
@@ -829,6 +975,7 @@ class FinalizeRegistrationView(View):
             "post_materials_skipped",
             "plan_order_id",
             "materials_order_id",
+            "plan_is_trial",
         ):
             request.session.pop(key, None)
 
@@ -836,3 +983,58 @@ class FinalizeRegistrationView(View):
             login_portal_identity(request, portal_account=portal_account)
         messages.success(request, "Cadastro finalizado com sucesso! Seja bem-vindo.")
         return redirect("system:dashboard-redirect")
+
+    @staticmethod
+    def _normalize_snapshot_for_form(snapshot):
+        """Prepara o snapshot do banco para uso como `data` no PortalRegistrationForm.
+
+        Corrige dois problemas acumulados em snapshots antigos:
+        - MultipleChoiceField (class_groups) salvo como string quando havia apenas 1 valor → converte para lista.
+        - Campos scalar salvos como lista por duplicata de input no template → toma o primeiro valor.
+        - Entradas de dicionário aninhado (plan_payment, etc.) não são campos do form → removidas.
+        """
+        MULTI_VALUE = {"holder_class_groups", "dependent_class_groups", "student_class_groups"}
+        SKIP_DICT_VALUES = True  # dicts aninhados não são campos do form
+
+        result = {}
+        for key, value in snapshot.items():
+            if SKIP_DICT_VALUES and isinstance(value, dict):
+                continue  # plan_payment, materials_payment — não são campos do form
+            if key in MULTI_VALUE:
+                # Garante que MultipleChoiceField sempre receba lista
+                if isinstance(value, list):
+                    result[key] = value
+                elif value:
+                    result[key] = [value]
+                else:
+                    result[key] = []
+            elif isinstance(value, list):
+                # Campo scalar armazenado como lista por bug de duplicata — usa primeiro valor
+                result[key] = value[0] if value else ""
+            else:
+                result[key] = value
+        return result
+
+    def _grant_trial_for_pre_registration(self, pre_registration, primary_person):
+        from decimal import Decimal
+        from system.models.registration_order import (
+            OrderKind, PaymentProvider, PaymentStatus, RegistrationOrder,
+        )
+        from system.models.plan import SubscriptionPlan
+        from system.services.trial_access import grant_trial_for_order
+
+        plan = None
+        if pre_registration.selected_plan_id:
+            plan = SubscriptionPlan.objects.filter(pk=pre_registration.selected_plan_id).first()
+
+        trial_order = RegistrationOrder.objects.create(
+            person=primary_person,
+            plan=plan,
+            kind=OrderKind.SUBSCRIPTION,
+            payment_status=PaymentStatus.PENDING,
+            payment_provider=PaymentProvider.NONE,
+            total=plan.price if plan else Decimal("0"),
+            plan_price=plan.price if plan else Decimal("0"),
+            notes="Aula experimental via pré-cadastro.",
+        )
+        grant_trial_for_order(trial_order, notes="Aula experimental concedida no pré-cadastro.")

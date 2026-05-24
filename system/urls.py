@@ -12,18 +12,18 @@ from system.views.auth_views import (
     PortalPasswordResetDoneView,
     PortalPasswordResetView,
     PortalRegisterView,
+    ResetRegistrationView,
+    ValidateCouponView,
 )
 from system.views.asaas_views import (
     AsaasWebhookView,
     CreateCreditCardChargeView,
     CreatePixChargeView,
 )
+from system.views.stripe_views import StripeWebhookView
 from system.views.home_views import (
-    AdminHomeView,
-    AdministrativeHomeView,
     DashboardRedirectView,
-    InstructorHomeView,
-    StudentHomeView,
+    HomeView,
 )
 from system.views.payment_views import (
     DeferPaymentView,
@@ -46,8 +46,10 @@ urlpatterns = [
     path("logout/", PortalLogoutView.as_view(), name="logout"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("register/check-cpf/", RegistrationCpfAvailabilityView.as_view(), name="register-check-cpf"),
+    path("cadastro/validar-cupom/", ValidateCouponView.as_view(), name="validate-coupon"),
     path("register/materiais/", MaterialsCheckoutView.as_view(), name="register-materials-checkout"),
     path("register/finalizar/", FinalizeRegistrationView.as_view(), name="register-finalize"),
+    path("register/recomecar/", ResetRegistrationView.as_view(), name="register-reset"),
 
     # Pagamentos Asaas
     path("pagamentos/<int:order_id>/", PaymentMethodChoiceView.as_view(), name="payment-checkout"),
@@ -58,6 +60,7 @@ urlpatterns = [
     path("pagamentos/sucesso/", PaymentSuccessView.as_view(), name="payment-success"),
     path("pagamentos/cancelado/", PaymentCancelView.as_view(), name="payment-cancel"),
     path("pagamentos/webhook/asaas/", AsaasWebhookView.as_view(), name="asaas-webhook"),
+    path("pagamentos/webhook/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
 
     # Recuperação de senha
     path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
@@ -65,10 +68,7 @@ urlpatterns = [
     path("reset/done/", PortalPasswordResetCompleteView.as_view(), name="password-reset-complete"),
     path("reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 
-    # Redirecionamento pós-login e homes (templates pendentes de implementação)
+    # Redirecionamento pós-login e home unificada
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
-    path("home/admin/", AdminHomeView.as_view(), name="admin-home"),
-    path("home/administrative/", AdministrativeHomeView.as_view(), name="administrative-home"),
-    path("home/instructor/", InstructorHomeView.as_view(), name="instructor-home"),
-    path("home/student/", StudentHomeView.as_view(), name="student-home"),
+    path("home/", HomeView.as_view(), name="home"),
 ]

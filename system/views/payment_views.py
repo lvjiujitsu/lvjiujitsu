@@ -214,6 +214,17 @@ class PaymentSuccessView(View):
                         pre_registration = pr
                         stage = "materials"
 
+        # Fallback: Stripe redirects with session_id → match via plan_payment snapshot
+        if pre_registration is None:
+            stripe_session_id = request.GET.get("session_id") or ""
+            if stripe_session_id:
+                pr = PreRegistration.objects.filter(
+                    form_snapshot__plan_payment__stripe_session_id=stripe_session_id
+                ).first()
+                if pr:
+                    pre_registration = pr
+                    stage = "plan"
+
         if pre_registration is None:
             return None
 

@@ -70,3 +70,4 @@ class CheckoutAction:
     ASAAS_CARD = "asaas_card"
     PIX = "pix"
     PAY_LATER = "pay_later"
+    STRIPE_CARD = "stripe_card"

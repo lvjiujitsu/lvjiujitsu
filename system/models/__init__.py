@@ -71,10 +71,13 @@ from .asaas import (
     TeacherPayout,
     TeacherPayrollConfig,
 )
+from .coupon import Coupon, DiscountType
 from .pre_registration import PreRegistration, PreRegistrationStatus
 from .trial_access import TrialAccessGrant
 
 __all__ = [
+    "Coupon",
+    "DiscountType",
     "AsaasWebhookEvent",
     "PayoutKind",
     "PayoutStatus",

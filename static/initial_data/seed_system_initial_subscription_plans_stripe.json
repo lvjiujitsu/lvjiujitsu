@@ -1,0 +1,116 @@
+[
+  {
+    "category_code": "individual",
+    "category_name": "Individual",
+    "weekly_frequency": 2,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "220.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "228.80",
+        "monthly_net_price": "220.00"
+      }
+    }
+  },
+  {
+    "category_code": "individual",
+    "category_name": "Individual",
+    "weekly_frequency": 5,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "280.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "291.24",
+        "monthly_net_price": "280.00"
+      }
+    }
+  },
+  {
+    "category_code": "kids",
+    "category_name": "Kids / Juvenil",
+    "weekly_frequency": 2,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "200.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "208.01",
+        "monthly_net_price": "200.00"
+      }
+    }
+  },
+  {
+    "category_code": "kids",
+    "category_name": "Kids / Juvenil",
+    "weekly_frequency": 5,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "250.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "260.01",
+        "monthly_net_price": "250.00"
+      }
+    }
+  },
+  {
+    "category_code": "family",
+    "category_name": "Família",
+    "weekly_frequency": 2,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "180.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "187.21",
+        "monthly_net_price": "180.00"
+      }
+    }
+  },
+  {
+    "category_code": "family",
+    "category_name": "Família",
+    "weekly_frequency": 5,
+    "gateway_code": "stripe_card",
+    "gateway_name": "Stripe",
+    "payment_method": "credit_card",
+    "payment_label": "Cartão Stripe",
+    "gateway_fixed_fee": "0.00",
+    "gateway_percentage_fee": "3.99",
+    "base_monthly_net_price": "230.00",
+    "cycles": {
+      "monthly": {
+        "discount_percentage": "0.00",
+        "charged_price": "239.22",
+        "monthly_net_price": "230.00"
+      }
+    }
+  }
+]

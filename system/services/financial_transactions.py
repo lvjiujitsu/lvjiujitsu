@@ -29,6 +29,8 @@ def resolve_checkout_action_for_plan(plan):
     if plan.payment_method == PlanPaymentMethod.PIX:
         return CheckoutAction.PIX
     if plan.payment_method == PlanPaymentMethod.CREDIT_CARD:
+        if getattr(plan, "gateway_code", "") == "stripe_card":
+            return CheckoutAction.STRIPE_CARD
         return CheckoutAction.ASAAS_CARD
     return CheckoutAction.PAY_LATER
 

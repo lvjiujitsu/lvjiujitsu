@@ -231,11 +231,13 @@ class PortalRegistrationForm(forms.Form):
 
     selected_plan = forms.IntegerField(required=False)
     selected_products_payload = forms.CharField(required=False, widget=forms.HiddenInput)
+    coupon_code = forms.CharField(required=False, max_length=50, widget=forms.HiddenInput)
     checkout_action = forms.ChoiceField(
         required=False,
         choices=(
             (CheckoutAction.ASAAS_CARD, "Pagar com cartão"),
             (CheckoutAction.PIX, "Pagar com PIX"),
+            (CheckoutAction.STRIPE_CARD, "Pagar com cartão (Stripe)"),
             (CheckoutAction.PAY_LATER, "Concluir e pagar depois"),
         ),
         initial=CheckoutAction.PAY_LATER,

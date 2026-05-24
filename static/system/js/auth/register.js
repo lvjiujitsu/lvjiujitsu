@@ -295,6 +295,7 @@
     updateProgress();
     onEnterStep(targetId, targetIdx);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    saveWizardState();
   }
 
   function onEnterStep(stepId, seqIdx) {
@@ -379,6 +380,7 @@
     elStep1Next.setAttribute('aria-disabled', 'false');
     buildStepSequence();
     updateProgress();
+    saveWizardState();
   }
 
   // ── Elementos — Etapa principal (step-2) ─────────────────────────────────────
@@ -865,6 +867,8 @@
   var martialTitle           = document.getElementById('martial-step-title');
   var martialHas             = document.getElementById('ui-martial-has');
   var martialHasErr          = document.getElementById('ui-martial-has-error');
+  var martialToggleNo        = document.getElementById('martial-toggle-no');
+  var martialToggleYes       = document.getElementById('martial-toggle-yes');
   var martialDetailSection   = document.getElementById('martial-detail-section');
   var martialArtEl           = document.getElementById('ui-martial-art');
   var martialArtErr          = document.getElementById('ui-martial-art-error');
@@ -880,6 +884,11 @@
   var martialJjLastGrad      = document.getElementById('ui-martial-jj-last-grad');
   var martialJjLastGradErr   = document.getElementById('ui-martial-jj-last-grad-error');
   var elStepMartialNext      = document.getElementById('step-martial-next');
+
+  function _syncMartialHasPills(value) {
+    if (martialToggleNo)  martialToggleNo.classList.toggle('martial-has-btn--active',  value !== 'yes');
+    if (martialToggleYes) martialToggleYes.classList.toggle('martial-has-btn--active', value === 'yes');
+  }
 
   function toggleMartialDetail(show) {
     if (martialDetailSection) martialDetailSection.hidden = !show;
@@ -960,7 +969,8 @@
       };
     }
 
-    if (martialHas)       martialHas.value       = data.hasMartialArt;
+    var resolvedHas = data.hasMartialArt || 'no'; // padrão: iniciante
+    if (martialHas)       martialHas.value       = resolvedHas;
     if (martialArtEl)     martialArtEl.value      = data.martialArt;
     if (martialAcademy)   martialAcademy.value    = data.previousAcademy;
     if (martialStarted)   martialStarted.value    = data.martialArtStartedAt;
@@ -969,7 +979,8 @@
     if (martialJjStripes) martialJjStripes.value  = data.jiuJitsuStripes;
     if (martialJjLastGrad) martialJjLastGrad.value = data.martialArtLastGraduationAt;
 
-    var hasMA = data.hasMartialArt === 'yes';
+    var hasMA = resolvedHas === 'yes';
+    _syncMartialHasPills(resolvedHas);
     toggleMartialDetail(hasMA);
     toggleMartialJj(hasMA && data.martialArt === 'jiu_jitsu');
 
@@ -983,11 +994,8 @@
 
   function validateMartial() {
     var valid = true;
-    if (!martialHas || !martialHas.value) {
-      showErr(martialHas, martialHasErr, 'Campo obrigatório.'); valid = false;
-    } else {
-      clearErr(martialHas, martialHasErr);
-    }
+    // has_martial_art sempre tem valor ("no" por padrão) — não há mais campo vazio
+    clearErr(martialHas, martialHasErr);
     if (martialHas && martialHas.value === 'yes') {
       if (!martialArtEl || !martialArtEl.value) {
         showErr(martialArtEl, martialArtErr, 'Selecione a modalidade.'); valid = false;
@@ -1071,6 +1079,13 @@
   var regPostPlan = (function () {
     try {
       var el = document.getElementById('reg-post-plan-json');
+      return el ? JSON.parse(el.textContent) : false;
+    } catch (e) { return false; }
+  })();
+
+  var regPlanIsTrial = (function () {
+    try {
+      var el = document.getElementById('reg-plan-is-trial-json');
       return el ? JSON.parse(el.textContent) : false;
     } catch (e) { return false; }
   })();
@@ -1205,12 +1220,21 @@
   }
 
   function getFilteredPlans() {
-    return getEligiblePlansForCurrentPerson().filter(function (p) {
+    var filtered = getEligiblePlansForCurrentPerson().filter(function (p) {
       if (planFilter.frequency !== null && p.weekly_frequency !== planFilter.frequency) return false;
-      if (planFilter.cycle   && p.billing_cycle   !== planFilter.cycle)   return false;
-      if (planFilter.method  && p.payment_method  !== planFilter.method)  return false;
+      // Stripe é recorrência mensal — exibido junto a qualquer ciclo quando Cartão estiver selecionado
+      var isStripe = p.gateway_code === 'stripe_card';
+      if (!isStripe && planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;
+      if (planFilter.method && p.payment_method !== planFilter.method) return false;
       return true;
     });
+    // Stripe sempre aparece após planos Asaas na listagem
+    filtered.sort(function (a, b) {
+      var aStripe = a.gateway_code === 'stripe_card' ? 1 : 0;
+      var bStripe = b.gateway_code === 'stripe_card' ? 1 : 0;
+      return aStripe - bStripe;
+    });
+    return filtered;
   }
 
   function renderPlanPersonTabs() {
@@ -1333,8 +1357,10 @@
       var currentSelection = state.planSelections[currentPlanPersonIndex] || {};
       var isSelected = plan.id === currentSelection.planId;
       var price      = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
-      var tierLabel  = plan.name || plan.commercial_tier_label || plan.code;
+      var isStripe   = plan.gateway_code === 'stripe_card';
+      var tierLabel  = plan.commercial_tier_label || plan.name || plan.code;
       var isFeatured = /fidel|loyal/i.test(plan.code || '');
+      var cycleLabel = isStripe ? 'mês' : (plan.cycle || '');
 
       html += '<button type="button" class="plan-card' + (isSelected ? ' plan-card--selected' : '') + '" data-plan-id="' + plan.id + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">';
       html += '<div class="plan-card__radio"><div class="plan-card__radio-dot"></div></div>';
@@ -1343,17 +1369,18 @@
       // Cabeçalho
       html += '<div class="plan-card__header">';
       html += '<p class="plan-card__tier">' + escHtml(tierLabel) + '</p>';
-      if (isFeatured) html += '<span class="plan-card__badge">Recomendado</span>';
+      if (isStripe)        html += '<span class="plan-card__badge plan-card__badge--stripe">Recorrente</span>';
+      else if (isFeatured) html += '<span class="plan-card__badge">Recomendado</span>';
       html += '</div>';
 
       // Preço
       html += '<div class="plan-card__price-wrap">';
       html += '<span class="plan-card__price">' + fmtPrice(price) + '</span>';
-      html += '<span class="plan-card__price-cycle">/' + escHtml(plan.cycle || '') + '</span>';
+      html += '<span class="plan-card__price-cycle">/' + escHtml(cycleLabel) + '</span>';
       html += '</div>';
 
-      // Parcelas
-      if (plan.installment_count > 1 && plan.installment_label) {
+      // Parcelas — Stripe é mensal, "1x" não é relevante
+      if (!isStripe && plan.installment_count > 1 && plan.installment_label) {
         html += '<p class="plan-card__installment">' + escHtml(plan.installment_label) + '</p>';
       }
 
@@ -1379,6 +1406,21 @@
     });
   }
 
+  function resolvePlanCheckoutAction(plan) {
+    if (!plan) return 'asaas_card';
+    if (plan.payment_method === 'pix') return 'pix';
+    if (plan.gateway_code === 'stripe_card') return 'stripe_card';
+    return 'asaas_card';
+  }
+
+  function updateStripeUiForPlan(plan) {
+    var isStripe = plan && plan.gateway_code === 'stripe_card';
+    var notice = document.getElementById('stripe-commitment-notice');
+    var couponArea = document.getElementById('coupon-area');
+    if (notice) notice.hidden = !isStripe;
+    if (couponArea) couponArea.hidden = isStripe;
+  }
+
   function selectPlan(planId) {
     selectedPlanId = planId;
     ensurePlanSelections();
@@ -1389,12 +1431,14 @@
     setHidden('id_selected_plan', planId);
     var plan = planCatalog.find(function (p) { return p.id === planId; });
     if (plan) {
-      setHidden('id_checkout_action', plan.payment_method === 'pix' ? 'pix' : 'asaas_card');
+      setHidden('id_checkout_action', resolvePlanCheckoutAction(plan));
+      updateStripeUiForPlan(plan);
     }
     renderPlanPersonTabs();
     renderPlanCards();
     var err = document.getElementById('plan-step-error');
     if (err) { err.hidden = true; err.textContent = ''; }
+    saveWizardState();
   }
 
   function validatePlan() {
@@ -1454,6 +1498,12 @@
     }
     renderPlanFilters();
     renderPlanCards();
+    // Atualizar UI de Stripe com base na seleção atual (ou ausência dela)
+    var currentSelection = state.planSelections[currentPlanPersonIndex] || {};
+    var currentPlan = currentSelection.planId
+      ? planCatalog.find(function (p) { return p.id === currentSelection.planId; }) || null
+      : null;
+    updateStripeUiForPlan(currentPlan);
   }
 
   // ── Checkout — resumo e pagamento ─────────────────────────────────────────────
@@ -1530,7 +1580,7 @@
     if (btnNow) {
       btnNow.addEventListener('click', function () {
         var p = getSelectedPlan();
-        setHidden('id_checkout_action', (p && p.payment_method === 'pix') ? 'pix' : 'asaas_card');
+        setHidden('id_checkout_action', p ? resolvePlanCheckoutAction(p) : 'asaas_card');
         document.getElementById('wizard-form').submit();
       });
     }
@@ -1538,6 +1588,7 @@
     var btnLater = document.getElementById('btn-pay-later');
     if (btnLater) {
       btnLater.addEventListener('click', function () {
+        // Aula experimental: não exige plano selecionado
         setHidden('id_checkout_action', 'pay_later');
         document.getElementById('wizard-form').submit();
       });
@@ -1734,6 +1785,7 @@
       syncHolderDeps();
       buildStepSequence();
       updateProgress();
+      saveWizardState();
     });
   }
 
@@ -1745,6 +1797,7 @@
         syncHolderDeps();
         buildStepSequence();
         updateProgress();
+        saveWizardState();
       }
     });
   }
@@ -1757,6 +1810,7 @@
         syncHolderDeps();
         buildStepSequence();
         updateProgress();
+        saveWizardState();
       }
     });
   }
@@ -1769,6 +1823,7 @@
         syncGuardianStudents();
         buildStepSequence();
         updateProgress();
+        saveWizardState();
       }
     });
   }
@@ -1781,6 +1836,7 @@
         syncGuardianStudents();
         buildStepSequence();
         updateProgress();
+        saveWizardState();
       }
     });
   }
@@ -1859,8 +1915,20 @@
 
   // ── Eventos — Etapa de artes marciais ────────────────────────────────────────
 
+  function _setMartialHas(value) {
+    if (martialHas) martialHas.value = value;
+    _syncMartialHasPills(value);
+    toggleMartialDetail(value === 'yes');
+    if (value !== 'yes') toggleMartialJj(false);
+    if (martialHasErr) { martialHasErr.hidden = true; martialHasErr.textContent = ''; }
+  }
+
+  if (martialToggleNo)  martialToggleNo.addEventListener('click',  function () { _setMartialHas('no'); });
+  if (martialToggleYes) martialToggleYes.addEventListener('click', function () { _setMartialHas('yes'); });
+
   if (martialHas) {
     martialHas.addEventListener('change', function () {
+      _syncMartialHasPills(martialHas.value);
       toggleMartialDetail(martialHas.value === 'yes');
       if (martialHas.value !== 'yes') toggleMartialJj(false);
     });
@@ -1886,15 +1954,77 @@
 
   // ── Eventos — Plano ──────────────────────────────────────────────────────────
 
+  var planAlreadyPaid = false;
+
   var elStepPlanNext = document.getElementById('step-plan-next');
   if (elStepPlanNext) {
     elStepPlanNext.addEventListener('click', function () {
+      if (planAlreadyPaid) return;
       if (!validatePlan()) return;
       var firstPlan = planCatalog.find(function (p) { return p.id === state.planSelections[0].planId; });
-      setHidden('id_checkout_action', (firstPlan && firstPlan.payment_method === 'pix') ? 'pix' : 'asaas_card');
+      setHidden('id_checkout_action', firstPlan ? resolvePlanCheckoutAction(firstPlan) : 'asaas_card');
       document.getElementById('wizard-form').submit();
     });
   }
+
+  // ── Botão "Fazer uma aula experimental" (step-plan) ─────────────────────────
+
+  var elBtnTrialClass = document.getElementById('btn-trial-class');
+  if (elBtnTrialClass) {
+    elBtnTrialClass.addEventListener('click', function () {
+      showPostPaymentMode('step-products');
+      bindProductsSection();
+    });
+  }
+
+  // ── Cupom de desconto ────────────────────────────────────────────────────────
+
+  (function bindCoupon() {
+    var elCouponInput  = document.getElementById('coupon-code-input');
+    var elCouponBtn    = document.getElementById('coupon-apply-btn');
+    var elCouponMsg    = document.getElementById('coupon-message');
+    var elCouponHidden = document.getElementById('id_coupon_code');
+
+    if (!elCouponBtn || !elCouponInput) return;
+
+    elCouponBtn.addEventListener('click', function () {
+      var code = (elCouponInput.value || '').trim();
+      if (!code) {
+        if (elCouponMsg) { elCouponMsg.textContent = 'Informe o código do cupom.'; elCouponMsg.className = 'coupon-msg coupon-msg--error'; elCouponMsg.hidden = false; }
+        return;
+      }
+      // Calcular total atual a partir dos planos selecionados
+      var total = state.planSelections.reduce(function (acc, sel) {
+        var p = planCatalog.find(function (p) { return p.id === sel.planId; });
+        return p ? acc + parseFloat(p.price || 0) : acc;
+      }, 0);
+
+      var body = new URLSearchParams();
+      body.append('coupon_code', code);
+      body.append('total', total.toFixed(2));
+      body.append('csrfmiddlewaretoken', (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '');
+
+      elCouponBtn.disabled = true;
+      fetch('/cadastro/validar-cupom/', { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.valid) {
+            if (elCouponHidden) elCouponHidden.value = data.coupon_code;
+            if (elCouponMsg) { elCouponMsg.textContent = data.message + ' Novo total: R$ ' + parseFloat(data.discounted_total).toFixed(2).replace('.', ','); elCouponMsg.className = 'coupon-msg coupon-msg--ok'; elCouponMsg.hidden = false; }
+            elCouponBtn.textContent = 'Aplicado';
+            elCouponInput.disabled = true;
+            elCouponBtn.disabled = true;
+          } else {
+            if (elCouponMsg) { elCouponMsg.textContent = data.message; elCouponMsg.className = 'coupon-msg coupon-msg--error'; elCouponMsg.hidden = false; }
+            elCouponBtn.disabled = false;
+          }
+        })
+        .catch(function () {
+          if (elCouponMsg) { elCouponMsg.textContent = 'Erro ao validar cupom. Tente novamente.'; elCouponMsg.className = 'coupon-msg coupon-msg--error'; elCouponMsg.hidden = false; }
+          elCouponBtn.disabled = false;
+        });
+    });
+  }());
 
   // ── Eventos — Etapa de turma ─────────────────────────────────────────────────
 
@@ -2598,41 +2728,290 @@
     }
   }
 
-  // ── Inicialização ─────────────────────────────────────────────────────────────
+  // ── Modo plano já pago: mostra step-plan inline com estado confirmado ────────
 
-  if (regPostMaterialsSkipped) {
-    showPostPaymentMode('step-review');
-    renderReview();
-  } else if (regPostMaterials) {
-    showPostPaymentMode('step-products');
-    renderMaterialsConfirmed();
-  } else if (regPostPlan) {
-    showPostPaymentMode('step-plan-confirmed');
-    renderPlanConfirmed();
-  } else {
-    var initialProfile = elProfileInput ? elProfileInput.value : '';
-    if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {
-      selectProfile(initialProfile);
-      if (initialProfile === PROFILE_HOLDER && elIncludeDepInput && elIncludeDepInput.value) {
-        if (elHolderDepChk) {
-          elHolderDepChk.checked  = true;
-          elHolderCountArea.hidden = false;
-          state.holderDepCount = 1;
-          try {
-            var ex = JSON.parse(elExtraDepInput.value || '[]');
-            state.holderDepCount = ex.length + 1;
-          } catch (e) {}
-          renderHolderDepCount();
-          buildStepSequence();
-        }
+  function showPlanPaidMode() {
+    planAlreadyPaid = true;
+
+    // Reconstrói sequência a partir dos dados do pending person
+    if (state.stepSequence.length === 0 && pendingPersonData) {
+      if (pendingPersonData.person_type_code === PROFILE_GUARDIAN) {
+        state.profile = PROFILE_GUARDIAN;
+        state.guardianStudentCount = (pendingPersonData.students && pendingPersonData.students.length) || 1;
+      } else {
+        state.profile = PROFILE_HOLDER;
+        state.holderDepCount = (pendingPersonData.students && pendingPersonData.students.length) || 0;
       }
-    } else {
       buildStepSequence();
     }
 
-    renderGuardianStudentCount();
-    renderHolderDepCount();
-    updateProgress();
+    // Esconde todos os steps do wizard e exibe apenas step-plan
+    state.stepSequence.forEach(function (sid) {
+      var el = document.getElementById(sid);
+      if (el) el.hidden = true;
+    });
+    var planEl = document.getElementById('step-plan');
+    if (planEl) planEl.hidden = false;
+
+    var planIdx = state.stepSequence.indexOf('step-plan');
+    if (planIdx >= 0) {
+      state.stepIndex = planIdx;
+      updateProgress();
+    }
+
+    // Renderiza o status de pagamento confirmado (ou aula experimental) dentro do step-plan
+    var filtersArea = document.getElementById('plan-filters-area');
+    var cardsArea   = document.getElementById('plan-cards-area');
+
+    var html;
+    if (regPlanIsTrial) {
+      html = '<div class="checkout-confirmed-banner checkout-confirmed-banner--trial">';
+      html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+      html += '<span class="checkout-confirmed-banner__text">Aula experimental liberada!</span>';
+      html += '</div>';
+      html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+      html += '<p class="checkout-summary__label">Aula experimental</p>';
+      html += '<p class="checkout-summary__value">Você tem 1 aula experimental liberada.</p>';
+      html += '<p class="checkout-summary__plan-meta">Finalize o cadastro e compareça à academia para aproveitar.</p>';
+      html += '</div></div>';
+    } else {
+      html = '<div class="checkout-confirmed-banner">';
+      html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+      html += '<span class="checkout-confirmed-banner__text">Pagamento confirmado</span>';
+      html += '</div>';
+      if (planOrderData) {
+        html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+        html += '<p class="checkout-summary__label">Plano contratado</p>';
+        if (planOrderData.plan_name) {
+          html += '<p class="checkout-summary__value">' + escHtml(planOrderData.plan_name) + '</p>';
+        }
+        if (planOrderData.total) {
+          html += '<p class="checkout-summary__plan-meta">Total: R$ ' + parseFloat(planOrderData.total).toFixed(2).replace('.', ',') + '</p>';
+        }
+        html += '</div></div>';
+      }
+    }
+
+    if (filtersArea) filtersArea.innerHTML = html;
+    if (cardsArea)   cardsArea.innerHTML   = '';
+
+    // Esconde elementos que não fazem sentido no estado pós-pagamento
+    var trialBtnEl = document.getElementById('btn-trial-class');
+    if (trialBtnEl) trialBtnEl.hidden = true;
+    var couponAreaEl = document.getElementById('coupon-area');
+    if (couponAreaEl) couponAreaEl.hidden = true;
+    var stripeNoticeEl = document.getElementById('stripe-commitment-notice');
+    if (stripeNoticeEl) stripeNoticeEl.hidden = true;
+
+    // Altera o botão para avançar para materiais
+    var nextBtn = document.getElementById('step-plan-next');
+    if (nextBtn) {
+      nextBtn.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
+        ' Continuar para materiais';
+      nextBtn.disabled = false;
+      nextBtn.onclick  = function (e) {
+        e.stopImmediatePropagation();
+        showPostPaymentMode('step-products');
+        bindProductsSection();
+      };
+    }
+
+    // Link "Recomeçar cadastro" — limpa sessão e sessionStorage, volta para /register/
+    var resetContainerId = 'plan-paid-reset-link';
+    var existingReset = document.getElementById(resetContainerId);
+    if (existingReset) existingReset.remove();
+    var resetWrap = document.createElement('div');
+    resetWrap.id = resetContainerId;
+    resetWrap.style.cssText = 'text-align:center;margin-top:12px;';
+    var resetAnchor = document.createElement('a');
+    resetAnchor.href = '#';
+    resetAnchor.textContent = 'Recomeçar cadastro';
+    resetAnchor.style.cssText = 'font-size:0.85rem;color:var(--muted);text-decoration:underline;';
+    resetAnchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      clearWizardState();
+      window.location.href = '/register/recomecar/';
+    });
+    resetWrap.appendChild(resetAnchor);
+    var nextBtn2 = document.getElementById('step-plan-next');
+    if (nextBtn2 && nextBtn2.parentNode) {
+      nextBtn2.parentNode.insertBefore(resetWrap, nextBtn2.nextSibling);
+    }
+
+    // Botão Voltar usa o listener padrão (navega para o step anterior)
+    var back = document.getElementById('wizard-back');
+    var backLabel = document.getElementById('wizard-back-label');
+    if (back) {
+      back.style.visibility = 'visible';
+      if (backLabel) backLabel.textContent = 'Voltar';
+      back.onclick = null;
+    }
+  }
+
+  // ── Persistência do wizard (sessionStorage) ──────────────────────────────────
+
+  var WIZARD_STORAGE_KEY = 'lv-wiz-v1';
+  var _wizardRestoring   = false;
+
+  function _collectHiddenFields() {
+    var result = {};
+    var form = document.getElementById('wizard-form');
+    if (!form) return result;
+    form.querySelectorAll('input[type="hidden"]').forEach(function (inp) {
+      if (!inp.name || inp.name === 'csrfmiddlewaretoken') return;
+      if (!result[inp.name]) result[inp.name] = [];
+      result[inp.name].push(inp.value);
+    });
+    return result;
+  }
+
+  function saveWizardState() {
+    if (_wizardRestoring) return;
+    try {
+      sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
+        v: 1,
+        stepIndex: state.stepIndex,
+        profile: state.profile,
+        holderDepCount: state.holderDepCount,
+        guardianStudentCount: state.guardianStudentCount,
+        deps: state.deps,
+        classSelections: state.classSelections,
+        planSelections: state.planSelections,
+        fields: _collectHiddenFields(),
+      }));
+    } catch (e) {}
+  }
+
+  function clearWizardState() {
+    try { sessionStorage.removeItem(WIZARD_STORAGE_KEY); } catch (e) {}
+  }
+
+  function _applyHiddenFields(form, savedFields) {
+    Object.keys(savedFields).forEach(function (name) {
+      var vals = savedFields[name];
+      var existing = Array.prototype.slice.call(
+        form.querySelectorAll('input[type="hidden"][name="' + name + '"]')
+      );
+      if (existing.length === 1 && vals.length === 1) {
+        existing[0].value = vals[0];
+        return;
+      }
+      // Inputs dinâmicos (class_groups, extra payload): remove sem id, recria
+      var staticInps  = existing.filter(function (el) { return !!el.id; });
+      var dynamicInps = existing.filter(function (el) { return !el.id; });
+      dynamicInps.forEach(function (el) { el.parentNode.removeChild(el); });
+      var offset = 0;
+      if (staticInps.length > 0 && vals.length > 0) {
+        staticInps[0].value = vals[0];
+        offset = 1;
+      }
+      for (var i = offset; i < vals.length; i++) {
+        var inp = document.createElement('input');
+        inp.type  = 'hidden';
+        inp.name  = name;
+        inp.value = vals[i];
+        form.appendChild(inp);
+      }
+    });
+  }
+
+  function tryRestoreWizard() {
+    try {
+      var raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
+      if (!raw) return false;
+      var saved = JSON.parse(raw);
+      if (!saved || saved.v !== 1 || !saved.profile) return false;
+
+      _wizardRestoring = true;
+
+      // 1. Restaura campos hidden do form
+      var form = document.getElementById('wizard-form');
+      if (form && saved.fields) _applyHiddenFields(form, saved.fields);
+
+      // 2. Restaura estado JS antes de selectProfile (que reseta contagens)
+      state.deps              = saved.deps              || [];
+      state.classSelections   = saved.classSelections   || [];
+      state.planSelections    = saved.planSelections     || [];
+      state.holderDepCount    = saved.holderDepCount     || 0;
+      state.guardianStudentCount = saved.guardianStudentCount || 1;
+
+      // 3. Aplica UI de perfil (marca o card de perfil, exibe sub-opções)
+      selectProfile(saved.profile);
+
+      // 4. selectProfile reseta contagens — restaura novamente
+      state.holderDepCount       = saved.holderDepCount     || 0;
+      state.guardianStudentCount = saved.guardianStudentCount || 1;
+      state.deps                 = saved.deps              || [];
+      state.classSelections      = saved.classSelections   || [];
+      state.planSelections       = saved.planSelections    || [];
+
+      // 5. Restaura UI de checkbox de dependentes (holder)
+      if (saved.profile === PROFILE_HOLDER && state.holderDepCount > 0) {
+        if (elHolderDepChk)    { elHolderDepChk.checked   = true; }
+        if (elHolderCountArea) { elHolderCountArea.hidden  = false; }
+        renderHolderDepCount();
+        syncHolderDeps();
+      }
+      if (saved.profile === PROFILE_GUARDIAN) {
+        renderGuardianStudentCount();
+        syncGuardianStudents();
+      }
+
+      // 6. Reconstrói sequência com contagens corretas
+      buildStepSequence();
+
+      _wizardRestoring = false;
+
+      // 7. Navega para o step salvo
+      var targetIdx = Math.min(saved.stepIndex || 0, state.stepSequence.length - 1);
+      goTo(targetIdx);
+      return true;
+    } catch (e) {
+      _wizardRestoring = false;
+      return false;
+    }
+  }
+
+  // ── Inicialização ─────────────────────────────────────────────────────────────
+
+  if (regPostMaterialsSkipped) {
+    clearWizardState();
+    showPostPaymentMode('step-review');
+    renderReview();
+  } else if (regPostMaterials) {
+    clearWizardState();
+    showPostPaymentMode('step-products');
+    renderMaterialsConfirmed();
+  } else if (regPostPlan) {
+    clearWizardState();
+    showPlanPaidMode();
+  } else {
+    var _restored = tryRestoreWizard();
+    if (!_restored) {
+      var initialProfile = elProfileInput ? elProfileInput.value : '';
+      if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {
+        selectProfile(initialProfile);
+        if (initialProfile === PROFILE_HOLDER && elIncludeDepInput && elIncludeDepInput.value) {
+          if (elHolderDepChk) {
+            elHolderDepChk.checked   = true;
+            elHolderCountArea.hidden = false;
+            state.holderDepCount = 1;
+            try {
+              var ex = JSON.parse(elExtraDepInput.value || '[]');
+              state.holderDepCount = ex.length + 1;
+            } catch (e) {}
+            renderHolderDepCount();
+            buildStepSequence();
+          }
+        }
+      } else {
+        buildStepSequence();
+      }
+      renderGuardianStudentCount();
+      renderHolderDepCount();
+      updateProgress();
+    }
   }
 
 })();

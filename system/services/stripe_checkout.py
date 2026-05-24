@@ -4,6 +4,7 @@ from decimal import Decimal
 import stripe
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 
 from system.models.registration_order import OrderKind, RegistrationOrder
 from system.models.registration_order import PaymentProvider
@@ -164,6 +165,85 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
             },
         },
     )
+
+
+def create_subscription_session_for_pre_registration(
+    pre_registration, plans_by_id, selected_plans, *, final_total=None, coupon_info=None
+):
+    client = _get_client()
+
+    if len(selected_plans) != 1:
+        raise StripeCheckoutError(
+            "Stripe Subscriptions suporta apenas um plano por sessão."
+        )
+
+    item = selected_plans[0]
+    plan = plans_by_id.get(item["plan_id"])
+    if plan is None:
+        raise StripeCheckoutError("Plano selecionado não encontrado.")
+
+    price_to_charge = final_total if final_total is not None else plan.price
+    if not price_to_charge or Decimal(str(price_to_charge)) <= Decimal("0"):
+        raise StripeCheckoutError("Plano sem valor cobrável.")
+
+    snapshot = pre_registration.form_snapshot or {}
+    profile_raw = snapshot.get("registration_profile") or pre_registration.registration_profile
+    profile = profile_raw[0] if isinstance(profile_raw, list) else profile_raw
+    prefix = "guardian" if profile == "guardian" else "holder"
+    email_raw = snapshot.get(f"{prefix}_email") or pre_registration.holder_email or ""
+    customer_email = (email_raw[0] if isinstance(email_raw, list) else email_raw) or None
+
+    success_url = (
+        settings.SITE_BASE_URL.rstrip("/")
+        + reverse("system:payment-success")
+        + f"?pre_registration_id={pre_registration.pk}&stage=plan&session_id={{CHECKOUT_SESSION_ID}}"
+    )
+    cancel_url = settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-cancel")
+
+    session = client.checkout.Session.create(
+        mode="subscription",
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": payment_currency(),
+                "unit_amount": _to_cents(price_to_charge),
+                "recurring": {"interval": "month"},
+                "product_data": {
+                    "name": f"Mensalidade LV Jiu Jitsu — {plan.display_name}",
+                },
+            },
+            "quantity": 1,
+        }],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        client_reference_id=f"pre-registration:{pre_registration.pk}:plan",
+        customer_email=customer_email,
+        metadata={
+            "pre_registration_id": str(pre_registration.pk),
+            "stage": "plan",
+        },
+    )
+
+    plan_payment = {
+        "stripe_session_id": session["id"],
+        "total": str(price_to_charge),
+        "items": [
+            {
+                "label": item.get("label", ""),
+                "plan_id": plan.pk,
+                "plan_name": plan.display_name,
+                "price": str(plan.price),
+            }
+        ],
+    }
+    if coupon_info:
+        plan_payment.update(coupon_info)
+
+    snapshot["plan_payment"] = plan_payment
+    pre_registration.form_snapshot = snapshot
+    pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+
+    return session
 
 
 def resolve_order_from_session(session):

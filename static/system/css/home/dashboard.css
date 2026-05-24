@@ -1,0 +1,518 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   LV JIU JITSU — Home unificada
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Tokens — tema claro ──────────────────────────────────────────────────── */
+:root {
+  --bg: #f4f4f5;
+  --panel: #ffffff;
+  --surface: #f9f9fb;
+  --surface-soft: #f0f0f2;
+  --border: #e4e4e7;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --text: #18181b;
+  --muted: #71717a;
+  --brand-red: #c41230;
+  --brand-red-strong: #9b0e25;
+  --brand-red-muted: rgba(196,18,48,.12);
+  --focus-ring: rgba(196,18,48,.35);
+  --danger: #dc2626;
+  --danger-muted: rgba(220,38,38,.1);
+  --success: #16a34a;
+  --success-muted: rgba(22,163,74,.1);
+  --warning: #d97706;
+  --warning-muted: rgba(217,119,6,.1);
+  --info: #2563eb;
+  --info-muted: rgba(37,99,235,.1);
+}
+
+html[data-theme="dark"] {
+  --bg: #09090b;
+  --panel: #18181b;
+  --surface: #1f1f23;
+  --surface-soft: #27272a;
+  --border: #3f3f46;
+  --shadow: 0 1px 4px rgba(0,0,0,.4);
+  --text: #fafafa;
+  --muted: #a1a1aa;
+  --brand-red: #e02244;
+  --brand-red-strong: #c41230;
+  --brand-red-muted: rgba(224,34,68,.15);
+  --focus-ring: rgba(224,34,68,.4);
+  --danger: #f87171;
+  --danger-muted: rgba(248,113,113,.12);
+  --success: #4ade80;
+  --success-muted: rgba(74,222,128,.1);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251,191,36,.1);
+  --info: #60a5fa;
+  --info-muted: rgba(96,165,250,.1);
+}
+
+/* ─── Reset mínimo ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+
+/* ─── Topbar ───────────────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.25rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  text-decoration: none;
+}
+
+.topbar__logo { height: 32px; width: auto; display: block; }
+
+.topbar__name {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .01em;
+  display: none;
+}
+
+@media (min-width: 480px) { .topbar__name { display: block; } }
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.btn-icon:hover { background: var(--surface); color: var(--text); }
+.btn-icon:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ─── Layout principal ─────────────────────────────────────────────────────── */
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+/* ─── Cabeçalho da página ──────────────────────────────────────────────────── */
+.page-header {
+  margin-bottom: 1.75rem;
+}
+
+.page-header__eyebrow {
+  font-size: .75rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: .25rem;
+}
+
+.page-header__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+@media (min-width: 768px) {
+  .page-header__title { font-size: 1.75rem; }
+}
+
+/* ─── Seção ────────────────────────────────────────────────────────────────── */
+.section { margin-bottom: 2rem; }
+
+.section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .875rem;
+  gap: 1rem;
+}
+
+.section__title {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.section__link {
+  font-size: .8125rem;
+  font-weight: 500;
+  color: var(--brand-red);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.section__link:hover { text-decoration: underline; }
+.section__link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
+
+/* ─── Grid de cards de resumo ──────────────────────────────────────────────── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .75rem;
+}
+
+@media (min-width: 640px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .summary-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.summary-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  min-height: 80px;
+}
+
+.summary-card:hover {
+  border-color: var(--brand-red-muted);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+.summary-card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.summary-card__icon {
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--brand-red);
+}
+
+.summary-card__value {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.summary-card__label {
+  font-size: .75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ─── Acesso rápido (staff) ────────────────────────────────────────────────── */
+.quick-access {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .625rem;
+}
+
+@media (min-width: 480px) {
+  .quick-access { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 768px) {
+  .quick-access { grid-template-columns: repeat(4, 1fr); }
+}
+
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding: .75rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: .875rem;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: background .15s, border-color .15s;
+  min-height: 44px;
+}
+
+.quick-link:hover { background: var(--surface); border-color: var(--brand-red-muted); }
+.quick-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.quick-link__icon { font-size: 1rem; color: var(--brand-red); flex-shrink: 0; }
+
+/* ─── Painel (card de conteúdo) ─────────────────────────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* ─── Lista de turmas de hoje ──────────────────────────────────────────────── */
+.class-list { }
+
+.class-item {
+  display: flex;
+  align-items: center;
+  gap: .875rem;
+  padding: .875rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.class-item:last-child { border-bottom: none; }
+
+.class-item__time {
+  font-size: .8125rem;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.class-item__info { flex: 1; min-width: 0; }
+
+.class-item__name {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.class-item__sub {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: .125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.class-item__action { flex-shrink: 0; }
+
+/* ─── Estado vazio ─────────────────────────────────────────────────────────── */
+.empty-state {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state__icon {
+  font-size: 2rem;
+  margin-bottom: .625rem;
+  display: block;
+}
+
+.empty-state__text {
+  font-size: .875rem;
+  font-weight: 500;
+}
+
+/* ─── Card de mensalidade ──────────────────────────────────────────────────── */
+.billing-card {
+  padding: 1.125rem 1rem;
+}
+
+.billing-card__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.billing-card__plan {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.billing-card__detail {
+  font-size: .8125rem;
+  color: var(--muted);
+  margin-top: .25rem;
+}
+
+/* ─── Abas de mensalidade (guardian) ──────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex-shrink: 0;
+  padding: .625rem 1rem;
+  font-size: .8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+
+.tab-btn--active {
+  color: var(--brand-red);
+  border-bottom-color: var(--brand-red);
+  font-weight: 600;
+}
+
+.tab-btn:hover { color: var(--text); }
+.tab-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
+.tab-panel { display: none; }
+.tab-panel--active { display: block; }
+
+/* ─── Badges ───────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  padding: .25em .625em;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.badge--success { background: var(--success-muted); color: var(--success); }
+.badge--warning { background: var(--warning-muted); color: var(--warning); }
+.badge--danger  { background: var(--danger-muted);  color: var(--danger);  }
+.badge--info    { background: var(--info-muted);    color: var(--info);    }
+.badge--neutral { background: var(--surface-soft);  color: var(--muted);   }
+
+/* ─── Barra de progresso (graduação) ──────────────────────────────────────── */
+.progress-section { padding: 1rem; }
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+
+.progress-label__name {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.progress-label__pct {
+  font-size: .8125rem;
+  font-weight: 700;
+  color: var(--brand-red);
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--surface-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--brand-red);
+  border-radius: 999px;
+  transition: width .4s ease;
+}
+
+.progress-sub {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: .375rem;
+}
+
+/* ─── Botões ───────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  padding: .5rem 1rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s;
+  min-height: 44px;
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+.btn--primary {
+  background: var(--brand-red);
+  color: #fff;
+  border-color: var(--brand-red);
+}
+.btn--primary:hover { background: var(--brand-red-strong); border-color: var(--brand-red-strong); }
+
+.btn--secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn--secondary:hover { background: var(--surface); }
+
+.btn--sm {
+  padding: .375rem .75rem;
+  font-size: .8125rem;
+  min-height: 36px;
+}
+
+.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+
+/* ─── Alternância de tema ──────────────────────────────────────────────────── */
+#theme-toggle { background: none; }

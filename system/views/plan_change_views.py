@@ -169,7 +169,7 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, View):
             "membership": membership,
             "membership_summary": _build_membership_summary(person, membership),
             "plan_catalog": catalog,
-            "back_url": reverse("system:student-home"),
+            "back_url": reverse("system:home"),
         }
         return render(request, self.template_name, context)
 
@@ -178,7 +178,7 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, View):
         membership = get_active_membership(person)
         if not membership:
             messages.error(request, "Você não possui uma assinatura ativa.")
-            return redirect("system:student-home")
+            return redirect("system:home")
 
         raw_plan_id = (request.POST.get("selected_plan") or "").strip()
         if not raw_plan_id:
@@ -227,7 +227,7 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, View):
                 f"Plano alterado para {new_plan.display_name}. "
                 f"Sobra de R$ {proration['leftover_credit']} foi devolvida ao cliente.",
             )
-            return redirect("system:student-home")
+            return redirect("system:home")
 
         apply_plan_change(None, membership, new_plan, proration=proration)
         if proration["has_leftover"]:
@@ -241,4 +241,4 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, View):
             messages.success(
                 request, f"Plano alterado para {new_plan.display_name}."
             )
-        return redirect("system:student-home")
+        return redirect("system:home")

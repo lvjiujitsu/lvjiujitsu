@@ -61,12 +61,9 @@ from .graduation_views import (
     GraduationRuleUpdateView,
 )
 from .home_views import (
-    AdminHomeView,
-    AdministrativeHomeView,
     DashboardRedirectView,
-    InstructorHomeView,
+    HomeView,
     RootRedirectView,
-    StudentHomeView,
 )
 from .plan_views import (
     PlanCreateView,
@@ -139,7 +136,7 @@ __all__ = [
     "AdminSpecialClassCreateView",
     "AdminSpecialClassDeleteView",
     "AdminToggleSessionView",
-    "AdminHomeView",
+    "HomeView",
     "BeltRankCreateView",
     "BeltRankDeleteView",
     "BeltRankDetailView",
@@ -159,7 +156,7 @@ __all__ = [
     "InstructorSpecialClassCreateView",
     "InstructorSpecialClassDeleteView",
     "InstructorToggleSessionView",
-    "AdministrativeHomeView",
+    "DashboardRedirectView",
     "ClassCategoryCreateView",
     "ClassCategoryDeleteView",
     "ClassCategoryDetailView",
@@ -199,7 +196,7 @@ __all__ = [
     "PendingPaymentListView",
     "RefundOrderActionView",
     "RetryPendingOrderView",
-    "InstructorHomeView",
+    "RootRedirectView",
     "PersonCreateView",
     "PersonDeleteView",
     "PersonDetailView",
@@ -241,7 +238,6 @@ __all__ = [
     "PlanChangeSelectView",
     "RootRedirectView",
     "StudentCheckinView",
-    "StudentHomeView",
     "StudentScheduleView",
     "StudentSpecialClassCheckinView",
 ]

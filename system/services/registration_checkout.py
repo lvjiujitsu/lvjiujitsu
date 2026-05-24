@@ -137,6 +137,7 @@ def get_plan_catalog_payload():
                     if plan.payment_method == "credit_card"
                     else 0
                 ),
+                "gateway_code": plan.gateway_code or "",
             }
         )
     return payload

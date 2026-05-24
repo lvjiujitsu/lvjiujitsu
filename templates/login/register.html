@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=11">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=18">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -16,6 +16,7 @@
   <script type="application/json" id="reg-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
   <script type="application/json" id="reg-fee-config-json">{{ fee_config_json|safe }}</script>
   <script type="application/json" id="reg-post-plan-json">{{ post_plan_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-plan-is-trial-json">{{ plan_is_trial|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-post-materials-skipped-json">{{ post_materials_skipped|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-plan-order-json">{{ plan_order_json|safe }}</script>
@@ -48,6 +49,18 @@
       <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:16.66%"></div>
     </div>
 
+    {# ── Mensagens do sistema (erros de pagamento, etc.) ── #}
+    {% if messages %}
+      <div class="wizard-system-messages" role="alert" aria-live="assertive">
+        {% for message in messages %}
+          <div class="wizard-system-message wizard-system-message--{{ message.tags }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {# ── Formulário único — todos os campos presentes ── #}
     <form
       class="wizard-form"
@@ -66,7 +79,7 @@
 
       {# Campos de dados pessoais — Etapa 2 (renderizados hidden até lá) #}
       {% for field in form %}
-        {% if field.name not in "registration_profile,include_dependent,other_type_code,extra_dependents_payload,selected_plan,selected_products_payload,checkout_action" %}
+        {% if field.name not in "registration_profile,include_dependent,other_type_code,extra_dependents_payload,selected_plan,selected_products_payload,coupon_code,checkout_action" %}
           <input type="hidden" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default:'' }}">
         {% endif %}
       {% endfor %}
@@ -75,6 +88,7 @@
       <input type="hidden" name="selected_plan" id="id_selected_plan" value="{{ form.selected_plan.value|default:'' }}">
       <input type="hidden" name="selected_plans_payload" id="id_selected_plans_payload" value="[]">
       <input type="hidden" name="selected_products_payload" id="id_selected_products_payload" value="{{ form.selected_products_payload.value|default:'[]' }}">
+      <input type="hidden" name="coupon_code" id="id_coupon_code" value="{{ form.coupon_code.value|default:'' }}">
       <input type="hidden" name="checkout_action" id="id_checkout_action" value="{{ form.checkout_action.value|default:'pay_later' }}">
 
       <section class="wizard-step" id="step-profile" data-step="1">
@@ -496,14 +510,15 @@
         <div class="wizard-form__fields">
 
           <div class="form-field">
-            <label class="form-label" for="ui-martial-has">Já praticou alguma arte marcial ou luta?</label>
-            <div class="form-select-wrapper">
-              <select class="form-input form-select" id="ui-martial-has">
-                <option value="">Selecione</option>
-                <option value="no">Não, sou iniciante</option>
-                <option value="yes">Sim, já pratiquei</option>
-              </select>
+            <label class="form-label">Já praticou alguma arte marcial ou luta?</label>
+            <div class="martial-has-toggle" role="group" aria-label="Experiência em artes marciais">
+              <button type="button" class="martial-has-btn martial-has-btn--active" id="martial-toggle-no" data-value="no">Não, sou iniciante</button>
+              <button type="button" class="martial-has-btn" id="martial-toggle-yes" data-value="yes">Já pratiquei</button>
             </div>
+            <select id="ui-martial-has" style="display:none" aria-hidden="true" tabindex="-1">
+              <option value="no" selected>Não, sou iniciante</option>
+              <option value="yes">Sim, já pratiquei</option>
+            </select>
             <p class="form-field__error" id="ui-martial-has-error" hidden></p>
           </div>
 
@@ -628,10 +643,40 @@
         <div id="plan-cards-area"></div>
         <p class="form-field__error" id="plan-step-error" hidden></p>
 
+        {# Aviso de fidelidade — exibido apenas quando plano Stripe é selecionado #}
+        <div class="stripe-commitment-notice" id="stripe-commitment-notice" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>
+            <strong>Assinatura recorrente — cobrança mensal automática no cartão</strong>
+            <p>Este plano exige fidelidade mínima de <strong>12 meses</strong>. Não é possível cancelar ou trancar a assinatura durante o período de fidelidade.</p>
+          </div>
+        </div>
+
+        {# Cupom — oculto para planos Stripe (Stripe usa price fixo, cupom não se aplica) #}
+        <div class="coupon-area" id="coupon-area">
+          <div class="coupon-area__row">
+            <input
+              type="text"
+              id="coupon-code-input"
+              class="coupon-area__input"
+              placeholder="Cupom de desconto"
+              maxlength="50"
+              autocomplete="off"
+              autocapitalize="characters"
+            >
+            <button type="button" id="coupon-apply-btn" class="coupon-area__btn">Aplicar</button>
+          </div>
+          <p id="coupon-message" class="coupon-msg" hidden></p>
+        </div>
+
         <div class="wizard-step__actions">
           <button type="button" class="btn-next" id="step-plan-next">
             Pagar mensalidade
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button type="button" class="btn-trial" id="btn-trial-class">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Fazer uma aula experimental
           </button>
         </div>
       </section>{# /step-plan #}
@@ -732,6 +777,6 @@
 
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=20" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=30" defer></script>
 </body>
 </html>

@@ -121,6 +121,7 @@ def create_pix_payment(
     due_date,
     description="",
     external_reference=None,
+    success_url=None,
 ):
     body = {
         "customer": customer_id,
@@ -132,6 +133,8 @@ def create_pix_payment(
         body["description"] = description[:500]
     if external_reference is not None:
         body["externalReference"] = str(external_reference)
+    if success_url:
+        body["callback"] = {"successUrl": success_url, "autoRedirect": True}
     return _request("POST", "/payments", json_body=body)
 
 

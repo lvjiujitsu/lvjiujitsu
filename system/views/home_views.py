@@ -1,16 +1,8 @@
-from django.conf import settings
-from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.views.generic import RedirectView, TemplateView
 
-from system.constants import (
-    ADMINISTRATIVE_PERSON_TYPE_CODES,
-    INSTRUCTOR_PERSON_TYPE_CODES,
-    STUDENT_PORTAL_PERSON_TYPE_CODES,
-    PersonTypeCode,
-)
 from system.models.membership import MembershipInvoice
 from system.services.class_calendar import (
     get_instructor_checkin_history,
@@ -30,7 +22,7 @@ from system.services.membership import (
     has_dependents,
 )
 from system.services.trial_access import get_active_trial_for_person
-from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
+from system.views.portal_mixins import PortalLoginRequiredMixin
 
 
 class RootRedirectView(RedirectView):
@@ -41,106 +33,50 @@ class DashboardRedirectView(PortalLoginRequiredMixin, RedirectView):
     permanent = False
 
     def get_redirect_url(self, *args, **kwargs):
-        if self.request.portal_is_technical_admin:
-            return reverse("system:admin-home")
-        if self.request.portal_person is None:
-            return reverse("system:login")
-        person_type_code = next(iter(self.request.portal_type_codes), "")
-        if person_type_code == PersonTypeCode.ADMINISTRATIVE_ASSISTANT:
-            return reverse("system:administrative-home")
-        if person_type_code == PersonTypeCode.INSTRUCTOR:
-            return reverse("system:instructor-home")
-        return reverse("system:student-home")
+        return reverse("system:home")
 
 
-class TechnicalAdminRequiredMixin(PortalLoginRequiredMixin):
-    def dispatch(self, request, *args, **kwargs):
-        if not getattr(request, "portal_is_technical_admin", False):
-            if not getattr(request, "portal_account", None):
-                from django.contrib.auth.views import redirect_to_login
-                return redirect_to_login(
-                    next=request.get_full_path(),
-                    login_url=reverse("system:login"),
-                )
-            return redirect(reverse("system:dashboard-redirect"))
-        return super().dispatch(request, *args, **kwargs)
-
-
-class AdminHomeView(TechnicalAdminRequiredMixin, TemplateView):
-    template_name = "home/admin/dashboard.html"
-
-
-class StaffDashboardContextMixin:
-    dashboard_page_title = "Painel do professor | LV JIU JITSU"
-    dashboard_eyebrow = "Área do professor"
-    dashboard_title = "Painel do professor"
-    show_administrative_area = False
-    show_operational_area = False
+class HomeView(PortalLoginRequiredMixin, TemplateView):
+    template_name = "home/dashboard.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        person = getattr(self.request, "portal_person", None)
-        if person:
-            context["today_classes"] = get_today_classes_for_instructor(person)
-            context["attendance_history"] = get_instructor_checkin_history(person)
-            context["graduation_progress"] = compute_graduation_progress(person)
-            context["graduation_history"] = get_graduation_history(person)
-        else:
-            context["today_classes"] = []
-            context["attendance_history"] = []
-            context["graduation_progress"] = None
-            context["graduation_history"] = []
+        request = self.request
+        person = getattr(request, "portal_person", None)
+
+        is_admin = getattr(request, "portal_is_technical_admin", False)
+        is_administrative = getattr(request, "portal_is_administrative", False)
+        is_instructor = getattr(request, "portal_is_instructor", False)
+        is_student = getattr(request, "portal_is_student", False)
+
         today = timezone.localdate()
         context["today_weekday"] = date_format(today, "l")
         context["today_date"] = date_format(today, "SHORT_DATE_FORMAT")
         context["today_iso"] = today.strftime("%Y-%m-%d")
-        context["special_class_default_title"] = settings.SPECIAL_CLASS_DEFAULT_TITLE
-        context["special_class_default_duration_minutes"] = (
-            settings.SPECIAL_CLASS_DEFAULT_DURATION_MINUTES
-        )
-        context["dashboard_page_title"] = self.dashboard_page_title
-        context["dashboard_eyebrow"] = self.dashboard_eyebrow
-        context["dashboard_title"] = self.dashboard_title
-        context["show_administrative_area"] = self.show_administrative_area
-        context["show_operational_area"] = self.show_operational_area
-        context["show_financial_button"] = True
-        context["show_back_button"] = False
-        return context
 
+        context["is_admin"] = is_admin
+        context["is_administrative"] = is_administrative
+        context["is_instructor"] = is_instructor
+        context["is_student"] = is_student
+        context["show_staff_area"] = is_admin or is_administrative
+        context["show_instructor_area"] = is_admin or is_instructor
 
-class AdministrativeHomeView(
-    StaffDashboardContextMixin,
-    PortalRoleRequiredMixin,
-    TemplateView,
-):
-    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
-    template_name = "home/instructor/dashboard.html"
-    dashboard_page_title = "Painel administrativo | LV JIU JITSU"
-    dashboard_eyebrow = "Área administrativa"
-    dashboard_title = "Painel administrativo"
-    show_administrative_area = True
+        if person is None:
+            context.update(_empty_context())
+            return context
 
-
-class InstructorHomeView(StaffDashboardContextMixin, PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES
-    template_name = "home/instructor/dashboard.html"
-    show_operational_area = True
-
-
-class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
-    allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES
-    template_name = "home/student/dashboard.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        person = getattr(self.request, "portal_person", None)
-        if person:
+        if is_admin or is_administrative or is_instructor:
+            context["today_classes"] = get_today_classes_for_instructor(person)
+            context["attendance_history"] = get_instructor_checkin_history(person)
+        else:
             context["today_classes"] = get_today_classes_for_person(person)
             context["attendance_history"] = get_student_checkin_history(person)
-            context["active_trial_access"] = get_active_trial_for_person(person)
-            context["graduation_progress"] = compute_graduation_progress(person)
-            context["graduation_history"] = get_graduation_history(person)
 
+        context["graduation_progress"] = compute_graduation_progress(person)
+        context["graduation_history"] = get_graduation_history(person)
+
+        if is_student:
+            context["active_trial_access"] = get_active_trial_for_person(person)
             if has_dependents(person):
                 context["billing_tabs"] = get_guardian_billing_tabs(person)
             else:
@@ -162,13 +98,18 @@ class StudentHomeView(PortalRoleRequiredMixin, TemplateView):
                     "billing_owner": billing_owner,
                 }]
         else:
-            context["today_classes"] = []
-            context["attendance_history"] = []
-            context["billing_tabs"] = []
             context["active_trial_access"] = None
-            context["graduation_progress"] = None
-            context["graduation_history"] = []
-        today = timezone.localdate()
-        context["today_weekday"] = date_format(today, "l")
-        context["today_date"] = date_format(today, "SHORT_DATE_FORMAT")
+            context["billing_tabs"] = []
+
         return context
+
+
+def _empty_context():
+    return {
+        "today_classes": [],
+        "attendance_history": [],
+        "graduation_progress": None,
+        "graduation_history": [],
+        "active_trial_access": None,
+        "billing_tabs": [],
+    }

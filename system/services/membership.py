@@ -192,6 +192,7 @@ def upsert_membership_from_stripe_subscription(stripe_subscription):
     }
     stripe_status = _sget(stripe_subscription, "status", "") or ""
     mapped_status = status_map.get(stripe_status)
+    previous_status = membership.status
     if mapped_status:
         membership.status = mapped_status
 
@@ -208,6 +209,20 @@ def upsert_membership_from_stripe_subscription(stripe_subscription):
     if canceled_at:
         membership.canceled_at = _from_unix(canceled_at)
     membership.save()
+
+    if (
+        mapped_status == MembershipStatus.PAST_DUE
+        and previous_status not in (MembershipStatus.PAST_DUE, MembershipStatus.EXEMPTED)
+    ):
+        try:
+            from system.services.stripe_notifications import notify_subscription_past_due
+            notify_subscription_past_due(membership)
+        except Exception:
+            logger.exception(
+                "upsert_membership_from_stripe_subscription: erro ao enviar notificação (membership=%s).",
+                membership.pk,
+            )
+
     return membership
 
 
@@ -288,6 +303,11 @@ def mark_invoice_failed(stripe_invoice):
         return membership
     membership.status = MembershipStatus.PAST_DUE
     membership.save(update_fields=["status", "updated_at"])
+    try:
+        from system.services.stripe_notifications import notify_payment_failed
+        notify_payment_failed(membership, stripe_invoice=stripe_invoice)
+    except Exception:
+        logger.exception("mark_invoice_failed: erro ao enviar notificação (membership=%s).", membership.pk)
     return membership
 
 

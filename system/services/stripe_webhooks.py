@@ -56,7 +56,12 @@ def process_stripe_event(event):
 
     try:
         if event_type == "checkout.session.completed":
-            order, membership = _handle_checkout_session_completed(event)
+            session = event["data"]["object"]
+            reference = (session["client_reference_id"] if "client_reference_id" in session else None) or ""
+            if reference.startswith("pre-registration:"):
+                _handle_pre_registration_checkout_completed(session)
+            else:
+                order, membership = _handle_checkout_session_completed(event)
         elif event_type == "checkout.session.expired":
             order = _handle_checkout_session_expired(event)
         elif event_type == "payment_intent.payment_failed":
@@ -92,6 +97,41 @@ def process_stripe_event(event):
         payload={"id": event_id, "type": event_type},
     )
     return {"order": order, "membership": membership, "duplicate": False}
+
+
+def _handle_pre_registration_checkout_completed(session):
+    from system.models import PreRegistration, PreRegistrationStatus
+
+    reference = (session["client_reference_id"] if "client_reference_id" in session else None) or ""
+    parts = reference.split(":")
+    try:
+        pr_pk = int(parts[1]) if len(parts) >= 2 else None
+    except (ValueError, TypeError):
+        pr_pk = None
+
+    if not pr_pk:
+        logger.warning("Webhook Stripe: client_reference_id inválido: %s", reference)
+        return
+
+    pr = PreRegistration.objects.filter(pk=pr_pk).first()
+    if pr is None:
+        logger.warning("Webhook Stripe: PreRegistration %s não encontrada", pr_pk)
+        return
+
+    subscription_id = (session["subscription"] if "subscription" in session else None) or ""
+    snapshot = pr.form_snapshot or {}
+    plan_payment = snapshot.get("plan_payment") or {}
+    session_id = session["id"] if "id" in session else ""
+    plan_payment["stripe_session_id"] = session_id
+    if subscription_id:
+        plan_payment["stripe_subscription_id"] = str(subscription_id)
+    snapshot["plan_payment"] = plan_payment
+    snapshot["plan_paid"] = True
+
+    pr.form_snapshot = snapshot
+    pr.status = PreRegistrationStatus.PAYMENT_CONFIRMED
+    pr.save(update_fields=["form_snapshot", "status", "updated_at"])
+    logger.info("Webhook Stripe: PreRegistration %s confirmada via checkout", pr_pk)
 
 
 def _handle_checkout_session_completed(event):

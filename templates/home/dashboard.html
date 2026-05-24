@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Início — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=1">
+</head>
+<body>
+
+  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="32">
+      <span class="topbar__name">LV JIU JITSU</span>
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button
+        class="btn-icon"
+        id="theme-toggle"
+        type="button"
+        aria-label="Alternar tema claro/escuro"
+        title="Alternar tema"
+      >☀</button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">⎋</a>
+    </nav>
+  </header>
+
+  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
+  <main class="page" id="main-content">
+
+    <!-- Cabeçalho da página -->
+    <div class="page-header">
+      <p class="page-header__eyebrow">{{ today_weekday }}, {{ today_date }}</p>
+      <h1 class="page-header__title">
+        {% if request.portal_person %}
+          Olá, {{ request.portal_person.full_name|truncatewords:1 }}
+        {% elif request.technical_admin_user %}
+          Olá, {{ request.technical_admin_user.get_short_name|default:request.technical_admin_user.username }}
+        {% else %}
+          Início
+        {% endif %}
+      </h1>
+    </div>
+
+    <!-- ─── Acesso rápido — apenas staff / admin ──────────────────────────── -->
+    {% if show_staff_area %}
+    <section class="section" aria-labelledby="quick-title">
+      <div class="section__header">
+        <h2 class="section__title" id="quick-title">Acesso rápido</h2>
+      </div>
+      <nav class="quick-access" aria-label="Módulos do sistema">
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">👤</span>Pessoas
+        </a>
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">🥋</span>Turmas
+        </a>
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">💰</span>Financeiro
+        </a>
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">🎖</span>Graduação
+        </a>
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">🛍</span>Materiais
+        </a>
+        <a class="quick-link" href="#">
+          <span class="quick-link__icon" aria-hidden="true">📋</span>Planos
+        </a>
+        {% if is_admin %}
+        <a class="quick-link" href="/admin/" target="_blank" rel="noopener">
+          <span class="quick-link__icon" aria-hidden="true">⚙</span>Django Admin
+        </a>
+        {% endif %}
+      </nav>
+    </section>
+    {% endif %}
+
+    <!-- ─── Turmas de hoje ───────────────────────────────────────────────── -->
+    <section class="section" aria-labelledby="classes-title">
+      <div class="section__header">
+        <h2 class="section__title" id="classes-title">Turmas de hoje</h2>
+        <span class="page-header__eyebrow" aria-hidden="true">{{ today_weekday }}</span>
+      </div>
+      <div class="panel">
+        {% if today_classes %}
+          <ul class="class-list" aria-label="Aulas de hoje">
+            {% for item in today_classes %}
+            <li class="class-item">
+              <span class="class-item__time" aria-label="Horário">
+                {{ item.start_time|default:item.time|default:"—" }}
+              </span>
+              <div class="class-item__info">
+                <div class="class-item__name">
+                  {{ item.class_group__name|default:item.name|default:item.title|default:"Aula" }}
+                </div>
+                <div class="class-item__sub">
+                  {% if item.teacher %}{{ item.teacher }}{% elif item.instructor %}{{ item.instructor }}{% endif %}
+                  {% if item.class_category %}· {{ item.class_category }}{% endif %}
+                </div>
+              </div>
+              {% if show_instructor_area %}
+              <div class="class-item__action">
+                <a class="btn btn--secondary btn--sm" href="#">Check-in</a>
+              </div>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state" role="status">
+            <span class="empty-state__icon" aria-hidden="true">📅</span>
+            <p class="empty-state__text">Sem aulas agendadas para hoje.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- ─── Graduação ────────────────────────────────────────────────────── -->
+    {% if graduation_progress or graduation_history %}
+    <section class="section" aria-labelledby="grad-title">
+      <div class="section__header">
+        <h2 class="section__title" id="grad-title">Graduação</h2>
+        {% if show_staff_area %}
+        <a class="section__link" href="#">Ver módulo</a>
+        {% endif %}
+      </div>
+      <div class="panel">
+        {% if graduation_progress %}
+        <div class="progress-section">
+          <div class="progress-label">
+            <span class="progress-label__name">
+              {{ graduation_progress.current_belt_display|default:"Faixa atual" }}
+            </span>
+            <span class="progress-label__pct">{{ graduation_progress.percentage|default:0 }}%</span>
+          </div>
+          <div class="progress-bar" role="progressbar"
+               aria-valuenow="{{ graduation_progress.percentage|default:0 }}"
+               aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar__fill" style="width: {{ graduation_progress.percentage|default:0 }}%"></div>
+          </div>
+          {% if graduation_progress.classes_count is not None %}
+          <p class="progress-sub">
+            {{ graduation_progress.classes_count }} aula{{ graduation_progress.classes_count|pluralize }} registrada{{ graduation_progress.classes_count|pluralize }}
+            {% if graduation_progress.required_classes %}
+              de {{ graduation_progress.required_classes }} necessárias
+            {% endif %}
+          </p>
+          {% endif %}
+        </div>
+        {% else %}
+          <div class="empty-state" role="status">
+            <span class="empty-state__icon" aria-hidden="true">🎖</span>
+            <p class="empty-state__text">Sem dados de graduação disponíveis.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── Mensalidade — apenas perfis de aluno/responsável ─────────────── -->
+    {% if is_student and billing_tabs %}
+    <section class="section" aria-labelledby="billing-title">
+      <div class="section__header">
+        <h2 class="section__title" id="billing-title">Mensalidade</h2>
+      </div>
+      <div class="panel">
+        {% if billing_tabs|length > 1 %}
+        <div class="tabs" role="tablist" aria-label="Dependentes">
+          {% for tab in billing_tabs %}
+          <button
+            class="tab-btn {% if tab.is_active_tab %}tab-btn--active{% endif %}"
+            role="tab"
+            aria-selected="{% if tab.is_active_tab %}true{% else %}false{% endif %}"
+            aria-controls="tab-panel-{{ forloop.counter }}"
+            id="tab-{{ forloop.counter }}"
+            data-tab="{{ forloop.counter }}"
+            type="button"
+          >{{ tab.person.full_name|truncatewords:1 }}</button>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for tab in billing_tabs %}
+        <div
+          class="tab-panel {% if tab.is_active_tab %}tab-panel--active{% endif %}"
+          id="tab-panel-{{ forloop.counter }}"
+          role="tabpanel"
+          aria-labelledby="tab-{{ forloop.counter }}"
+        >
+          <div class="billing-card">
+            {% if tab.active_membership %}
+              <div class="billing-card__row">
+                <div>
+                  <div class="billing-card__plan">{{ tab.active_membership.plan.name }}</div>
+                  <div class="billing-card__detail">
+                    Vencimento: {{ tab.active_membership.next_billing_date|date:"d/m/Y"|default:"—" }}
+                  </div>
+                </div>
+                <span class="badge badge--success">Ativo</span>
+              </div>
+              {% if tab.pending_order %}
+              <div style="margin-top:1rem">
+                <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">
+                  Pagar fatura pendente
+                </a>
+              </div>
+              {% endif %}
+            {% elif tab.pending_order %}
+              <div class="billing-card__row">
+                <div>
+                  <div class="billing-card__plan">Pagamento pendente</div>
+                  <div class="billing-card__detail">Conclua o pagamento para ativar sua matrícula.</div>
+                </div>
+                <span class="badge badge--warning">Pendente</span>
+              </div>
+              <div style="margin-top:1rem">
+                <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">
+                  Ir para pagamento
+                </a>
+              </div>
+            {% elif active_trial_access %}
+              <div class="billing-card__row">
+                <div>
+                  <div class="billing-card__plan">Acesso experimental</div>
+                  <div class="billing-card__detail">
+                    Válido até {{ active_trial_access.expires_at|date:"d/m/Y"|default:"—" }}
+                  </div>
+                </div>
+                <span class="badge badge--info">Trial</span>
+              </div>
+            {% else %}
+              <div class="billing-card__row">
+                <div>
+                  <div class="billing-card__plan">Sem plano ativo</div>
+                  <div class="billing-card__detail">Escolha um plano para começar.</div>
+                </div>
+                <span class="badge badge--neutral">Inativo</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── Mensalidade — admin/administrativo vê resumo financeiro ──────── -->
+    {% if show_staff_area %}
+    <section class="section" aria-labelledby="financial-title">
+      <div class="section__header">
+        <h2 class="section__title" id="financial-title">Financeiro</h2>
+        <a class="section__link" href="#">Ver módulo</a>
+      </div>
+      <div class="panel">
+        <div class="empty-state" role="status">
+          <span class="empty-state__icon" aria-hidden="true">💰</span>
+          <p class="empty-state__text">Módulo financeiro em breve.</p>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+  </main>
+
+  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+  <script type="application/json" id="page-data">{"hasTabs": {{ billing_tabs|length }} > 1}</script>
+  <script>
+    (function () {
+      var toggle = document.getElementById('theme-toggle');
+      function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('lv-theme', t);
+        toggle.textContent = t === 'dark' ? '☀' : '☾';
+        toggle.setAttribute('aria-label', t === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro');
+      }
+      var current = document.documentElement.getAttribute('data-theme') || 'light';
+      toggle.textContent = current === 'dark' ? '☀' : '☾';
+      toggle.addEventListener('click', function () {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      });
+
+      var tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var idx = btn.getAttribute('data-tab');
+          tabBtns.forEach(function (b) {
+            b.classList.remove('tab-btn--active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          document.querySelectorAll('.tab-panel').forEach(function (p) {
+            p.classList.remove('tab-panel--active');
+          });
+          btn.classList.add('tab-btn--active');
+          btn.setAttribute('aria-selected', 'true');
+          var panel = document.getElementById('tab-panel-' + idx);
+          if (panel) panel.classList.add('tab-panel--active');
+        });
+      });
+    })();
+  </script>
+
+</body>
+</html>

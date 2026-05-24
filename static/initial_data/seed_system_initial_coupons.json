@@ -1,0 +1,42 @@
+[
+  {
+    "code": "BEMVINDO10",
+    "description": "Cupom de boas-vindas — 10% de desconto na primeira mensalidade",
+    "discount_type": "percent",
+    "discount_value": "10.00",
+    "max_uses": null,
+    "valid_from": null,
+    "valid_until": null,
+    "is_active": true
+  },
+  {
+    "code": "PROMO50",
+    "description": "Promoção — R$ 50,00 de desconto fixo na mensalidade",
+    "discount_type": "fixed",
+    "discount_value": "50.00",
+    "max_uses": 100,
+    "valid_from": null,
+    "valid_until": null,
+    "is_active": true
+  },
+  {
+    "code": "FAMILIA20",
+    "description": "Desconto família — 20% de desconto no plano familiar",
+    "discount_type": "percent",
+    "discount_value": "20.00",
+    "max_uses": null,
+    "valid_from": null,
+    "valid_until": null,
+    "is_active": true
+  },
+  {
+    "code": "TESTE100",
+    "description": "Cupom de teste — R$ 999,00 de desconto (cobre qualquer plano)",
+    "discount_type": "fixed",
+    "discount_value": "999.00",
+    "max_uses": 10,
+    "valid_from": null,
+    "valid_until": null,
+    "is_active": false
+  }
+]

@@ -147,6 +147,39 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   color: var(--muted);
 }
 
+/* ─── Mensagens do sistema (Django messages) ────────────────────────────────── */
+
+.wizard-system-messages {
+  padding: 0 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: -0.25rem;
+}
+.wizard-system-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  background: var(--danger-muted);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--danger);
+  line-height: 1.45;
+}
+.wizard-system-message svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--danger);
+}
+.wizard-system-message--success {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.25);
+  color: var(--success);
+}
+.wizard-system-message--success svg { color: var(--success); }
+
 /* ─── Erros ─────────────────────────────────────────────────────────────────── */
 
 .wizard-errors {
@@ -531,6 +564,44 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   resize: vertical;
   min-height: 72px;
   line-height: 1.5;
+}
+
+/* ─── Toggle de experiência marcial ────────────────────────────────────────── */
+
+.martial-has-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.martial-has-btn {
+  flex: 1;
+  padding: 0.8125rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--input-bg);
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.martial-has-btn:hover:not(.martial-has-btn--active) {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.martial-has-btn--active {
+  border-color: var(--brand-red);
+  background: var(--brand-red-muted);
+  color: var(--brand-red);
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .martial-has-toggle { flex-direction: column; }
 }
 
 /* ─── IBJJF Notice ──────────────────────────────────────────────────────────── */
@@ -958,6 +1029,10 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--muted);
   font-style: italic;
   margin-top: 6px;
+}
+
+.plan-card__badge--stripe {
+  background: #6366f1;
 }
 
 .plan-cards--empty {
@@ -1703,6 +1778,125 @@ html[data-theme="dark"] .ibjjf-notice {
 @media (min-width: 540px) {
   .wizard-shell { padding: 0 0 2.5rem; }
   .wizard-step__title { font-size: 1.5rem; }
+}
+
+/* ─── Cupom de desconto ─────────────────────────────────────────────────────── */
+
+.coupon-area {
+  margin: 0.75rem 0 0.5rem;
+}
+.coupon-area__row {
+  display: flex;
+  gap: 0.5rem;
+}
+.coupon-area__input {
+  flex: 1;
+  height: 40px;
+  border: 1.5px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: border-color 0.15s;
+}
+.coupon-area__input:focus { outline: none; border-color: var(--brand-red); }
+.coupon-area__input:disabled { opacity: 0.55; cursor: not-allowed; }
+.coupon-area__btn {
+  height: 40px;
+  padding: 0 1rem;
+  background: var(--brand-red);
+  color: #fff;
+  border: none;
+  border-radius: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.coupon-area__btn:hover:not(:disabled) { background: var(--brand-red-strong); }
+.coupon-area__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.coupon-msg {
+  font-size: 0.8rem;
+  margin-top: 0.35rem;
+}
+.coupon-msg--ok    { color: var(--success, #16a34a); }
+.coupon-msg--error { color: var(--danger, #dc2626); }
+
+/* ─── Botão aula experimental ───────────────────────────────────────────────── */
+
+.btn-trial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  margin-top: 0.5rem;
+  border: 1.5px solid var(--border, #333);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted, #888);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-trial:hover { border-color: var(--text, #ccc); color: var(--text, #eee); }
+.btn-trial svg { flex-shrink: 0; }
+
+/* Banner trial */
+.checkout-confirmed-banner--trial {
+  background: color-mix(in srgb, #16a34a 10%, transparent);
+  border-color: color-mix(in srgb, #16a34a 30%, transparent);
+}
+.checkout-confirmed-banner--trial .checkout-confirmed-banner__icon,
+.checkout-confirmed-banner--trial .checkout-confirmed-banner__text {
+  color: #16a34a;
+}
+
+/* ─── Aviso de fidelidade Stripe ────────────────────────────────────────────── */
+
+.stripe-commitment-notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-red, #dc2626) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-red, #dc2626) 30%, transparent);
+  color: var(--text, #111);
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+.stripe-commitment-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--brand-red, #dc2626);
+}
+.stripe-commitment-notice > div > strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text, #111);
+}
+.stripe-commitment-notice p {
+  font-size: 0.8125rem;
+  color: var(--muted, #555);
+  margin: 0;
+  line-height: 1.45;
+}
+.stripe-commitment-notice p strong {
+  display: inline;
+  font-weight: 700;
+  color: var(--text, #111);
 }
 
 /* ─── Prefers-reduced-motion ────────────────────────────────────────────────── */
