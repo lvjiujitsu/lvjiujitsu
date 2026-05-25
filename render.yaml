@@ -3,7 +3,7 @@ services:
     name: lvjiujitsu
     runtime: python
     buildCommand: "./build.sh"
-    preDeployCommand: "python manage.py migrate --noinput"
+    preDeployCommand: "python manage.py bootstrap"
     startCommand: "gunicorn lvjiujitsu.wsgi:application"
     envVars:
       - key: DJANGO_SETTINGS_MODULE
