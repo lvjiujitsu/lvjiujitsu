@@ -181,7 +181,12 @@
       "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_calendar --verbosity 2)",
       "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe C:/Users/whsf/Documents/GitHub/lvjiujitsu/manage.py test system.tests.test_calendar --verbosity 2)",
       "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe C:/Users/whsf/Documents/GitHub/lvjiujitsu/manage.py test --verbosity 2)",
-      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_graduation system.tests.test_calendar --verbosity 2)"
+      "Bash(.\\\\.venv\\\\Scripts\\\\python.exe manage.py test system.tests.test_graduation system.tests.test_calendar --verbosity 2)",
+      "Bash(git add *)",
+      "Bash(git update-index *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)",
+      "Bash(set DATABASE_URL=)"
     ]
   },
   "model": "claude-sonnet-4-6",

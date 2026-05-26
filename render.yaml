@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lvjiujitsu
+    runtime: python
+    buildCommand: "./build.sh"
+    preDeployCommand: "python manage.py bootstrap"
+    startCommand: "gunicorn lvjiujitsu.wsgi:application"
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: lvjiujitsu.settings
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: SITE_BASE_URL
+        sync: false
