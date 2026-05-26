@@ -14,105 +14,125 @@ def base_dir_path_setting(name, default):
     return BASE_DIR / configured_path
 
 
+# ── Ambiente ──────────────────────────────────────────────────────────────────
+# Única chave que define se é HOMO (dev/hg) ou PROD.
+# No Render PROD: DJANGO_DEBUG=0   No Render HG: DJANGO_DEBUG=1   Local: 1
 DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
 
+
+# ── Segurança ─────────────────────────────────────────────────────────────────
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="")
 if not SECRET_KEY:
     if not DEBUG:
-        raise ImproperlyConfigured("DJANGO_SECRET_KEY deve ser definido no .env.")
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY deve ser definido no ambiente.")
     SECRET_KEY = "django-insecure-dev-only-key-change-me"
 
 ALLOWED_HOSTS = [
-    host.strip()
-    for host in config(
+    h.strip()
+    for h in config(
         "DJANGO_ALLOWED_HOSTS",
         default="127.0.0.1,localhost,localhost.,0.0.0.0",
     ).split(",")
-    if host.strip()
+    if h.strip()
 ]
 if DEBUG and "*" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("*")
 
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in config(
+    o.strip()
+    for o in config(
         "DJANGO_CSRF_TRUSTED_ORIGINS",
         default="http://127.0.0.1,http://localhost,https://127.0.0.1,https://localhost,https://*.ngrok-free.dev,https://*.ngrok.io",
     ).split(",")
-    if origin.strip()
+    if o.strip()
 ]
 
-SECURE_HSTS_SECONDS = config("DJANGO_SECURE_HSTS_SECONDS", default=0, cast=int)
-SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=False, cast=bool)
-SESSION_COOKIE_SECURE = config("DJANGO_SESSION_COOKIE_SECURE", default=False, cast=bool)
-CSRF_COOKIE_SECURE = config("DJANGO_CSRF_COOKIE_SECURE", default=False, cast=bool)
+# Cookies seguros: False em DEBUG, True em produção — sobrescrevível via env
+SESSION_COOKIE_SECURE = config("DJANGO_SESSION_COOKIE_SECURE", default=not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE    = config("DJANGO_CSRF_COOKIE_SECURE",    default=not DEBUG, cast=bool)
 SESSION_COOKIE_SAMESITE = config("DJANGO_SESSION_COOKIE_SAMESITE", default="Lax")
-CSRF_COOKIE_SAMESITE = config("DJANGO_CSRF_COOKIE_SAMESITE", default="Lax")
+CSRF_COOKIE_SAMESITE    = config("DJANGO_CSRF_COOKIE_SAMESITE",    default="Lax")
 
+# HSTS: 0 em DEBUG, 1 ano em produção — sobrescrevível via env
+SECURE_HSTS_SECONDS = config(
+    "DJANGO_SECURE_HSTS_SECONDS",
+    default=0 if DEBUG else 31536000,
+    cast=int,
+)
+# SSL redirect fica False: o Render já termina HTTPS no proxy
+SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=False, cast=bool)
+
+# Necessário para que Django enxergue HTTPS atrás do proxy do Render
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# ── Admin / seeds ─────────────────────────────────────────────────────────────
 ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
-ADMIN_SUPERUSER_EMAIL = config("ADMIN_SUPERUSER_EMAIL", default="")
+ADMIN_SUPERUSER_EMAIL    = config("ADMIN_SUPERUSER_EMAIL",    default="")
 ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
 
-SEED_INITIAL_TEACHER_PASSWORD = config("SEED_INITIAL_TEACHER_PASSWORD", default="")
+SEED_INITIAL_TEACHER_PASSWORD        = config("SEED_INITIAL_TEACHER_PASSWORD",        default="")
 SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config("SEED_INITIAL_ADMINISTRATIVE_PASSWORD", default="")
 
-STRIPE_PUBLIC_KEY = config("STRIPE_PUBLIC_KEY", default="")
-STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
-STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
+# ── Stripe ────────────────────────────────────────────────────────────────────
+STRIPE_PUBLIC_KEY      = config("STRIPE_PUBLIC_KEY",      default="")
+STRIPE_SECRET_KEY      = config("STRIPE_SECRET_KEY",      default="")
+STRIPE_WEBHOOK_SECRET  = config("STRIPE_WEBHOOK_SECRET",  default="")
 STRIPE_PLAN_SYNC_ENABLED = config("STRIPE_PLAN_SYNC_ENABLED", default=False, cast=bool)
 
+
+# ── Site ──────────────────────────────────────────────────────────────────────
 SITE_BASE_URL = config("SITE_BASE_URL", default="http://127.0.0.1:8000")
 
-ASAAS_API_KEY = config("ASAAS_API_KEY", default="")
-ASAAS_API_URL = config("ASAAS_API_URL", default="")
-ASAAS_WEBHOOK_TOKEN = config("ASAAS_WEBHOOK_TOKEN", default="")
-ASAAS_API_TIMEOUT_SECONDS = config("ASAAS_API_TIMEOUT_SECONDS", default=20, cast=int)
-ASAAS_USER_AGENT = config("ASAAS_USER_AGENT", default="lvjiujitsu-django/1.0")
-ASAAS_PIX_DUE_DAYS = config("ASAAS_PIX_DUE_DAYS", default=1, cast=int)
+
+# ── Asaas ─────────────────────────────────────────────────────────────────────
+ASAAS_API_KEY            = config("ASAAS_API_KEY",            default="")
+ASAAS_API_URL            = config("ASAAS_API_URL",            default="")
+ASAAS_WEBHOOK_TOKEN      = config("ASAAS_WEBHOOK_TOKEN",      default="")
+ASAAS_API_TIMEOUT_SECONDS   = config("ASAAS_API_TIMEOUT_SECONDS",   default=20,  cast=int)
+ASAAS_USER_AGENT            = config("ASAAS_USER_AGENT",            default="lvjiujitsu-django/1.0")
+ASAAS_PIX_DUE_DAYS          = config("ASAAS_PIX_DUE_DAYS",          default=1,   cast=int)
 ASAAS_PIX_EXPIRATION_MINUTES = config("ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int)
 
-SITE_NAME = config("SITE_NAME", default="LV Jiu Jitsu")
-SITE_NAME_UPPER = config("SITE_NAME_UPPER", default=SITE_NAME.upper())
-PAYMENT_CURRENCY = config("PAYMENT_CURRENCY", default="brl").lower()
+
+# ── Negócio ───────────────────────────────────────────────────────────────────
+SITE_NAME             = config("SITE_NAME",             default="LV Jiu Jitsu")
+SITE_NAME_UPPER       = config("SITE_NAME_UPPER",       default=SITE_NAME.upper())
+PAYMENT_CURRENCY      = config("PAYMENT_CURRENCY",      default="brl").lower()
 PAYMENT_CURRENCY_SYMBOL = config("PAYMENT_CURRENCY_SYMBOL", default="R$")
-ASAAS_PIX_FIXED_FEE = config("ASAAS_PIX_FIXED_FEE", default="1.99")
+ASAAS_PIX_FIXED_FEE      = config("ASAAS_PIX_FIXED_FEE",      default="1.99")
 ASAAS_CREDIT_PERCENT_FEE = config("ASAAS_CREDIT_PERCENT_FEE", default="0.0429")
-ASAAS_CREDIT_FIXED_FEE = config("ASAAS_CREDIT_FIXED_FEE", default="0.49")
-ASAAS_CARD_DUE_DAYS = config("ASAAS_CARD_DUE_DAYS", default=1, cast=int)
+ASAAS_CREDIT_FIXED_FEE   = config("ASAAS_CREDIT_FIXED_FEE",   default="0.49")
+ASAAS_CARD_DUE_DAYS      = config("ASAAS_CARD_DUE_DAYS",      default=1, cast=int)
 STRIPE_CREDIT_PERCENT_FEE = config("STRIPE_CREDIT_PERCENT_FEE", default="0.0399")
-STRIPE_CREDIT_FIXED_FEE = config("STRIPE_CREDIT_FIXED_FEE", default="0.39")
-CREDIT_CARD_FEE_PASS_THROUGH = config("CREDIT_CARD_FEE_PASS_THROUGH", default=True, cast=bool)
-PIX_FEE_PASS_THROUGH = config("PIX_FEE_PASS_THROUGH", default=True, cast=bool)
-PORTAL_PASSWORD_RESET_TOKEN_HOURS = config(
-    "PORTAL_PASSWORD_RESET_TOKEN_HOURS",
-    default=2,
-    cast=int,
-)
-TRIAL_ACCESS_DEFAULT_CLASSES = config(
-    "TRIAL_ACCESS_DEFAULT_CLASSES",
-    default=1,
-    cast=int,
-)
-BACKORDER_RESERVATION_DAYS = config(
-    "BACKORDER_RESERVATION_DAYS",
-    default=7,
-    cast=int,
-)
-CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config(
-    "CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES",
-    default=60,
-    cast=int,
-)
-SPECIAL_CLASS_DEFAULT_TITLE = config("SPECIAL_CLASS_DEFAULT_TITLE", default="Aulão")
-SPECIAL_CLASS_DEFAULT_DURATION_MINUTES = config(
-    "SPECIAL_CLASS_DEFAULT_DURATION_MINUTES",
-    default=90,
-    cast=int,
-)
+STRIPE_CREDIT_FIXED_FEE   = config("STRIPE_CREDIT_FIXED_FEE",   default="0.39")
+CREDIT_CARD_FEE_PASS_THROUGH = config("CREDIT_CARD_FEE_PASS_THROUGH", default=True,  cast=bool)
+PIX_FEE_PASS_THROUGH         = config("PIX_FEE_PASS_THROUGH",         default=True,  cast=bool)
+PORTAL_PASSWORD_RESET_TOKEN_HOURS    = config("PORTAL_PASSWORD_RESET_TOKEN_HOURS",    default=2,  cast=int)
+TRIAL_ACCESS_DEFAULT_CLASSES         = config("TRIAL_ACCESS_DEFAULT_CLASSES",         default=1,  cast=int)
+BACKORDER_RESERVATION_DAYS           = config("BACKORDER_RESERVATION_DAYS",           default=7,  cast=int)
+CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config("CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES", default=60, cast=int)
+SPECIAL_CLASS_DEFAULT_TITLE             = config("SPECIAL_CLASS_DEFAULT_TITLE",             default="Aulão")
+SPECIAL_CLASS_DEFAULT_DURATION_MINUTES  = config("SPECIAL_CLASS_DEFAULT_DURATION_MINUTES",  default=90, cast=int)
 PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=int)
 
 
-# Application definition
+# ── Email ─────────────────────────────────────────────────────────────────────
+# Em DEBUG usa console (nunca manda e-mail real por engano)
+# Em produção lê do env — trocar para SMTP quando configurar servidor de e-mail
+EMAIL_BACKEND = config(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend" if DEBUG
+            else "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = config(
+    "DJANGO_DEFAULT_FROM_EMAIL",
+    default="nao-responda@lvjiujitsu.local",
+)
+
+
+# ── Application definition ────────────────────────────────────────────────────
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -158,14 +178,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lvjiujitsu.wsgi.application'
 
 
-# Database
-# Se existir a variável DATABASE_URL, usa ela (Supabase). Se não, usa o sqlite3 local.
+# ── Database ──────────────────────────────────────────────────────────────────
+# Local dev (DEBUG=1, DATABASE_URL vazio): SQLite
+# Render HG (DEBUG=1, DATABASE_URL=supabase-hg): PostgreSQL HG
+# Render PROD (DEBUG=0, DATABASE_URL=supabase-prod): PostgreSQL PROD
 DATABASE_URL = config("DATABASE_URL", default=None)
 
 if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
-    }
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
 else:
     DATABASES = {
         'default': {
@@ -175,62 +195,37 @@ else:
     }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
+# ── Password validation ───────────────────────────────────────────────────────
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/4.1/topics/i18n/
+# ── Internacionalização ───────────────────────────────────────────────────────
 
 LANGUAGE_CODE = config("DJANGO_LANGUAGE_CODE", default="pt-br")
-
-TIME_ZONE = config("DJANGO_TIME_ZONE", default="America/Sao_Paulo")
-
+TIME_ZONE     = config("DJANGO_TIME_ZONE",      default="America/Sao_Paulo")
 USE_I18N = True
+USE_TZ   = True
 
-USE_TZ = True
 
+# ── Static / Media ────────────────────────────────────────────────────────────
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.1/howto/static-files/
-
-STATIC_URL = config("DJANGO_STATIC_URL", default="/static/")
+STATIC_URL    = config("DJANGO_STATIC_URL", default="/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = base_dir_path_setting("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles")
+STATIC_ROOT   = base_dir_path_setting("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles")
 
-# Media files (uploads de usuário)
-MEDIA_URL = config("DJANGO_MEDIA_URL", default="/media/")
+MEDIA_URL  = config("DJANGO_MEDIA_URL",  default="/media/")
 MEDIA_ROOT = base_dir_path_setting("DJANGO_MEDIA_ROOT", BASE_DIR / "media")
 
-LOGIN_URL = "system:login"
-LOGIN_REDIRECT_URL = "system:dashboard-redirect"
+LOGIN_URL           = "system:login"
+LOGIN_REDIRECT_URL  = "system:dashboard-redirect"
 LOGOUT_REDIRECT_URL = "system:login"
 
-EMAIL_BACKEND = config(
-    "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.console.EmailBackend",
-)
-DEFAULT_FROM_EMAIL = config(
-    "DJANGO_DEFAULT_FROM_EMAIL",
-    default="nao-responda@lvjiujitsu.local",
-)
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+TEST_RUNNER = 'system.test_runner.PostgreSQLDiscoverRunner'
