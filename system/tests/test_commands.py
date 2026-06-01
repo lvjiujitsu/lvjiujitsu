@@ -1,6 +1,9 @@
+import json
+import os
 import shutil
 import tempfile
 from contextlib import redirect_stdout
+from datetime import date
 from decimal import Decimal
 from io import StringIO
 from pathlib import Path
@@ -8,10 +11,21 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core.management import call_command, get_commands
+from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 
 from clear_migrations import remove_runtime_artifacts
-from system.models import Holiday, SubscriptionPlan, TeacherPayrollConfig
+from system.constants import PersonTypeCode
+from system.models import (
+    BeltRank,
+    CategoryAudience,
+    Graduation,
+    Holiday,
+    Person,
+    PersonRelationship,
+    SubscriptionPlan,
+    TeacherPayrollConfig,
+)
 from system.services.payroll_rules import decode_payroll_rules
 
 
@@ -45,6 +59,11 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
 
 
 class SeedCommandGovernanceTestCase(SimpleTestCase):
+    def test_bootstrap_command_is_not_available(self):
+        get_commands.cache_clear()
+
+        self.assertNotIn("bootstrap", get_commands())
+
     def test_inicial_seed_command_is_not_available(self):
         get_commands.cache_clear()
 
@@ -79,6 +98,84 @@ class SeedCommandGovernanceTestCase(SimpleTestCase):
         ]
 
         self.assertEqual(missing_files, [])
+
+
+class SupabaseResetCommandSafetyTestCase(SimpleTestCase):
+    def _call(self, command_name, environment, confirm_value="", debug=False):
+        stdout = StringIO()
+        environ = {}
+        if confirm_value:
+            environ["SUPABASE_RESET_CONFIRM"] = confirm_value
+
+        with (
+            self.settings(
+                DATABASE_URL="postgres://postgres.example:secret@db.example.supabase.co:5432/postgres",
+                DEBUG=debug,
+                DJANGO_ENVIRONMENT=environment,
+            ),
+            patch.dict(os.environ, environ, clear=False),
+        ):
+            call_command(command_name, stdout=stdout)
+
+        return stdout.getvalue()
+
+    def test_hg_reset_refuses_wrong_environment(self):
+        with self.assertRaisesMessage(CommandError, "DJANGO_ENVIRONMENT=hg"):
+            self._call(
+                "clear_migration_supabase_hg",
+                environment="prod",
+                confirm_value="RESET_HG",
+            )
+
+    def test_hg_reset_refuses_debug_enabled(self):
+        with self.assertRaisesMessage(CommandError, "DJANGO_DEBUG=False"):
+            self._call(
+                "clear_migration_supabase_hg",
+                environment="hg",
+                confirm_value="RESET_HG",
+                debug=True,
+            )
+
+    def test_hg_reset_refuses_missing_confirmation(self):
+        with self.assertRaisesMessage(CommandError, "SUPABASE_RESET_CONFIRM=RESET_HG"):
+            self._call("clear_migration_supabase_hg", environment="hg")
+
+    def test_hg_reset_refuses_sqlite_connection(self):
+        with self.assertRaisesMessage(CommandError, "PostgreSQL"):
+            self._call(
+                "clear_migration_supabase_hg",
+                environment="hg",
+                confirm_value="RESET_HG",
+            )
+
+    def test_prod_reset_refuses_wrong_environment(self):
+        with self.assertRaisesMessage(CommandError, "DJANGO_ENVIRONMENT=prod"):
+            self._call(
+                "clear_migration_supabase_prod",
+                environment="hg",
+                confirm_value="RESET_PROD",
+            )
+
+    def test_prod_reset_refuses_debug_enabled(self):
+        with self.assertRaisesMessage(CommandError, "DJANGO_DEBUG=False"):
+            self._call(
+                "clear_migration_supabase_prod",
+                environment="prod",
+                confirm_value="RESET_PROD",
+                debug=True,
+            )
+
+    def test_prod_reset_refuses_missing_confirmation(self):
+        with self.assertRaisesMessage(CommandError, "SUPABASE_RESET_CONFIRM=RESET_PROD"):
+            self._call("clear_migration_supabase_prod", environment="prod")
+
+    def test_prod_reset_refuses_sqlite_connection(self):
+        with self.assertRaisesMessage(CommandError, "PostgreSQL"):
+            self._call(
+                "clear_migration_supabase_prod",
+                environment="prod",
+                confirm_value="RESET_PROD",
+            )
 
 
 class TeacherPayrollSeedCommandTestCase(TestCase):
@@ -132,6 +229,263 @@ class HolidaySeedCommandTestCase(TestCase):
 
         corpus_christi = Holiday.objects.get(date="2026-06-04")
         self.assertEqual(corpus_christi.name, "Corpus Christi")
+
+
+class KanriStudentsMigrationSeedCommandTestCase(TestCase):
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp(prefix="kanri-seed-", dir=Path.cwd()))
+        self.data_dir = self.root / "static" / "initial_data" / "kanri_students_migration"
+        self.data_dir.mkdir(parents=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def _call_seed(self):
+        stdout = StringIO()
+        with self.settings(BASE_DIR=self.root):
+            call_command("seed_system_initial_kanri_students_migration", stdout=stdout)
+        return stdout.getvalue()
+
+    def _seed_person_types(self):
+        call_command("seed_system_initial_person_type", stdout=StringIO())
+
+    def _seed_belt_ranks(self):
+        BeltRank.objects.create(
+            code="kids-white",
+            display_name="Branca (Infantil)",
+            audience=CategoryAudience.KIDS,
+            min_age=4,
+            max_age=15,
+            display_order=10,
+        )
+        BeltRank.objects.create(
+            code="adult-white",
+            display_name="Branca",
+            audience=CategoryAudience.ADULT,
+            min_age=16,
+            display_order=100,
+        )
+        BeltRank.objects.create(
+            code="adult-blue",
+            display_name="Azul",
+            audience=CategoryAudience.ADULT,
+            min_age=16,
+            display_order=110,
+        )
+
+    def _write_student(self, filename, payload):
+        path = self.data_dir / filename
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+    def _base_payload(self, **overrides):
+        payload = {
+            "email": "aluno@example.com",
+            "nome": "Aluno Teste",
+            "sexo": "Masculino",
+            "nascimento": "2016-01-22",
+            "tipo_documento": "CPF Pai",
+            "n_documento": "11122233344",
+            "telefone": "62999990000",
+            "endereco": {
+                "cep": "74672-550",
+                "logradouro": "Rua do Angico",
+                "numero": "01",
+                "complemento": "",
+                "bairro": "Santa Genoveva",
+                "cidade": "Goiânia",
+                "uf": "GO",
+            },
+            "responsavel": {
+                "nome": "Responsavel Teste",
+                "email": "responsavel@example.com",
+                "vinculo": "Pai",
+                "telefone": "62 98888-7777",
+                "tipo_documento": "CPF",
+                "n_documento": "11122233344",
+                "observacoes": "Responsável financeiro",
+                "responsavel_financeiro": True,
+            },
+            "financeiro": [
+                {
+                    "tipo_lancamento": "Mensalidade",
+                    "descricao": "Legado",
+                    "situacao": "Quitado",
+                    "valor": "135.00",
+                    "vencimento": "2026-01-20",
+                }
+            ],
+            "evolucao": [
+                {
+                    "data": "2025-05-20",
+                    "faixa": "Faixa Branca Infantil",
+                    "grau": "",
+                    "tipo": "Início dos Treinos",
+                },
+                {
+                    "data": "2025-06-21",
+                    "faixa": "Faixa Branca Infantil",
+                    "grau": "1°",
+                    "tipo": "Novo Grau",
+                },
+            ],
+            "historico": [
+                {
+                    "data": "06/05/2026",
+                    "modalidade": "Jiu Jitsu Infanto-Juvenil",
+                    "horario": "18:00 : 19:00",
+                    "origem": "Check-in Tatame",
+                    "professor_instrutor": "Professor",
+                }
+            ],
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_fails_when_person_types_are_missing(self):
+        self._seed_belt_ranks()
+        self._write_student("88622-aluno-teste.json", self._base_payload())
+
+        with self.assertRaisesMessage(CommandError, "seed_system_initial_person_type"):
+            self._call_seed()
+
+    def test_creates_dependent_guardian_relationship_and_graduations_idempotently(self):
+        self._seed_person_types()
+        self._seed_belt_ranks()
+        self._write_student("88622-aluno-teste.json", self._base_payload())
+
+        first_output = self._call_seed()
+        second_output = self._call_seed()
+
+        dependent = Person.objects.get(cpf="KANRI-88622")
+        guardian = Person.objects.get(cpf="111.222.333-44")
+
+        self.assertEqual(dependent.full_name, "Aluno Teste")
+        self.assertEqual(dependent.person_type.code, PersonTypeCode.DEPENDENT)
+        self.assertEqual(dependent.postal_code, "74672-550")
+        self.assertEqual(dependent.address, "Rua do Angico")
+        self.assertEqual(dependent.martial_art, "jiu_jitsu")
+        self.assertEqual(dependent.martial_art_graduation, "Faixa Branca Infantil")
+        self.assertEqual(dependent.martial_art_started_at, date(2025, 5, 20))
+        self.assertEqual(dependent.martial_art_last_graduation_at, date(2025, 6, 21))
+        self.assertEqual(dependent.jiu_jitsu_stripes, 1)
+
+        self.assertEqual(guardian.full_name, "Responsavel Teste")
+        self.assertEqual(guardian.person_type.code, PersonTypeCode.GUARDIAN)
+        self.assertEqual(guardian.email, "responsavel@example.com")
+
+        relationship = PersonRelationship.objects.get(
+            source_person=guardian,
+            target_person=dependent,
+        )
+        self.assertEqual(relationship.kinship_type, "pai")
+        self.assertIn("Responsável financeiro", relationship.notes)
+
+        graduations = Graduation.objects.filter(person=dependent).order_by("awarded_at")
+        self.assertEqual(graduations.count(), 2)
+        self.assertEqual(graduations[0].belt_rank.code, "kids-white")
+        self.assertEqual(graduations[1].grade_number, 1)
+
+        self.assertEqual(Person.objects.count(), 2)
+        self.assertEqual(PersonRelationship.objects.count(), 1)
+        self.assertEqual(Graduation.objects.count(), 2)
+        self.assertIn("CPF substituto", first_output)
+        self.assertIn("financeiro não importado: 1", first_output)
+        self.assertIn("histórico de aulas não importado: 1", first_output)
+        self.assertIn("atualizado", second_output)
+
+    def test_uses_real_student_cpf_when_document_is_unique_and_own_document(self):
+        self._seed_person_types()
+        self._seed_belt_ranks()
+        self._write_student(
+            "77242-aluno-adulto.json",
+            self._base_payload(
+                nome="Aluno Adulto",
+                nascimento="1980-11-06",
+                tipo_documento="CPF",
+                n_documento="22233344455",
+                responsavel={
+                    "nome": "",
+                    "email": "",
+                    "vinculo": "",
+                    "telefone": "",
+                    "tipo_documento": "",
+                    "n_documento": "",
+                    "observacoes": "",
+                    "responsavel_financeiro": False,
+                },
+                evolucao=[
+                    {
+                        "data": "2025-01-10",
+                        "faixa": "Faixa Branca",
+                        "grau": "4°",
+                        "tipo": "Novo Grau",
+                    },
+                    {
+                        "data": "2025-03-10",
+                        "faixa": "Faixa Azul",
+                        "grau": "",
+                        "tipo": "Troca de Faixa",
+                    },
+                ],
+            ),
+        )
+
+        self._call_seed()
+
+        student = Person.objects.get(cpf="222.333.444-55")
+
+        self.assertEqual(student.person_type.code, PersonTypeCode.STUDENT)
+        self.assertEqual(student.jiu_jitsu_belt, "blue")
+        self.assertEqual(student.jiu_jitsu_stripes, 0)
+        self.assertEqual(
+            list(student.graduations.order_by("awarded_at").values_list("belt_rank__code", flat=True)),
+            ["adult-white", "adult-blue"],
+        )
+
+    def test_cleans_placeholder_address_values(self):
+        self._seed_person_types()
+        self._seed_belt_ranks()
+        self._write_student(
+            "120166-davi-rodrigues-siqueira.json",
+            self._base_payload(
+                nome="Davi Rodrigues Siqueira",
+                tipo_documento="CPF",
+                n_documento="04561780157",
+                responsavel={
+                    "nome": "",
+                    "email": "",
+                    "vinculo": "",
+                    "telefone": "",
+                    "tipo_documento": "",
+                    "n_documento": "",
+                    "observacoes": "",
+                    "responsavel_financeiro": False,
+                },
+                endereco={
+                    "cep": "74673-050",
+                    "logradouro": "Carregando...",
+                    "numero": "",
+                    "complemento": "Carregando...",
+                    "bairro": "Carregando...",
+                    "cidade": "Carregando...",
+                    "uf": "Carregando...",
+                },
+                evolucao=[],
+            ),
+        )
+
+        output = self._call_seed()
+
+        student = Person.objects.get(cpf="045.617.801-57")
+        self.assertEqual(student.postal_code, "74673-050")
+        self.assertEqual(student.address, "")
+        self.assertEqual(student.address_complement, "")
+        self.assertEqual(student.address_neighborhood, "")
+        self.assertEqual(student.city, "")
+        self.assertIn("placeholder de endereço removido", output)
 
 
 class SubscriptionPlanValuesSeedCommandTestCase(TestCase):

@@ -12,10 +12,10 @@
 - **Nome:** LV JIU JITSU
 - **Objetivo:** operar o portal público e as rotinas internas da academia, cobrindo cadastro, turmas, calendário, materiais e cobrança
 - **Tipo de produto:** monólito web com área pública + áreas autenticadas operacionais
-- **Stack:** Python + Django 4.1.13
+- **Stack:** Python 3.12.10 + Django 5.2.14 LTS
 - **Frontend:** templates Django server-rendered com CSS/JS por fluxo em `static/system/`
 - **Banco local:** SQLite em `db.sqlite3`
-- **Banco produção:** não documentado no repositório
+- **Banco produção/homologação:** Supabase PostgreSQL, separado em `prod` e `hg`, configurado por variáveis de ambiente
 - **Integrações externas reais no fluxo operacional:** Asaas. Stripe permanece apenas como legado técnico em campos/serviços históricos até uma limpeza de schema autorizada.
 - **Ambiente operacional padrão:** Windows + PowerShell com `.venv`
 - **Idioma técnico:** inglês
@@ -46,7 +46,9 @@ lvjiujitsu/
 ├── CLAUDE.md
 ├── README.md
 ├── requirements.txt
+├── .python-version
 ├── .env
+├── .env.example
 ├── manage.py
 ├── clear_migrations.py
 ├── db.sqlite3
@@ -77,6 +79,7 @@ lvjiujitsu/
 - `templates/login/` concentra home pública, login, cadastro e telas relacionadas ao portal
 - `static/system/js/auth/register.js` é a implementação ativa do wizard de cadastro (versão atual v16+)
 - `staticfiles/` é saída gerada por `collectstatic`; fonte editável fica em `static/`
+- o deploy no Render é manual via Dashboard; `render.yaml` e `build.sh` não fazem parte do fluxo oficial
 
 ---
 
@@ -248,6 +251,20 @@ Guias rapidos para chegar ao `step-plan`:
 .\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
+### Arquivos de ambiente
+
+- `.env`: ambiente local, com `DJANGO_ENVIRONMENT=local`
+- `.env.hg`: homologação, usado localmente para apontar comandos ao Supabase HG, com `DJANGO_ENVIRONMENT=hg` e `DJANGO_DEBUG=False`
+- `.env.prod`: produção, usado localmente para apontar comandos ao Supabase PROD, com `DJANGO_ENVIRONMENT=prod` e `DJANGO_DEBUG=False`
+- No Render, os valores desses arquivos são copiados manualmente para o Dashboard; o serviço deve funcionar por variáveis injetadas no ambiente, sem arquivo `.env` no deploy.
+
+Quando precisar rodar localmente contra HG ou PROD:
+
+```powershell
+$env:DJANGO_ENV_FILE=".env.hg"
+.\.venv\Scripts\python.exe manage.py check
+```
+
 ### Testes e checks
 
 ```powershell
@@ -257,6 +274,43 @@ Guias rapidos para chegar ao `step-plan`:
 .\.venv\Scripts\python.exe manage.py showmigrations
 .\.venv\Scripts\python.exe manage.py shell -c "<CHECK>"
 ```
+
+### Render manual
+
+O Render é configurado pelo Dashboard, sem Blueprint.
+
+Build Command:
+
+```bash
+pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+```
+
+Start Command:
+
+```bash
+gunicorn lvjiujitsu.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --max-requests 500 --max-requests-jitter 50 --log-level warning
+```
+
+### Reset Supabase HG/PROD
+
+Comandos destrutivos disponíveis:
+
+```powershell
+$env:DJANGO_ENV_FILE=".env.hg"
+$env:SUPABASE_RESET_CONFIRM="RESET_HG"
+.\.venv\Scripts\python.exe manage.py clear_migration_supabase_hg
+```
+
+```powershell
+$env:DJANGO_ENV_FILE=".env.prod"
+$env:SUPABASE_RESET_CONFIRM="RESET_PROD"
+.\.venv\Scripts\python.exe manage.py clear_migration_supabase_prod
+```
+
+Regras fixas:
+- o agente não executa esses comandos sem confirmação humana explícita
+- cada comando recusa SQLite, ambiente errado, `DEBUG=True`, falta de `DATABASE_URL` e falta da confirmação esperada
+- a limpeza remove apenas objetos relacionais do schema `public`, preservando schemas internos do Supabase
 
 ### Setup mínimo (apenas o necessário para subir)
 
@@ -278,6 +332,7 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 | `seed_system_initial_teacher` | cria professores iniciais + contas de portal | `seed_system_initial_person_type` | ativo |
 | `seed_system_initial_belt_ranks` | cria as 13 faixas com progressão e cores | — | ativo |
 | `seed_system_initial_administrative` | cria usuários administrativos + histórico de graduação | `seed_system_initial_person_type`, `seed_system_initial_belt_ranks` | ativo |
+| `seed_system_initial_kanri_students_migration` | importa alunos, responsáveis, dependentes, vínculos familiares e graduações a partir dos JSONs individuais do Kanri; financeiro e histórico de aulas ficam apenas auditados no log | `seed_system_initial_person_type`, `seed_system_initial_belt_ranks` | ativo |
 | `seed_system_initial_class_categories` | cria as 4 categorias de turma (Adulto, Juvenil, Kids, Feminino) | — | ativo |
 | `seed_system_initial_class_categories_teacher` | vincula cada professor à sua categoria principal | `seed_system_initial_teacher`, `seed_system_initial_class_categories` | ativo |
 | `seed_system_initial_class_categories_administrative` | vincula cada administrativo à sua categoria | `seed_system_initial_administrative`, `seed_system_initial_class_categories` | ativo |
@@ -298,6 +353,7 @@ O sistema sobe sem nenhum dado de seed. Seeds são opcionais e serão recriadas 
 
 - o sistema funciona como casca sem nenhuma codependência com seeds
 - seeds são convenientes (poupam cadastro manual), não são requisito de boot
+- seeds nunca rodam no deploy do Render
 - cada seed deve falhar explicitamente quando uma dependência não foi executada
 - não existe orquestrador: execução é manual e sequencial
 - dados JSON das seeds vivem em `static/initial_data/`
@@ -475,4 +531,6 @@ Atualizar este arquivo quando houver:
 - **[2026-05-21]** Adicionados `SESSION_COOKIE_SAMESITE`/`CSRF_COOKIE_SAMESITE` ao `settings.py` via `.env`. Documentado que Chrome MCP opera exclusivamente em `127.0.0.1`; Ngrok fica restrito à comunicação servidor→servidor com o Asaas. AGENTS.md Seção 17 atualizada.
 - **[2026-05-21]** Sanitização: removida variável `ASAAS_REDIRECT_BASE_URL` do `settings.py` e `.env`. `asaas_views.py` passa a usar `settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-success")` para gerar a `successUrl` do Asaas — a Asaas rejeita URLs HTTP e domínios não cadastrados na conta; `SITE_BASE_URL` aponta para o ngrok em dev e para o domínio real em produção, satisfazendo ambas as restrições. `request.build_absolute_uri()` não funciona para este caso pois gera `http://127.0.0.1` quando acessado via localhost. AGENTS.md Seção 17 e CLAUDE.md Seção 6 atualizados.
 - **[2026-05-21]** Criado PRD-040 como fonte de verdade do cadastro publico: pagamentos de mensalidade e materiais acontecem antes de qualquer `Person`; `Person`, `PortalAccount`, relacionamentos, turmas e acesso so podem ser criados no POST final de finalizacao. Adicionados guias rapidos para chegar ao `step-plan` por tipo de cadastro.
+- **[2026-05-27]** Implementada `seed_system_initial_kanri_students_migration` para importar os JSONs individuais do Kanri em pessoas, responsáveis, dependentes, vínculos e graduações; CPFs ausentes/duplicados/do responsável recebem identificador auditável `KANRI-<codigo>`, e financeiro/check-ins permanecem fora do banco por falta de contrato seguro.
+- **[2026-05-28]** Deploy oficial passa a ser Render manual via Dashboard, sem `render.yaml`/`build.sh`; stack documentada como Python 3.12.10 + Django 5.2.14 LTS; Supabase HG/PROD configurado por `.env.hg`/`.env.prod` e variáveis no Render; criados comandos seguros `clear_migration_supabase_hg` e `clear_migration_supabase_prod` para reset destrutivo do schema `public` somente com confirmação explícita.
 ```

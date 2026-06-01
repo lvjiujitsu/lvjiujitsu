@@ -1,10 +1,33 @@
+import os
 from pathlib import Path
 
-from decouple import config
+from decouple import Config, RepositoryEnv, config as decouple_config
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_config():
+    configured_env_file = os.environ.get("DJANGO_ENV_FILE", "").strip()
+    if configured_env_file:
+        env_path = Path(configured_env_file)
+        if not env_path.is_absolute():
+            env_path = BASE_DIR / env_path
+        if not env_path.is_file():
+            raise ImproperlyConfigured(
+                f"DJANGO_ENV_FILE aponta para arquivo inexistente: {env_path}"
+            )
+        return Config(RepositoryEnv(str(env_path)))
+
+    default_env_path = BASE_DIR / ".env"
+    if default_env_path.is_file():
+        return Config(RepositoryEnv(str(default_env_path)))
+
+    return decouple_config
+
+
+config = load_config()
 
 
 def base_dir_path_setting(name, default):
@@ -15,9 +38,21 @@ def base_dir_path_setting(name, default):
 
 
 # ── Ambiente ──────────────────────────────────────────────────────────────────
-# Única chave que define se é HOMO (dev/hg) ou PROD.
-# No Render PROD: DJANGO_DEBUG=0   No Render HG: DJANGO_DEBUG=1   Local: 1
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+DJANGO_ENVIRONMENT = config("DJANGO_ENVIRONMENT", default="local").strip().lower()
+if DJANGO_ENVIRONMENT not in {"local", "hg", "prod"}:
+    raise ImproperlyConfigured(
+        "DJANGO_ENVIRONMENT deve ser 'local', 'hg' ou 'prod'."
+    )
+
+DEBUG = config(
+    "DJANGO_DEBUG",
+    default=DJANGO_ENVIRONMENT == "local",
+    cast=bool,
+)
+if DJANGO_ENVIRONMENT in {"hg", "prod"} and DEBUG:
+    raise ImproperlyConfigured(
+        "DJANGO_DEBUG deve ser False para os ambientes hg e prod."
+    )
 
 
 # ── Segurança ─────────────────────────────────────────────────────────────────
@@ -59,8 +94,13 @@ SECURE_HSTS_SECONDS = config(
     default=0 if DEBUG else 31536000,
     cast=int,
 )
-# SSL redirect fica False: o Render já termina HTTPS no proxy
-SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=False, cast=bool)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
+    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS",
+    default=not DEBUG,
+    cast=bool,
+)
+SECURE_HSTS_PRELOAD = config("DJANGO_SECURE_HSTS_PRELOAD", default=False, cast=bool)
+SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=not DEBUG, cast=bool)
 
 # Necessário para que Django enxergue HTTPS atrás do proxy do Render
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -119,17 +159,19 @@ PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=in
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
-# Em DEBUG usa console (nunca manda e-mail real por engano)
-# Em produção lê do env — trocar para SMTP quando configurar servidor de e-mail
 EMAIL_BACKEND = config(
     "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.console.EmailBackend" if DEBUG
-            else "django.core.mail.backends.console.EmailBackend",
+    default="django.core.mail.backends.console.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = config(
     "DJANGO_DEFAULT_FROM_EMAIL",
     default="nao-responda@lvjiujitsu.local",
 )
+EMAIL_HOST          = config("DJANGO_EMAIL_HOST",     default="smtp.gmail.com")
+EMAIL_PORT          = config("DJANGO_EMAIL_PORT",     default=587, cast=int)
+EMAIL_USE_TLS       = config("DJANGO_EMAIL_USE_TLS",  default=True, cast=bool)
+EMAIL_HOST_USER     = config("DJANGO_EMAIL_HOST_USER",     default="")
+EMAIL_HOST_PASSWORD = config("DJANGO_EMAIL_HOST_PASSWORD", default="")
 
 
 # ── Application definition ────────────────────────────────────────────────────
@@ -158,34 +200,64 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'lvjiujitsu.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'system.context_processors.portal_navigation',
-            ],
-        },
-    },
+_CONTEXT_PROCESSORS = [
+    'django.template.context_processors.debug',
+    'django.template.context_processors.request',
+    'django.contrib.auth.context_processors.auth',
+    'django.contrib.messages.context_processors.messages',
+    'system.context_processors.portal_navigation',
 ]
+
+# Em DEBUG: APP_DIRS=True para hot-reload. Em produção: cached.Loader para não
+# recompilar templates a cada request (win grande em servidor fraco).
+if DEBUG:
+    TEMPLATES = [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'DIRS': [BASE_DIR / 'templates'],
+            'APP_DIRS': True,
+            'OPTIONS': {'context_processors': _CONTEXT_PROCESSORS},
+        },
+    ]
+else:
+    TEMPLATES = [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'DIRS': [BASE_DIR / 'templates'],
+            'OPTIONS': {
+                'context_processors': _CONTEXT_PROCESSORS,
+                'loaders': [
+                    (
+                        'django.template.loaders.cached.Loader',
+                        [
+                            'django.template.loaders.filesystem.Loader',
+                            'django.template.loaders.app_directories.Loader',
+                        ],
+                    )
+                ],
+            },
+        },
+    ]
 
 WSGI_APPLICATION = 'lvjiujitsu.wsgi.application'
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
 # Local dev (DEBUG=1, DATABASE_URL vazio): SQLite
-# Render HG (DEBUG=1, DATABASE_URL=supabase-hg): PostgreSQL HG
+# Render HG (DEBUG=0, DATABASE_URL=supabase-hg): PostgreSQL HG
 # Render PROD (DEBUG=0, DATABASE_URL=supabase-prod): PostgreSQL PROD
-DATABASE_URL = config("DATABASE_URL", default=None)
+DATABASE_URL = config("DATABASE_URL", default="").strip()
+if DJANGO_ENVIRONMENT in {"hg", "prod"} and not DATABASE_URL:
+    raise ImproperlyConfigured(
+        "DATABASE_URL deve ser definido para os ambientes hg e prod."
+    )
 
 if DATABASE_URL:
     DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
+    # Supabase free com Transaction Pooler usa PgBouncer em transaction mode.
+    DATABASES['default']['CONN_MAX_AGE'] = config('DB_CONN_MAX_AGE', default=0, cast=int)
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
 else:
     DATABASES = {
         'default': {
@@ -194,6 +266,27 @@ else:
         }
     }
 
+
+# ── Cache ─────────────────────────────────────────────────────────────────────
+# LocMemCache: embutido no Django, zero dependência extra, ideal para free tier.
+# Para produção com múltiplos workers cada processo tem seu próprio cache em memória
+# — suficiente para template cache e small object cache neste cenário.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'lvjiujitsu-default',
+        'TIMEOUT': config('CACHE_TIMEOUT', default=300, cast=int),
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        },
+    }
+}
+
+# ── Sessões ───────────────────────────────────────────────────────────────────
+# cached_db: lê da cache em memória (rápido), grava no banco (persistente).
+# Elimina o SELECT na tabela django_session a cada request autenticado.
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
 
 # ── Password validation ───────────────────────────────────────────────────────
 
@@ -229,3 +322,55 @@ LOGOUT_REDIRECT_URL = "system:login"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TEST_RUNNER = 'system.test_runner.PostgreSQLDiscoverRunner'
+
+
+# ── WhiteNoise ────────────────────────────────────────────────────────────────
+# CompressedManifestStaticFilesStorage: gera .gz e .br na build (collectstatic),
+# serve direto sem recomprimir por request. Cache-busting via hash no nome do arquivo.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+# 1 ano de cache nos assets — o hash no nome garante que mudanças invalidam o cache.
+WHITENOISE_MAX_AGE = config('WHITENOISE_MAX_AGE', default=31536000 if not DEBUG else 0, cast=int)
+
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Em produção: só WARNING+ para reduzir I/O. Em DEBUG: padrão Django.
+if not DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'simple': {
+                'format': '{levelname} {name} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'WARNING',
+                'propagate': False,
+            },
+            'django.request': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+                'propagate': False,
+            },
+        },
+    }

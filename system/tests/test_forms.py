@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from system.forms import PersonForm, PortalRegistrationForm
+from system.forms import PersonForm, PlanForm, PortalRegistrationForm
 from system.models import BiologicalSex
 
 
@@ -119,3 +119,43 @@ class PersonFormLayoutContractTestCase(TestCase):
         self.assertIsNone(form.cleaned_data["martial_art_started_at"])
         self.assertIsNone(form.cleaned_data["martial_art_last_graduation_at"])
         self.assertEqual(form.cleaned_data["previous_academy"], "")
+
+
+class PlanFormLayoutContractTestCase(TestCase):
+    def test_exposes_fields_grouped_by_plan_screen_contract(self):
+        form = PlanForm()
+
+        self.assertEqual(
+            [field.name for field in form.identity_fields],
+            ["code", "display_name", "description", "display_order", "is_active"],
+        )
+        self.assertEqual(
+            [field.name for field in form.segmentation_fields],
+            [
+                "audience",
+                "weekly_frequency",
+                "billing_cycle",
+                "payment_method",
+                "is_family_plan",
+                "is_loyalty_plan",
+                "requires_special_authorization",
+            ],
+        )
+        self.assertEqual(
+            [field.name for field in form.pricing_fields],
+            [
+                "price",
+                "monthly_reference_price",
+                "base_monthly_net_price",
+                "cycle_discount_percentage",
+                "teacher_commission_percentage",
+            ],
+        )
+        self.assertEqual(
+            [field.name for field in form.gateway_fields],
+            [
+                "gateway_code",
+                "gateway_fixed_fee",
+                "gateway_percentage_fee",
+            ],
+        )

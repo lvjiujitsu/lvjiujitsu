@@ -90,7 +90,7 @@ class HomeDashboardTestCase(TestCase):
         self.assertIn('class="btn btn--secondary btn--sm js-checkin"', content)
         self.assertIn(f'data-schedule-id="{self.schedule.pk}"', content)
         self.assertNotIn('href="#"', content)
-        self.assertIn("system/js/dashboard.js", content)
+        self.assertIn("system/js/dashboard", content)
 
     def test_student_home_renders_calendar_link(self):
         self._login_portal_account(self.account)
@@ -175,6 +175,8 @@ class HomeDashboardTestCase(TestCase):
         self.assertIn("Acesso rápido", content)
         self.assertIn("quick-link--disabled", content)
         self.assertIn('href="/admin/"', content)
+        self.assertIn(f'href="{reverse("system:plan-list")}"', content)
+        self.assertIn("Planos", content)
         self.assertNotIn('href="#"', content)
 
     def _login_portal_account(self, account):

@@ -33,7 +33,9 @@ class PostgreSQLDiscoverRunner(DiscoverRunner):
         super().setup_test_environment(**kwargs)
 
     def teardown_databases(self, old_config, **kwargs):
-        # Encerra sessões do pooler antes do DROP DATABASE
+        # Encerra sessões do pooler antes do DROP DATABASE.
+        # Inclui o próprio backend para cobrir conexões mantidas por poolers
+        # (PgBouncer/Supabase) que ignoram o close() do cliente.
         for alias in connections:
             conn = connections[alias]
             if conn.vendor != "postgresql":
@@ -49,4 +51,6 @@ class PostgreSQLDiscoverRunner(DiscoverRunner):
                     )
             except Exception:
                 pass
+            finally:
+                conn.close()
         super().teardown_databases(old_config, **kwargs)

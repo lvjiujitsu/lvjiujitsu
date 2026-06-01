@@ -186,7 +186,14 @@
       "Bash(git update-index *)",
       "Bash(git rm *)",
       "Bash(git commit -m ' *)",
-      "Bash(set DATABASE_URL=)"
+      "Bash(set DATABASE_URL=)",
+      "Bash(Select-Object -First 50)",
+      "Bash(.venv/Scripts/pip.exe show *)",
+      "Bash(findstr \"Name:\")",
+      "Bash(findstr /i \"Location\\\\|Size\\\\|Name\")",
+      "Bash(.\\\\.venv\\\\Scripts\\\\pip.exe install *)",
+      "Bash(Select-String -Pattern \"Successfully installed|already satisfied|django-anymail\")",
+      "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/pip.exe install *)"
     ]
   },
   "model": "claude-sonnet-4-6",

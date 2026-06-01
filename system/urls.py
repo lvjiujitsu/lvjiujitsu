@@ -32,6 +32,13 @@ from system.views.person_views import (
     PersonListView,
     PersonUpdateView,
 )
+from system.views.plan_views import (
+    PlanCreateView,
+    PlanDeleteView,
+    PlanDetailView,
+    PlanListView,
+    PlanUpdateView,
+)
 from system.views.calendar_views import (
     CalendarView,
     InstructorApproveCheckinView,
@@ -97,6 +104,14 @@ urlpatterns = [
     path("pessoas/<int:pk>/", PersonDetailView.as_view(), name="person-detail"),
     path("pessoas/<int:pk>/editar/", PersonUpdateView.as_view(), name="person-update"),
     path("pessoas/<int:pk>/excluir/", PersonDeleteView.as_view(), name="person-delete"),
+
+    # Planos
+    path("planos/", PlanListView.as_view(), name="plan-list"),
+    path("planos/novo/", PlanCreateView.as_view(), name="plan-create"),
+    path("planos/<int:pk>/", PlanDetailView.as_view(), name="plan-detail"),
+    path("planos/<int:pk>/editar/", PlanUpdateView.as_view(), name="plan-update"),
+    path("planos/<int:pk>/excluir/", PlanDeleteView.as_view(), name="plan-delete"),
+
     path("aulas/checkin/", StudentCheckinView.as_view(), name="student-checkin"),
     path("aulas/aulao/checkin/", StudentSpecialClassCheckinView.as_view(), name="student-special-checkin"),
 

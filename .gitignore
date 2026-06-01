@@ -2,11 +2,16 @@
 .env
 .env-prod
 .env-hg
+.env.prod
+.env.hg
+.claude/settings.local.json
 __pycache__/
 *.pyc
 db.sqlite3
 media/
 staticfiles/
+static/initial_data/kanri_students_migration/
+static/initial_data/kanri_students_migration_review.json
 .pytest_cache/
 .pytest_tmp/
 test_artifacts/
@@ -14,4 +19,5 @@ test_screenshots/
 .playwright-mcp/
 pytest-cache-files-*/
 .coverage
+*.log
 limpar_asaas.py
