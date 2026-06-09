@@ -305,6 +305,14 @@ TIME_ZONE     = config("DJANGO_TIME_ZONE",      default="America/Sao_Paulo")
 USE_I18N = True
 USE_TZ   = True
 
+DATE_INPUT_FORMATS = [
+    "%Y-%m-%d",
+    "%d/%m/%Y",
+    "%d-%m-%Y",
+]
+DATE_FORMAT     = "d/m/Y"
+DATETIME_FORMAT = "d/m/Y H:i"
+
 
 # ── Static / Media ────────────────────────────────────────────────────────────
 
@@ -332,7 +340,11 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if not DEBUG
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
     },
 }
 # 1 ano de cache nos assets — o hash no nome garante que mudanças invalidam o cache.

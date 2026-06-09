@@ -282,7 +282,7 @@ O Render é configurado pelo Dashboard, sem Blueprint.
 Build Command:
 
 ```bash
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py lock_supabase_api_access
 ```
 
 Start Command:
@@ -290,6 +290,14 @@ Start Command:
 ```bash
 gunicorn lvjiujitsu.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --max-requests 500 --max-requests-jitter 50 --log-level warning
 ```
+
+### Segurança de API do Supabase
+
+```powershell
+.\.venv\Scripts\python.exe manage.py lock_supabase_api_access
+```
+
+Revoga acesso das roles `anon` e `authenticated` ao schema `public`. Idempotente — seguro a cada execução. Ignorado silenciosamente em SQLite. Já incluso no Build Command do Render; roda automaticamente a cada deploy e a cada ciclo destrutivo seguido de `migrate`.
 
 ### Reset Supabase HG/PROD
 
@@ -533,4 +541,6 @@ Atualizar este arquivo quando houver:
 - **[2026-05-21]** Criado PRD-040 como fonte de verdade do cadastro publico: pagamentos de mensalidade e materiais acontecem antes de qualquer `Person`; `Person`, `PortalAccount`, relacionamentos, turmas e acesso so podem ser criados no POST final de finalizacao. Adicionados guias rapidos para chegar ao `step-plan` por tipo de cadastro.
 - **[2026-05-27]** Implementada `seed_system_initial_kanri_students_migration` para importar os JSONs individuais do Kanri em pessoas, responsáveis, dependentes, vínculos e graduações; CPFs ausentes/duplicados/do responsável recebem identificador auditável `KANRI-<codigo>`, e financeiro/check-ins permanecem fora do banco por falta de contrato seguro.
 - **[2026-05-28]** Deploy oficial passa a ser Render manual via Dashboard, sem `render.yaml`/`build.sh`; stack documentada como Python 3.12.10 + Django 5.2.14 LTS; Supabase HG/PROD configurado por `.env.hg`/`.env.prod` e variáveis no Render; criados comandos seguros `clear_migration_supabase_hg` e `clear_migration_supabase_prod` para reset destrutivo do schema `public` somente com confirmação explícita.
+- **[2026-06-09]** PRD-055: Criado `lock_supabase_api_access` em LV e Visary — revoga acesso das roles `anon`/`authenticated` ao schema `public` via REVOKE + ALTER DEFAULT PRIVILEGES; idempotente, persiste no ciclo destrutivo, ignorado silenciosamente em SQLite. Build Command do Render atualizado para incluir o comando após `migrate`.
+- **[2026-06-09]** PRD-054: Alinhamento arquitetural LV × Visary. Corrigidos bugs bloqueantes em `.env.hg` (`DJANGO_ENVIRONMENT=hg` ausente; `DJANGO_DEBUG=1` causava `ImproperlyConfigured`) e `.env.prod` (`DJANGO_ENVIRONMENT=prod` ausente). Adicionado `?sslmode=require` nas `DATABASE_URL` de ambos. `settings.py` recebe `DATE_INPUT_FORMATS`, `DATE_FORMAT`, `DATETIME_FORMAT` e `STORAGES` condicional (WhiteNoise só em produção; `StaticFilesStorage` em DEBUG). Visary recebe: base class `SupabasePublicSchemaResetCommand` (com `transaction.atomic`, dropa views/sequences/materialized views), reescrita dos commands `clear_migration_supabase_hg/prod` como subclasses, `settings.py` robusto com validações de boot, `LocMemCache`, `SESSION_ENGINE=cached_db`, `cached.Loader` em produção, logging filtrado, `WHITENOISE_MAX_AGE`, `.env.example` completo.
 ```
