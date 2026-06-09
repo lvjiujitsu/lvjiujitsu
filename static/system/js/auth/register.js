@@ -2133,6 +2133,7 @@
     var backLabel = document.getElementById('wizard-back-label');
     if (back) {
       back.style.visibility = 'visible';
+      back.style.pointerEvents = '';
       if (stepId === 'step-review') {
         if (backLabel) backLabel.textContent = 'Materiais';
         back.onclick = function (e) {
@@ -2843,6 +2844,7 @@
     var back = document.getElementById('wizard-back');
     if (back) {
       back.style.visibility = 'hidden';
+      back.style.pointerEvents = 'none';
       back.onclick = null;
     }
   }
