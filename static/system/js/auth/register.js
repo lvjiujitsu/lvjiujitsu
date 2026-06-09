@@ -1482,6 +1482,7 @@
   }
 
   function onEnterPlan() {
+    if (planAlreadyPaid) { showPlanPaidMode(); return; }
     ensurePlanSelections();
     renderPlanPersonTabs();
     if (!planFilter.cycle) {
@@ -2840,12 +2841,26 @@
       nextBtn2.parentNode.insertBefore(resetWrap, nextBtn2.nextSibling);
     }
 
-    // Após pagamento confirmado não é possível retornar a steps anteriores
+    // Restaura wizard-form (necessário quando chamado via onEnterPlan a partir de step-products)
+    var wizFormPaid = document.getElementById('wizard-form');
+    if (wizFormPaid) wizFormPaid.hidden = false;
+
+    // Restaura botão Voltar — navega para step-classes (planAlreadyPaid impede re-pagamento)
     var back = document.getElementById('wizard-back');
     if (back) {
-      back.style.visibility = 'hidden';
-      back.style.pointerEvents = 'none';
+      back.style.visibility = 'visible';
+      back.style.pointerEvents = '';
       back.onclick = null;
+    }
+
+    // Auto-dismiss da mensagem Django após 5s (a banner JS já exibe a confirmação)
+    var sysMsgs = document.querySelector('.wizard-system-messages');
+    if (sysMsgs && !sysMsgs.hidden) {
+      setTimeout(function () {
+        sysMsgs.style.transition = 'opacity 0.4s';
+        sysMsgs.style.opacity = '0';
+        setTimeout(function () { sysMsgs.hidden = true; }, 400);
+      }, 5000);
     }
   }
 
