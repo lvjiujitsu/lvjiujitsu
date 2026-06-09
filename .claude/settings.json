@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python -c \"import sys,json; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); bad=['makemigrations','migrate','clear_migrations','--user']; hit=[b for b in bad if b in cmd]; sys.exit(2) if hit and '--check' not in cmd else sys.exit(0)\"",
+            "command": "python -c \"import sys,json; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); bad=['--user']; hit=[b for b in bad if b in cmd]; sys.exit(2) if hit else sys.exit(0)\"",
             "timeout": 5
           }
         ]

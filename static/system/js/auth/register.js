@@ -2839,12 +2839,10 @@
       nextBtn2.parentNode.insertBefore(resetWrap, nextBtn2.nextSibling);
     }
 
-    // Botão Voltar usa o listener padrão (navega para o step anterior)
+    // Após pagamento confirmado não é possível retornar a steps anteriores
     var back = document.getElementById('wizard-back');
-    var backLabel = document.getElementById('wizard-back-label');
     if (back) {
-      back.style.visibility = 'visible';
-      if (backLabel) backLabel.textContent = 'Voltar';
+      back.style.visibility = 'hidden';
       back.onclick = null;
     }
   }
@@ -3005,6 +3003,23 @@
             buildStepSequence();
           }
         }
+        // Restaura turmas selecionadas a partir dos hidden inputs que o Django populou via form.initial
+        (function () {
+          var form = document.getElementById('wizard-form');
+          if (!form) return;
+          if (initialProfile === PROFILE_HOLDER && state.classSelections[0]) {
+            var cgInputs = form.querySelectorAll('input[name="holder_class_groups"]');
+            var ids = [];
+            cgInputs.forEach(function (el) { if (el.value) ids.push(el.value); });
+            if (ids.length > 0) state.classSelections[0].ids = ids;
+          }
+          if (initialProfile === PROFILE_GUARDIAN && state.classSelections[0]) {
+            var scInputs = form.querySelectorAll('input[name="student_class_groups"]');
+            var sids = [];
+            scInputs.forEach(function (el) { if (el.value) sids.push(el.value); });
+            if (sids.length > 0) state.classSelections[0].ids = sids;
+          }
+        })();
       } else {
         buildStepSequence();
       }

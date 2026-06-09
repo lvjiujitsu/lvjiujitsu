@@ -196,7 +196,10 @@
       "Bash(C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/pip.exe install *)",
       "Bash(DJANGO_ENV_FILE=\".env.hg\" .venv/Scripts/python.exe manage.py check)",
       "Bash(DJANGO_ENV_FILE=\".env.prod\" .venv/Scripts/python.exe manage.py check)",
-      "Bash(cd \"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\visary\" && .venv/Scripts/python.exe manage.py check 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\whsf\\\\Documents\\\\GitHub\\\\visary\" && .venv/Scripts/python.exe manage.py check 2>&1)",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "Bash(DJANGO_ENV_FILE=.env.hg .venv/Scripts/python.exe -c ' *)",
+      "Bash(DJANGO_ENV_FILE=.env.hg .venv/Scripts/python.exe manage.py shell -c ' *)"
     ]
   },
   "model": "claude-sonnet-4-6",
