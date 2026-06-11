@@ -84,7 +84,7 @@ def create_customer(
     address_neighborhood=None,
     city=None,
 ):
-    body = {"name": name, "cpfCnpj": cpf_cnpj, "notificationDisabled": False}
+    body = {"name": name, "cpfCnpj": re.sub(r"\D", "", cpf_cnpj or ""), "notificationDisabled": False}
     if email:
         body["email"] = email
     if phone:

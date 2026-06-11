@@ -699,28 +699,6 @@ class ChromeDevtoolsProbeView(View):
         return HttpResponse(status=204, content_type="application/json")
 
 
-class DevLoadPreRegistrationView(View):
-    """
-    Carrega um PreRegistration de teste na sessão e redireciona para o wizard.
-    Disponível SOMENTE com DEBUG=True — retorna 404 em produção.
-    """
-
-    def get(self, request, pre_registration_id, *args, **kwargs):
-        from django.conf import settings
-        if not settings.DEBUG:
-            raise Http404
-        pr = PreRegistration.objects.filter(pk=pre_registration_id).first()
-        if pr is None:
-            raise Http404
-        for key in ResetRegistrationView._SESSION_KEYS:
-            request.session.pop(key, None)
-        request.session["pending_pre_registration_id"] = pr.pk
-        if pr.status == PreRegistrationStatus.PAYMENT_CONFIRMED:
-            request.session["post_plan_payment_complete"] = True
-        return redirect("system:register")
-
-
-
 
 class MaterialsCheckoutView(View):
     def post(self, request, *args, **kwargs):
@@ -885,8 +863,7 @@ class ResetRegistrationView(View):
     )
 
     def get(self, request, *args, **kwargs):
-        for key in self._SESSION_KEYS:
-            request.session.pop(key, None)
+        request.session.flush()
         return redirect("system:register")
 
 

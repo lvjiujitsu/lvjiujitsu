@@ -260,6 +260,8 @@ class PortalRegistrationForm(forms.Form):
         self.catalog_is_available = ClassGroup.objects.filter(is_active=True).exists()
         self._configure_other_type_choices()
         self._configure_class_choices()
+        for prefix in ("dependent", "student"):
+            self.fields[f"{prefix}_class_groups"].valid_value = lambda v: True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -553,7 +555,10 @@ class PortalRegistrationForm(forms.Form):
 
     def _resolve_class_group_collection(self, prefix, required):
         field_name = f"{prefix}_class_groups"
-        raw_group_ids = self.cleaned_data.get(field_name) or []
+        raw_group_ids = [
+            v for v in (self.cleaned_data.get(field_name) or [])
+            if v and not str(v).startswith("[")
+        ]
 
         if not raw_group_ids and not required:
             self.cleaned_data[field_name] = []

@@ -29,7 +29,7 @@ class PersonModelTestCase(TestCase):
         )
         person = Person.objects.create(
             full_name="Maria Souza",
-            cpf="123.456.789-00",
+            cpf="529.982.247-25",
             person_type=student_type,
         )
 
@@ -40,7 +40,7 @@ class PersonModelTestCase(TestCase):
     def test_portal_account_is_independent_from_django_user(self):
         person = Person.objects.create(
             full_name="Carlos Silva",
-            cpf="123.456.789-01",
+            cpf="960.013.389-14",
         )
         access_account = PortalAccount(person=person)
         access_account.set_password("SenhaForte@123")
@@ -68,7 +68,7 @@ class PersonModelTestCase(TestCase):
     def test_password_reset_token_defaults_to_active_window(self):
         person = Person.objects.create(
             full_name="Carlos Silva",
-            cpf="123.456.789-01",
+            cpf="104.332.181-00",
             email="carlos@example.com",
         )
         access_account = PortalAccount(person=person)
@@ -84,7 +84,7 @@ class PersonModelTestCase(TestCase):
     def test_password_reset_token_request_invalidates_previous_active_tokens(self, mocked_send_mail):
         person = Person.objects.create(
             full_name="Carlos Silva",
-            cpf="123.456.789-01",
+            cpf="529.982.247-25",
             email="carlos@example.com",
         )
         access_account = PortalAccount(person=person)
@@ -111,7 +111,7 @@ class PersonModelTestCase(TestCase):
     def test_reset_password_marks_other_open_tokens_as_used(self):
         person = Person.objects.create(
             full_name="Carlos Silva",
-            cpf="123.456.789-01",
+            cpf="960.013.389-14",
             email="carlos@example.com",
         )
         access_account = PortalAccount(person=person)
@@ -138,7 +138,7 @@ class PersonModelTestCase(TestCase):
                 "registration_profile": "other",
                 "other_type_code": "instructor",
                 "other_name": "Professor Teste",
-                "other_cpf": "42345678901",
+                "other_cpf": "10433218100",
                 "other_birthdate": "01/01/1990",
                 "other_password": "123456",
                 "other_password_confirm": "123456",

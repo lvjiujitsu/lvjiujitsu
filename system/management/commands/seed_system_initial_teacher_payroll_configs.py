@@ -12,7 +12,7 @@ from system.services.payroll_rules import (
     PayrollRuleError,
     encode_payroll_rules,
 )
-from system.utils import ensure_formatted_cpf
+from system.utils import format_cpf_digits
 
 
 DATA_FILENAME = "seed_system_initial_teacher_payroll_configs.json"
@@ -75,7 +75,7 @@ class Command(BaseCommand):
             return json.load(f)
 
     def _get_teacher(self, raw_cpf: str) -> Person:
-        cpf = ensure_formatted_cpf(raw_cpf.strip())
+        cpf = format_cpf_digits(raw_cpf.strip())
         if not cpf:
             raise CommandError("Entrada inválida no JSON: 'teacher_cpf' é obrigatório.")
         try:
@@ -107,7 +107,7 @@ class Command(BaseCommand):
 
     def _get_class_group(self, category_code: str, raw_teacher_cpf: str) -> ClassGroup:
         category_code = (category_code or "").strip()
-        teacher_cpf = ensure_formatted_cpf((raw_teacher_cpf or "").strip())
+        teacher_cpf = format_cpf_digits((raw_teacher_cpf or "").strip())
         if not category_code or not teacher_cpf:
             raise CommandError(
                 "Regra com scope='class_group' exige 'class_group_category' "

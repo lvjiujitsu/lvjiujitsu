@@ -20,7 +20,7 @@ from system.models import (
     PersonType,
 )
 from system.models.graduation import BeltRank, Graduation
-from system.utils.person_data import ensure_formatted_cpf, only_digits
+from system.utils.person_data import format_cpf_digits, only_digits
 
 
 DATA_DIRNAME = "kanri_students_migration"
@@ -522,7 +522,7 @@ class Command(BaseCommand):
         if not value:
             return ""
         try:
-            return ensure_formatted_cpf(value)
+            return format_cpf_digits(value)
         except ValueError:
             return ""
 

@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from system.models import ClassGroup, Person
-from system.utils import ensure_formatted_cpf
+from system.utils import format_cpf_digits
 
 
 class Command(BaseCommand):
@@ -29,9 +29,9 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             for entry in entries_with_group:
-                cpf = ensure_formatted_cpf(entry.get("cpf", "").strip())
+                cpf = format_cpf_digits(entry.get("cpf", "").strip())
                 category_code = entry["class_group_category"].strip()
-                teacher_cpf = ensure_formatted_cpf(entry["class_group_teacher_cpf"].strip())
+                teacher_cpf = format_cpf_digits(entry["class_group_teacher_cpf"].strip())
 
                 person = self._get_person(cpf)
                 group = self._get_group(category_code, teacher_cpf)

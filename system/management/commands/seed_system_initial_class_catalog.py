@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from system.models import ClassCategory, ClassGroup, ClassSchedule, Person
-from system.utils import ensure_formatted_cpf
+from system.utils import format_cpf_digits
 
 
 DATA_FILENAME = "seed_system_initial_class_catalog.json"
@@ -83,7 +83,7 @@ class Command(BaseCommand):
             )
 
     def _get_teacher(self, raw_cpf: str, full_name: str) -> Person:
-        cpf = ensure_formatted_cpf(raw_cpf)
+        cpf = format_cpf_digits(raw_cpf)
         try:
             return Person.objects.get(cpf=cpf)
         except Person.DoesNotExist:

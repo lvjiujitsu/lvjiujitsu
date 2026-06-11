@@ -10,7 +10,7 @@ class PortalRegistrationFormMartialArtTestCase(TestCase):
             data={
                 "registration_profile": "holder",
                 "holder_name": "Aluno Sem Historico",
-                "holder_cpf": "12345678915",
+                "holder_cpf": "52998224725",
                 "holder_birthdate": "01/04/1995",
                 "holder_biological_sex": BiologicalSex.MALE,
                 "holder_password": "123456",
@@ -34,7 +34,7 @@ class PortalRegistrationFormMartialArtTestCase(TestCase):
             data={
                 "registration_profile": "holder",
                 "holder_name": "Aluno Com Historico",
-                "holder_cpf": "12345678916",
+                "holder_cpf": "96001338914",
                 "holder_birthdate": "01/04/1995",
                 "holder_biological_sex": BiologicalSex.MALE,
                 "holder_password": "123456",
@@ -88,7 +88,7 @@ class PersonFormLayoutContractTestCase(TestCase):
         form = PersonForm(
             data={
                 "full_name": "Aluno Sem Tatame",
-                "cpf": "12345678915",
+                "cpf": "52998224725",
                 "email": "",
                 "phone": "",
                 "birth_date": "",

@@ -39,6 +39,18 @@
     return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
   }
 
+  function isValidCpf(digits) {
+    if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) return false;
+    function checkDigit(d, len) {
+      var s = 0;
+      for (var i = 0; i < len; i++) s += parseInt(d[i]) * (len + 1 - i);
+      var r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    }
+    return parseInt(digits[9]) === checkDigit(digits, 9) &&
+           parseInt(digits[10]) === checkDigit(digits, 10);
+  }
+
   function maskPhone(value) {
     var d = value.replace(/\D/g, '').slice(0, 11);
     if (d.length <= 2) return d.length ? '(' + d : '';
@@ -452,7 +464,7 @@
     var cpfDigits = s2Cpf.value.replace(/\D/g, '');
     if (!cpfDigits) {
       showErr(s2Cpf, s2CpfError, 'Campo obrigatório.'); valid = false;
-    } else if (cpfDigits.length !== 11) {
+    } else if (!isValidCpf(cpfDigits)) {
       showErr(s2Cpf, s2CpfError, 'CPF inválido.'); valid = false;
     } else if (s2CpfAvailability.value === s2Cpf.value && s2CpfAvailability.available === false) {
       showErr(s2Cpf, s2CpfError, s2CpfAvailability.error || 'CPF já cadastrado no sistema.'); valid = false;
@@ -641,7 +653,7 @@
     var cpfD = depCpf.value.replace(/\D/g, '');
     if (!cpfD) {
       showErr(depCpf, depCpfErr, 'Campo obrigatório.'); valid = false;
-    } else if (cpfD.length !== 11) {
+    } else if (!isValidCpf(cpfD)) {
       showErr(depCpf, depCpfErr, 'CPF inválido.'); valid = false;
     } else clearErr(depCpf, depCpfErr);
 
@@ -2154,10 +2166,9 @@
           if (confirmedEl) confirmedEl.hidden = true;
           var wf = document.getElementById('wizard-form');
           if (wf) wf.hidden = false;
-          // Esconde todos os steps do wizard e exibe apenas step-plan
-          state.stepSequence.forEach(function (sid) {
-            var sel = document.getElementById(sid);
-            if (sel) sel.hidden = true;
+          // Esconde todos os steps — usa querySelectorAll para cobrir stepSequence vazia
+          document.querySelectorAll('.wizard-step').forEach(function (el) {
+            el.hidden = true;
           });
           var planEl = document.getElementById('step-plan');
           if (planEl) planEl.hidden = false;
@@ -2747,10 +2758,9 @@
       buildStepSequence();
     }
 
-    // Esconde todos os steps do wizard e exibe apenas step-plan
-    state.stepSequence.forEach(function (sid) {
-      var el = document.getElementById(sid);
-      if (el) el.hidden = true;
+    // Esconde todos os steps — usa querySelectorAll para cobrir stepSequence vazia
+    document.querySelectorAll('.wizard-step').forEach(function (el) {
+      el.hidden = true;
     });
     var planEl = document.getElementById('step-plan');
     if (planEl) planEl.hidden = false;

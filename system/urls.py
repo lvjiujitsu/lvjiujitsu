@@ -2,7 +2,6 @@ from django.urls import path
 
 from system.views.auth_views import (
     ChromeDevtoolsProbeView,
-    DevLoadPreRegistrationView,
     FinalizeRegistrationView,
     MaterialsCheckoutView,
     PortalLoginView,
@@ -77,7 +76,6 @@ urlpatterns = [
     path("register/materiais/", MaterialsCheckoutView.as_view(), name="register-materials-checkout"),
     path("register/finalizar/", FinalizeRegistrationView.as_view(), name="register-finalize"),
     path("register/recomecar/", ResetRegistrationView.as_view(), name="register-reset"),
-    path("dev/carregar-pre-cadastro/<int:pre_registration_id>/", DevLoadPreRegistrationView.as_view(), name="dev-load-pre-registration"),
 
     # Pagamentos Asaas
     path("pagamentos/<int:order_id>/", PaymentMethodChoiceView.as_view(), name="payment-checkout"),
