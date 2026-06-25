@@ -1,39 +1,15 @@
 ---
-description: Protocolo central de governança do agente — aplica-se a toda interação
-globs:
+description: Protocolo comum e fontes de verdade do LV JIU JITSU
 alwaysApply: true
 ---
 
-# Protocolo do agente
+Leia `AGENTS.md` e `CLAUDE.md` antes de agir.
 
-Fonte de verdade: `@AGENTS.md` (como trabalhar) e `@CLAUDE.md` (o que é o projeto).
+Use:
 
-## Precedência
+- `docs/AGENT-WORKFLOW.md` para o ciclo completo;
+- `docs/PRD-STANDARD.md` para PRDs;
+- `docs/PLATFORM-ADAPTERS.md` para diferenças do Cursor;
+- as skills `lv-*` conforme a demanda.
 
-1. Solicitação atual do usuário
-2. Segurança, integridade e rastreabilidade
-3. AGENTS.md → CLAUDE.md → regras locais
-
-## Obrigatório antes de agir
-
-- Ler integralmente os arquivos do fluxo impactado — nunca decidir por snippet
-- Buscar contexto externo quando envolver lib, framework ou comportamento de ferramenta
-- Classificar a demanda antes de executar
-- Criar PRD em `docs/prd/` para mudança relevante
-- Validar antes de declarar sucesso — evidência observável obrigatória
-- Responder ao desenvolvedor em pt-BR
-
-## Nunca
-
-- Inventar comando, rota, integração ou comportamento
-- Declarar sucesso sem evidência
-- Assumir que implementado = validado
-- Criar migrações sem autorização explícita
-- Hardcodar segredo, token ou valor configurável
-- Mascarar erro para forçar funcionamento aparente
-
-## Ao finalizar
-
-- Reportar: o que foi feito, evidências, pendências, desvios, status real
-- Limpar: remover prints, logs, comentários e arquivos temporários
-- Status: concluída | concluída com limitações | não concluída
+Responda em pt-BR, de forma mínima. Testes só podem ser executados após autorização explícita.

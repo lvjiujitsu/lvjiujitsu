@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV Cleanup Audit"
+  short_description: "Audita limpeza, legado e riscos residuais"
+  default_prompt: "Use $lv-cleanup-audit para revisar a entrega e registrar follow-ups necessários."

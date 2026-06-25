@@ -300,9 +300,7 @@ Toda tela operacional deve ter:
 
 Antes de concluir qualquer tela:
 
-- `manage.py check` — 0 issues.
-- `manage.py test --verbosity 2` — 0 falhas.
-- `manage.py collectstatic --noinput` — sem erro.
+- Validar primeiro no navegador interno disponível, imediatamente após a implementação.
 - Rota GET renderiza sem erro 500.
 - Fluxo POST preservado quando aplicável.
 - Validação visual desktop.
@@ -312,6 +310,11 @@ Antes de concluir qualquer tela:
 - Tema claro e escuro verificados.
 - Estado vazio e estado com dados verificados.
 - Permissão: ao menos um perfil permitido e um bloqueado testados quando aplicável.
+- Registrar screenshot ou snapshot na PRD.
+- `manage.py check` — executar quando proporcional ao risco.
+- `manage.py collectstatic --noinput` — executar quando static for afetado e houver autorização operacional.
+- Testes devem ser escritos no ciclo TDD, mas `manage.py test` só pode ser executado após autorização explícita do usuário.
+- Sem execução autorizada, registrar “teste escrito, não executado por política” e não declarar Red ou Green.
 
 ---
 

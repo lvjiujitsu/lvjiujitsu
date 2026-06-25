@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV Task Intake"
+  short_description: "Confirma contexto, escopo e autorização"
+  default_prompt: "Use $lv-task-intake para entender e confirmar esta demanda antes de alterar arquivos."

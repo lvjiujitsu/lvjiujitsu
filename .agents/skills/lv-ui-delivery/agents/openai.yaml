@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV UI Delivery"
+  short_description: "Governa design aprovado e validação visual"
+  default_prompt: "Use $lv-ui-delivery para propor, implementar e validar esta mudança visual."

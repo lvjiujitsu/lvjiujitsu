@@ -1,0 +1,11 @@
+---
+description: Arquitetura, lógica, persistência e testes do Django LV
+globs: "**/*.py"
+alwaysApply: false
+---
+
+Use `/lv-django-delivery`.
+
+Respeite MVT com `services/` e `selectors/`, validação server-side, permissões no backend e política de migrations de `AGENTS.md`.
+
+Escreva testes antes do código quando houver comportamento testável, mas não os execute sem autorização.
