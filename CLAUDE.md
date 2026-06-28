@@ -144,4 +144,6 @@ Antes da finalização, o estado pertence a `PreRegistration`.
 
 `Visary` pode fornecer governança, shell, tokens de UI, auth e padrões de wizard.
 
+O bootstrap canônico de governança reutilizável vive no Visary em `docs/agent-bootstrap/`; ressincronizações devem partir dele e substituir placeholders pelo domínio LV.
+
 Não portar domínio de consultoria de vistos.

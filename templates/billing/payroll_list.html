@@ -1,0 +1,53 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Folha de professores{% endblock %}
+{% block eyebrow %}Financeiro{% endblock %}
+{% block page_title %}Folha de professores{% endblock %}
+{% block page_meta %}Configurações de repasse e cálculo mensal por professor.{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação financeira">
+    <a class="module-tab" href="{% url 'system:financial-control' %}">Controle</a>
+    <a class="module-tab" href="{% url 'system:approval-queue' %}">Aprovações</a>
+    <a class="module-tab" href="{% url 'system:pending-payments' %}">Pendentes</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:payroll-list' %}">Folha</a>
+    <a class="module-tab" href="{% url 'system:payout-queue' %}">Repasses</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="payroll-title">
+    <div class="section__header">
+      <h2 class="section__title" id="payroll-title">{{ configs|length }} configuração{{ configs|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if configs %}
+      <ul class="data-list">
+        {% for config in configs %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ config.person.full_name }}</h3>
+                <p class="item-meta">Pagamento no dia {{ config.payment_day }}</p>
+              </div>
+              {% if config.is_active %}<span class="badge badge--success">Ativo</span>{% else %}<span class="badge badge--neutral">Inativo</span>{% endif %}
+            </div>
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Fixo mensal</dt><dd>R$ {{ config.monthly_salary|floatformat:2 }}</dd></div>
+              <div class="meta-box"><dt>Banco</dt><dd>Ver cadastro</dd></div>
+              <div class="meta-box"><dt>Cálculo atual</dt><dd>{% if config.current_calculation.total %}R$ {{ config.current_calculation.total|floatformat:2 }}{% else %}R$ 0,00{% endif %}</dd></div>
+            </dl>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=config.person.pk %}">Professor</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhuma configuração de folha cadastrada.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Administração{% endblock %}
+{% block eyebrow %}Administração{% endblock %}
+{% block page_title %}Administração{% endblock %}
+{% block page_meta %}Hubs operacionais da LV para academia, financeiro, materiais e perfis.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="/admin/" target="_blank" rel="noopener">Django Admin</a>
+{% endblock %}
+
+{% block content %}
+  <div class="kpi-row" aria-label="Totais administrativos">
+    {% for kpi in admin_kpis %}
+    <div class="kpi-card">
+      <span class="kpi-card__value">{{ kpi.value }}</span>
+      <span class="kpi-card__label">{{ kpi.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <section class="section" aria-labelledby="admin-modules-title">
+    <div class="section__header">
+      <h2 class="section__title" id="admin-modules-title">Módulos</h2>
+    </div>
+    <div class="module-grid">
+      {% for module in module_cards %}
+      <a class="module-card" href="{% url module.url_name %}">
+        <div>
+          <h3 class="module-card__title">{{ module.title }}</h3>
+          <p class="module-card__text">{{ module.description }}</p>
+        </div>
+        <div>
+          <span class="module-card__count">{{ module.primary_count }}</span>
+          <span class="kpi-card__label">{{ module.primary_label }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

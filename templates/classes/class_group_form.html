@@ -1,0 +1,64 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{% if object %}Editar turma{% else %}Nova turma{% endif %}{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}{% if object %}Editar turma{% else %}Nova turma{% endif %}{% endblock %}
+{% block page_meta %}Configure categoria, professor, equipe auxiliar e horários da turma.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:class-group-list' %}">Cancelar</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de turmas">
+    <a class="module-tab module-tab--active" href="{% url 'system:class-group-list' %}">Turmas</a>
+    <a class="module-tab" href="{% url 'system:class-category-list' %}">Categorias</a>
+    <a class="module-tab" href="{% url 'system:class-schedule-list' %}">Horários</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <form class="form-panel" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="form-errors">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="form-grid">
+      {% for field in form.visible_fields %}
+      <div class="form-field{% if field.name == 'description' or field.name == 'assistant_staff' %} form-field--full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="field-help">{{ field.help_text }}</span>{% endif %}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="subform">
+      <h2 class="subform__title">Horários da turma</h2>
+      {{ schedule_formset.management_form }}
+      {% if schedule_formset.non_form_errors %}
+      <div class="form-errors">{{ schedule_formset.non_form_errors }}</div>
+      {% endif %}
+      {% for schedule_form in schedule_formset.forms %}
+      <div class="subform-row">
+        {% for hidden in schedule_form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div class="form-grid form-grid--compact">
+          {% for field in schedule_form.visible_fields %}
+          <div class="form-field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      {% if object %}<a class="btn btn--danger" href="{% url 'system:class-group-delete' pk=object.pk %}">Excluir</a>{% endif %}
+      <button class="btn btn--primary" type="submit">Salvar turma</button>
+    </div>
+  </form>
+{% endblock %}

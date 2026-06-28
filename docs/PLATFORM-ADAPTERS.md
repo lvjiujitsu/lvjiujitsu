@@ -11,6 +11,9 @@ O comportamento comum está em `AGENTS.md`.
 | `lv-ui-delivery` | `/lv-ui-delivery` | `$lv-ui-delivery` | `/lv-ui-delivery` |
 | `lv-django-delivery` | `/lv-django-delivery` | `$lv-django-delivery` | `/lv-django-delivery` |
 | `lv-cleanup-audit` | `/lv-cleanup-audit` | `$lv-cleanup-audit` | `/lv-cleanup-audit` |
+| `lv-prompt-builder` | `/lv-prompt-builder` | `$lv-prompt-builder` | `/lv-prompt-builder` |
+
+> `lv-prompt-builder` usa `disable-model-invocation: true`: é de invocação manual e não dispara sozinha. Gera o execution prompt de uma demanda e para, sem implementar.
 
 ## Claude Code Desktop
 
@@ -41,10 +44,18 @@ O comportamento comum está em `AGENTS.md`.
 
 ## Context7 e browser
 
-- Context7 é obrigatório para biblioteca, framework, SDK, API ou CLI.
-- Depois, confirmar decisões materiais na documentação oficial.
-- Browser interno é a primeira escolha para UI.
-- Headless não substitui evidência visual quando a ferramenta oferece browser.
+- Context7 é obrigatório quando a demanda envolver biblioteca, framework, SDK, API, CLI, configuração de ferramenta, protocolo de integração ou comportamento de browser/plataforma.
+- Depois, confirmar decisões materiais na documentação oficial ou fonte primária equivalente.
+- Pesquisa irrelevante não preenche checklist de PRD.
+
+Prioridade de validação visual:
+
+1. browser interno da ferramenta com a rota real;
+2. Chrome ou superfície autenticada do usuário quando a sessão for necessária;
+3. Playwright/MCP/headless apenas como fallback ou complemento;
+4. relatório explícito de limitação quando nenhuma superfície visual estiver disponível.
+
+Headless não substitui evidência visual quando a ferramenta oferece browser interno.
 
 ## Pagamentos
 
@@ -57,6 +68,8 @@ O comportamento comum está em `AGENTS.md`.
 Ao alterar uma skill:
 
 1. atualizar `.agents/skills/<name>/SKILL.md`;
-2. sincronizar Claude e Cursor;
-3. validar as três;
-4. comparar hashes.
+2. sincronizar `.claude/skills/<name>/SKILL.md`;
+3. sincronizar `.cursor/skills/<name>/SKILL.md`;
+4. validar frontmatter e conteúdo das três cópias;
+5. comparar hashes ou conteúdo byte a byte;
+6. atualizar `docs/PLATFORM-ADAPTERS.md` quando uma skill nova for adicionada.

@@ -1,8 +1,12 @@
 from collections import OrderedDict
 
+from django.contrib import messages
+from django.db.models import Count, Prefetch
+from django.db.models.deletion import ProtectedError
+from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
-from django.db.models import Count, Prefetch
 
 from system.forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from system.models import (
@@ -139,6 +143,27 @@ class PersonDeleteView(AdministrativeRequiredMixin, DeleteView):
     template_name = "people/person_confirm_delete.html"
     success_url = reverse_lazy("system:person-list")
 
+    def form_valid(self, form):
+        success_url = self.get_success_url()
+        try:
+            self.object.delete()
+        except ProtectedError as error:
+            blockers = _format_person_delete_blockers(error.protected_objects)
+            messages.error(
+                self.request,
+                (
+                    f"Não foi possível excluir {self.object.full_name} porque há "
+                    f"vínculo protegido em {blockers}. Remova ou substitua esse "
+                    "vínculo antes de excluir."
+                ),
+            )
+            return redirect("system:person-detail", pk=self.object.pk)
+        messages.success(
+            self.request,
+            f"{self.object.full_name} foi excluído(a) com sucesso.",
+        )
+        return HttpResponseRedirect(success_url)
+
 
 class PersonDetailView(PeopleSupportRequiredMixin, DetailView):
     model = Person
@@ -248,6 +273,29 @@ class PersonTypeDetailView(AdministrativeRequiredMixin, DetailView):
                 queryset=Person.objects.order_by("full_name"),
             )
         )
+
+
+def _format_person_delete_blockers(protected_objects):
+    labels = []
+    label_by_model = {
+        "ClassGroup": "turma principal",
+        "SpecialClass": "aula especial",
+        "TeacherPayout": "repasse financeiro",
+    }
+    for protected_object in protected_objects:
+        label = label_by_model.get(
+            protected_object.__class__.__name__,
+            "vínculo protegido",
+        )
+        if label not in labels:
+            labels.append(label)
+    if not labels:
+        return "vínculo protegido"
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} e {labels[1]}"
+    return f"{', '.join(labels[:-1])} e {labels[-1]}"
 
 
 def _hydrate_person_relationships(person, active_ibjjf_categories):

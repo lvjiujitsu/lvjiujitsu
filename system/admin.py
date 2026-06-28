@@ -194,7 +194,7 @@ class ClassScheduleAdmin(admin.ModelAdmin):
         "is_active",
     )
     list_filter = ("weekday", "training_style", "is_active")
-    search_fields = ("class_group__display_name", "class_group__code")
+    search_fields = ("class_group__display_name", "class_group__class_category__display_name")
     autocomplete_fields = ("class_group",)
 
 

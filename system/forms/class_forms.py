@@ -287,7 +287,7 @@ class ClassScheduleForm(forms.ModelForm):
             .order_by(
                 "class_category__display_order",
                 "class_category__display_name",
-                "code",
+                "display_name",
             )
         )
 

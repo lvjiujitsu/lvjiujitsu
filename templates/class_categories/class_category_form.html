@@ -1,0 +1,28 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{% if object %}Editar categoria{% else %}Nova categoria{% endif %}{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}{% if object %}Editar categoria{% else %}Nova categoria{% endif %}{% endblock %}
+{% block page_meta %}A categoria orienta público, elegibilidade e organização das turmas.{% endblock %}
+{% block page_actions %}<a class="btn btn--secondary" href="{% url 'system:class-category-list' %}">Cancelar</a>{% endblock %}
+
+{% block content %}
+  <form class="form-panel" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="form-grid">
+      {% for field in form.visible_fields %}
+      <div class="form-field{% if field.name == 'description' %} form-field--full{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      {% if object %}<a class="btn btn--danger" href="{% url 'system:class-category-delete' pk=object.pk %}">Excluir</a>{% endif %}
+      <button class="btn btn--primary" type="submit">Salvar categoria</button>
+    </div>
+  </form>
+{% endblock %}

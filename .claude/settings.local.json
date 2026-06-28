@@ -248,7 +248,9 @@
       "Bash(\"/c/Users/whsf/AppData/Local/Microsoft/WinGet/Packages/Stripe.StripeCLI_Microsoft.Winget.Source_8wekyb3d8bbwe/stripe.exe\" trigger *)",
       "Bash(tasklist)",
       "Bash(curl -s https://lvjiujitsu-hg.onrender.com/)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://lvjiujitsu-hg.onrender.com/static/system/img/og-cover.7da939df3e39.png\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://lvjiujitsu-hg.onrender.com/static/system/img/og-cover.7da939df3e39.png\")",
+      "Read(//c/Users/whsf/Documents/GitHub/Visary/**)",
+      "Read(//c/Users/whsf/Documents/GitHub/**)"
     ]
   },
   "model": "claude-sonnet-4-6",

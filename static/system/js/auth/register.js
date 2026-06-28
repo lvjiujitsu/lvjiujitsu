@@ -292,16 +292,92 @@
 
   // ── Navegação central ─────────────────────────────────────────────────────────
 
-  function goTo(targetIdx) {
-    var currentId = state.stepSequence[state.stepIndex];
-    var targetId  = state.stepSequence[targetIdx];
+  function hideAllWizardSteps() {
+    document.querySelectorAll('.wizard-step').forEach(function (el) {
+      el.hidden = true;
+    });
+  }
 
-    if (currentId !== targetId) {
-      var currentEl = document.getElementById(currentId);
-      if (currentEl) currentEl.hidden = true;
-      var targetEl = document.getElementById(targetId);
-      if (targetEl) targetEl.hidden = false;
+  function showOnlyWizardStep(stepId) {
+    hideAllWizardSteps();
+    var targetEl = document.getElementById(stepId);
+    if (targetEl) targetEl.hidden = false;
+    return targetEl;
+  }
+
+  function normalizeIdList(values) {
+    if (!values) return [];
+    var rawValues = Array.isArray(values) ? values : [values];
+    var result = [];
+    rawValues.forEach(function (value) {
+      var normalized = String(value || '').trim();
+      if (normalized && result.indexOf(normalized) === -1) result.push(normalized);
+    });
+    return result;
+  }
+
+  function buildPendingDep(student) {
+    return {
+      name: student.full_name || '', cpf: '', birthdate: '', sex: '', phone: '', email: '',
+      password: '', pwConfirm: '', kinship: '', kinshipOther: '',
+      classGroups: normalizeIdList(student.class_group_ids),
+      bloodType: '', allergies: '', injuries: '', emergencyContact: '',
+      hasMartialArt: '', martialArt: '', martialArtGraduation: '',
+      jiuJitsuBelt: '', jiuJitsuStripes: '0',
+      martialArtStartedAt: '', martialArtLastGraduationAt: '', previousAcademy: '',
+    };
+  }
+
+  function applyPendingClassSelections(students) {
+    if (state.profile === PROFILE_HOLDER) {
+      if (state.classSelections[0]) {
+        state.classSelections[0].ids = normalizeIdList(pendingPersonData.class_group_ids);
+      }
+      students.forEach(function (student, index) {
+        var selection = state.classSelections[index + 1];
+        if (selection) selection.ids = normalizeIdList(student.class_group_ids);
+      });
+      return;
     }
+    students.forEach(function (student, index) {
+      var selection = state.classSelections[index];
+      if (selection) selection.ids = normalizeIdList(student.class_group_ids);
+    });
+  }
+
+  function rehydratePendingWizardState() {
+    if (!pendingPersonData) return false;
+    var students = Array.isArray(pendingPersonData.students) ? pendingPersonData.students : [];
+    if (pendingPersonData.person_type_code === PROFILE_GUARDIAN) {
+      state.profile = PROFILE_GUARDIAN;
+      state.holderDepCount = 0;
+      state.guardianStudentCount = Math.max(1, students.length || 1);
+    } else {
+      state.profile = PROFILE_HOLDER;
+      state.holderDepCount = students.length;
+      state.guardianStudentCount = 1;
+    }
+    state.deps = students.map(buildPendingDep);
+    buildStepSequence();
+    applyPendingClassSelections(students);
+    return state.stepSequence.length > 0;
+  }
+
+  function lockPostPaymentBack() {
+    var back = document.getElementById('wizard-back');
+    var backLabel = document.getElementById('wizard-back-label');
+    if (backLabel) backLabel.textContent = 'Voltar';
+    if (!back) return;
+    back.style.visibility = 'hidden';
+    back.style.pointerEvents = 'none';
+    back.onclick = function (e) { e.preventDefault(); };
+  }
+
+  function goTo(targetIdx) {
+    if (!state.stepSequence.length) buildStepSequence();
+    if (targetIdx < 0 || targetIdx >= state.stepSequence.length) return;
+    var targetId  = state.stepSequence[targetIdx];
+    if (!showOnlyWizardStep(targetId)) return;
 
     state.stepIndex = targetIdx;
     updateProgress();
@@ -2113,25 +2189,12 @@
   }
 
   function showPostPaymentMode(stepId) {
+    if (!rehydratePendingWizardState() && !state.stepSequence.length) buildStepSequence();
     var wizForm = document.getElementById('wizard-form');
     if (wizForm) wizForm.hidden = true;
-    var el = document.getElementById(stepId);
-    if (el) el.hidden = false;
+    showOnlyWizardStep(stepId);
 
-    // Reconstrói sequência a partir dos dados do pending person (modo pós-pagamento)
-    if (state.stepSequence.length === 0 && pendingPersonData) {
-      if (pendingPersonData.person_type_code === PROFILE_GUARDIAN) {
-        state.profile = PROFILE_GUARDIAN;
-        state.guardianStudentCount = (pendingPersonData.students && pendingPersonData.students.length) || 1;
-      } else {
-        state.profile = PROFILE_HOLDER;
-        state.holderDepCount = (pendingPersonData.students && pendingPersonData.students.length) || 0;
-      }
-      buildStepSequence();
-    }
-
-    // Avança o contador: step-plan-confirmed/step-products/step-review não estão na sequência,
-    // então usa o índice do step pai correspondente para o progresso ficar correto
+    // Avança o contador; step-plan-confirmed usa step-plan como referência.
     var idx = state.stepSequence.indexOf(stepId);
     if (idx < 0) {
       var fallbackStep = (stepId === 'step-plan-confirmed') ? 'step-plan' : 'step-plan';
@@ -2142,48 +2205,7 @@
       updateProgress();
     }
 
-    var back = document.getElementById('wizard-back');
-    var backLabel = document.getElementById('wizard-back-label');
-    if (back) {
-      back.style.visibility = 'visible';
-      back.style.pointerEvents = '';
-      if (stepId === 'step-review') {
-        if (backLabel) backLabel.textContent = 'Materiais';
-        back.onclick = function (e) {
-          e.preventDefault();
-          var reviewEl = document.getElementById('step-review');
-          var productsEl = document.getElementById('step-products');
-          if (reviewEl) reviewEl.hidden = true;
-          if (productsEl) productsEl.hidden = false;
-          var pidx = state.stepSequence.indexOf('step-products');
-          if (pidx >= 0) { state.stepIndex = pidx; updateProgress(); }
-        };
-      } else if (stepId === 'step-plan-confirmed') {
-        if (backLabel) backLabel.textContent = 'Voltar';
-        back.onclick = function (e) {
-          e.preventDefault();
-          var confirmedEl = document.getElementById('step-plan-confirmed');
-          if (confirmedEl) confirmedEl.hidden = true;
-          var wf = document.getElementById('wizard-form');
-          if (wf) wf.hidden = false;
-          // Esconde todos os steps — usa querySelectorAll para cobrir stepSequence vazia
-          document.querySelectorAll('.wizard-step').forEach(function (el) {
-            el.hidden = true;
-          });
-          var planEl = document.getElementById('step-plan');
-          if (planEl) planEl.hidden = false;
-          var planIdx = state.stepSequence.indexOf('step-plan');
-          if (planIdx >= 0) {
-            state.stepIndex = planIdx;
-            updateProgress();
-          }
-          onEnterPlan();
-        };
-      } else {
-        if (backLabel) backLabel.textContent = 'Voltar';
-        back.onclick = null;
-      }
-    }
+    lockPostPaymentBack();
   }
 
   function fmtCurrency(value) {
@@ -2745,25 +2767,8 @@
 
   function showPlanPaidMode() {
     planAlreadyPaid = true;
-
-    // Reconstrói sequência a partir dos dados do pending person
-    if (state.stepSequence.length === 0 && pendingPersonData) {
-      if (pendingPersonData.person_type_code === PROFILE_GUARDIAN) {
-        state.profile = PROFILE_GUARDIAN;
-        state.guardianStudentCount = (pendingPersonData.students && pendingPersonData.students.length) || 1;
-      } else {
-        state.profile = PROFILE_HOLDER;
-        state.holderDepCount = (pendingPersonData.students && pendingPersonData.students.length) || 0;
-      }
-      buildStepSequence();
-    }
-
-    // Esconde todos os steps — usa querySelectorAll para cobrir stepSequence vazia
-    document.querySelectorAll('.wizard-step').forEach(function (el) {
-      el.hidden = true;
-    });
-    var planEl = document.getElementById('step-plan');
-    if (planEl) planEl.hidden = false;
+    if (!rehydratePendingWizardState() && !state.stepSequence.length) buildStepSequence();
+    showOnlyWizardStep('step-plan');
 
     var planIdx = state.stepSequence.indexOf('step-plan');
     if (planIdx >= 0) {
@@ -2855,13 +2860,7 @@
     var wizFormPaid = document.getElementById('wizard-form');
     if (wizFormPaid) wizFormPaid.hidden = false;
 
-    // Restaura botão Voltar — navega para step-classes (planAlreadyPaid impede re-pagamento)
-    var back = document.getElementById('wizard-back');
-    if (back) {
-      back.style.visibility = 'visible';
-      back.style.pointerEvents = '';
-      back.onclick = null;
-    }
+    lockPostPaymentBack();
 
     // Auto-dismiss da mensagem Django após 5s (a banner JS já exibe a confirmação)
     var sysMsgs = document.querySelector('.wizard-system-messages');
@@ -2941,6 +2940,77 @@
     });
   }
 
+  function readHiddenValuesByName(fieldName) {
+    var form = document.getElementById('wizard-form');
+    if (!form) return [];
+    var values = [];
+    form.querySelectorAll('input[name="' + fieldName + '"]').forEach(function (el) {
+      if (el.value) values.push(el.value);
+    });
+    return normalizeIdList(values);
+  }
+
+  function readExtraDependentsFromForm() {
+    try {
+      var parsed = JSON.parse(elExtraDepInput.value || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function applyInitialProfileCounts(profile, extraDependents) {
+    if (profile === PROFILE_HOLDER) {
+      var hasDependents = !!(elIncludeDepInput && elIncludeDepInput.value);
+      state.holderDepCount = hasDependents ? extraDependents.length + 1 : 0;
+      if (elHolderDepChk) elHolderDepChk.checked = hasDependents;
+      if (elHolderCountArea) elHolderCountArea.hidden = !hasDependents;
+      renderHolderDepCount();
+      return;
+    }
+    state.guardianStudentCount = Math.max(1, extraDependents.length + 1);
+    renderGuardianStudentCount();
+  }
+
+  function rehydrateInitialClassSelections(profile, extraDependents) {
+    if (profile === PROFILE_HOLDER) {
+      if (state.classSelections[0]) {
+        state.classSelections[0].ids = readHiddenValuesByName('holder_class_groups');
+      }
+      if (state.classSelections[1]) {
+        var dependentIds = readHiddenValuesByName('dependent_class_groups');
+        state.classSelections[1].ids = dependentIds;
+        if (state.deps[0]) state.deps[0].classGroups = dependentIds;
+      }
+      extraDependents.forEach(function (dependent, index) {
+        var selection = state.classSelections[index + 2];
+        var ids = normalizeIdList(dependent.class_groups);
+        if (selection) selection.ids = ids;
+        if (state.deps[index + 1]) state.deps[index + 1].classGroups = ids;
+      });
+      return;
+    }
+    if (state.classSelections[0]) {
+      var studentIds = readHiddenValuesByName('student_class_groups');
+      state.classSelections[0].ids = studentIds;
+      if (state.deps[0]) state.deps[0].classGroups = studentIds;
+    }
+    extraDependents.forEach(function (student, index) {
+      var selection = state.classSelections[index + 1];
+      var ids = normalizeIdList(student.class_groups);
+      if (selection) selection.ids = ids;
+      if (state.deps[index + 1]) state.deps[index + 1].classGroups = ids;
+    });
+  }
+
+  function rehydrateInitialWizardStateFromForm(profile) {
+    var extraDependents = readExtraDependentsFromForm();
+    applyInitialProfileCounts(profile, extraDependents);
+    buildStepSequence();
+    rehydrateInitialClassSelections(profile, extraDependents);
+    saveWizardState();
+  }
+
   function tryRestoreWizard() {
     try {
       var raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
@@ -3016,37 +3086,12 @@
     if (!_restored) {
       var initialProfile = elProfileInput ? elProfileInput.value : '';
       if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {
+        var initialIncludeDependent = elIncludeDepInput ? elIncludeDepInput.value : '';
+        var initialExtraDependents = elExtraDepInput ? elExtraDepInput.value : '[]';
         selectProfile(initialProfile);
-        if (initialProfile === PROFILE_HOLDER && elIncludeDepInput && elIncludeDepInput.value) {
-          if (elHolderDepChk) {
-            elHolderDepChk.checked   = true;
-            elHolderCountArea.hidden = false;
-            state.holderDepCount = 1;
-            try {
-              var ex = JSON.parse(elExtraDepInput.value || '[]');
-              state.holderDepCount = ex.length + 1;
-            } catch (e) {}
-            renderHolderDepCount();
-            buildStepSequence();
-          }
-        }
-        // Restaura turmas selecionadas a partir dos hidden inputs que o Django populou via form.initial
-        (function () {
-          var form = document.getElementById('wizard-form');
-          if (!form) return;
-          if (initialProfile === PROFILE_HOLDER && state.classSelections[0]) {
-            var cgInputs = form.querySelectorAll('input[name="holder_class_groups"]');
-            var ids = [];
-            cgInputs.forEach(function (el) { if (el.value) ids.push(el.value); });
-            if (ids.length > 0) state.classSelections[0].ids = ids;
-          }
-          if (initialProfile === PROFILE_GUARDIAN && state.classSelections[0]) {
-            var scInputs = form.querySelectorAll('input[name="student_class_groups"]');
-            var sids = [];
-            scInputs.forEach(function (el) { if (el.value) sids.push(el.value); });
-            if (sids.length > 0) state.classSelections[0].ids = sids;
-          }
-        })();
+        if (elIncludeDepInput) elIncludeDepInput.value = initialIncludeDependent;
+        if (elExtraDepInput) elExtraDepInput.value = initialExtraDependents;
+        rehydrateInitialWizardStateFromForm(initialProfile);
       } else {
         buildStepSequence();
       }

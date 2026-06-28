@@ -1,0 +1,49 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Meus pedidos{% endblock %}
+{% block eyebrow %}Materiais{% endblock %}
+{% block page_title %}Meus pedidos{% endblock %}
+{% block page_meta %}Histórico de pedidos pagos ou isentos vinculados ao responsável financeiro.{% endblock %}
+{% block page_actions %}<a class="btn btn--secondary" href="{% url 'system:product-store' %}">Loja</a>{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de materiais">
+    <a class="module-tab" href="{% url 'system:product-store' %}">Loja</a>
+    <a class="module-tab" href="{% url 'system:student-backorders' %}">Meus pré-pedidos</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:student-order-history' %}">Meus pedidos</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="student-orders-title">
+    <div class="section__header">
+      <h2 class="section__title" id="student-orders-title">{{ orders|length }} pedido{{ orders|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if orders %}
+      <ul class="data-list">
+        {% for order in orders %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">Pedido #{{ order.pk }}</h3>
+                <p class="item-meta">{% if order.paid_at %}{{ order.paid_at|date:"d/m/Y H:i" }}{% else %}{{ order.created_at|date:"d/m/Y H:i" }}{% endif %}</p>
+              </div>
+              <span class="badge badge--success">{{ order.get_payment_status_display }}</span>
+            </div>
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Total</dt><dd>R$ {{ order.total|floatformat:2 }}</dd></div>
+              <div class="meta-box"><dt>Gateway</dt><dd>{{ order.get_payment_provider_display|default:"Não definido" }}</dd></div>
+              <div class="meta-box"><dt>Itens</dt><dd>{{ order.items.all|length }}</dd></div>
+            </dl>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum pedido pago encontrado.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

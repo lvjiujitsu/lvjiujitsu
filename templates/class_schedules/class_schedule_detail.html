@@ -1,0 +1,40 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{{ class_schedule.title }}{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}{{ class_schedule.title }}{% endblock %}
+{% block page_meta %}Horários agrupados para o dia selecionado.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:class-schedule-list' %}">Voltar</a>
+  <a class="btn btn--primary" href="{% url 'system:class-schedule-create' %}">Novo horário</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="schedule-detail-title">
+    <div class="section__header">
+      <h2 class="section__title" id="schedule-detail-title">{{ class_schedule.schedule_count }} ocorrência{{ class_schedule.schedule_count|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      <ul class="data-list">
+        {% for occurrence in class_schedule.occurrences %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <h3 class="item-title">{{ occurrence.time_label }} · {{ occurrence.class_group_title }}</h3>
+            <p class="item-meta">{{ occurrence.category_title }} · {{ occurrence.training_style_display }} · {{ occurrence.duration_minutes }} min</p>
+            <div class="pill-list">
+              {% for teacher in occurrence.teacher_names %}
+              <span class="badge badge--info">{{ teacher }}</span>
+              {% empty %}
+              <span class="badge badge--warning">Professor não definido</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:class-schedule-update' pk=occurrence.pk %}">Editar</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+{% endblock %}

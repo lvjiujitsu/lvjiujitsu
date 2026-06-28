@@ -1,0 +1,53 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Regras de graduação{% endblock %}
+{% block eyebrow %}Graduação{% endblock %}
+{% block page_title %}Regras de graduação{% endblock %}
+{% block page_meta %}Critérios de tempo, aulas e avanço por faixa/grau.{% endblock %}
+{% block page_actions %}<a class="btn btn--primary" href="{% url 'system:graduation-rule-create' %}">Nova regra</a>{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de graduação">
+    <a class="module-tab" href="{% url 'system:graduation-overview' %}">Progresso</a>
+    <a class="module-tab" href="{% url 'system:belt-rank-list' %}">Faixas</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:graduation-rule-list' %}">Regras</a>
+    <a class="module-tab" href="{% url 'system:graduation-list' %}">Histórico</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="rule-list-title">
+    <div class="section__header">
+      <h2 class="section__title" id="rule-list-title">{{ graduation_rules|length }} regra{{ graduation_rules|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if graduation_rules %}
+      <ul class="data-list">
+        {% for rule in graduation_rules %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ rule.belt_rank.display_name }} · grau {{ rule.from_grade }}</h3>
+                <p class="item-meta">{% if rule.promotes_to_next_rank %}Promove para a próxima faixa{% else %}Avança para grau {{ rule.to_grade }}{% endif %}</p>
+              </div>
+              {% if rule.is_active %}<span class="badge badge--success">Ativa</span>{% else %}<span class="badge badge--neutral">Inativa</span>{% endif %}
+            </div>
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Meses</dt><dd>{{ rule.min_months_in_current_grade }}</dd></div>
+              <div class="meta-box"><dt>Aulas</dt><dd>{{ rule.min_classes_required }}</dd></div>
+              <div class="meta-box"><dt>Janela</dt><dd>{{ rule.min_classes_window_months }} meses</dd></div>
+            </dl>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:graduation-rule-update' pk=rule.pk %}">Editar</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhuma regra cadastrada.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

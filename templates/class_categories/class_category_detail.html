@@ -1,0 +1,44 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{{ class_category.display_name }}{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}{{ class_category.display_name }}{% endblock %}
+{% block page_meta %}Categoria {{ class_category.get_audience_display }} usada em turmas e pessoas vinculadas.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:class-category-list' %}">Voltar</a>
+  <a class="btn btn--primary" href="{% url 'system:class-category-update' pk=class_category.pk %}">Editar categoria</a>
+{% endblock %}
+
+{% block content %}
+  <div class="detail-grid">
+    <section class="detail-card">
+      <h2 class="detail-card__title">Dados</h2>
+      <dl class="meta-grid">
+        <div class="meta-box"><dt>Código</dt><dd>{{ class_category.code }}</dd></div>
+        <div class="meta-box"><dt>Público</dt><dd>{{ class_category.get_audience_display }}</dd></div>
+        <div class="meta-box"><dt>Status</dt><dd>{% if class_category.is_active %}Ativa{% else %}Inativa{% endif %}</dd></div>
+      </dl>
+      {% if class_category.description %}<p class="item-meta">{{ class_category.description }}</p>{% endif %}
+    </section>
+    <section class="detail-card">
+      <h2 class="detail-card__title">Turmas vinculadas</h2>
+      <div class="pill-list">
+        {% for class_group in linked_class_groups %}
+        <a class="badge badge--info" href="{% url 'system:class-group-detail' pk=class_group.pk %}">{{ class_group.catalog_title }}</a>
+        {% empty %}
+        <span class="badge badge--neutral">Sem turmas</span>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="detail-card detail-card--wide">
+      <h2 class="detail-card__title">Pessoas vinculadas</h2>
+      <div class="pill-list">
+        {% for person in linked_people %}
+        <a class="badge badge--neutral" href="{% url 'system:person-detail' pk=person.pk %}">{{ person.full_name }}</a>
+        {% empty %}
+        <span class="badge badge--neutral">Sem pessoas vinculadas</span>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

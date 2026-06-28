@@ -172,11 +172,21 @@ class HomeDashboardTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode("utf-8")
+        expected_links = (
+            ("Pessoas", reverse("system:person-list")),
+            ("Planos", reverse("system:plan-list")),
+            ("Turmas", reverse("system:class-group-list")),
+            ("Financeiro", reverse("system:financial-control")),
+            ("Graduação", reverse("system:graduation-overview")),
+            ("Materiais", reverse("system:product-list")),
+            ("Perfis e acessos", reverse("system:person-type-list")),
+        )
         self.assertIn("Acesso rápido", content)
-        self.assertIn("quick-link--disabled", content)
         self.assertIn('href="/admin/"', content)
-        self.assertIn(f'href="{reverse("system:plan-list")}"', content)
-        self.assertIn("Planos", content)
+        for label, href in expected_links:
+            self.assertIn(label, content)
+            self.assertIn(f'href="{href}"', content)
+        self.assertNotIn("quick-link--disabled", content)
         self.assertNotIn('href="#"', content)
 
     def _login_portal_account(self, account):

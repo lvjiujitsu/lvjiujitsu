@@ -1,0 +1,48 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Pré-pedidos{% endblock %}
+{% block eyebrow %}Materiais{% endblock %}
+{% block page_title %}Pré-pedidos de materiais{% endblock %}
+{% block page_meta %}Solicitações ativas feitas por alunos e responsáveis quando não há estoque disponível.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:product-list' %}">Materiais</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de materiais">
+    <a class="module-tab" href="{% url 'system:product-list' %}">Produtos</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:admin-backorder-queue' %}">Pré-pedidos</a>
+    <a class="module-tab" href="{% url 'system:product-store' %}">Loja</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="backorder-title">
+    <div class="section__header">
+      <h2 class="section__title" id="backorder-title">{{ backorders|length }} pré-pedido{{ backorders|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if backorders %}
+      <ul class="data-list">
+        {% for backorder in backorders %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <h3 class="item-title">{{ backorder.variant.product.display_name }}</h3>
+            <p class="item-meta">{{ backorder.person.full_name }} · {{ backorder.variant.color|default:"Sem cor" }} {{ backorder.variant.size|default:"" }}</p>
+            <div class="pill-list">
+              <span class="badge badge--warning">{{ backorder.get_status_display }}</span>
+              <span class="badge badge--neutral">{{ backorder.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=backorder.person.pk %}">Pessoa</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum pré-pedido ativo.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

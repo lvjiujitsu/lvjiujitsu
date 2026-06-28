@@ -1,0 +1,62 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Pagamentos pendentes{% endblock %}
+{% block eyebrow %}Financeiro{% endblock %}
+{% block page_title %}Pagamentos pendentes{% endblock %}
+{% block page_meta %}Pedidos com valor em aberto, falha, cancelamento ou status intermediário.{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação financeira">
+    <a class="module-tab" href="{% url 'system:financial-control' %}">Controle</a>
+    <a class="module-tab" href="{% url 'system:approval-queue' %}">Aprovações</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:pending-payments' %}">Pendentes</a>
+    <a class="module-tab" href="{% url 'system:payroll-list' %}">Folha</a>
+    <a class="module-tab" href="{% url 'system:payout-queue' %}">Repasses</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="pending-title">
+    <div class="section__header">
+      <h2 class="section__title" id="pending-title">{{ orders|length }} pendência{{ orders|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if orders %}
+      <ul class="data-list">
+        {% for order in orders %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">Pedido #{{ order.pk }} · {{ order.person.full_name }}</h3>
+                <p class="item-meta">{{ order.plan.display_name|default:"Pedido avulso" }} · {{ order.created_at|date:"d/m/Y H:i" }}</p>
+              </div>
+              <span class="badge badge--warning">{{ order.get_payment_status_display }}</span>
+            </div>
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Total</dt><dd>R$ {{ order.total|floatformat:2 }}</dd></div>
+              <div class="meta-box"><dt>Gateway</dt><dd>{{ order.get_payment_provider_display|default:"Não definido" }}</dd></div>
+              <div class="meta-box"><dt>Crédito</dt><dd>{{ order.get_deposit_status_display }}</dd></div>
+            </dl>
+          </div>
+          <div class="item-actions">
+            <form method="post" action="{% url 'system:mark-order-paid' order_id=order.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn btn--secondary btn--sm" type="submit">Marcar pago</button>
+            </form>
+            <form method="post" action="{% url 'system:refund-order' order_id=order.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn btn--danger btn--sm" type="submit">Estornar</button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum pagamento pendente.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Excluir faixa{% endblock %}
+{% block eyebrow %}Graduação{% endblock %}
+{% block page_title %}Excluir faixa{% endblock %}
+{% block page_meta %}Faixas com graduações vinculadas devem ser preservadas.{% endblock %}
+{% block page_actions %}<a class="btn btn--secondary" href="{% url 'system:belt-rank-detail' pk=belt_rank.pk %}">Cancelar</a>{% endblock %}
+
+{% block content %}
+  <form class="delete-panel" method="post">
+    {% csrf_token %}
+    <p class="muted">Confirme a exclusão de <strong>{{ belt_rank.display_name }}</strong>.</p>
+    <div class="form-actions">
+      <a class="btn btn--secondary" href="{% url 'system:belt-rank-detail' pk=belt_rank.pk %}">Manter faixa</a>
+      <button class="btn btn--danger" type="submit">Excluir faixa</button>
+    </div>
+  </form>
+{% endblock %}

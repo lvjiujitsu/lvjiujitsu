@@ -1,0 +1,65 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{{ class_group.catalog_title }}{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}{{ class_group.catalog_title }}{% endblock %}
+{% block page_meta %}{{ class_group.class_category.display_name }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize }} cadastrado{{ class_group.schedule_count|pluralize }}.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:class-group-list' %}">Voltar</a>
+  <a class="btn btn--primary" href="{% url 'system:class-group-update' pk=class_group.pk %}">Editar turma</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de turmas">
+    <a class="module-tab module-tab--active" href="{% url 'system:class-group-list' %}">Turmas</a>
+    <a class="module-tab" href="{% url 'system:class-category-list' %}">Categorias</a>
+    <a class="module-tab" href="{% url 'system:class-schedule-list' %}">Horários</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <div class="detail-grid">
+    <section class="detail-card">
+      <h2 class="detail-card__title">Equipe</h2>
+      <div class="pill-list">
+        {% for member in class_group.teaching_team %}
+        <span class="badge badge--info">{{ member.full_name }}{% if member.role_label %} · {{ member.role_label }}{% endif %}</span>
+        {% empty %}
+        <span class="badge badge--warning">Equipe não definida</span>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="detail-card">
+      <h2 class="detail-card__title">Horários</h2>
+      <div class="pill-list">
+        {% for day in class_group.schedule_day_summary %}
+        <span class="badge badge--neutral">{{ day.summary_label }}</span>
+        {% empty %}
+        <span class="badge badge--warning">Sem horário ativo</span>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="detail-card detail-card--wide">
+      <h2 class="detail-card__title">Variações físicas vinculadas</h2>
+      <div class="panel">
+        {% if class_group.physical_groups %}
+        <ul class="data-list">
+          {% for physical_group in class_group.physical_groups %}
+          <li class="data-item">
+            <div class="data-item__body">
+              <h3 class="item-title">{{ physical_group.display_name }}</h3>
+              <p class="item-meta">{{ physical_group.class_category.display_name }}{% if physical_group.main_teacher %} · {{ physical_group.main_teacher.full_name }}{% endif %}</p>
+            </div>
+            <div class="item-actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:class-group-update' pk=physical_group.pk %}">Editar</a>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state"><p class="empty-state__text">Nenhuma variação física cadastrada.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

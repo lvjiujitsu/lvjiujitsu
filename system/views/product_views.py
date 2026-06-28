@@ -13,6 +13,7 @@ from system.models.product import Product, ProductVariant
 from system.models.product_backorder import ProductBackorder
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.constants import MATERIAL_REQUEST_PERSON_TYPE_CODES
+from system.models import Person
 from system.selectors.product_backorders import (
     get_admin_backorder_queue,
     get_backorders_for_person,
@@ -157,6 +158,16 @@ class ProductStoreView(PortalRoleRequiredMixin, ListView):
 
     def _build_purchase_person_choices(self):
         actor = getattr(self.request, "portal_person", None)
+        if actor is None and getattr(self.request, "portal_is_technical_admin", False):
+            return list(
+                Person.objects.select_related("person_type")
+                .filter(
+                    is_active=True,
+                    person_type__is_active=True,
+                    person_type__code__in=MATERIAL_REQUEST_PERSON_TYPE_CODES,
+                )
+                .order_by("full_name")
+            )
         people = list(get_material_request_recipient_queryset(actor))
         return sorted(
             people,
@@ -318,10 +329,24 @@ def _build_product_groups(products):
 
 def _resolve_purchase_person_or_message(request):
     actor = getattr(request, "portal_person", None)
-    person = resolve_material_request_recipient(
-        actor,
-        request.POST.get("purchase_person_id"),
-    )
+    raw_person_id = request.POST.get("purchase_person_id")
+    if actor is None and getattr(request, "portal_is_technical_admin", False):
+        try:
+            person_id = int(raw_person_id or 0)
+        except (TypeError, ValueError):
+            person_id = 0
+        person = (
+            Person.objects.filter(
+                pk=person_id,
+                is_active=True,
+                person_type__is_active=True,
+                person_type__code__in=MATERIAL_REQUEST_PERSON_TYPE_CODES,
+            )
+            .select_related("person_type")
+            .first()
+        )
+    else:
+        person = resolve_material_request_recipient(actor, raw_person_id)
     if person is None:
         messages.error(request, "Selecione uma pessoa válida para a solicitação.")
     return person

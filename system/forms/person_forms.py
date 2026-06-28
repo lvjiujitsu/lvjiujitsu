@@ -548,7 +548,7 @@ def _get_initial_class_group_values(person):
             "class_group__class_category__display_order",
             "class_group__class_category__display_name",
             "class_group__display_name",
-            "class_group__code",
+            "class_group__main_teacher__full_name",
         )
     )
     for enrollment in active_groups:

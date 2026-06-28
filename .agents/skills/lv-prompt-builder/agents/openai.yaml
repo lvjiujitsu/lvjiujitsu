@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV Prompt Builder"
+  short_description: "Gera o execution prompt ideal de uma demanda"
+  default_prompt: "Use $lv-prompt-builder para gerar o melhor prompt de execução desta demanda."

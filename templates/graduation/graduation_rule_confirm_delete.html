@@ -1,0 +1,18 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Excluir regra{% endblock %}
+{% block eyebrow %}Graduação{% endblock %}
+{% block page_title %}Excluir regra{% endblock %}
+{% block page_meta %}A exclusão altera a elegibilidade calculada dos alunos.{% endblock %}
+{% block page_actions %}<a class="btn btn--secondary" href="{% url 'system:graduation-rule-list' %}">Cancelar</a>{% endblock %}
+
+{% block content %}
+  <form class="delete-panel" method="post">
+    {% csrf_token %}
+    <p class="muted">Confirme a exclusão de <strong>{{ graduation_rule }}</strong>.</p>
+    <div class="form-actions">
+      <a class="btn btn--secondary" href="{% url 'system:graduation-rule-list' %}">Manter regra</a>
+      <button class="btn btn--danger" type="submit">Excluir regra</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{{ product.display_name }}{% endblock %}
+{% block eyebrow %}Materiais{% endblock %}
+{% block page_title %}{{ product.display_name }}{% endblock %}
+{% block page_meta %}{{ product.category.display_name }} · SKU {{ product.sku }} · R$ {{ product.unit_price|floatformat:2 }}.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:product-list' %}">Voltar</a>
+  <a class="btn btn--primary" href="{% url 'system:product-update' pk=product.pk %}">Editar material</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de materiais">
+    <a class="module-tab module-tab--active" href="{% url 'system:product-list' %}">Produtos</a>
+    <a class="module-tab" href="{% url 'system:admin-backorder-queue' %}">Pré-pedidos</a>
+    <a class="module-tab" href="{% url 'system:product-store' %}">Loja</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <div class="detail-grid">
+    <section class="detail-card">
+      <h2 class="detail-card__title">Resumo</h2>
+      <dl class="meta-grid">
+        <div class="meta-box"><dt>Preço</dt><dd>R$ {{ product.unit_price|floatformat:2 }}</dd></div>
+        <div class="meta-box"><dt>Estoque</dt><dd>{{ product.total_stock }}</dd></div>
+        <div class="meta-box"><dt>Status</dt><dd>{% if product.is_active %}Ativo{% else %}Inativo{% endif %}</dd></div>
+      </dl>
+      {% if product.description %}<p class="item-meta">{{ product.description }}</p>{% endif %}
+    </section>
+    <section class="detail-card">
+      <h2 class="detail-card__title">Variantes</h2>
+      <div class="pill-list">
+        {% for variant in product.variants.all %}
+        <span class="badge {% if variant.stock_quantity > 0 %}badge--success{% else %}badge--warning{% endif %}">
+          {{ variant.color|default:"Sem cor" }} {{ variant.size|default:"" }} · {{ variant.stock_quantity }}
+        </span>
+        {% empty %}
+        <span class="badge badge--warning">Sem variantes</span>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

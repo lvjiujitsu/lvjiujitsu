@@ -1,0 +1,18 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Excluir graduação{% endblock %}
+{% block eyebrow %}Graduação{% endblock %}
+{% block page_title %}Excluir graduação{% endblock %}
+{% block page_meta %}A remoção altera histórico e cálculo de progresso do aluno.{% endblock %}
+{% block page_actions %}<a class="btn btn--secondary" href="{% url 'system:graduation-list' %}">Cancelar</a>{% endblock %}
+
+{% block content %}
+  <form class="delete-panel" method="post">
+    {% csrf_token %}
+    <p class="muted">Confirme a exclusão de <strong>{{ graduation }}</strong>.</p>
+    <div class="form-actions">
+      <a class="btn btn--secondary" href="{% url 'system:graduation-list' %}">Manter graduação</a>
+      <button class="btn btn--danger" type="submit">Excluir graduação</button>
+    </div>
+  </form>
+{% endblock %}

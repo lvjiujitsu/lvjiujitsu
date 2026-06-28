@@ -1,0 +1,79 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Turmas{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}Turmas{% endblock %}
+{% block page_meta %}Categorias, equipes, horários e agrupamentos de aula ativos ou em preparação.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--primary" href="{% url 'system:class-group-create' %}">Nova turma</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de turmas">
+    <a class="module-tab module-tab--active" href="{% url 'system:class-group-list' %}">Turmas</a>
+    <a class="module-tab" href="{% url 'system:class-category-list' %}">Categorias</a>
+    <a class="module-tab" href="{% url 'system:class-schedule-list' %}">Horários</a>
+    <a class="module-tab" href="{% url 'system:calendar' %}">Cronograma</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <div class="kpi-row" aria-label="Totais de turmas">
+    <div class="kpi-card"><span class="kpi-card__value">{{ class_groups|length }}</span><span class="kpi-card__label">Turmas no catálogo</span></div>
+    <div class="kpi-card"><span class="kpi-card__value">Aulas</span><span class="kpi-card__label">Com horários vinculados</span></div>
+    <div class="kpi-card"><span class="kpi-card__value">Equipe</span><span class="kpi-card__label">Professor principal e auxiliares</span></div>
+    <div class="kpi-card"><span class="kpi-card__value">LV</span><span class="kpi-card__label">Domínio da academia</span></div>
+  </div>
+
+  <section class="section" aria-labelledby="class-groups-title">
+    <div class="section__header">
+      <h2 class="section__title" id="class-groups-title">{{ class_groups|length }} turma{{ class_groups|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if class_groups %}
+      <ul class="data-list" aria-label="Lista de turmas">
+        {% for class_group in class_groups %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ class_group.catalog_title }}</h3>
+                <p class="item-meta">{{ class_group.class_category.display_name }} · {{ class_group.schedule_count }} horário{{ class_group.schedule_count|pluralize }}</p>
+              </div>
+              {% if class_group.is_active %}
+              <span class="badge badge--success">Ativa</span>
+              {% else %}
+              <span class="badge badge--neutral">Inativa</span>
+              {% endif %}
+            </div>
+            <div class="pill-list">
+              {% for member in class_group.teaching_team %}
+              <span class="badge badge--info">{{ member.full_name }}</span>
+              {% empty %}
+              <span class="badge badge--warning">Equipe não definida</span>
+              {% endfor %}
+            </div>
+            <div class="pill-list">
+              {% for day in class_group.schedule_day_summary %}
+              <span class="badge badge--neutral">{{ day.summary_label }}</span>
+              {% empty %}
+              <span class="badge badge--warning">Sem horário ativo</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:class-group-detail' pk=class_group.pk %}">Detalhe</a>
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:class-group-update' pk=class_group.pk %}">Editar</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state" role="status">
+        <p class="empty-state__text">Nenhuma turma cadastrada ainda.</p>
+        <a class="btn btn--primary" href="{% url 'system:class-group-create' %}">Cadastrar turma</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

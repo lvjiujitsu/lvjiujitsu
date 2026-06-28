@@ -1,0 +1,67 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Repasses{% endblock %}
+{% block eyebrow %}Financeiro{% endblock %}
+{% block page_title %}Repasses{% endblock %}
+{% block page_meta %}Fila de pagamentos a professores com aprovação, recusa e envio ao Asaas.{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação financeira">
+    <a class="module-tab" href="{% url 'system:financial-control' %}">Controle</a>
+    <a class="module-tab" href="{% url 'system:approval-queue' %}">Aprovações</a>
+    <a class="module-tab" href="{% url 'system:pending-payments' %}">Pendentes</a>
+    <a class="module-tab" href="{% url 'system:payroll-list' %}">Folha</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:payout-queue' %}">Repasses</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="payout-title">
+    <div class="section__header">
+      <h2 class="section__title" id="payout-title">{{ payouts|length }} repasse{{ payouts|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if payouts %}
+      <ul class="data-list">
+        {% for payout in payouts %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ payout.person.full_name }}</h3>
+                <p class="item-meta">{{ payout.get_kind_display }} · {{ payout.reference_month|date:"m/Y" }}</p>
+              </div>
+              <span class="badge badge--neutral">{{ payout.get_status_display }}</span>
+            </div>
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Valor</dt><dd>R$ {{ payout.amount|floatformat:2 }}</dd></div>
+              <div class="meta-box"><dt>Agendado</dt><dd>{{ payout.scheduled_for|date:"d/m/Y"|default:"Sem data" }}</dd></div>
+              <div class="meta-box"><dt>Transferência</dt><dd>{{ payout.asaas_transfer_id|default:"Pendente" }}</dd></div>
+            </dl>
+          </div>
+          <div class="item-actions">
+            <form method="post" action="{% url 'system:payout-approve' payout_id=payout.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn btn--secondary btn--sm" type="submit">Aprovar</button>
+            </form>
+            <form method="post" action="{% url 'system:payout-refuse' payout_id=payout.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn btn--danger btn--sm" type="submit">Recusar</button>
+            </form>
+            <form method="post" action="{% url 'system:payout-dispatch' payout_id=payout.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="btn btn--primary btn--sm" type="submit">Enviar</button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum repasse na fila.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

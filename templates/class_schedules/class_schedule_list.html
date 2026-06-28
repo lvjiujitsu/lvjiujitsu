@@ -1,0 +1,54 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Horários{% endblock %}
+{% block eyebrow %}Turmas{% endblock %}
+{% block page_title %}Horários{% endblock %}
+{% block page_meta %}Grade semanal consolidada por dia, turma, professor e estilo de treino.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--primary" href="{% url 'system:class-schedule-create' %}">Novo horário</a>
+{% endblock %}
+
+{% block module_tabs %}
+  <nav class="module-tabs" aria-label="Navegação de turmas">
+    <a class="module-tab" href="{% url 'system:class-group-list' %}">Turmas</a>
+    <a class="module-tab" href="{% url 'system:class-category-list' %}">Categorias</a>
+    <a class="module-tab module-tab--active" href="{% url 'system:class-schedule-list' %}">Horários</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="schedule-list-title">
+    <div class="section__header">
+      <h2 class="section__title" id="schedule-list-title">{{ class_schedules|length }} dia{{ class_schedules|length|pluralize }} com aula</h2>
+    </div>
+    <div class="panel">
+      {% if class_schedules %}
+      <ul class="data-list">
+        {% for day in class_schedules %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ day.title }}</h3>
+                <p class="item-meta">{{ day.schedule_count }} horário{{ day.schedule_count|pluralize }} · {{ day.class_group_count }} turma{{ day.class_group_count|pluralize }}</p>
+              </div>
+              {% if day.is_active %}<span class="badge badge--success">Ativo</span>{% else %}<span class="badge badge--neutral">Inativo</span>{% endif %}
+            </div>
+            <div class="pill-list">
+              {% for occurrence in day.occurrences %}
+              <span class="badge badge--neutral">{{ occurrence.time_label }} · {{ occurrence.class_group_title }} · {{ occurrence.training_style_display }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:class-schedule-detail' pk=day.pk %}">Detalhe</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum horário cadastrado.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

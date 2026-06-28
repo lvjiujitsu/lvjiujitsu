@@ -25,7 +25,11 @@ from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services import asaas_client
 from system.services.coupon import CouponError, apply_coupon, mark_coupon_used, validate_coupon
 from system.services.class_catalog import get_ibjjf_age_category_payload
-from system.services.class_overview import get_registration_catalog_payload
+from system.services.class_overview import (
+    build_class_group_filter_value,
+    get_registration_catalog_payload,
+    resolve_class_group_selection,
+)
 from system.services.registration_checkout import (
     get_plan_catalog_payload,
     get_product_catalog_payload,
@@ -384,13 +388,14 @@ class PortalRegisterView(FormView):
         except Person.DoesNotExist:
             return None
 
-        class_group_name = str(person.class_group) if person.class_group else ""
+        class_group_summary = self._build_person_class_group_summary(person)
         base = {
             "id": person.pk,
             "full_name": person.full_name,
             "email": person.email or "",
             "phone": person.phone or "",
-            "class_group_name": class_group_name,
+            "class_group_name": class_group_summary["class_group_name"],
+            "class_group_ids": class_group_summary["class_group_ids"],
             "person_type_code": person.person_type.code if person.person_type else "",
         }
 
@@ -405,7 +410,7 @@ class PortalRegisterView(FormView):
             base["students"] = [
                 {
                     "full_name": rel.target_person.full_name,
-                    "class_group_name": str(rel.target_person.class_group) if rel.target_person.class_group else "",
+                    **self._build_person_class_group_summary(rel.target_person),
                 }
                 for rel in students
             ]
@@ -421,17 +426,78 @@ class PortalRegisterView(FormView):
             "full_name": data.get(f"{base_prefix}_name", ""),
             "email": data.get(f"{base_prefix}_email", ""),
             "phone": data.get(f"{base_prefix}_phone", ""),
-            "class_group_name": "",
+            **self._build_snapshot_class_group_summary(
+                data.get(f"{base_prefix}_class_groups") or []
+            ),
             "person_type_code": "guardian" if is_guardian else "student",
         }
         students = []
         if is_guardian and data.get("student_name"):
-            students.append({"full_name": data.get("student_name", ""), "class_group_name": ""})
+            students.append(self._build_snapshot_student_summary(data, "student"))
         if (not is_guardian) and data.get("dependent_name"):
-            students.append({"full_name": data.get("dependent_name", ""), "class_group_name": ""})
+            students.append(self._build_snapshot_student_summary(data, "dependent"))
+        for dependent in self._get_extra_dependents_from_snapshot(data):
+            if dependent.get("full_name"):
+                students.append(self._build_extra_dependent_summary(dependent))
         if students:
             base["students"] = students
         return base
+
+    def _build_snapshot_student_summary(self, snapshot, prefix):
+        return {
+            "full_name": self._snapshot_scalar(snapshot, f"{prefix}_name", ""),
+            **self._build_snapshot_class_group_summary(
+                snapshot.get(f"{prefix}_class_groups") or []
+            ),
+        }
+
+    def _build_extra_dependent_summary(self, dependent):
+        return {
+            "full_name": dependent.get("full_name", ""),
+            **self._build_snapshot_class_group_summary(
+                dependent.get("class_groups") or []
+            ),
+        }
+
+    def _get_extra_dependents_from_snapshot(self, snapshot):
+        raw_payload = snapshot.get("extra_dependents_payload") or []
+        if isinstance(raw_payload, list):
+            return raw_payload
+        try:
+            parsed = json.loads(raw_payload)
+        except (TypeError, json.JSONDecodeError):
+            return []
+        return parsed if isinstance(parsed, list) else []
+
+    def _build_person_class_group_summary(self, person):
+        if not person.class_group_id:
+            return {"class_group_name": "", "class_group_ids": []}
+        return self._build_class_group_summary_from_groups([person.class_group])
+
+    def _build_snapshot_class_group_summary(self, raw_values):
+        if isinstance(raw_values, str):
+            raw_values = [raw_values]
+        return self._build_class_group_summary_from_groups(
+            resolve_class_group_selection(raw_values, allow_inactive=True)
+        )
+
+    def _build_class_group_summary_from_groups(self, groups):
+        class_group_ids = []
+        class_group_names = []
+        for class_group in groups:
+            class_group_value = build_class_group_filter_value(
+                class_group.class_category_id,
+                class_group.display_name,
+            )
+            if class_group_value not in class_group_ids:
+                class_group_ids.append(class_group_value)
+            class_group_name = str(class_group)
+            if class_group_name not in class_group_names:
+                class_group_names.append(class_group_name)
+        return {
+            "class_group_name": ", ".join(class_group_names),
+            "class_group_ids": class_group_ids,
+        }
 
     def _get_order_summary(self, order_id):
         if not order_id:

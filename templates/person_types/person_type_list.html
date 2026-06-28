@@ -1,0 +1,49 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}Perfis e acessos{% endblock %}
+{% block eyebrow %}Administração{% endblock %}
+{% block page_title %}Perfis e acessos{% endblock %}
+{% block page_meta %}Tipos de pessoa que orientam permissões, matrícula, atendimento, equipe e acesso administrativo.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:admin-hub' %}">Administração</a>
+  <a class="btn btn--primary" href="{% url 'system:person-type-create' %}">Novo perfil</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section" aria-labelledby="person-type-list-title">
+    <div class="section__header">
+      <h2 class="section__title" id="person-type-list-title">{{ person_types|length }} perfil{{ person_types|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if person_types %}
+      <ul class="data-list">
+        {% for person_type in person_types %}
+        <li class="data-item">
+          <div class="data-item__body">
+            <div class="item-header">
+              <div>
+                <h3 class="item-title">{{ person_type.display_name }}</h3>
+                <p class="item-meta">{{ person_type.code }}</p>
+              </div>
+              {% if person_type.is_active %}<span class="badge badge--success">Ativo</span>{% else %}<span class="badge badge--neutral">Inativo</span>{% endif %}
+            </div>
+            {% if person_type.description %}<p class="item-meta">{{ person_type.description }}</p>{% endif %}
+            <dl class="meta-grid">
+              <div class="meta-box"><dt>Pessoas</dt><dd>{{ person_type.people_count }}</dd></div>
+              <div class="meta-box"><dt>Código</dt><dd>{{ person_type.code }}</dd></div>
+              <div class="meta-box"><dt>Status</dt><dd>{% if person_type.is_active %}Ativo{% else %}Inativo{% endif %}</dd></div>
+            </dl>
+          </div>
+          <div class="item-actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:person-type-detail' pk=person_type.pk %}">Detalhe</a>
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:person-type-update' pk=person_type.pk %}">Editar</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state"><p class="empty-state__text">Nenhum perfil cadastrado.</p></div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

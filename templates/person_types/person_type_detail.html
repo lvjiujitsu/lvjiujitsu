@@ -1,0 +1,46 @@
+{% extends "admin_modules/base.html" %}
+
+{% block title %}{{ person_type.display_name }}{% endblock %}
+{% block eyebrow %}Administração{% endblock %}
+{% block page_title %}{{ person_type.display_name }}{% endblock %}
+{% block page_meta %}Perfil técnico {{ person_type.code }} usado nas regras de acesso do portal.{% endblock %}
+{% block page_actions %}
+  <a class="btn btn--secondary" href="{% url 'system:person-type-list' %}">Voltar</a>
+  <a class="btn btn--primary" href="{% url 'system:person-type-update' pk=person_type.pk %}">Editar perfil</a>
+{% endblock %}
+
+{% block content %}
+  <div class="detail-grid">
+    <section class="detail-card">
+      <h2 class="detail-card__title">Dados do perfil</h2>
+      <dl class="meta-grid">
+        <div class="meta-box"><dt>Código</dt><dd>{{ person_type.code }}</dd></div>
+        <div class="meta-box"><dt>Status</dt><dd>{% if person_type.is_active %}Ativo{% else %}Inativo{% endif %}</dd></div>
+        <div class="meta-box"><dt>Pessoas</dt><dd>{{ person_type.people.all|length }}</dd></div>
+      </dl>
+      {% if person_type.description %}<p class="item-meta">{{ person_type.description }}</p>{% endif %}
+    </section>
+    <section class="detail-card detail-card--wide">
+      <h2 class="detail-card__title">Pessoas vinculadas</h2>
+      <div class="panel">
+        {% if person_type.people.all %}
+        <ul class="data-list">
+          {% for person in person_type.people.all %}
+          <li class="data-item">
+            <div class="data-item__body">
+              <h3 class="item-title">{{ person.full_name }}</h3>
+              <p class="item-meta">{{ person.cpf|default:"CPF não informado" }}{% if person.email %} · {{ person.email }}{% endif %}</p>
+            </div>
+            <div class="item-actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=person.pk %}">Abrir</a>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state"><p class="empty-state__text">Nenhuma pessoa vinculada a este perfil.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

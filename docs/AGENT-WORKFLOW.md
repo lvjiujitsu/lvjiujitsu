@@ -21,7 +21,25 @@ Prompt
 
 Perguntas e diagnósticos sem escrita encerram após análise e evidência.
 
-## 2. Preflight
+## 2. Classificação
+
+Usar uma categoria principal:
+
+- pergunta exploratória;
+- diagnóstico;
+- correção pontual;
+- refatoração;
+- nova feature;
+- alteração arquitetural;
+- integração externa;
+- revisão de segurança;
+- revisão de performance;
+- revisão de governança;
+- regeneração documental.
+
+A classificação define arquivos adjacentes, PRD, validação e risco.
+
+## 3. Preflight
 
 Verificar conforme a demanda:
 
@@ -34,7 +52,7 @@ Verificar conforme a demanda:
 
 Mudanças existentes pertencem ao usuário e não podem ser revertidas.
 
-## 3. Leitura
+## 4. Leitura
 
 Antes de diagnosticar ou editar:
 
@@ -43,9 +61,11 @@ Antes de diagnosticar ou editar:
 3. ler contratos adjacentes;
 4. registrar o ledger na PRD.
 
-Em Django, considerar models, forms, services, selectors, views, URLs, templates, CSS/JS, testes, settings, middleware, signals e commands.
+Busca textual localiza arquivos e pontos de entrada; não substitui leitura integral dos arquivos diretos.
 
-## 4. Pesquisa
+Em Django, considerar models, forms, services, selectors, views, URLs, templates, CSS/JS, testes, settings, middleware, signals, tasks e management commands.
+
+## 5. Pesquisa
 
 Ordem:
 
@@ -55,7 +75,7 @@ Ordem:
 
 Toda PRD registra consulta, links, conclusão e limitações. Pesquisa irrelevante não preenche checklist.
 
-## 5. Confirmação mínima
+## 6. Confirmação mínima
 
 Antes de uma mudança ainda não autorizada:
 
@@ -66,7 +86,7 @@ Validação: <browser, checks e ORM; testes somente se autorizados>.
 Posso implementar?
 ```
 
-## 6. Autorizações
+## 7. Autorizações
 
 | Ação | Regra |
 |---|---|
@@ -81,17 +101,17 @@ Posso implementar?
 | Pagamento externo real | autorização e ambiente operacional |
 | Push ou deploy | autorização explícita |
 
-## 7. SDD e TDD
+## 8. SDD e TDD
 
 - Criar PRD antes de mudança relevante.
 - Escrever o teste do comportamento antes do código.
 - Implementar o mínimo e refatorar.
 - Sem execução autorizada, não declarar Red ou Green.
-- Registrar “teste escrito, não executado por política”.
+- Registrar "teste escrito, não executado por política".
 
 Testes Django usam banco de teste isolado. Reset + seeds é ciclo operacional separado.
 
-## 8. Django
+## 9. Django
 
 Ordem padrão:
 
@@ -108,7 +128,7 @@ Ordem padrão:
 
 Views permanecem finas. Múltiplas escritas usam transação. Queries relacionadas devem ser revisadas contra N+1.
 
-## 9. UI
+## 10. UI
 
 Antes do código:
 
@@ -129,7 +149,7 @@ Após implementar:
 
 Para sessão autenticada, usar a superfície que mantenha a sessão. Headless não substitui browser interno quando ele está disponível.
 
-## 10. Pagamentos
+## 11. Pagamentos
 
 - Ler o fluxo completo e os documentos de Asaas/Stripe.
 - Verificar settings e ambiente sem expor segredos.
@@ -138,14 +158,14 @@ Para sessão autenticada, usar a superfície que mantenha a sessão. Headless n�
 - Stripe local pode exigir Stripe CLI e secret temporário.
 - Não simular pagamento real por inferência nem declarar confirmação sem evidência do gateway e do ORM.
 
-## 11. ORM
+## 12. ORM
 
 - Preferir read-only.
 - Registrar comando e resultado.
 - Não criar fixture improvisada sem aprovação.
 - Recuperação mutável deve ser explícita, idempotente e autorizada.
 
-## 12. Limpeza e fechamento
+## 13. Limpeza e fechamento
 
 Revisar diff, fluxo e contratos adjacentes. Corrigir resíduos do escopo. Dívida material fora do escopo gera nova PRD e parada.
 
