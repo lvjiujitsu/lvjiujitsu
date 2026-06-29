@@ -416,7 +416,10 @@ class PersonForm(forms.ModelForm):
         return [self[name] for name in field_names]
 
     def clean_cpf(self):
-        return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
+        try:
+            return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
+        except ValueError as error:
+            raise forms.ValidationError(str(error)) from error
 
     def clean(self):
         cleaned_data = super().clean()

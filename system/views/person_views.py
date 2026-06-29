@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Count, Prefetch
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseRedirect
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
@@ -51,6 +51,46 @@ def _can_manage_people(request):
     )
 
 
+class ModalCrudMixin:
+    """Renderiza a variante modal (iframe) quando a rota recebe ?modal=1."""
+
+    modal_template_name = None
+    modal_name = ""
+
+    def is_modal(self):
+        return self.request.GET.get("modal") == "1"
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if self.is_modal():
+            response["X-Frame-Options"] = "SAMEORIGIN"
+        return response
+
+    def get_template_names(self):
+        if self.is_modal() and self.modal_template_name:
+            return [self.modal_template_name]
+        return super().get_template_names()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.is_modal():
+            context["is_modal"] = True
+            context["crud_modal_name"] = self.modal_name
+        return context
+
+
+class ModalFormMixin(ModalCrudMixin):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if self.is_modal():
+            return render(
+                self.request,
+                "layouts/modal_done.html",
+                {"crud_modal_name": self.modal_name},
+            )
+        return response
+
+
 class PersonListView(PeopleSupportRequiredMixin, ListView):
     model = Person
     template_name = "people/person_list.html"
@@ -86,16 +126,17 @@ class PersonListView(PeopleSupportRequiredMixin, ListView):
         )
         people = list(context["people"])
         context["people"] = people
-        context["people_kpis"] = _build_people_kpis(people)
         for person in people:
             _hydrate_person_relationships(person, active_ibjjf_categories)
         return context
 
 
-class PersonCreateView(PeopleSupportRequiredMixin, CreateView):
+class PersonCreateView(ModalFormMixin, PeopleSupportRequiredMixin, CreateView):
     model = Person
     form_class = PersonForm
     template_name = "people/person_form.html"
+    modal_template_name = "people/person_form_modal.html"
+    modal_name = "person-create"
     success_url = reverse_lazy("system:person-list")
 
     def get_form_kwargs(self):
@@ -111,10 +152,12 @@ class PersonCreateView(PeopleSupportRequiredMixin, CreateView):
         return context
 
 
-class PersonUpdateView(AdministrativeRequiredMixin, UpdateView):
+class PersonUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = Person
     form_class = PersonForm
     template_name = "people/person_form.html"
+    modal_template_name = "people/person_form_modal.html"
+    modal_name = "person-edit"
     success_url = reverse_lazy("system:person-list")
 
     def get_queryset(self):
@@ -165,9 +208,11 @@ class PersonDeleteView(AdministrativeRequiredMixin, DeleteView):
         return HttpResponseRedirect(success_url)
 
 
-class PersonDetailView(PeopleSupportRequiredMixin, DetailView):
+class PersonDetailView(ModalCrudMixin, PeopleSupportRequiredMixin, DetailView):
     model = Person
     template_name = "people/person_detail.html"
+    modal_template_name = "people/person_detail_modal.html"
+    modal_name = "person-view"
     context_object_name = "person"
 
     def get_queryset(self):
@@ -332,43 +377,6 @@ def _hydrate_person_relationships(person, active_ibjjf_categories):
     person.show_teacher_context = bool(
         person_type_code in INSTRUCTOR_PERSON_TYPE_CODES
         or person.teaching_group_labels
-    )
-
-
-def _build_people_kpis(people):
-    return [
-        {
-            "label": "Alunos",
-            "value": _count_people_by_type(people, CLASS_ENROLLMENT_PERSON_TYPE_CODES),
-        },
-        {
-            "label": "Professores",
-            "value": _count_people_by_type(people, INSTRUCTOR_PERSON_TYPE_CODES),
-        },
-        {
-            "label": "Administrativos",
-            "value": _count_people_by_type(people, ADMINISTRATIVE_PERSON_TYPE_CODES),
-        },
-        {
-            "label": "Ativos",
-            "value": sum(1 for person in people if person.is_active),
-        },
-        {
-            "label": "Inativos",
-            "value": sum(1 for person in people if not person.is_active),
-        },
-        {
-            "label": "Pendentes",
-            "value": sum(1 for person in people if not person.has_portal_access),
-        },
-    ]
-
-
-def _count_people_by_type(people, person_type_codes):
-    return sum(
-        1
-        for person in people
-        if person.person_type_id and person.person_type.code in person_type_codes
     )
 
 

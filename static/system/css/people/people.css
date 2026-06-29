@@ -384,44 +384,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 /* ───────────────────────────────────────────────────────────────────────────── */
 /*  KPIs                                                                         */
 /* ───────────────────────────────────────────────────────────────────────────── */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.625rem;
-  margin-bottom: 1.5rem;
-}
-
-@media (min-width: 600px) { .kpi-row { grid-template-columns: repeat(6, 1fr); } }
-
-.kpi-card {
-  background: var(--panel);
-  border: 1.5px solid var(--border);
-  border-radius: 0.75rem;
-  box-shadow: var(--card-shadow);
-  padding: 0.875rem 1rem;
-  text-align: center;
-}
-
-.kpi-card__value {
-  display: block;
-  font-size: 1.375rem;
-  font-weight: 800;
-  color: var(--text);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.kpi-card__label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0.25rem;
-}
-
 /* ───────────────────────────────────────────────────────────────────────────── */
 /*  Filtros                                                                       */
 /* ───────────────────────────────────────────────────────────────────────────── */
@@ -456,7 +418,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   flex: 1;
 }
 
-@media (min-width: 640px) { .filter-field { min-width: 150px; max-width: 200px; } }
+@media (min-width: 640px) { .filter-field { min-width: 150px; } }
 
 .filter-field--wide { flex: 2; }
 
@@ -470,7 +432,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 
 .filter-input,
 .filter-select {
-  height: 36px;
+  height: 44px;
   padding: 0 0.75rem;
   font-size: 0.8125rem;
   font-family: inherit;
@@ -540,12 +502,11 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 
 .person-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   padding: 0.875rem 1.25rem;
   border-bottom: 1px solid var(--border-soft);
   transition: background 0.12s;
-  min-height: 64px;
 }
 
 .person-card:first-child { border-radius: 0.875rem 0.875rem 0 0; }
@@ -558,17 +519,16 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--surface-soft);
+  background: var(--brand-red-muted);
   border: 1.5px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--brand-red-strong);
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  flex-shrink: 0;
 }
 
 .person-card__body {
@@ -580,34 +540,50 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   font-size: 0.9375rem;
   font-weight: 700;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .person-card__badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3125rem;
-  margin-top: 0.25rem;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
 }
 
 .person-card__meta {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--muted);
-  margin-top: 0.25rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
+  margin-top: 0.35rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .person-card__actions {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+}
+
+/* Empilhamento das ações em telas pequenas (paridade Visary) */
+@media (max-width: 768px) {
+  .person-card { flex-wrap: wrap; }
+  .person-card__actions.icon-actions {
+    display: grid;
+    flex: 0 0 calc(100% - 56px);
+    grid-template-columns: repeat(auto-fill, 44px);
+    width: auto;
+    margin-left: calc(40px + 1rem);
+    align-self: stretch;
+    justify-content: start;
+    justify-items: start;
+    white-space: normal;
+  }
+  .person-card__actions .icon-action,
+  .person-card__actions .icon-action-form {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── */

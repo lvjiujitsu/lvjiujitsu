@@ -495,6 +495,45 @@ Quando o PRD descrever uma tela nova ou redesign relevante, o agente deve:
 
 ---
 
+### 15.6 CRUD operacional em modal/dialog
+
+Padrão portado do projeto irmão Visary (PRD-066). Aplica-se a todos os hubs e listagens operacionais do LV.
+
+**Regra geral**
+- Ações curtas de criar, editar, visualizar e excluir em hub/listagem acontecem por modal/dialog na própria tela, sem trocar de superfície.
+- Navegação para outra tela só ocorre em mudança real de superfície (listagem completa, configuração, detalhe rico ou wizard justificado por PRD).
+- O card de listagem expõe **ações icônicas** (`.icon-action`) — no mínimo visualizar (`--view`), editar (`--edit`) e excluir (`--delete`) — respeitando permissões no backend.
+
+**Implementação**
+- Modal é um `<dialog class="crud-modal">` com `.crud-modal__header` (eyebrow + título + botão `.crud-modal__close` 44×44) e corpo iframe (`.crud-modal__frame`) ou `.crud-modal__body` para formulário curto.
+- Conteúdo server-rendered: criar/editar/visualizar carregam rota com `?modal=1`; o controlador `crud_modal.js` abre o iframe e o `crud_frame.js` sincroniza tema e sinaliza conclusão por `postMessage`.
+- GET de rota antiga de popup redireciona para a superfície principal com modal aberto por estado previsível (query).
+- POST inválido re-renderiza a superfície principal com o modal aberto e erros por campo.
+- Excluir usa diálogo de confirmação (`data-confirm-submit`) e trata `ProtectedError` com mensagem por vínculo.
+
+**Estados**
+- CRUD modal: `closed` → `open` → `submitting` → `success` ou `error`.
+- Diálogo destrutivo: `closed` → `confirmable` → `submitting` → `success` ou `error`.
+
+**Fundação compartilhada obrigatória**
+- `static/system/js/shared/theme_boot.js`, `pt_br_date_inputs.js`, `crud_modal.js`, `crud_frame.js`.
+- `static/system/css/shared/crud_modal.css`.
+- Tokens herdados de `people.css` / `dashboard.css`; sem CSS/JS inline de comportamento.
+
+**Validação**
+- Desktop e mobile sem overflow horizontal; tema claro e escuro corretos; console sem erro crítico; modal abre/fecha por botão, backdrop e Esc.
+
+### 15.7 Anti-KPI não solicitado
+
+Regra portada do Visary (PRD-068).
+
+- KPI, card de métrica, contador agregado, gráfico ou resumo executivo **não** pode ser criado, reinserido ou preservado por inferência visual em hub/listagem operacional.
+- "Entrar na tela", "corrigir o funcionamento", "validar UI/UX", "padronizar hub" ou "homologar" **não** autorizam KPIs.
+- Um KPI só existe com pedido nominal ou PRD própria declarando fonte de dados, cálculo, permissões, estados e validação.
+- Distinguir KPI agregado (proibido por inferência) de **contador contextual legítimo** (ex.: "{n} pessoas" no cabeçalho da lista, badge de quantidade) — esses permanecem.
+
+---
+
 ## 14. Changelog
 
 ```
@@ -508,4 +547,10 @@ Quando o PRD descrever uma tela nova ou redesign relevante, o agente deve:
              15.3 Affordance e Feedback Visual (estados interativos, pills, erros, sucesso).
              15.4 Máquinas de Estado em Componentes (tabela por tipo, regras, template de PRD).
              15.5 Wireframes e UX Pilot (processo mínimo, template de wireframe para PRDs).
+[2026-06-28] Adicionada Seção 15.6 — CRUD operacional em modal/dialog (PRD-066):
+             padrão de ações icônicas + modal server-rendered portado do Visary,
+             fundação compartilhada (theme_boot, pt_br_date_inputs, crud_modal, crud_frame, crud_modal.css).
+[2026-06-29] Adicionada Seção 15.7 — Anti-KPI não solicitado (PRD-067):
+             paridade de CSS de Pessoas (linhas, filtros 44px, responsividade mobile) e
+             remoção da faixa de KPIs não solicitada do hub operacional.
 ```

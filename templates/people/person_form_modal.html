@@ -1,0 +1,7 @@
+{% extends "layouts/modal_page.html" %}
+
+{% block modal_title %}{% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %}{% endblock %}
+
+{% block modal_content %}
+  {% include "people/_person_form_body.html" with is_modal=True %}
+{% endblock %}
