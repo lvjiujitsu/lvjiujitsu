@@ -56,6 +56,13 @@ class PersonListFilterForm(forms.Form):
     full_name = forms.CharField(required=False, label="Nome")
     cpf = forms.CharField(required=False, label="CPF")
     is_teacher = forms.BooleanField(required=False, label="Somente professores")
+    person_type = forms.ModelChoiceField(
+        queryset=PersonType.objects.none(),
+        required=False,
+        label="Tipo",
+        empty_label="Todos",
+    )
+    jiu_jitsu_belt = forms.ChoiceField(required=False, label="Faixa")
     class_category = forms.ModelChoiceField(
         queryset=ClassCategory.objects.none(),
         required=False,
@@ -67,6 +74,10 @@ class PersonListFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["person_type"].queryset = PersonType.objects.filter(
+            is_active=True
+        ).order_by("display_name")
+        self.fields["jiu_jitsu_belt"].choices = [("", "Todas")] + list(JiuJitsuBelt.choices)
         self.fields["class_category"].queryset = ClassCategory.objects.filter(
             is_active=True
         ).order_by("display_order", "display_name")

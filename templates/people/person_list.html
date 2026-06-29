@@ -1,322 +1,148 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Pessoas — LV Jiu Jitsu</title>
-  {% load static %}
-  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=4">
-  <link rel="stylesheet" href="{% static 'system/css/shared/crud_modal.css' %}?v=2">
-</head>
-<body>
+{% extends "lv/base.html" %}
+{% load static %}
 
-  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
-  <header class="topbar" role="banner">
-    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
-      <span class="topbar__name">LV JIU JITSU</span>
-    </a>
-    <nav class="topbar__actions" aria-label="Ações do usuário">
-      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
-        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </a>
-    </nav>
-  </header>
+{% block title %}Pessoas — LV Jiu Jitsu{% endblock %}
 
-  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
-  <main class="page" id="main-content">
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'system/css/lv/people.css' %}?v=20260629-1">
+{% endblock %}
 
-    {% if messages %}
-    <div class="system-messages" role="alert" aria-live="assertive">
-      {% for message in messages %}
-      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Cabeçalho da página -->
-    <div class="page-header">
-      <p class="page-header__eyebrow">
-        <a href="{% url 'system:home' %}">← Início</a>
-      </p>
-      <div class="page-header__row">
-        <div>
-          <h1 class="page-header__title">Pessoas</h1>
-          <p class="page-header__meta">Pessoas cadastradas no sistema</p>
-        </div>
-        <div class="page-header__actions">
-          <button class="btn btn--primary" type="button" data-crud-open="person-create">
-            + {{ person_create_label }}
-          </button>
-        </div>
+{% block content %}
+  <div class="page-header">
+    <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">Início</a> / Pessoas</p>
+    <div class="page-header__row">
+      <div>
+        <h1 class="page-header__title">Pessoas</h1>
+        <p class="page-header__meta">Alunos, professores e equipe da academia.</p>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn--primary" type="button" data-crud-open="person-create">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          {{ person_create_label }}
+        </button>
       </div>
     </div>
+  </div>
 
-    <!-- ─── Filtros ───────────────────────────────────────────────────────── -->
-    <div class="filter-panel">
-      <form class="filter-form" method="get" action="{% url 'system:person-list' %}">
-
-        <div class="filter-field filter-field--wide">
-          <label class="filter-label" for="{{ filter_form.full_name.id_for_label }}">Nome</label>
-          <input
-            class="filter-input"
-            type="text"
-            id="{{ filter_form.full_name.id_for_label }}"
-            name="{{ filter_form.full_name.html_name }}"
-            value="{{ filter_form.full_name.value|default:'' }}"
-            placeholder="Buscar por nome..."
-            autocomplete="off"
-          >
-        </div>
-
-        <div class="filter-field">
-          <label class="filter-label" for="{{ filter_form.cpf.id_for_label }}">CPF</label>
-          <input
-            class="filter-input"
-            type="text"
-            id="{{ filter_form.cpf.id_for_label }}"
-            name="{{ filter_form.cpf.html_name }}"
-            value="{{ filter_form.cpf.value|default:'' }}"
-            placeholder="000.000.000-00"
-            autocomplete="off"
-            inputmode="numeric"
-          >
-        </div>
-
-        <div class="filter-field">
-          <label class="filter-label" for="{{ filter_form.class_category.id_for_label }}">Categoria</label>
-          <select class="filter-select" id="{{ filter_form.class_category.id_for_label }}" name="{{ filter_form.class_category.html_name }}">
-            <option value="">Todas</option>
-            {% for value, label in filter_form.class_category.field.choices %}
-            {% if value %}
-            <option value="{{ value }}" {% if filter_form.class_category.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-            {% endif %}
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="filter-field">
-          <label class="filter-label" for="{{ filter_form.weekday.id_for_label }}">Dia</label>
-          <select class="filter-select" id="{{ filter_form.weekday.id_for_label }}" name="{{ filter_form.weekday.html_name }}">
-            <option value="">Todos</option>
-            {% for value, label in filter_form.weekday.field.choices %}
-            {% if value %}
-            <option value="{{ value }}" {% if filter_form.weekday.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-            {% endif %}
-            {% endfor %}
-          </select>
-        </div>
-
-        {% if can_manage_people %}
-        <div class="filter-field">
-          <div class="filter-checkbox-row" style="padding-top:1.25rem">
-            {{ filter_form.is_teacher }}
-            <label for="{{ filter_form.is_teacher.id_for_label }}">Somente professores</label>
-          </div>
-        </div>
-        {% endif %}
-
-        <div class="filter-actions">
-          <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
-          <a class="btn btn--secondary btn--sm" href="{% url 'system:person-list' %}">Limpar</a>
-        </div>
-
-      </form>
-    </div>
-
-    <!-- ─── Lista de pessoas ─────────────────────────────────────────────── -->
-    <section class="section" aria-labelledby="people-list-title">
-      <div class="section__header">
-        <h2 class="section__title" id="people-list-title">{{ people|length }} pessoa{{ people|length|pluralize }}</h2>
+  <div class="filter-panel">
+    <form class="filter-form" method="get" action="{% url 'system:person-list' %}">
+      <div class="filter-field filter-field--wide">
+        <label class="filter-label" for="{{ filter_form.full_name.id_for_label }}">Nome</label>
+        <input class="filter-input" type="text" id="{{ filter_form.full_name.id_for_label }}" name="{{ filter_form.full_name.html_name }}" value="{{ filter_form.full_name.value|default:'' }}" placeholder="Buscar por nome…" autocomplete="off">
       </div>
-      <div class="panel">
-        {% if people %}
-        <ul class="person-list" aria-label="Lista de pessoas">
-          {% for person in people %}
-          <li class="person-card">
-
-            <!-- Avatar com iniciais -->
-            <span class="person-card__avatar" aria-hidden="true">
-              {{ person.full_name|first|upper }}
-            </span>
-
-            <!-- Nome, badges e meta -->
-            <div class="person-card__body">
-              <div class="person-card__name">{{ person.full_name }}</div>
-
-              <div class="person-card__badges">
-                {% if person.person_type %}
-                  {% with code=person.person_type.code %}
-                  {% if code == "student" or code == "dependent" %}
-                    <span class="badge badge--info">{{ person.person_type.display_name }}</span>
-                  {% elif code == "instructor" %}
-                    <span class="badge badge--success">{{ person.person_type.display_name }}</span>
-                  {% elif code == "administrative-assistant" %}
-                    <span class="badge badge--warning">{{ person.person_type.display_name }}</span>
-                  {% else %}
-                    <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
-                  {% endif %}
-                  {% endwith %}
-                {% else %}
-                  <span class="badge badge--neutral">Sem tipo</span>
-                {% endif %}
-
-                {% if not person.is_active %}
-                  <span class="badge badge--neutral">Inativo</span>
-                {% elif not person.has_portal_access %}
-                  <span class="badge badge--warning">Sem acesso</span>
-                {% else %}
-                  <span class="badge badge--success">Ativo</span>
-                {% endif %}
-              </div>
-
-              {% if person.show_student_context and person.active_group_labels %}
-              <div class="person-card__meta">
-                {{ person.active_group_labels|join:" · " }}
-                {% if person.active_schedule_labels %}
-                  · {{ person.active_schedule_labels|join:", " }}
-                {% endif %}
-              </div>
-              {% elif person.show_teacher_context and person.teaching_group_labels %}
-              <div class="person-card__meta">
-                Leciona: {{ person.teaching_group_labels|join:", " }}
-              </div>
-              {% endif %}
-            </div>
-
-            <!-- Ações icônicas -->
-            <div class="person-card__actions icon-actions" aria-label="Ações de {{ person.full_name }}">
-
-              <button class="icon-action icon-action--view" type="button"
-                      data-crud-open="person-view"
-                      data-crud-url="{% url 'system:person-detail' pk=person.pk %}?modal=1"
-                      title="Visualizar" aria-label="Visualizar {{ person.full_name }}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-
-              {% if can_manage_people %}
-              <button class="icon-action icon-action--edit" type="button"
-                      data-crud-open="person-edit"
-                      data-crud-url="{% url 'system:person-update' pk=person.pk %}?modal=1"
-                      title="Editar" aria-label="Editar {{ person.full_name }}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                </svg>
-              </button>
-
-              <form class="icon-action-form" method="post" action="{% url 'system:person-delete' pk=person.pk %}"
-                    data-confirm-submit data-confirm-message="Deseja realmente excluir {{ person.full_name }}?">
-                {% csrf_token %}
-                <button class="icon-action icon-action--delete" type="submit" title="Excluir" aria-label="Excluir {{ person.full_name }}">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-                  </svg>
-                </button>
-              </form>
-              {% endif %}
-
-            </div>
-
-          </li>
+      <div class="filter-field">
+        <label class="filter-label" for="{{ filter_form.person_type.id_for_label }}">Tipo</label>
+        <select class="filter-select" id="{{ filter_form.person_type.id_for_label }}" name="{{ filter_form.person_type.html_name }}">
+          <option value="">Todos</option>
+          {% for value, label in filter_form.person_type.field.choices %}{% if value %}
+          <option value="{{ value }}" {% if filter_form.person_type.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endif %}{% endfor %}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label" for="{{ filter_form.jiu_jitsu_belt.id_for_label }}">Faixa</label>
+        <select class="filter-select" id="{{ filter_form.jiu_jitsu_belt.id_for_label }}" name="{{ filter_form.jiu_jitsu_belt.html_name }}">
+          {% for value, label in filter_form.jiu_jitsu_belt.field.choices %}
+          <option value="{{ value }}" {% if filter_form.jiu_jitsu_belt.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
-        </ul>
-        {% else %}
-        <div class="empty-state" role="status">
-          <span class="empty-state__icon" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </span>
-          <p class="empty-state__text">Nenhuma pessoa encontrada com os filtros aplicados.</p>
-        </div>
-        {% endif %}
+        </select>
       </div>
-    </section>
+      <div class="filter-actions">
+        <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:person-list' %}">Limpar</a>
+      </div>
+    </form>
+  </div>
 
-  </main>
+  <section class="section" aria-labelledby="people-list-title">
+    <div class="section__header">
+      <h2 class="section__title" id="people-list-title">{{ people|length }} pessoa{{ people|length|pluralize }}</h2>
+    </div>
+    <div class="panel">
+      {% if people %}
+      <ul class="person-list" aria-label="Lista de pessoas">
+        {% for person in people %}
+        <li class="person-card">
+          <span class="person-card__avatar" aria-hidden="true">{{ person.full_name|first|upper }}</span>
+          <div class="person-card__body">
+            <div class="person-card__name">{{ person.full_name }}</div>
+            {% include "people/_person_belt.html" with person=person %}
+            <div class="person-card__badges">
+              {% if person.person_type %}
+                {% with code=person.person_type.code %}
+                {% if code == "student" or code == "dependent" %}<span class="badge badge--info">{{ person.person_type.display_name }}</span>
+                {% elif code == "instructor" %}<span class="badge badge--success">{{ person.person_type.display_name }}</span>
+                {% elif code == "administrative-assistant" %}<span class="badge badge--warning">{{ person.person_type.display_name }}</span>
+                {% else %}<span class="badge badge--neutral">{{ person.person_type.display_name }}</span>{% endif %}
+                {% endwith %}
+              {% else %}<span class="badge badge--neutral">Sem tipo</span>{% endif %}
 
-  <!-- ─── Modais CRUD ──────────────────────────────────────────────────────── -->
-  <dialog class="crud-modal crud-modal--frame" data-crud-modal="person-create" aria-modal="true" aria-labelledby="person-create-title">
+              {% if not person.is_active %}<span class="badge badge--neutral">Inativo</span>
+              {% elif not person.has_portal_access %}<span class="badge badge--warning">Sem acesso</span>
+              {% else %}<span class="badge badge--success">Ativo</span>{% endif %}
+
+            </div>
+            {% if person.show_student_context and person.active_group_labels %}
+            <div class="person-card__meta">{{ person.active_group_labels|join:" · " }}{% if person.active_schedule_labels %} · {{ person.active_schedule_labels|join:", " }}{% endif %}</div>
+            {% elif person.show_teacher_context and person.teaching_group_labels %}
+            <div class="person-card__meta">Leciona: {{ person.teaching_group_labels|join:", " }}</div>
+            {% endif %}
+          </div>
+          <div class="person-card__actions icon-actions" aria-label="Ações de {{ person.full_name }}">
+            <button class="icon-action icon-action--view" type="button" data-crud-open="person-view" data-crud-url="{% url 'system:person-detail' pk=person.pk %}?modal=1" title="Visualizar" aria-label="Visualizar {{ person.full_name }}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            {% if can_manage_people %}
+            <button class="icon-action icon-action--edit" type="button" data-crud-open="person-edit" data-crud-url="{% url 'system:person-update' pk=person.pk %}?modal=1" title="Editar" aria-label="Editar {{ person.full_name }}">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <form class="icon-action-form" method="post" action="{% url 'system:person-delete' pk=person.pk %}" data-confirm-submit data-confirm-message="Deseja realmente excluir {{ person.full_name }}?">
+              {% csrf_token %}
+              <button class="icon-action icon-action--delete" type="submit" title="Excluir" aria-label="Excluir {{ person.full_name }}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state" role="status">
+        <span class="empty-state__icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <p class="empty-state__text">Nenhuma pessoa encontrada com os filtros aplicados.</p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <dialog class="crud-modal" data-crud-modal="person-create" aria-modal="true" aria-labelledby="person-create-title">
     <div class="crud-modal__header">
-      <div>
-        <p class="crud-modal__eyebrow">Pessoas</p>
-        <h2 class="crud-modal__title" id="person-create-title">Cadastrar pessoa</h2>
-      </div>
-      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
+      <div><p class="crud-modal__eyebrow">Pessoas</p><h2 class="crud-modal__title" id="person-create-title">Cadastrar pessoa</h2></div>
+      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="crud-modal__frame-wrap">
-      <iframe class="crud-modal__frame" data-crud-frame src="{% url 'system:person-create' %}?modal=1" title="Cadastrar pessoa"></iframe>
-    </div>
+    <div class="crud-modal__frame-wrap"><iframe class="crud-modal__frame" data-crud-frame src="{% url 'system:person-create' %}?modal=1" title="Cadastrar pessoa"></iframe></div>
   </dialog>
 
-  <dialog class="crud-modal crud-modal--frame" data-crud-modal="person-edit" aria-modal="true" aria-labelledby="person-edit-title">
+  <dialog class="crud-modal" data-crud-modal="person-edit" aria-modal="true" aria-labelledby="person-edit-title">
     <div class="crud-modal__header">
-      <div>
-        <p class="crud-modal__eyebrow">Pessoas</p>
-        <h2 class="crud-modal__title" id="person-edit-title">Editar pessoa</h2>
-      </div>
-      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
+      <div><p class="crud-modal__eyebrow">Pessoas</p><h2 class="crud-modal__title" id="person-edit-title">Editar pessoa</h2></div>
+      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="crud-modal__frame-wrap">
-      <iframe class="crud-modal__frame" data-crud-frame title="Editar pessoa"></iframe>
-    </div>
+    <div class="crud-modal__frame-wrap"><iframe class="crud-modal__frame" data-crud-frame title="Editar pessoa"></iframe></div>
   </dialog>
 
-  <dialog class="crud-modal crud-modal--frame" data-crud-modal="person-view" aria-modal="true" aria-labelledby="person-view-title">
+  <dialog class="crud-modal" data-crud-modal="person-view" aria-modal="true" aria-labelledby="person-view-title">
     <div class="crud-modal__header">
-      <div>
-        <p class="crud-modal__eyebrow">Pessoas</p>
-        <h2 class="crud-modal__title" id="person-view-title">Visualizar pessoa</h2>
-      </div>
-      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
+      <div><p class="crud-modal__eyebrow">Pessoas</p><h2 class="crud-modal__title" id="person-view-title">Visualizar pessoa</h2></div>
+      <button class="crud-modal__close" type="button" data-crud-close aria-label="Fechar" title="Fechar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="crud-modal__frame-wrap">
-      <iframe class="crud-modal__frame" data-crud-frame title="Visualizar pessoa"></iframe>
-    </div>
+    <div class="crud-modal__frame-wrap"><iframe class="crud-modal__frame" data-crud-frame title="Visualizar pessoa"></iframe></div>
   </dialog>
+{% endblock %}
 
-  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/shared/crud_modal.js' %}?v=1" defer></script>
-  <script>
-    (function () {
-      var toggle = document.getElementById('theme-toggle');
-      var sun = document.getElementById('icon-sun');
-      var moon = document.getElementById('icon-moon');
-
-      function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        if (theme === 'dark') { sun.removeAttribute('hidden'); moon.setAttribute('hidden', ''); }
-        else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
-      }
-
-      applyTheme(localStorage.getItem('lv-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-
-      toggle.addEventListener('click', function () {
-        var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('lv-theme', next);
-        applyTheme(next);
-      });
-    })();
-  </script>
-
-</body>
-</html>
+{% block scripts %}
+  <script src="{% static 'system/js/lv/crud_modal.js' %}?v=20260629-1" defer></script>
+{% endblock %}

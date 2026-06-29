@@ -1,0 +1,27 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}LV Jiu Jitsu{% endblock %}</title>
+  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260629-1"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=20260629-1">
+  {% block styles %}{% endblock %}
+</head>
+<body class="modal-page" data-crud-frame-modal="{{ crud_modal_name|default:'' }}">
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{% static 'system/js/lv/crud_frame.js' %}?v=20260629-1" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

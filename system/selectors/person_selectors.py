@@ -128,6 +128,8 @@ def resolve_material_request_recipient(actor, raw_person_id=None):
 def _apply_filters(queryset, filters):
     full_name = filters.get("full_name")
     cpf = filters.get("cpf")
+    person_type = filters.get("person_type")
+    jiu_jitsu_belt = filters.get("jiu_jitsu_belt")
     class_category = filters.get("class_category")
     class_group_key = filters.get("class_group_key")
     weekday = filters.get("weekday")
@@ -136,6 +138,10 @@ def _apply_filters(queryset, filters):
         queryset = queryset.filter(full_name__icontains=full_name)
     if cpf:
         queryset = queryset.filter(cpf__icontains=cpf)
+    if person_type:
+        queryset = queryset.filter(person_type=person_type)
+    if jiu_jitsu_belt:
+        queryset = queryset.filter(jiu_jitsu_belt=jiu_jitsu_belt)
     if filters.get("is_teacher"):
         queryset = queryset.filter(
             Q(person_type__code=PersonTypeCode.INSTRUCTOR)

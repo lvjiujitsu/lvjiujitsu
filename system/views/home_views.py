@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.views.generic import RedirectView, TemplateView
 
+from system.models import Person
 from system.models.asaas import TeacherBankAccount, TeacherPayrollConfig, TeacherPayout
 from system.models.membership import MembershipInvoice
 from system.services.asaas_payroll import compute_available_balance
@@ -66,6 +67,8 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         context["is_student"] = is_student
         context["show_staff_area"] = is_admin or is_administrative
         context["show_instructor_area"] = is_admin or is_administrative or is_instructor
+        context["portal_display_name"] = _get_portal_display_name(request)
+        context["recent_people"] = _get_recent_people()
         if person is None:
             context.update(_empty_context())
             return context
@@ -195,3 +198,20 @@ def _empty_context():
         "payroll_bank": None,
         "instructor_attendance_count": 0,
     }
+
+
+def _get_portal_display_name(request):
+    person = getattr(request, "portal_person", None)
+    if person is not None:
+        return person.full_name
+    user = getattr(request, "technical_admin_user", None)
+    if user is not None:
+        return user.get_full_name() or user.get_username()
+    return "LV"
+
+
+def _get_recent_people():
+    return list(
+        Person.objects.select_related("person_type", "access_account")
+        .order_by("-created_at", "full_name")[:6]
+    )

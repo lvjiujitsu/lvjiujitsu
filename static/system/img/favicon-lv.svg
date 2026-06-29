@@ -1,10 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Brazilian Jiu Jitsu favicon">
-  <title>Brazilian Jiu Jitsu favicon</title>
-  <desc>Versão simplificada do monograma da marca para uso como favicon.</desc>
-  <g fill="#B3B3B3">
-    <polygon points="214,28 302,28 226,214 152,214"/>
-    <polygon points="42,336 232,336 186,214"/>
-    <polygon points="252,214 470,214 326,484"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="LV Culture of Martial Arts favicon">
+  <rect width="512" height="512" fill="#000000"/>
+  <g transform="translate(86.439 48.000) scale(0.854209)" fill="#FFFFFF">
+    <path d="M 140 182 L 277 486 L 394 233 L 395 228 L 259 228 L 280 285 L 306 286 L 283 338 L 278 346 L 204 183 Z"/>
+    <path d="M 203 2 L 151 0 L 129 1 L 2 289 L 1 294 L 171 294 L 145 230 L 104 229 L 101 227 Z"/>
   </g>
 </svg>

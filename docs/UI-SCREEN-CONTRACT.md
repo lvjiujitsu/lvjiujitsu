@@ -515,10 +515,11 @@ Padrão portado do projeto irmão Visary (PRD-066). Aplica-se a todos os hubs e 
 - CRUD modal: `closed` → `open` → `submitting` → `success` ou `error`.
 - Diálogo destrutivo: `closed` → `confirmable` → `submitting` → `success` ou `error`.
 
-**Fundação compartilhada obrigatória**
-- `static/system/js/shared/theme_boot.js`, `pt_br_date_inputs.js`, `crud_modal.js`, `crud_frame.js`.
-- `static/system/css/shared/crud_modal.css`.
-- Tokens herdados de `people.css` / `dashboard.css`; sem CSS/JS inline de comportamento.
+**Fundação compartilhada obrigatória** (reescrita do zero em PRD-068, referência Visary)
+- `templates/lv/base.html`, `templates/lv/modal_base.html`, `templates/lv/modal_done.html`.
+- `static/system/css/lv/base.css` (tokens + shell + componentes + ações icônicas + modal CRUD).
+- `static/system/js/lv/theme.js`, `crud_modal.js`, `crud_frame.js`.
+- Sem CSS/JS inline de comportamento; cada módulo estende `lv/base.html`.
 
 **Validação**
 - Desktop e mobile sem overflow horizontal; tema claro e escuro corretos; console sem erro crítico; modal abre/fecha por botão, backdrop e Esc.

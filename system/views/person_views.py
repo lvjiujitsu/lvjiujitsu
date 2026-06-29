@@ -85,7 +85,7 @@ class ModalFormMixin(ModalCrudMixin):
         if self.is_modal():
             return render(
                 self.request,
-                "layouts/modal_done.html",
+                "lv/modal_done.html",
                 {"crud_modal_name": self.modal_name},
             )
         return response
@@ -165,6 +165,7 @@ class PersonUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["can_manage_people"] = _can_manage_people(self.request)
         person = context["object"]
         active_ibjjf_categories = list(
             IbjjfAgeCategory.objects.filter(is_active=True).order_by(
