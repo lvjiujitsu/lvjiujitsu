@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{{ person.full_name }} — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+</head>
+<body>
+
+  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
+        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </a>
+    </nav>
+  </header>
+
+  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
+  <main class="page" id="main-content">
+
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Cabeçalho da página -->
+    <div class="page-header">
+      <p class="page-header__eyebrow">
+        <a href="{% url 'system:person-list' %}">← Pessoas</a>
+      </p>
+    </div>
+
+    <!-- ─── Painel principal de detalhe ─────────────────────────────────────── -->
+    <section class="section" aria-labelledby="person-name-heading">
+      <div class="detail-panel">
+
+        <!-- Cabeçalho do detalhe -->
+        <div class="detail-header">
+          <div class="detail-header__badges">
+            {% if person.person_type %}
+              {% with code=person.person_type.code %}
+              {% if code == "student" or code == "dependent" %}
+                <span class="badge badge--info">{{ person.person_type.display_name }}</span>
+              {% elif code == "instructor" %}
+                <span class="badge badge--success">{{ person.person_type.display_name }}</span>
+              {% elif code == "administrative-assistant" %}
+                <span class="badge badge--warning">{{ person.person_type.display_name }}</span>
+              {% elif code == "guardian" %}
+                <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+              {% else %}
+                <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+              {% endif %}
+              {% endwith %}
+            {% else %}
+              <span class="badge badge--neutral">Sem tipo</span>
+            {% endif %}
+
+            {% if not person.is_active %}
+              <span class="badge badge--neutral">Inativo</span>
+            {% elif not person.has_portal_access %}
+              <span class="badge badge--warning">Sem acesso ao portal</span>
+            {% else %}
+              <span class="badge badge--success">Ativo</span>
+            {% endif %}
+
+            {% if person.resolved_ibjjf_category %}
+              <span class="badge badge--neutral">{{ person.resolved_ibjjf_category.display_name }}</span>
+            {% endif %}
+          </div>
+
+          <h1 class="detail-header__name" id="person-name-heading">{{ person.full_name }}</h1>
+
+          <div class="detail-header__contact">
+            {% if person.cpf %}<span>CPF {{ person.cpf }}</span>{% endif %}
+            {% if person.email %}<span>{{ person.email }}</span>{% endif %}
+            {% if person.phone %}<span>{{ person.phone }}</span>{% endif %}
+          </div>
+
+          {% if can_manage_people %}
+          <div class="detail-header__actions">
+            <a class="btn btn--secondary btn--sm" href="{% url 'system:person-update' pk=person.pk %}">
+              Editar
+            </a>
+            <a class="btn btn--danger-outline btn--sm" href="{% url 'system:person-delete' pk=person.pk %}">
+              Excluir
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- ─── Dados pessoais ─────────────────────────────────────────────── -->
+        <div class="detail-section">
+          <h2 class="detail-section__title">Dados pessoais</h2>
+          <div class="detail-grid">
+            {% if person.birth_date %}
+            <div>
+              <span class="detail-field__label">Nascimento</span>
+              <span class="detail-field__value">{{ person.birth_date|date:"d/m/Y" }}</span>
+            </div>
+            {% endif %}
+            {% if person.get_age %}
+            <div>
+              <span class="detail-field__label">Idade</span>
+              <span class="detail-field__value">{{ person.get_age }} ano{{ person.get_age|pluralize }}</span>
+            </div>
+            {% endif %}
+            {% if person.biological_sex %}
+            <div>
+              <span class="detail-field__label">Sexo</span>
+              <span class="detail-field__value">{{ person.get_biological_sex_display }}</span>
+            </div>
+            {% endif %}
+            {% if person.blood_type %}
+            <div>
+              <span class="detail-field__label">Tipo sanguíneo</span>
+              <span class="detail-field__value">{{ person.get_blood_type_display|default:person.blood_type }}</span>
+            </div>
+            {% endif %}
+            {% if person.emergency_contact %}
+            <div>
+              <span class="detail-field__label">Contato de emergência</span>
+              <span class="detail-field__value">{{ person.emergency_contact }}</span>
+            </div>
+            {% endif %}
+            {% if person.allergies %}
+            <div>
+              <span class="detail-field__label">Alergias</span>
+              <span class="detail-field__value">{{ person.allergies }}</span>
+            </div>
+            {% endif %}
+            {% if person.previous_injuries %}
+            <div>
+              <span class="detail-field__label">Lesões anteriores</span>
+              <span class="detail-field__value">{{ person.previous_injuries }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- ─── Endereço ───────────────────────────────────────────────────── -->
+        {% if person.address or person.city %}
+        <div class="detail-section">
+          <h2 class="detail-section__title">Endereço</h2>
+          <div class="detail-grid">
+            {% if person.address %}
+            <div>
+              <span class="detail-field__label">Logradouro</span>
+              <span class="detail-field__value">
+                {{ person.address }}{% if person.address_number %}, {{ person.address_number }}{% endif %}
+                {% if person.address_complement %} — {{ person.address_complement }}{% endif %}
+              </span>
+            </div>
+            {% endif %}
+            {% if person.address_neighborhood %}
+            <div>
+              <span class="detail-field__label">Bairro</span>
+              <span class="detail-field__value">{{ person.address_neighborhood }}</span>
+            </div>
+            {% endif %}
+            {% if person.city %}
+            <div>
+              <span class="detail-field__label">Cidade</span>
+              <span class="detail-field__value">{{ person.city }}</span>
+            </div>
+            {% endif %}
+            {% if person.postal_code %}
+            <div>
+              <span class="detail-field__label">CEP</span>
+              <span class="detail-field__value">{{ person.postal_code }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- ─── Turmas ──────────────────────────────────────────────────────── -->
+        {% if person.show_student_context or person.show_teacher_context %}
+        <div class="detail-section">
+          <h2 class="detail-section__title">Turmas e horários</h2>
+
+          {% if person.show_student_context %}
+          {% if person.active_schedule_sections %}
+            {% for section in person.active_schedule_sections %}
+            <div style="margin-bottom:0.875rem;">
+              <div style="font-size:0.8125rem;font-weight:600;color:var(--text);margin-bottom:0.375rem;">
+                {{ section.group_label }}
+              </div>
+              <div class="schedule-tags">
+                {% for label in section.schedule_labels %}
+                <span class="schedule-tag">{{ label }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p style="font-size:0.8125rem;color:var(--muted);">Nenhuma turma matriculada.</p>
+          {% endif %}
+          {% endif %}
+
+          {% if person.show_teacher_context %}
+          <div {% if person.show_student_context %}style="margin-top:0.875rem;padding-top:0.875rem;border-top:1px solid var(--border-soft);"{% endif %}>
+            <div style="font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5rem;">Leciona</div>
+            {% if person.teaching_schedule_sections %}
+              {% for section in person.teaching_schedule_sections %}
+              <div style="margin-bottom:0.75rem;">
+                <div style="font-size:0.8125rem;font-weight:600;color:var(--text);margin-bottom:0.375rem;">
+                  {{ section.group_label }}
+                </div>
+                <div class="schedule-tags">
+                  {% for label in section.schedule_labels %}
+                  <span class="schedule-tag">{{ label }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p style="font-size:0.8125rem;color:var(--muted);">Nenhuma turma atribuída.</p>
+            {% endif %}
+          </div>
+          {% endif %}
+
+        </div>
+        {% endif %}
+
+        <!-- ─── Graduação ──────────────────────────────────────────────────── -->
+        <div class="detail-section">
+          <h2 class="detail-section__title">Graduação</h2>
+
+          {% if graduation_progress and graduation_progress.current_belt_rank %}
+          {% with gp=graduation_progress belt=graduation_progress.current_belt_rank grade=graduation_progress.current_grade_number %}
+
+            <!-- Belt SVG -->
+            {% with belt_grade=grade|default:0 %}
+            {% comment %}Compute stripes via context — view already provides belt_rank/belt_stripes only on home.
+            On detail view we access graduation_progress directly.{% endcomment %}
+            <div class="belt-visual" aria-label="{{ belt.display_name }}{% if grade %}, {{ grade }}º grau{% endif %}">
+              <svg class="belt-visual__svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" role="img" aria-hidden="true">
+                <defs>
+                  <clipPath id="belt-clip-detail">
+                    <rect x="0" y="0" width="320" height="36" rx="4" ry="4"/>
+                  </clipPath>
+                </defs>
+                <g clip-path="url(#belt-clip-detail)">
+                  <rect x="0" y="0" width="320" height="36" fill="{{ belt.color_hex }}"/>
+                  <rect x="232" y="0" width="88" height="36" fill="{{ belt.tip_color_hex }}"/>
+                  {% for stripe in belt_stripes_detail %}
+                  {% if stripe.filled %}
+                  <rect x="{{ stripe.x }}" y="5" width="12" height="26" fill="{{ belt.stripe_color_hex }}" rx="2" ry="2"/>
+                  {% endif %}
+                  {% endfor %}
+                </g>
+              </svg>
+            </div>
+            {% endwith %}
+
+            <div class="belt-info">
+              <span class="belt-info__name">{{ belt.display_name }}</span>
+              {% if grade %}<span class="belt-info__grade">{{ grade }}º grau</span>{% endif %}
+            </div>
+
+            <!-- Stats de graduação -->
+            <div class="grad-stats">
+              <div class="grad-stat">
+                <span class="grad-stat__label">Na faixa</span>
+                <span class="grad-stat__value">{{ gp.months_in_current_grade }}</span>
+                <span class="grad-stat__sub">meses</span>
+              </div>
+              {% if gp.required_months %}
+              <div class="grad-stat">
+                <span class="grad-stat__label">Mínimo</span>
+                <span class="grad-stat__value">{{ gp.required_months }}</span>
+                <span class="grad-stat__sub">meses</span>
+              </div>
+              {% endif %}
+              <div class="grad-stat {% if gp.is_eligible %}grad-stat--eligible{% endif %}">
+                <span class="grad-stat__label">Aulas aprovadas</span>
+                <span class="grad-stat__value">{{ gp.approved_classes_in_window }}</span>
+                {% if gp.required_classes %}<span class="grad-stat__sub">de {{ gp.required_classes }} necessárias</span>{% endif %}
+              </div>
+            </div>
+
+            <!-- Barra de progresso -->
+            {% if gp.required_classes or gp.required_months %}
+            <div class="progress-label">
+              <span class="progress-label__name">Progresso geral</span>
+              <span class="progress-label__pct">{{ gp.progress_pct|floatformat:0 }}%</span>
+            </div>
+            <div class="progress-bar" role="progressbar"
+                 aria-valuenow="{{ gp.progress_pct|floatformat:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar__fill {% if gp.is_eligible %}progress-bar__fill--success{% endif %}"
+                   style="width: {{ gp.progress_pct|floatformat:0 }}%"></div>
+            </div>
+            {% endif %}
+
+            <!-- Elegibilidade ou bloqueador -->
+            {% if gp.is_eligible %}
+              <div class="grad-eligible" role="status">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Elegível para graduação
+              </div>
+            {% else %}
+              {% if gp.months_remaining and gp.months_remaining > 0 %}
+              <div class="grad-blocker" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Tempo mínimo: ainda faltam {{ gp.months_remaining }} meses na faixa
+              </div>
+              {% endif %}
+              {% if gp.missing_classes and gp.missing_classes > 0 %}
+              <div class="grad-blocker" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Frequência: ainda faltam {{ gp.missing_classes }} aula{{ gp.missing_classes|pluralize }}
+              </div>
+              {% endif %}
+              {% if gp.blocker %}
+              <div class="grad-blocker" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {{ gp.blocker }}
+              </div>
+              {% endif %}
+            {% endif %}
+
+          {% endwith %}
+
+          {% elif graduation_progress %}
+          <div class="empty-state" style="padding:1.25rem 0;">
+            <p class="empty-state__text" style="text-align:left;">
+              {% if graduation_progress.current_belt_rank is None %}
+                Sem registro de graduação.
+              {% else %}
+                {{ graduation_progress.blocker }}
+              {% endif %}
+            </p>
+          </div>
+
+          {% else %}
+          <div class="empty-state" style="padding:1.25rem 0;">
+            <p class="empty-state__text" style="text-align:left;">Sem dados de graduação disponíveis.</p>
+          </div>
+          {% endif %}
+
+          <!-- Histórico de graduação -->
+          {% if graduation_history %}
+          <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border-soft);">
+            <div style="font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.625rem;">Histórico</div>
+            <ul class="grad-history" aria-label="Histórico de graduação">
+              {% for g in graduation_history %}
+              <li class="grad-history-item">
+                <span class="grad-history-item__date">{{ g.awarded_at|date:"m/Y"|default:"—" }}</span>
+                <span class="grad-history-item__belt">{{ g.belt_rank.display_name|default:"—" }}</span>
+                {% if g.grade_number %}<span class="grad-history-item__grade">{{ g.grade_number }}º grau</span>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+        </div>
+
+      </div><!-- /detail-panel -->
+    </section>
+
+    <!-- ─── Arte marcial ─────────────────────────────────────────────────────── -->
+    {% if person.martial_art or person.jiu_jitsu_belt or person.martial_art_started_at %}
+    <section class="section" aria-labelledby="martial-art-heading">
+      <div class="section__header">
+        <h2 class="section__title" id="martial-art-heading">Arte marcial</h2>
+      </div>
+      <div class="detail-panel">
+        <div class="detail-section" style="border-bottom:none;">
+          <div class="detail-grid">
+            {% if person.martial_art %}
+            <div>
+              <span class="detail-field__label">Arte marcial</span>
+              <span class="detail-field__value">{{ person.martial_art }}</span>
+            </div>
+            {% endif %}
+            {% if person.jiu_jitsu_belt %}
+            <div>
+              <span class="detail-field__label">Faixa (cadastro)</span>
+              <span class="detail-field__value">{{ person.jiu_jitsu_belt }}</span>
+            </div>
+            {% endif %}
+            {% if person.jiu_jitsu_stripes is not None %}
+            <div>
+              <span class="detail-field__label">Graus (cadastro)</span>
+              <span class="detail-field__value">{{ person.jiu_jitsu_stripes }}</span>
+            </div>
+            {% endif %}
+            {% if person.martial_art_started_at %}
+            <div>
+              <span class="detail-field__label">Início na arte</span>
+              <span class="detail-field__value">{{ person.martial_art_started_at|date:"m/Y" }}</span>
+            </div>
+            {% endif %}
+            {% if person.martial_art_last_graduation_at %}
+            <div>
+              <span class="detail-field__label">Última graduação</span>
+              <span class="detail-field__value">{{ person.martial_art_last_graduation_at|date:"m/Y" }}</span>
+            </div>
+            {% endif %}
+            {% if person.previous_academy %}
+            <div>
+              <span class="detail-field__label">Academia anterior</span>
+              <span class="detail-field__value">{{ person.previous_academy }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── Mensalidade (somente can_manage_people) ─────────────────────────── -->
+    {% if can_manage_people %}
+    <section class="section" aria-labelledby="billing-heading">
+      <div class="section__header">
+        <h2 class="section__title" id="billing-heading">Mensalidade</h2>
+        {% if billing_owner and billing_owner != person %}
+        <span style="font-size:0.75rem;color:var(--muted);">Responsável: {{ billing_owner.full_name }}</span>
+        {% endif %}
+      </div>
+      <div class="detail-panel">
+
+        <!-- Plano ativo -->
+        <div class="detail-section">
+          <h3 class="detail-section__title">Plano ativo</h3>
+          {% if active_membership %}
+          {% with m=active_membership %}
+          <div style="display:flex;align-items:center;gap:0.625rem;margin-bottom:0.375rem;flex-wrap:wrap;">
+            {% if m.status == "active" %}
+              <span class="badge badge--success">Ativo</span>
+            {% elif m.status == "exempted" %}
+              <span class="badge badge--success">Isento</span>
+            {% elif m.status == "past_due" %}
+              <span class="badge badge--danger">Em atraso</span>
+            {% elif m.status == "canceled" %}
+              <span class="badge badge--neutral">Cancelado</span>
+            {% elif m.status == "expired" %}
+              <span class="badge badge--neutral">Expirado</span>
+            {% else %}
+              <span class="badge badge--warning">{{ m.get_status_display }}</span>
+            {% endif %}
+            <span class="billing-plan-name">{{ m.plan.display_name }}</span>
+          </div>
+          <div class="billing-plan-detail">
+            {% if m.current_period_end %}Vencimento: {{ m.current_period_end|date:"d/m/Y" }}{% endif %}
+            {% if m.gateway_subscription_id %} · ID: {{ m.gateway_subscription_id }}{% endif %}
+          </div>
+          {% endwith %}
+          {% else %}
+          <p style="font-size:0.875rem;color:var(--muted);">Nenhum plano ativo.</p>
+          {% endif %}
+        </div>
+
+        <!-- Pedidos pendentes -->
+        {% if pending_orders %}
+        <div class="detail-section">
+          <h3 class="detail-section__title">Pagamentos pendentes</h3>
+          {% for order in pending_orders %}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.375rem 0;border-bottom:1px solid var(--border-soft);flex-wrap:wrap;">
+            <span style="font-size:0.875rem;color:var(--text);">
+              {{ order.plan.display_name|default:"Pagamento" }} — R$ {{ order.total_amount|floatformat:2 }}
+            </span>
+            <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=order.pk %}">
+              Pagar
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Histórico de faturas -->
+        {% if person_invoices %}
+        <div class="detail-section">
+          <h3 class="detail-section__title">Faturas recentes</h3>
+          <div style="overflow-x:auto;">
+            <table class="billing-table" aria-label="Faturas">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Gateway</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for invoice in person_invoices %}
+                <tr>
+                  <td style="font-variant-numeric:tabular-nums;">
+                    {{ invoice.paid_at|date:"d/m/Y"|default:invoice.created_at|date:"d/m/Y" }}
+                  </td>
+                  <td style="font-variant-numeric:tabular-nums;font-weight:600;">
+                    R$ {{ invoice.amount|floatformat:2 }}
+                  </td>
+                  <td>
+                    {% if invoice.status == "paid" %}
+                      <span class="badge badge--success">Pago</span>
+                    {% elif invoice.status == "pending" %}
+                      <span class="badge badge--warning">Pendente</span>
+                    {% elif invoice.status == "failed" %}
+                      <span class="badge badge--danger">Falha</span>
+                    {% else %}
+                      <span class="badge badge--neutral">{{ invoice.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td style="font-size:0.75rem;color:var(--muted);">
+                    {{ invoice.gateway_invoice_id|default:"—" }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Todos os planos da pessoa -->
+        {% if memberships %}
+        <div class="detail-section">
+          <h3 class="detail-section__title">Histórico de planos</h3>
+          {% for m in memberships %}
+          <div style="display:flex;align-items:center;gap:0.625rem;padding:0.375rem 0;border-bottom:1px solid var(--border-soft);flex-wrap:wrap;">
+            {% if m.status == "active" %}
+              <span class="badge badge--success">Ativo</span>
+            {% elif m.status == "canceled" or m.status == "expired" %}
+              <span class="badge badge--neutral">{{ m.get_status_display }}</span>
+            {% else %}
+              <span class="badge badge--warning">{{ m.get_status_display }}</span>
+            {% endif %}
+            <span style="font-size:0.875rem;font-weight:600;color:var(--text);">{{ m.plan.display_name }}</span>
+            {% if m.created_at %}<span style="font-size:0.75rem;color:var(--muted);">desde {{ m.created_at|date:"m/Y" }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      </div>
+    </section>
+    {% endif %}
+
+  </main>
+
+  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+  <script>
+    (function () {
+      var toggle = document.getElementById('theme-toggle');
+      var sun = document.getElementById('icon-sun');
+      var moon = document.getElementById('icon-moon');
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') { sun.removeAttribute('hidden'); moon.setAttribute('hidden', ''); }
+        else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
+      }
+
+      applyTheme(localStorage.getItem('lv-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+      toggle.addEventListener('click', function () {
+        var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('lv-theme', next);
+        applyTheme(next);
+      });
+    })();
+  </script>
+
+</body>
+</html>

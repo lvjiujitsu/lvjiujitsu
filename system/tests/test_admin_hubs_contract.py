@@ -67,6 +67,12 @@ class AdminHubRoutingContractTestCase(TestCase):
 class AdminHomeHubContractTestCase(TestCase):
     expected_quick_links = (
         ("Pessoas", "system:person-list"),
+        ("Turmas", "system:class-group-list"),
+        ("Financeiro", "system:financial-control"),
+        ("Graduação", "system:graduation-overview"),
+        ("Materiais", "system:product-list"),
+        ("Planos", "system:plan-list"),
+        ("Perfis e acessos", "system:person-type-list"),
     )
 
     def setUp(self):
@@ -88,13 +94,8 @@ class AdminHomeHubContractTestCase(TestCase):
         for label, route_name in self.expected_quick_links:
             self.assertIn(label, content)
             self.assertIn(f'href="{reverse(route_name)}"', content)
-        self.assertIn('href="/admin/"', content)
-        self.assertNotIn("Planos", content)
-        self.assertNotIn("Turmas", content)
-        self.assertNotIn("Financeiro", content)
-        self.assertNotIn("Graduação", content)
-        self.assertNotIn("Materiais", content)
-        self.assertNotIn("Perfis e acessos", content)
+        self.assertNotIn('href="/admin/"', content)
+        self.assertNotIn("Django Admin", content)
         self.assertNotIn("quick-link--disabled", content)
         self.assertNotIn('href="#"', content)
 

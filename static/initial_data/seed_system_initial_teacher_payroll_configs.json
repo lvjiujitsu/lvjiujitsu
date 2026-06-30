@@ -1,6 +1,6 @@
 [
   {
-    "teacher_cpf": "92000000001",
+    "teacher_cpf": "92000000100",
     "monthly_salary": "400.00",
     "payment_day": 28,
     "rules": [
@@ -9,19 +9,19 @@
         "amount": "400.00",
         "scope": "class_group",
         "class_group_category": "adult",
-        "class_group_teacher_cpf": "92000000001"
+        "class_group_teacher_cpf": "92000000100"
       },
       {
         "method": "student_percentage",
         "percentage": "50.00",
         "scope": "class_group",
         "class_group_category": "juvenile",
-        "class_group_teacher_cpf": "92000000001"
+        "class_group_teacher_cpf": "92000000100"
       }
     ]
   },
   {
-    "teacher_cpf": "92000000002",
+    "teacher_cpf": "92000000290",
     "monthly_salary": "400.00",
     "payment_day": 28,
     "rules": [
@@ -30,7 +30,7 @@
         "amount": "400.00",
         "scope": "class_group",
         "class_group_category": "adult",
-        "class_group_teacher_cpf": "92000000002"
+        "class_group_teacher_cpf": "92000000290"
       }
     ]
   },
@@ -41,13 +41,13 @@
     "rules": []
   },
   {
-    "teacher_cpf": "92000000004",
+    "teacher_cpf": "92000000452",
     "monthly_salary": "0.00",
     "payment_day": 28,
     "rules": []
   },
   {
-    "teacher_cpf": "92000000005",
+    "teacher_cpf": "92000000533",
     "monthly_salary": "0.00",
     "payment_day": 28,
     "rules": []

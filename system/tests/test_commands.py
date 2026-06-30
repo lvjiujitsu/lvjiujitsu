@@ -199,7 +199,7 @@ class TeacherPayrollSeedCommandTestCase(TestCase):
         self.assertEqual(TeacherPayrollConfig.objects.count(), 5)
 
         layon = TeacherPayrollConfig.objects.select_related("person").get(
-            person__cpf="920.000.000-01"
+            person__cpf="920.000.001-00"
         )
         self.assertEqual(layon.monthly_salary, Decimal("400.00"))
         self.assertEqual(layon.payment_day, 28)

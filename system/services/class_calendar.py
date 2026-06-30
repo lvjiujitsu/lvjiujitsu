@@ -447,6 +447,87 @@ def get_today_classes_for_administrative(person):
     return entries
 
 
+def get_today_classes_staff_overview():
+    today = timezone.localdate()
+    weekday_code = PYTHON_WEEKDAY_TO_CODE[today.weekday()]
+    holiday = Holiday.objects.filter(date=today, is_active=True).first()
+
+    schedules = (
+        ClassSchedule.objects.filter(weekday=weekday_code, is_active=True)
+        .select_related(
+            "class_group",
+            "class_group__class_category",
+            "class_group__main_teacher",
+        )
+        .order_by("start_time")
+    )
+    sessions = list(
+        ClassSession.objects.filter(schedule__in=schedules, date=today).select_related("schedule")
+    )
+    sessions_by_schedule_id = {session.schedule_id: session for session in sessions}
+    checkins_by_session_id = {}
+    for checkin in ClassCheckin.objects.filter(session__in=sessions).select_related("session"):
+        checkins_by_session_id.setdefault(checkin.session_id, []).append(checkin)
+
+    entries = []
+    for schedule in schedules:
+        session = sessions_by_schedule_id.get(schedule.pk)
+        session_checkins = checkins_by_session_id.get(session.pk, []) if session else []
+        is_cancelled = (session and session.is_cancelled) or bool(holiday)
+        cancellation_reason = ""
+        if holiday:
+            cancellation_reason = holiday.name
+        elif session and session.is_cancelled:
+            cancellation_reason = session.cancellation_reason
+        teacher = schedule.class_group.main_teacher
+        entries.append(
+            SimpleNamespace(
+                entry_role="overview",
+                is_special=False,
+                special_id=None,
+                schedule=schedule,
+                schedule_id=schedule.pk,
+                session=session,
+                start_time=schedule.start_time.strftime("%H:%M"),
+                group_name=schedule.class_group.display_name,
+                category_name=schedule.class_group.class_category.display_name,
+                teacher_name=teacher.full_name if teacher else "",
+                duration_minutes=schedule.duration_minutes,
+                is_cancelled=is_cancelled,
+                cancellation_reason=cancellation_reason,
+                approved_count=sum(1 for c in session_checkins if c.is_approved),
+                pending_count=sum(1 for c in session_checkins if not c.is_approved),
+            )
+        )
+
+    for special in SpecialClass.objects.filter(date=today).select_related("teacher").order_by("start_time"):
+        special_checkins = list(
+            SpecialClassCheckin.objects.filter(special_class=special).select_related("person")
+        )
+        entries.append(
+            SimpleNamespace(
+                entry_role="overview",
+                is_special=True,
+                special_id=special.pk,
+                schedule=None,
+                schedule_id=None,
+                session=None,
+                start_time=special.start_time.strftime("%H:%M"),
+                group_name=special.title,
+                category_name="Aulão",
+                teacher_name=special.teacher.full_name if special.teacher else "",
+                duration_minutes=special.duration_minutes,
+                is_cancelled=False,
+                cancellation_reason="",
+                approved_count=sum(1 for c in special_checkins if c.is_approved),
+                pending_count=sum(1 for c in special_checkins if not c.is_approved),
+            )
+        )
+
+    entries.sort(key=lambda entry: entry.start_time)
+    return entries
+
+
 def _instructor_checkin_view(checkin, *, is_special):
     return SimpleNamespace(
         pk=checkin.pk,

@@ -282,10 +282,10 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
 
         expected_current = {
             "755.980.941-34": ("adult-black", 2),
-            "920.000.000-04": ("adult-black", 1),
-            "920.000.000-01": ("adult-black", 1),
-            "920.000.000-05": ("adult-brown", 4),
-            "920.000.000-02": ("adult-black", 0),
+            "920.000.004-52": ("adult-black", 1),
+            "920.000.001-00": ("adult-black", 1),
+            "920.000.005-33": ("adult-brown", 4),
+            "920.000.002-90": ("adult-black", 0),
         }
         for cpf, (belt_code, grade_number) in expected_current.items():
             person = Person.objects.get(cpf=cpf)
@@ -308,7 +308,7 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
             )
 
         self.assertEqual(
-            Person.objects.get(cpf="920.000.000-05").graduations.count(),
+            Person.objects.get(cpf="920.000.005-33").graduations.count(),
             20,
         )
         self.assertEqual(

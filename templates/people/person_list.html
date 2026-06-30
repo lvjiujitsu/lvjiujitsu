@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pessoas — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+</head>
+<body>
+
+  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
+        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </a>
+    </nav>
+  </header>
+
+  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
+  <main class="page" id="main-content">
+
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Cabeçalho da página -->
+    <div class="page-header">
+      <p class="page-header__eyebrow">
+        <a href="{% url 'system:home' %}">← Início</a>
+      </p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Pessoas</h1>
+          <p class="page-header__meta">Pessoas cadastradas no sistema</p>
+        </div>
+        <div class="page-header__actions">
+          <a class="btn btn--primary" href="{% url 'system:person-create' %}">
+            + {{ person_create_label }}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── KPIs ──────────────────────────────────────────────────────────── -->
+    {% if people_kpis %}
+    <div class="kpi-row" aria-label="Totais de pessoas">
+      {% for kpi in people_kpis %}
+      <div class="kpi-card">
+        <span class="kpi-card__value">{{ kpi.value }}</span>
+        <span class="kpi-card__label">{{ kpi.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ─── Filtros ───────────────────────────────────────────────────────── -->
+    <div class="filter-panel">
+      <form class="filter-form" method="get" action="{% url 'system:person-list' %}">
+
+        <div class="filter-field filter-field--wide">
+          <label class="filter-label" for="{{ filter_form.full_name.id_for_label }}">Nome</label>
+          <input
+            class="filter-input"
+            type="text"
+            id="{{ filter_form.full_name.id_for_label }}"
+            name="{{ filter_form.full_name.html_name }}"
+            value="{{ filter_form.full_name.value|default:'' }}"
+            placeholder="Buscar por nome..."
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.cpf.id_for_label }}">CPF</label>
+          <input
+            class="filter-input"
+            type="text"
+            id="{{ filter_form.cpf.id_for_label }}"
+            name="{{ filter_form.cpf.html_name }}"
+            value="{{ filter_form.cpf.value|default:'' }}"
+            placeholder="000.000.000-00"
+            autocomplete="off"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.class_category.id_for_label }}">Categoria</label>
+          <select class="filter-select" id="{{ filter_form.class_category.id_for_label }}" name="{{ filter_form.class_category.html_name }}">
+            <option value="">Todas</option>
+            {% for value, label in filter_form.class_category.field.choices %}
+            {% if value %}
+            <option value="{{ value }}" {% if filter_form.class_category.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.weekday.id_for_label }}">Dia</label>
+          <select class="filter-select" id="{{ filter_form.weekday.id_for_label }}" name="{{ filter_form.weekday.html_name }}">
+            <option value="">Todos</option>
+            {% for value, label in filter_form.weekday.field.choices %}
+            {% if value %}
+            <option value="{{ value }}" {% if filter_form.weekday.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if can_manage_people %}
+        <div class="filter-field">
+          <div class="filter-checkbox-row" style="padding-top:1.25rem">
+            {{ filter_form.is_teacher }}
+            <label for="{{ filter_form.is_teacher.id_for_label }}">Somente professores</label>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="filter-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:person-list' %}">Limpar</a>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- ─── Lista de pessoas ─────────────────────────────────────────────── -->
+    <section class="section" aria-labelledby="people-list-title">
+      <div class="section__header">
+        <h2 class="section__title" id="people-list-title">{{ people|length }} pessoa{{ people|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if people %}
+        <ul class="person-list" aria-label="Lista de pessoas">
+          {% for person in people %}
+          <li class="person-card">
+
+            <!-- Avatar com iniciais -->
+            <span class="person-card__avatar" aria-hidden="true">
+              {{ person.full_name|first|upper }}
+            </span>
+
+            <!-- Nome, badges e meta -->
+            <div class="person-card__body">
+              <div class="person-card__name">{{ person.full_name }}</div>
+
+              <div class="person-card__badges">
+                <!-- Badge de tipo de pessoa -->
+                {% if person.person_type %}
+                  {% with code=person.person_type.code %}
+                  {% if code == "student" or code == "dependent" %}
+                    <span class="badge badge--info">{{ person.person_type.display_name }}</span>
+                  {% elif code == "instructor" %}
+                    <span class="badge badge--success">{{ person.person_type.display_name }}</span>
+                  {% elif code == "administrative-assistant" %}
+                    <span class="badge badge--warning">{{ person.person_type.display_name }}</span>
+                  {% elif code == "guardian" %}
+                    <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+                  {% else %}
+                    <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+                  {% endif %}
+                  {% endwith %}
+                {% else %}
+                  <span class="badge badge--neutral">Sem tipo</span>
+                {% endif %}
+
+                <!-- Badge de status -->
+                {% if not person.is_active %}
+                  <span class="badge badge--neutral">Inativo</span>
+                {% elif not person.has_portal_access %}
+                  <span class="badge badge--warning">Sem acesso</span>
+                {% else %}
+                  <span class="badge badge--success">Ativo</span>
+                {% endif %}
+              </div>
+
+              <!-- Turmas e horários -->
+              {% if person.show_student_context and person.active_group_labels %}
+              <div class="person-card__meta">
+                {{ person.active_group_labels|join:" · " }}
+                {% if person.active_schedule_labels %}
+                  · {{ person.active_schedule_labels|join:", " }}
+                {% endif %}
+              </div>
+              {% elif person.show_teacher_context and person.teaching_group_labels %}
+              <div class="person-card__meta">
+                Leciona: {{ person.teaching_group_labels|join:", " }}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Ação -->
+            <div class="person-card__actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=person.pk %}">
+                Detalhe
+              </a>
+            </div>
+
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status">
+          <span class="empty-state__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </span>
+          <p class="empty-state__text">Nenhuma pessoa encontrada com os filtros aplicados.</p>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+  <script>
+    (function () {
+      var toggle = document.getElementById('theme-toggle');
+      var sun = document.getElementById('icon-sun');
+      var moon = document.getElementById('icon-moon');
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') { sun.removeAttribute('hidden'); moon.setAttribute('hidden', ''); }
+        else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
+      }
+
+      applyTheme(localStorage.getItem('lv-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+      toggle.addEventListener('click', function () {
+        var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('lv-theme', next);
+        applyTheme(next);
+      });
+    })();
+  </script>
+
+</body>
+</html>

@@ -5,7 +5,7 @@
     "description": "Turma adulta com o professor Layon Quirino.",
     "teacher": {
       "full_name": "Layon Quirino",
-      "cpf": "92000000001"
+      "cpf": "92000000100"
     },
     "schedules": [
       {"weekday": "monday",    "training_style": "gi",     "start_time": "06:30", "display_order": 1},
@@ -21,7 +21,7 @@
     "description": "Turma adulta com o professor Vinicius Antonio.",
     "teacher": {
       "full_name": "Vinicius Antonio",
-      "cpf": "92000000002"
+      "cpf": "92000000290"
     },
     "schedules": [
       {"weekday": "monday",    "training_style": "gi",    "start_time": "11:00", "display_order": 1},
@@ -51,7 +51,7 @@
     "description": "Turma kids com o professor Andre Oliveira.",
     "teacher": {
       "full_name": "Andre Oliveira",
-      "cpf": "92000000004"
+      "cpf": "92000000452"
     },
     "schedules": [
       {"weekday": "tuesday",  "training_style": "gi", "start_time": "18:00", "display_order": 1},
@@ -64,7 +64,7 @@
     "description": "Turma juvenil com o professor Layon Quirino.",
     "teacher": {
       "full_name": "Layon Quirino",
-      "cpf": "92000000001"
+      "cpf": "92000000100"
     },
     "schedules": [
       {"weekday": "monday",    "training_style": "gi", "start_time": "18:00", "display_order": 1},
@@ -78,7 +78,7 @@
     "description": "Turma feminina com a professora Vanessa Ferro.",
     "teacher": {
       "full_name": "Vanessa Ferro",
-      "cpf": "92000000005"
+      "cpf": "92000000533"
     },
     "schedules": [
       {"weekday": "saturday", "training_style": "gi", "start_time": "10:30", "display_order": 1}
