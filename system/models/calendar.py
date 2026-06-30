@@ -59,6 +59,14 @@ class ClassSession(TimeStampedModel):
     )
     instructor_present = models.BooleanField("Professor presente", default=False)
     instructor_checked_in_at = models.DateTimeField("Presença registrada em", null=True, blank=True)
+    substitute_teacher = models.ForeignKey(
+        "system.Person",
+        on_delete=models.PROTECT,
+        related_name="substitute_class_sessions",
+        verbose_name="Professor substituto",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ("date", "schedule__start_time")
@@ -148,7 +156,27 @@ class SpecialClass(TimeStampedModel):
         null=True,
         blank=True,
     )
+    substitute_teacher = models.ForeignKey(
+        "system.Person",
+        on_delete=models.PROTECT,
+        related_name="substitute_special_classes",
+        verbose_name="Professor substituto",
+        null=True,
+        blank=True,
+    )
     notes = models.CharField("Observações", max_length=255, blank=True, default="")
+    status = models.CharField(
+        "Status",
+        max_length=16,
+        choices=SessionStatus.choices,
+        default=SessionStatus.SCHEDULED,
+    )
+    cancellation_reason = models.CharField(
+        "Motivo do cancelamento",
+        max_length=255,
+        blank=True,
+        default="",
+    )
     instructor_present = models.BooleanField("Professor presente", default=False)
     instructor_checked_in_at = models.DateTimeField("Presença registrada em", null=True, blank=True)
 
@@ -159,6 +187,10 @@ class SpecialClass(TimeStampedModel):
 
     def __str__(self):
         return f"{self.title} — {self.date.strftime('%d/%m/%Y')} {self.start_time.strftime('%H:%M')}"
+
+    @property
+    def is_cancelled(self):
+        return self.status == SessionStatus.CANCELLED
 
 
 class SpecialClassCheckin(TimeStampedModel):

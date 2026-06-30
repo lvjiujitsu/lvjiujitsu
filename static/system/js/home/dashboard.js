@@ -304,7 +304,7 @@
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.style.overflow = '';
-      modalBody.innerHTML = '';
+      modalBody.replaceChildren();
       currentSourceId = null;
     }
 
@@ -322,7 +322,7 @@
       modalTitle.textContent = 'Presenças — ' + className;
 
       // Clone source children into modal body
-      modalBody.innerHTML = '';
+      modalBody.replaceChildren();
       var children = sourceDiv.childNodes;
       for (var i = 0; i < children.length; i += 1) {
         modalBody.appendChild(children[i].cloneNode(true));
@@ -616,13 +616,185 @@
             btn.disabled = false;
             return;
           }
-          var targetId = btn.getAttribute('data-presence-target');
-          var container = targetId ? document.getElementById(targetId) : null;
-          if (container) {
-            var time = data.checked_in_at ? ' · ' + data.checked_in_at : '';
-            container.innerHTML =
-              '<span class="status-pill status-pill--success">Presente' + time + '</span>';
+          location.reload();
+        })
+        .catch(function () { btn.disabled = false; });
+    });
+  }
+
+  function bindInstructorSelfCheckinCancel() {
+    var cfg = readConfig();
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-instructor-self-checkin-cancel');
+      if (!btn) return;
+
+      var isSpecial = btn.getAttribute('data-is-special') === 'true';
+      var url = isSpecial ? cfg.instructorSelfSpecialCheckinCancelUrl : cfg.instructorSelfCheckinCancelUrl;
+      if (!url) return;
+
+      var payload = isSpecial
+        ? { special_id: parseInt(btn.getAttribute('data-special-id'), 10) }
+        : { schedule_id: parseInt(btn.getAttribute('data-schedule-id'), 10) };
+
+      btn.disabled = true;
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.success) {
+            btn.disabled = false;
+            return;
           }
+          location.reload();
+        })
+        .catch(function () { btn.disabled = false; });
+    });
+  }
+
+  function bindSubstituteTeacherModal() {
+    var cfg = readConfig();
+    var overlay = document.getElementById('substitute-teacher-modal');
+    if (!overlay) return;
+
+    var form = overlay.querySelector('.js-substitute-teacher-form');
+    var closeButtons = overlay.querySelectorAll('.js-close-substitute-modal');
+    var errorEl = form ? form.querySelector('.modal__error') : null;
+    var scheduleInput = form ? form.querySelector('[name="schedule_id"]') : null;
+    var specialInput = form ? form.querySelector('[name="special_id"]') : null;
+    var isSpecialInput = form ? form.querySelector('[name="is_special"]') : null;
+    var targetInput = form ? form.querySelector('[name="presence_target"]') : null;
+    var teacherSelect = form ? form.querySelector('[name="substitute_teacher_id"]') : null;
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-open-substitute-modal');
+      if (!btn) return;
+
+      if (scheduleInput) scheduleInput.value = btn.getAttribute('data-schedule-id') || '';
+      if (specialInput) specialInput.value = btn.getAttribute('data-special-id') || '';
+      if (isSpecialInput) isSpecialInput.value = btn.getAttribute('data-is-special') || 'false';
+      if (targetInput) targetInput.value = btn.getAttribute('data-presence-target') || '';
+      if (teacherSelect) teacherSelect.value = '';
+      if (errorEl) errorEl.textContent = '';
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+      if (teacherSelect) teacherSelect.focus();
+    });
+
+    closeButtons.forEach(function (btn) {
+      btn.addEventListener('click', closeModal);
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var isSpecial = isSpecialInput && isSpecialInput.value === 'true';
+      var url = cfg.instructorSessionSubstituteUrl;
+      var submitBtn = form.querySelector('[type="submit"]');
+      if (!url || !teacherSelect || !teacherSelect.value) {
+        if (errorEl) errorEl.textContent = 'Selecione um professor substituto.';
+        return;
+      }
+      if (!isSpecial && (!scheduleInput || !scheduleInput.value)) {
+        if (errorEl) errorEl.textContent = 'Turma inválida.';
+        return;
+      }
+      if (isSpecial && (!specialInput || !specialInput.value)) {
+        if (errorEl) errorEl.textContent = 'Aulão inválido.';
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = true;
+      if (errorEl) errorEl.textContent = '';
+
+      var payload = {
+        substitute_teacher_id: parseInt(teacherSelect.value, 10),
+      };
+      if (isSpecial) {
+        payload.special_id = parseInt(specialInput.value, 10);
+      } else {
+        payload.schedule_id = parseInt(scheduleInput.value, 10);
+      }
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(payload),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data.success) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (errorEl) errorEl.textContent = result.data.error || 'Não foi possível indicar substituto.';
+            return;
+          }
+          closeModal();
+          location.reload();
+        })
+        .catch(function () {
+          if (submitBtn) submitBtn.disabled = false;
+          if (errorEl) errorEl.textContent = 'Falha de conexão.';
+        });
+    });
+  }
+
+  function bindInstructorCancelClass() {
+    var cfg = readConfig();
+    document.addEventListener('click', function (e) {
+      var cancelBtn = e.target.closest('.js-instructor-cancel-class');
+      var restoreBtn = e.target.closest('.js-instructor-restore-class');
+      var btn = cancelBtn || restoreBtn;
+      if (!btn) return;
+      var isSpecial = btn.getAttribute('data-is-special') === 'true';
+      var url = cfg.instructorCancelClassUrl;
+      if (!url) return;
+      var message;
+      if (restoreBtn) {
+        message = isSpecial ? 'Deseja restaurar este aulão?' : 'Deseja restaurar esta aula?';
+      } else {
+        message = isSpecial
+          ? 'Ninguém vai ministrar este aulão. Deseja cancelá-lo?'
+          : 'Ninguém vai ministrar esta aula. Deseja cancelá-la?';
+      }
+      if (!window.confirm(message)) return;
+
+      btn.disabled = true;
+      var payload = isSpecial
+        ? { special_id: parseInt(btn.getAttribute('data-special-id'), 10) }
+        : { schedule_id: parseInt(btn.getAttribute('data-schedule-id'), 10) };
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.success) {
+            btn.disabled = false;
+            if (data.error) window.alert(data.error);
+            return;
+          }
+          location.reload();
         })
         .catch(function () { btn.disabled = false; });
     });
@@ -639,5 +811,8 @@
   bindGradDetailsToggle();
   bindBillingDetailsToggle();
   bindInstructorSelfCheckin();
+  bindInstructorSelfCheckinCancel();
+  bindSubstituteTeacherModal();
+  bindInstructorCancelClass();
   bindSectionCollapse();
 })();

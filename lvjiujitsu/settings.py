@@ -70,9 +70,6 @@ ALLOWED_HOSTS = [
     ).split(",")
     if h.strip()
 ]
-if DEBUG and "*" not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append("*")
-
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in config(

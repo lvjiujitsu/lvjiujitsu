@@ -5,8 +5,10 @@ from django.views.generic import RedirectView, TemplateView
 
 from system.constants import (
     PEOPLE_SUPPORT_PERSON_TYPE_CODES,
+    PersonTypeCode,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
+from system.models import Person
 from system.models.asaas import TeacherBankAccount, TeacherPayrollConfig, TeacherPayout
 from system.models.calendar import ClassSession, SpecialClass as SpecialClassModel
 from system.models.membership import MembershipInvoice
@@ -110,6 +112,9 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
 
         if context["show_staff_area"] and not trains:
             context["staff_today_classes"] = get_today_classes_staff_overview()
+
+        if context["show_instructor_area"]:
+            context["instructor_choices"] = _get_active_instructor_choices()
 
         if is_instructor:
             context.update(_build_instructor_payroll_context(person))
@@ -350,6 +355,7 @@ def _empty_context():
         "payroll_config": None,
         "payroll_bank": None,
         "instructor_attendance_count": 0,
+        "instructor_choices": [],
     }
 
 
@@ -371,3 +377,14 @@ def _can_access_people(request):
     if person is None or not person.person_type_id:
         return False
     return person.person_type.code in PEOPLE_SUPPORT_PERSON_TYPE_CODES
+
+
+def _get_active_instructor_choices():
+    return list(
+        Person.objects.filter(
+            person_type__code=PersonTypeCode.INSTRUCTOR,
+            is_active=True,
+        )
+        .order_by("full_name")
+        .values("pk", "full_name")
+    )

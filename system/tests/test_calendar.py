@@ -36,6 +36,12 @@ from system.services.class_calendar import (
     approve_special_checkin,
     assert_instructor_owns_schedule,
     assert_instructor_owns_special,
+    assign_session_substitute,
+    assign_special_substitute,
+    cancel_class_without_instructor,
+    cancel_instructor_self_checkin,
+    cancel_instructor_self_special_checkin,
+    cancel_special_without_instructor,
     create_special_class,
     delete_special_class,
     get_calendar_month_data,
@@ -225,10 +231,10 @@ class CalendarServiceTestCase(TestCase):
         self.assertIn('id="calendar-day-modal"', content)
         self.assertIn('id="calendar-day-modal-body"', content)
 
-    def test_student_entry_has_instructor_present_false_when_no_session(self):
+    def test_student_entry_has_instructor_present_true_when_no_session(self):
         classes = get_today_classes_for_person(self.person)
         self.assertEqual(len(classes), 1)
-        self.assertFalse(classes[0].instructor_present)
+        self.assertTrue(classes[0].instructor_present)
 
     def test_student_entry_has_instructor_present_false_when_not_checked_in(self):
         today = timezone.localdate()
@@ -662,6 +668,8 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         self.instructor_account.save()
 
     def test_self_checkin_registers_presence(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+
         session, created = register_instructor_self_checkin(self.instructor, self.schedule.pk)
         self.assertTrue(created)
         self.assertTrue(session.instructor_present)
@@ -669,10 +677,12 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
 
     def test_self_checkin_creates_session_if_not_exists(self):
         self.assertFalse(ClassSession.objects.filter(schedule=self.schedule).exists())
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
         register_instructor_self_checkin(self.instructor, self.schedule.pk)
         self.assertTrue(ClassSession.objects.filter(schedule=self.schedule).exists())
 
     def test_self_checkin_idempotent(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
         register_instructor_self_checkin(self.instructor, self.schedule.pk)
         _, created = register_instructor_self_checkin(self.instructor, self.schedule.pk)
         self.assertFalse(created)
@@ -688,11 +698,229 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         with self.assertRaises(ValueError):
             register_instructor_self_checkin(self.instructor, self.schedule.pk)
 
+    def test_self_checkin_cancel_clears_presence(self):
+        session, changed = cancel_instructor_self_checkin(
+            self.instructor,
+            self.schedule.pk,
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(session.instructor_present)
+        self.assertIsNone(session.instructor_checked_in_at)
+
+    def test_assign_session_substitute_requires_cancelled_confirmation(self):
+        with self.assertRaises(ValueError):
+            assign_session_substitute(
+                self.instructor,
+                self.schedule.pk,
+                self.other_instructor.pk,
+            )
+
+    def test_assign_session_substitute_clears_original_presence(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+        session = assign_session_substitute(
+            self.instructor,
+            self.schedule.pk,
+            self.other_instructor.pk,
+        )
+
+        self.assertEqual(session.substitute_teacher, self.other_instructor)
+        self.assertFalse(session.instructor_present)
+        self.assertIsNone(session.instructor_checked_in_at)
+
+    def test_substitute_instructor_sees_regular_class(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        assign_session_substitute(
+            self.instructor,
+            self.schedule.pk,
+            self.other_instructor.pk,
+        )
+
+        entries = get_today_classes_for_instructor(self.other_instructor)
+
+        self.assertEqual(len([entry for entry in entries if not entry.is_special]), 1)
+        regular = [entry for entry in entries if not entry.is_special][0]
+        self.assertEqual(regular.schedule_id, self.schedule.pk)
+        self.assertTrue(regular.is_substitute_assignment)
+        self.assertEqual(regular.substitute_teacher_name, self.other_instructor.full_name)
+
+    def test_substitute_instructor_can_register_presence(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        assign_session_substitute(
+            self.instructor,
+            self.schedule.pk,
+            self.other_instructor.pk,
+        )
+
+        session, created = register_instructor_self_checkin(
+            self.other_instructor,
+            self.schedule.pk,
+        )
+
+        self.assertTrue(created)
+        self.assertTrue(session.instructor_present)
+        self.assertEqual(session.substitute_teacher, self.other_instructor)
+
+    def test_substitute_confirmed_shows_green_for_original_instructor(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        assign_session_substitute(
+            self.instructor,
+            self.schedule.pk,
+            self.other_instructor.pk,
+        )
+        register_instructor_self_checkin(self.other_instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [e for e in entries if not e.is_special][0]
+
+        self.assertTrue(regular.instructor_present)
+        self.assertTrue(regular.substitute_confirmed)
+        self.assertFalse(regular.can_assign_substitute)
+
+    def test_substitute_cancel_releases_class_to_original_instructor(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        assign_session_substitute(
+            self.instructor,
+            self.schedule.pk,
+            self.other_instructor.pk,
+        )
+        register_instructor_self_checkin(self.other_instructor, self.schedule.pk)
+        cancel_instructor_self_checkin(self.other_instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [e for e in entries if not e.is_special][0]
+
+        self.assertFalse(regular.instructor_present)
+        self.assertTrue(regular.can_confirm_presence)
+        self.assertTrue(regular.can_assign_substitute)
+        self.assertTrue(regular.can_cancel_class)
+        self.assertEqual(regular.substitute_teacher_name, "")
+
+    def test_cancel_class_without_instructor_toggles_cancel_and_restore(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+        session = cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        self.assertTrue(session.is_cancelled)
+
+        session = cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        self.assertFalse(session.is_cancelled)
+
+    def test_today_classes_exposes_can_uncancel_class_after_instructor_cancel(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [entry for entry in entries if not entry.is_special][0]
+
+        self.assertTrue(regular.is_cancelled)
+        self.assertTrue(regular.can_uncancel_class)
+
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [entry for entry in entries if not entry.is_special][0]
+
+        self.assertFalse(regular.is_cancelled)
+        self.assertFalse(regular.can_uncancel_class)
+        self.assertTrue(regular.can_confirm_presence)
+
+    def test_instructor_cancel_class_today_view_restores_cancelled_class(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+
+        self._login_portal_account(self.instructor_account)
+        response = self.client.post(
+            reverse("system:instructor-cancel-class-today"),
+            data='{"schedule_id": %d}' % self.schedule.pk,
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertFalse(payload["is_cancelled"])
+
+    def test_cancel_special_without_instructor_toggles_cancel_and_restore(self):
+        special = create_special_class(
+            title="Aulão Toggle", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+
+        special = cancel_special_without_instructor(self.instructor, special.pk)
+        self.assertTrue(special.is_cancelled)
+
+        special = cancel_special_without_instructor(self.instructor, special.pk)
+        self.assertFalse(special.is_cancelled)
+
+    def test_today_classes_exposes_special_cancel_and_restore_controls(self):
+        special = create_special_class(
+            title="Aulão Home", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        cancel_special_without_instructor(self.instructor, special.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        special_entry = [entry for entry in entries if entry.is_special][0]
+
+        self.assertTrue(special_entry.is_cancelled)
+        self.assertTrue(special_entry.can_uncancel_class)
+
+        cancel_special_without_instructor(self.instructor, special.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        special_entry = [entry for entry in entries if entry.is_special][0]
+
+        self.assertFalse(special_entry.is_cancelled)
+        self.assertTrue(special_entry.can_confirm_presence)
+        self.assertTrue(special_entry.can_cancel_class)
+
+    def test_instructor_cancel_special_today_view_restores_cancelled_special(self):
+        special = create_special_class(
+            title="Aulão API", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        cancel_special_without_instructor(self.instructor, special.pk)
+
+        self._login_portal_account(self.instructor_account)
+        response = self.client.post(
+            reverse("system:instructor-cancel-class-today"),
+            data='{"special_id": %d}' % special.pk,
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertFalse(payload["is_cancelled"])
+
+    def test_assign_session_substitute_rejects_self(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        with self.assertRaises(ValueError):
+            assign_session_substitute(
+                self.instructor,
+                self.schedule.pk,
+                self.instructor.pk,
+            )
+
     def test_today_classes_for_instructor_exposes_instructor_present(self):
         entries = get_today_classes_for_instructor(self.instructor)
         regular = [e for e in entries if not e.is_special][0]
-        self.assertFalse(regular.instructor_present)
+        self.assertTrue(regular.instructor_present)
         self.assertIsNone(regular.instructor_checked_in_at)
+        self.assertTrue(regular.can_cancel_presence)
+        self.assertFalse(regular.can_assign_substitute)
+
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        regular = [e for e in entries if not e.is_special][0]
+        self.assertFalse(regular.instructor_present)
+        self.assertTrue(regular.can_assign_substitute)
+        self.assertTrue(regular.can_confirm_presence)
 
         register_instructor_self_checkin(self.instructor, self.schedule.pk)
 
@@ -706,6 +934,8 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
             title="Aulão Self", date=timezone.localdate(),
             start_time=time(20, 0), teacher=self.instructor,
         )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+
         result, created = register_instructor_self_special_checkin(self.instructor, special.pk)
         self.assertTrue(created)
         self.assertTrue(result.instructor_present)
@@ -727,7 +957,24 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         with self.assertRaises(ValueError):
             register_instructor_self_special_checkin(self.instructor, special.pk)
 
+    def test_self_special_checkin_cancel_clears_presence(self):
+        special = create_special_class(
+            title="Aulão Self", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        register_instructor_self_special_checkin(self.instructor, special.pk)
+
+        special, changed = cancel_instructor_self_special_checkin(
+            self.instructor,
+            special.pk,
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(special.instructor_present)
+        self.assertIsNone(special.instructor_checked_in_at)
+
     def test_instructor_history_shows_own_checkins(self):
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
         register_instructor_self_checkin(self.instructor, self.schedule.pk)
         history = get_instructor_checkin_history(self.instructor)
         self.assertEqual(len(history), 1)
@@ -749,6 +996,134 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         history = get_instructor_checkin_history(self.instructor)
         self.assertEqual(history, [])
 
+    def test_assign_special_substitute_requires_cancelled_confirmation(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        register_instructor_self_special_checkin(self.instructor, special.pk)
+        with self.assertRaises(ValueError):
+            assign_special_substitute(
+                self.instructor,
+                special.pk,
+                self.other_instructor.pk,
+            )
+
+    def test_assign_special_substitute_clears_original_presence(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+
+        special = assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+
+        self.assertEqual(special.substitute_teacher, self.other_instructor)
+        self.assertFalse(special.instructor_present)
+        self.assertIsNone(special.instructor_checked_in_at)
+
+    def test_substitute_instructor_sees_special_class(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+
+        entries = get_today_classes_for_instructor(self.other_instructor)
+        specials = [entry for entry in entries if entry.is_special]
+
+        self.assertEqual(len(specials), 1)
+        self.assertEqual(specials[0].special_id, special.pk)
+        self.assertTrue(specials[0].is_substitute_assignment)
+        self.assertEqual(specials[0].substitute_teacher_name, self.other_instructor.full_name)
+
+    def test_substitute_instructor_can_register_special_presence(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+
+        result, created = register_instructor_self_special_checkin(
+            self.other_instructor,
+            special.pk,
+        )
+
+        self.assertTrue(created)
+        self.assertTrue(result.instructor_present)
+        self.assertEqual(result.substitute_teacher, self.other_instructor)
+
+    def test_special_substitute_confirmed_shows_green_for_original_instructor(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+        register_instructor_self_special_checkin(self.other_instructor, special.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        special_entry = [e for e in entries if e.is_special][0]
+
+        self.assertTrue(special_entry.instructor_present)
+        self.assertTrue(special_entry.substitute_confirmed)
+        self.assertFalse(special_entry.can_assign_substitute)
+
+    def test_special_substitute_cancel_releases_to_original_instructor(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+        register_instructor_self_special_checkin(self.other_instructor, special.pk)
+        cancel_instructor_self_special_checkin(self.other_instructor, special.pk)
+
+        entries = get_today_classes_for_instructor(self.instructor)
+        special_entry = [e for e in entries if e.is_special][0]
+
+        self.assertFalse(special_entry.instructor_present)
+        self.assertTrue(special_entry.can_confirm_presence)
+        self.assertTrue(special_entry.can_assign_substitute)
+        self.assertTrue(special_entry.can_cancel_class)
+        self.assertEqual(special_entry.substitute_teacher_name, "")
+
+    def test_cancel_special_blocked_when_substitute_assigned(self):
+        special = create_special_class(
+            title="Aulão Sub", date=timezone.localdate(),
+            start_time=time(20, 0), teacher=self.instructor,
+        )
+        cancel_instructor_self_special_checkin(self.instructor, special.pk)
+        assign_special_substitute(
+            self.instructor,
+            special.pk,
+            self.other_instructor.pk,
+        )
+        with self.assertRaises(ValueError):
+            cancel_special_without_instructor(self.instructor, special.pk)
+
     def _login_portal_account(self, account):
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
@@ -757,6 +1132,7 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
     def test_self_checkin_view_returns_success(self):
         self._login_portal_account(self.instructor_account)
         import json
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
         response = self.client.post(
             reverse("system:instructor-self-checkin"),
             data=json.dumps({"schedule_id": self.schedule.pk}),
@@ -770,11 +1146,6 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
     def test_self_checkin_view_idempotent(self):
         self._login_portal_account(self.instructor_account)
         import json
-        self.client.post(
-            reverse("system:instructor-self-checkin"),
-            data=json.dumps({"schedule_id": self.schedule.pk}),
-            content_type="application/json",
-        )
         response = self.client.post(
             reverse("system:instructor-self-checkin"),
             data=json.dumps({"schedule_id": self.schedule.pk}),
@@ -783,6 +1154,67 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         data = response.json()
         self.assertTrue(data["success"])
         self.assertFalse(data["created"])
+
+    def test_self_checkin_cancel_view_returns_success(self):
+        self._login_portal_account(self.instructor_account)
+        import json
+
+        response = self.client.post(
+            reverse("system:instructor-self-checkin-cancel"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["changed"])
+
+    def test_session_substitute_view_returns_success(self):
+        self._login_portal_account(self.instructor_account)
+        import json
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+
+        response = self.client.post(
+            reverse("system:instructor-session-substitute"),
+            data=json.dumps({
+                "schedule_id": self.schedule.pk,
+                "substitute_teacher_id": self.other_instructor.pk,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["substitute_teacher_name"], self.other_instructor.full_name)
+
+    def test_instructor_home_renders_presence_management_controls(self):
+        self._login_portal_account(self.instructor_account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("js-instructor-self-checkin-cancel", content)
+        self.assertNotIn('class="btn btn--outline presence-action js-open-substitute-modal"', content)
+        self.assertIn("substitute-teacher-modal", content)
+        self.assertIn("instructorSessionSubstituteUrl", content)
+        self.assertIn("Confirmado", content)
+        self.assertIn("section-action__icon", content)
+        self.assertIn("presence-chip__dismiss-icon", content)
+
+        cancel_instructor_self_checkin(self.instructor, self.schedule.pk)
+        response = self.client.get(reverse("system:home"))
+        content = response.content.decode("utf-8")
+        self.assertIn('class="btn btn--outline presence-action js-open-substitute-modal"', content)
+        self.assertIn("presence-action__icon", content)
+
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        response = self.client.get(reverse("system:home"))
+        content = response.content.decode("utf-8")
+        self.assertIn("js-instructor-restore-class", content)
+        self.assertIn("Aula cancelada", content)
 
 
 class AdministrativeProfileTestCase(TestCase):

@@ -99,7 +99,11 @@ from system.views.calendar_views import (
     InstructorApproveCheckinView,
     InstructorApproveSpecialCheckinView,
     InstructorSelfCheckinView,
+    InstructorSelfCheckinCancelView,
     InstructorSelfSpecialCheckinView,
+    InstructorSelfSpecialCheckinCancelView,
+    InstructorCancelClassTodayView,
+    InstructorSessionSubstituteView,
     InstructorSpecialClassCreateView,
     InstructorSpecialClassDeleteView,
     InstructorToggleSessionView,
@@ -257,7 +261,11 @@ urlpatterns = [
 
     # Ações do professor (check-in, aulão, sessão)
     path("aulas/professor/presenca/", InstructorSelfCheckinView.as_view(), name="instructor-self-checkin"),
+    path("aulas/professor/presenca/cancelar/", InstructorSelfCheckinCancelView.as_view(), name="instructor-self-checkin-cancel"),
+    path("aulas/professor/substituto/", InstructorSessionSubstituteView.as_view(), name="instructor-session-substitute"),
+    path("aulas/professor/aula/cancelar/", InstructorCancelClassTodayView.as_view(), name="instructor-cancel-class-today"),
     path("aulas/professor/presenca-aulao/", InstructorSelfSpecialCheckinView.as_view(), name="instructor-self-special-checkin"),
+    path("aulas/professor/presenca-aulao/cancelar/", InstructorSelfSpecialCheckinCancelView.as_view(), name="instructor-self-special-checkin-cancel"),
     path("aulas/professor/aprovar/", InstructorApproveCheckinView.as_view(), name="instructor-approve-checkin"),
     path("aulas/professor/aprovar-aulao/", InstructorApproveSpecialCheckinView.as_view(), name="instructor-approve-special-checkin"),
     path("aulas/professor/cancelar/", InstructorToggleSessionView.as_view(), name="instructor-toggle-session"),
