@@ -12,7 +12,7 @@
 
 ## Contexto e limitações do preview browser
 
-O preview browser interno do Claude Code funciona em `http://localhost:8000` (ou `127.0.0.1:8000`).
+O preview browser interno do Claude Code funciona em `http://localhost:8000`.
 
 **Limitações conhecidas:**
 
@@ -32,7 +32,7 @@ O arquivo `.claude/launch.json` configura o servidor Django para o preview:
   "configurations": [{
     "name": "django",
     "runtimeExecutable": "C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe",
-    "runtimeArgs": ["manage.py", "runserver", "127.0.0.1:8000", "--noreload"],
+    "runtimeArgs": ["manage.py", "runserver", "localhost:8000", "--noreload"],
     "port": 8000
   }]
 }
@@ -74,7 +74,7 @@ print('SITE_BASE_URL:', settings.SITE_BASE_URL)
 > **Se `STRIPE_WEBHOOK_SECRET` estiver vazio:**
 > Iniciar o Stripe CLI listener em um terminal separado:
 > ```
-> stripe listen --forward-to http://127.0.0.1:8000/pagamentos/webhook/stripe/
+> stripe listen --forward-to http://localhost:8000/pagamentos/webhook/stripe/
 > ```
 > Copiar o `whsec_...` exibido e adicionar ao `.env`:
 > ```
@@ -84,10 +84,10 @@ print('SITE_BASE_URL:', settings.SITE_BASE_URL)
 
 ```powershell
 # 3. Verificar que as rotas de webhook existem (esperado: 405, não 404)
-curl -s -o /dev/null -w "%{http_code}" -X GET http://127.0.0.1:8000/pagamentos/webhook/asaas/
+curl -s -o /dev/null -w "%{http_code}" -X GET http://localhost:8000/pagamentos/webhook/asaas/
 # Esperado: 405
 
-curl -s -o /dev/null -w "%{http_code}" -X GET http://127.0.0.1:8000/pagamentos/webhook/stripe/
+curl -s -o /dev/null -w "%{http_code}" -X GET http://localhost:8000/pagamentos/webhook/stripe/
 # Esperado: 405
 ```
 
@@ -513,11 +513,11 @@ stripe_session_id: cs_test_<id_original>
 
 ### Simular webhook Stripe `checkout.session.completed`
 
-O Stripe CLI precisa estar em execução com `stripe listen` apontando para `127.0.0.1:8000`.
+O Stripe CLI precisa estar em execução com `stripe listen` apontando para `localhost:8000`.
 
 ```powershell
 # Executar em terminal separado (se ainda não estiver rodando):
-stripe listen --forward-to http://127.0.0.1:8000/pagamentos/webhook/stripe/
+stripe listen --forward-to http://localhost:8000/pagamentos/webhook/stripe/
 
 # Em outro terminal, disparar o evento:
 stripe trigger checkout.session.completed `
@@ -526,7 +526,7 @@ stripe trigger checkout.session.completed `
 ```
 
 **Comportamento esperado:**
-- Terminal do `stripe listen`: `[200] POST http://127.0.0.1:8000/pagamentos/webhook/stripe/`
+- Terminal do `stripe listen`: `[200] POST http://localhost:8000/pagamentos/webhook/stripe/`
 - `StripeWebhookEvent` criado no banco
 - `PreRegistration.status` muda para `payment_confirmed`
 - `form_snapshot["plan_paid"]` muda para `True`

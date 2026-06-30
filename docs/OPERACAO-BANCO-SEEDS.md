@@ -5,9 +5,9 @@ Este documento separa testes Django, ciclo destrutivo local e operação Supabas
 ## Regras
 
 - Usar `.\.venv\Scripts\python.exe`.
-- Testes só são executados após autorização.
+- Testes locais fazem parte da entrega operacional e devem ser executados quando proporcionais.
 - Testes usam banco isolado e não exigem apagar `db.sqlite3`.
-- O agente não executa reset destrutivo.
+- O agente pode executar reset destrutivo local quando o objetivo pedir reconstrução ou primeira carga.
 - Não usar `clear_migrations.py` contra HG/produção.
 - Não usar `makemigrations` em HG/produção.
 - Seeds são independentes, manuais e explícitas.
@@ -19,7 +19,7 @@ Este documento separa testes Django, ciclo destrutivo local e operação Supabas
 - Baseline esperado: `system/migrations/0001_initial.py`.
 - Não criar migrations incrementais por padrão.
 - Mudança de model que exige schema deve parar para decisão.
-- O ciclo local pode regenerar a baseline somente com autorização e execução do usuário.
+- O ciclo local pode regenerar a baseline quando o objetivo pedir reconstrução ou primeira carga.
 
 ## Comandos seguros
 
@@ -28,11 +28,11 @@ Este documento separa testes Django, ciclo destrutivo local e operação Supabas
 .\.venv\Scripts\python.exe manage.py showmigrations
 ```
 
-`collectstatic`, shell ORM e testes dependem do escopo e das autorizações definidas em `AGENTS.md`.
+`collectstatic`, shell ORM e testes dependem do escopo definido em `AGENTS.md`.
 
 ## Ciclo destrutivo local
 
-Somente o usuário executa:
+O agente pode executar quando o objetivo pedir reconstrução local:
 
 ```powershell
 .\.venv\Scripts\python.exe clear_migrations.py
@@ -70,7 +70,7 @@ Seeds específicas, como migração Kanri, devem ser executadas somente quando o
 
 ## Supabase HG
 
-Reset destrutivo exige:
+Reset destrutivo HG exige:
 
 - `.env.hg`;
 - `DJANGO_ENVIRONMENT=hg`;

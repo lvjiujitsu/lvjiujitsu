@@ -23,8 +23,8 @@ O comportamento comum está em `AGENTS.md`.
 - Usar Plan mode para pesquisa e proposta.
 - UI exige proposta aprovada e browser do Desktop.
 - Não presumir produto chamado “Claude Design”.
-- Testes pedem autorização; operações destrutivas são bloqueadas.
-- Regras Claude são avaliadas em ordem `deny` → `ask` → `allow`; o `ask` de projeto para testes prevalece sobre allows históricos do arquivo local.
+- Testes locais, migrations locais, reset local e seeds locais são permitidos quando necessários ao objetivo solicitado.
+- Regras Claude devem permitir o ciclo local; HG, produção, deploy, push e pagamentos externos continuam exigindo confirmação explícita.
 
 ## Codex
 

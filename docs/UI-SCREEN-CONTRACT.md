@@ -312,9 +312,9 @@ Antes de concluir qualquer tela:
 - Permissão: ao menos um perfil permitido e um bloqueado testados quando aplicável.
 - Registrar screenshot ou snapshot na PRD.
 - `manage.py check` — executar quando proporcional ao risco.
-- `manage.py collectstatic --noinput` — executar quando static for afetado e houver autorização operacional.
-- Testes devem ser escritos no ciclo TDD, mas `manage.py test` só pode ser executado após autorização explícita do usuário.
-- Sem execução autorizada, registrar “teste escrito, não executado por política” e não declarar Red ou Green.
+- `manage.py collectstatic --noinput` — executar quando static for afetado e o escopo exigir validação do manifest.
+- Testes devem ser escritos no ciclo TDD e executados quando proporcionais ao escopo local.
+- Sem execução real, não declarar Red ou Green.
 
 ---
 

@@ -5,7 +5,7 @@ Protocolo comum do LV JIU JITSU para Claude, Codex, Cursor e agentes compatívei
 ## 1. Precedência
 
 1. Solicitação atual do usuário.
-2. Segurança, integridade, autorização e rastreabilidade.
+2. Segurança, integridade operacional e rastreabilidade.
 3. Este arquivo.
 4. `CLAUDE.md`.
 5. PRD ativa e contratos locais.
@@ -36,7 +36,7 @@ Divergência entre fontes bloqueia a conclusão até ser resolvida.
 - Responder de forma mínima: entendimento, escopo, validação e próxima decisão.
 - Não expor raciocínio interno. Informar conclusões, premissas e evidências.
 
-## 4. Gate de entendimento e aprovação
+## 4. Gate de entendimento e execução
 
 Antes de alterar arquivos:
 
@@ -45,16 +45,16 @@ Antes de alterar arquivos:
 3. ler integralmente arquivos diretos e contratos adjacentes;
 4. pesquisar documentação atual;
 5. resumir o entendimento;
-6. pedir aprovação quando a mudança ainda não estiver explicitamente autorizada.
+6. seguir para execução quando a solicitação atual já autorizar o escopo.
 
 Perguntas, leitura e diagnóstico sem escrita não exigem aprovação adicional.
 
-Mudança visual exige antes do código:
+Mudança visual deve registrar antes do código:
 
 - objetivo e preservação funcional;
 - hierarquia, wireframe e estados;
 - permissões e desktop/mobile;
-- aprovação explícita da proposta.
+- aprovação explícita quando a solicitação atual não autorizar implementação.
 
 Usar Plan mode, Figma, mockup ou recurso visual disponível. Não inventar uma ferramenta chamada “Claude Design”.
 
@@ -80,7 +80,7 @@ A PRD deve:
 - manter checkboxes desmarcados até existir evidência;
 - ser atualizada durante a execução.
 
-## 7. TDD e autorização de testes
+## 7. TDD e execução de testes
 
 Para comportamento implementável:
 
@@ -90,24 +90,24 @@ Para comportamento implementável:
 
 Política:
 
-- não executar testes sem autorização explícita;
-- perguntar após implementar lógica ou corrigir erro;
+- testes locais estão autorizados para entregas operacionais solicitadas;
+- executar teste focado e/ou suíte proporcional ao risco antes do fechamento;
 - não declarar Red, Green ou regressão validada sem execução;
-- registrar “teste escrito, não executado por política” quando aplicável.
+- registrar comando e resultado real.
 
-Testes Django usam banco isolado. Reset destrutivo e seeds são operações separadas.
+Testes Django usam banco isolado. Reset local, migrations locais e seeds locais podem ser executados quando forem necessários para o objetivo solicitado.
 
 ## 8. Validação
 
 | Mudança | Validação padrão |
 |---|---|
 | UI, template, CSS, JS ou fluxo visual | navegador interno, desktop/mobile, caminho feliz, edge case, console e screenshot |
-| Lógica Django | `manage.py check`, ORM seguro quando aplicável e oferta de teste focado |
-| Persistência | ORM read-only por padrão; mutação exige autorização |
+| Lógica Django | `manage.py check`, teste focado/suíte proporcional e ORM quando aplicável |
+| Persistência | ORM local proporcional ao objetivo; escrita remota exige confirmação de ambiente |
 | Configuração/dependência | comando oficial proporcional ao risco |
 | Documentação/governança | links, estrutura, busca textual e diff |
 
-Em UI, validar no navegador imediatamente após implementar. Testes continuam sujeitos à autorização.
+Em UI, validar no navegador imediatamente após implementar. Testes locais fazem parte da validação.
 
 Pagamento real segue o documento operacional e exige ambiente, túnel, gateway e browser adequados.
 
@@ -140,11 +140,11 @@ Usar `transaction.atomic` em múltiplas escritas e carregar relações para evit
 
 ## 11. Banco, migrations e seeds
 
-- Não criar, editar ou aplicar migrations sem autorização explícita.
-- O agente não executa reset destrutivo local, HG ou produção.
-- Mudança de schema exige parada e decisão do usuário.
+- O agente pode criar, editar e aplicar migrations locais quando isso for necessário para o objetivo solicitado.
+- O agente pode executar reset destrutivo local, `makemigrations`, `migrate`, seeds e testes quando a tarefa pedir reconstrução ou primeira carga local.
+- Mudança de schema em HG ou produção exige confirmação explícita de ambiente.
 - Ciclos e seeds pertencem a `docs/OPERACAO-BANCO-SEEDS.md`.
-- Seeds são explícitas; não inferir execução.
+- Seeds são executadas de forma explícita e registrada; não mascarar falhas nem importar dados amplos sem necessidade do fluxo.
 
 ## 12. Limpeza e follow-up
 

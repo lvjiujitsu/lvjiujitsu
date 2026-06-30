@@ -1,4 +1,4 @@
 interface:
   display_name: "LV Django Delivery"
-  short_description: "Entrega Django com testes sob autorização"
+  short_description: "Entrega Django com testes locais"
   default_prompt: "Use $lv-django-delivery para implementar esta mudança Django com segurança."

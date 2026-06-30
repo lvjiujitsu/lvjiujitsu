@@ -12,4 +12,4 @@ Use:
 - `docs/PLATFORM-ADAPTERS.md` para diferenças do Cursor;
 - as skills `lv-*` conforme a demanda.
 
-Responda em pt-BR, de forma mínima. Testes só podem ser executados após autorização explícita.
+Responda em pt-BR, de forma mínima. Testes locais, ORM local, migrations locais e seeds locais fazem parte da entrega quando proporcionais ao escopo.

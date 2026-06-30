@@ -11,7 +11,7 @@ Prompt
   -> leitura integral
   -> pesquisa oficial
   -> confirmação de entendimento
-  -> aprovação
+  -> autorização registrada pelo prompt
   -> PRD
   -> implementação
   -> validação proporcional
@@ -77,12 +77,12 @@ Toda PRD registra consulta, links, conclusão e limitações. Pesquisa irrelevan
 
 ## 6. Confirmação mínima
 
-Antes de uma mudança ainda não autorizada:
+Antes de uma mudança ainda não autorizada pelo prompt:
 
 ```text
 Entendi: <resultado>.
 Escopo: <arquivos/fluxos>.
-Validação: <browser, checks e ORM; testes somente se autorizados>.
+Validação: <browser, checks, testes e ORM local proporcionais>.
 Posso implementar?
 ```
 
@@ -94,22 +94,24 @@ Posso implementar?
 | Escrita solicitada com escopo claro | solicitação atual |
 | Expansão material | nova aprovação |
 | Implementação de UI | proposta aprovada |
-| Teste | autorização explícita |
+| Teste local | autorizado para entrega operacional solicitada |
 | ORM read-only | permitido quando necessário |
-| ORM mutável | autorização explícita |
-| Migration, reset ou seed | autorização explícita; ciclo destrutivo executado pelo usuário |
+| ORM mutável local | autorizado quando necessário ao objetivo solicitado |
+| Migration, migrate, reset local ou seed local | autorizado quando necessário ao objetivo solicitado |
 | Pagamento externo real | autorização e ambiente operacional |
 | Push ou deploy | autorização explícita |
+| HG ou produção | confirmação explícita do ambiente antes de qualquer escrita |
 
 ## 8. SDD e TDD
 
 - Criar PRD antes de mudança relevante.
 - Escrever o teste do comportamento antes do código.
 - Implementar o mínimo e refatorar.
-- Sem execução autorizada, não declarar Red ou Green.
-- Registrar "teste escrito, não executado por política".
+- Executar testes locais proporcionais quando houver comportamento testável.
+- Não declarar Red ou Green sem execução real.
+- Registrar comando e resultado.
 
-Testes Django usam banco de teste isolado. Reset + seeds é ciclo operacional separado.
+Testes Django usam banco de teste isolado. Reset + seeds é ciclo operacional local permitido quando necessário para primeira carga ou reconstrução.
 
 ## 9. Django
 
@@ -162,8 +164,8 @@ Para sessão autenticada, usar a superfície que mantenha a sessão. Headless n�
 
 - Preferir read-only.
 - Registrar comando e resultado.
-- Não criar fixture improvisada sem aprovação.
-- Recuperação mutável deve ser explícita, idempotente e autorizada.
+- Criar dados locais somente quando fizer parte do objetivo ou da validação.
+- Recuperação mutável deve ser explícita, idempotente e registrada.
 
 ## 13. Limpeza e fechamento
 

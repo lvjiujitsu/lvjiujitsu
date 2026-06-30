@@ -57,7 +57,7 @@ system/
 
 ```powershell
 .\.venv\Scripts\pip.exe install -r requirements-dev.txt
-.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+.\.venv\Scripts\python.exe manage.py runserver localhost:8000
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py showmigrations
 .\.venv\Scripts\python.exe manage.py collectstatic --noinput
@@ -65,7 +65,7 @@ system/
 .\.venv\Scripts\python.exe manage.py shell -c "<CHECK>"
 ```
 
-`manage.py test` e ORM potencialmente mutável só são executados após autorização.
+Comandos locais necessários para entrega operacional estão autorizados pelo proprietário: testes, ORM local, `makemigrations`, `migrate`, seeds, reset local e criação de admin. Registrar comando e resultado.
 
 ## 5. Ambientes e deploy
 
@@ -92,8 +92,9 @@ Start: Gunicorn conforme configuração do serviço Render.
 
 - O projeto adota uma única migration vigente `system/migrations/0001_initial.py`.
 - Não criar migrations incrementais por padrão.
-- Mudança de schema exige decisão e ciclo destrutivo executado pelo usuário.
-- O agente não executa reset, `makemigrations`, `migrate` ou seeds sem autorização.
+- Mudança de schema local pode regenerar a baseline quando o objetivo pedir primeira carga ou reconstrução.
+- O agente pode executar reset local, `makemigrations`, `migrate`, testes e seeds locais quando necessário ao objetivo solicitado.
+- HG e produção continuam exigindo confirmação explícita de ambiente.
 - Testes Django usam banco isolado e não exigem apagar `db.sqlite3`.
 - Operação completa: `docs/OPERACAO-BANCO-SEEDS.md`.
 
@@ -126,12 +127,12 @@ Antes da finalização, o estado pertence a `PreRegistration`.
 
 ## 9. UI e validação
 
-- URL local canônica: `http://127.0.0.1:8000`.
+- URL local canônica: `http://localhost:8000`.
 - Tema claro e escuro são obrigatórios.
 - Alteração visual exige proposta aprovada antes do código.
 - Após implementação, usar o navegador interno disponível.
 - Validar desktop, mobile, caminho feliz, edge case, console e evidência visual.
-- Testes podem ser escritos no TDD, mas só são executados após autorização.
+- Testes devem ser executados quando proporcionais ao escopo local.
 
 ## 10. Ambientes remotos
 

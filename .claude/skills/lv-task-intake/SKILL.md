@@ -1,6 +1,6 @@
 ---
 name: lv-task-intake
-description: Use esta skill no início de qualquer demanda do LV JIU JITSU que possa gerar diagnóstico, plano, PRD ou alteração. Classifique a demanda, faça preflight, leia o fluxo integralmente, pesquise fontes atuais, confirme entendimento e obtenha a autorização necessária antes de editar.
+description: Use esta skill no início de qualquer demanda do LV JIU JITSU que possa gerar diagnóstico, plano, PRD ou alteração. Classifique a demanda, faça preflight, leia o fluxo integralmente, pesquise fontes atuais, confirme entendimento e registre a autorização do prompt antes de editar.
 ---
 
 # LV Task Intake
@@ -20,14 +20,15 @@ description: Use esta skill no início de qualquer demanda do LV JIU JITSU que p
 ```text
 Entendi: <resultado>.
 Escopo: <fluxos/arquivos>.
-Validação: <browser, checks e ORM; testes somente se autorizados>.
+Validação: <browser, checks, testes e ORM local proporcionais>.
 Posso implementar?
 ```
 
 ## Autorizar
 
 - Tratar ordem explícita de implementação como autorização do escopo descrito.
-- Pedir nova aprovação para expansão, UI sem proposta aprovada, testes, ORM mutável, migrations, reset, seeds, pagamento real, deploy ou push.
+- Testes locais, ORM local, migrations locais, reset local e seeds locais estão autorizados quando necessários ao objetivo solicitado.
+- Pedir nova aprovação para expansão material, pagamento externo real, HG, produção, deploy ou push.
 - Preservar mudanças preexistentes do usuário.
 
 ## Restringir

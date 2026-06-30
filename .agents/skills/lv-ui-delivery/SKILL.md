@@ -27,7 +27,7 @@ Usar Plan mode, Figma, mockup ou recurso disponível. Não inventar “Claude De
 
 ## Implementar
 
-1. Escrever o teste funcional ou contrato automatizado aplicável sem executá-lo.
+1. Escrever e executar o teste funcional ou contrato automatizado aplicável quando proporcional.
 2. Implementar a menor mudança correta.
 3. Manter regra de negócio fora de template e JS.
 4. Usar tokens, acessibilidade e assets separados.
@@ -38,7 +38,7 @@ Usar Plan mode, Figma, mockup ou recurso disponível. Não inventar “Claude De
 
 Imediatamente após implementar:
 
-1. abrir a rota real em `127.0.0.1:8000`;
+1. abrir a rota real em `localhost:8000`;
 2. validar caminho feliz e edge case;
 3. validar desktop, mobile, tema claro e escuro;
 4. inspecionar console e terminal;
@@ -49,6 +49,6 @@ Pagamento Asaas/Stripe segue o guia operacional. Gateway externo, túnel, webhoo
 
 ## Encerrar
 
-- Perguntar se o usuário autoriza os testes escritos.
+- Registrar os testes executados e seus resultados.
 - Registrar limitações reais.
 - Executar `lv-cleanup-audit`.

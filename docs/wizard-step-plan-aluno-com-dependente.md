@@ -13,9 +13,9 @@ Chegar rapidamente ao `step-plan` com um aluno titular que tambem cadastra depen
 
 ## Pre-condicoes
 
-- Servidor Django rodando em `http://127.0.0.1:8000`.
+- Servidor Django rodando em `http://localhost:8000`.
 - Seeds minimas de turmas e planos executadas quando o teste depender de catalogos reais.
-- Abrir `http://127.0.0.1:8000/register/`.
+- Abrir `http://localhost:8000/register/`.
 
 ## Dados rapidos sugeridos
 

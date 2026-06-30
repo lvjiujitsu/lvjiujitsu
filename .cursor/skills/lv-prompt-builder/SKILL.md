@@ -28,9 +28,9 @@ Transforma um problema cru no melhor prompt de execução para o Claude operar o
 
 ## Decidir gates
 
-Consolidar numa confirmação inicial: implementação do escopo; política de teste (autorização antecipada se testável; senão "sem teste"); aprovação de design se UI.
+Consolidar numa confirmação inicial: implementação do escopo; testes locais proporcionais; execução local de ORM, migrations, reset e seeds quando necessários; aprovação de design se a solicitação não autorizar implementação.
 
-Manter explícitos (pedir antes): ORM mutável, migrations, migrate, reset, seeds, cobrança/webhook real Asaas/Stripe, push, deploy.
+Manter explícitos (pedir antes): cobrança/webhook real Asaas/Stripe, HG, produção, push e deploy.
 
 ## Gerar o prompt
 
@@ -38,7 +38,7 @@ Bloco único no formato Execution prompt de `docs/PRD-STANDARD.md`: Persona; Act
 
 ## Parar
 
-Entregar o prompt e parar. Listar os gates que ainda exigirão autorização. Não implementar.
+Entregar o prompt e parar. Listar os gates externos/remotos que ainda exigirão confirmação. Não implementar.
 
 ## Restringir
 
