@@ -46,6 +46,17 @@ def _student_instructor_present(session):
     return session.instructor_present
 
 
+def _training_class_group_ids(person):
+    enrolled_group_ids = list(
+        person.class_enrollments.filter(status="active").values_list(
+            "class_group_id", flat=True
+        )
+    )
+    if person.class_group_id and person.class_group_id not in enrolled_group_ids:
+        enrolled_group_ids.append(person.class_group_id)
+    return enrolled_group_ids
+
+
 def _instructor_presence_state(session, *, viewer, is_original_instructor, substitute_teacher):
     substitute = substitute_teacher
     delegated_to_other = bool(
@@ -236,7 +247,7 @@ def get_today_classes_for_person(person):
     enrollments = person.class_enrollments.filter(
         status="active",
     ).select_related("class_group")
-    enrolled_group_ids = [e.class_group_id for e in enrollments]
+    enrolled_group_ids = _training_class_group_ids(person)
 
     specials = list(
         SpecialClass.objects.filter(date=today)

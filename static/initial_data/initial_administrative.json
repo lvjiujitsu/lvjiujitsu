@@ -1,7 +1,7 @@
 [
   {
     "full_name": "Aline Blanch Freiria",
-    "cpf": "920.000.001-01",
+    "cpf": "920.000.011-81",
     "email": "alineblanchfreiria@gmail.com",
     "phone": "",
     "birth_date": "2005-07-07",
@@ -17,8 +17,13 @@
     "jiu_jitsu_belt": "purple",
     "jiu_jitsu_stripes": 1,
     "class_category": "adult",
-    "class_group_category": "kids",
-    "class_group_teacher_cpf": "92000000452",
+    "class_enrollments": [
+      {"class_group_category": "adult", "class_group_teacher_cpf": "92000000100"},
+      {"class_group_category": "adult", "class_group_teacher_cpf": "75598094134"}
+    ],
+    "class_instructor_assignments": [
+      {"class_group_category": "kids", "class_group_teacher_cpf": "92000000452"}
+    ],
     "graduation_history": [
       {"belt_rank_code": "adult-white", "grade_number": 0, "awarded_at": "2019-06-11"},
       {"belt_rank_code": "adult-white", "grade_number": 1, "awarded_at": "2019-09-26"},
@@ -33,5 +38,17 @@
       {"belt_rank_code": "adult-purple","grade_number": 0, "awarded_at": "2025-06-21"},
       {"belt_rank_code": "adult-purple","grade_number": 1, "awarded_at": "2025-12-15"}
     ]
+  },
+  {
+    "full_name": "Miguel Torres Dourado",
+    "cpf": "920.000.012-62",
+    "email": "miguel.torres.dourado@lvjiujitsu.test",
+    "phone": "(62) 98888-2012",
+    "birth_date": "1990-03-14",
+    "biological_sex": "male",
+    "blood_type": "A+",
+    "allergies": "Sem alergias conhecidas.",
+    "previous_injuries": "Nenhuma.",
+    "emergency_contact": "Contato LV - (62) 3333-0000"
   }
 ]

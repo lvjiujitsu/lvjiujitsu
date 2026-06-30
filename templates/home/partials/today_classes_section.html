@@ -1,0 +1,270 @@
+{% if class_items %}
+<section class="section" aria-labelledby="classes-title-{{ section_slug }}">
+  <div class="section__header">
+    <div class="section__title-row">
+      <button class="section__toggle" type="button"
+              data-section="{{ section_slug }}" aria-expanded="true" aria-controls="section-{{ section_slug }}"
+              aria-label="Recolher turmas de hoje">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <h2 class="section__title" id="classes-title-{{ section_slug }}">Turmas de hoje</h2>
+    </div>
+    {% if instructor_toolbar == "full" %}
+    <div class="section__actions">
+      {% if attendance_history %}
+      <button class="btn btn--secondary btn--sm section-action js-open-attendance-history-modal" type="button" aria-haspopup="dialog" aria-label="Abrir histórico" title="Histórico">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+        <span class="section-action__text">Histórico</span>
+      </button>
+      {% endif %}
+      <button class="btn btn--secondary btn--sm section-action js-open-special-modal" type="button" aria-label="Criar aulão" title="Criar aulão">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span class="section-action__text">Criar aulão</span>
+      </button>
+      <a class="btn btn--secondary btn--sm section-action" href="{% url 'system:calendar' %}" aria-label="Abrir cronograma" title="Cronograma">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
+        <span class="section-action__text">Cronograma</span>
+      </a>
+    </div>
+    {% elif instructor_toolbar == "calendar" %}
+    <div class="section__actions">
+      <a class="btn btn--secondary btn--sm section-action" href="{% url 'system:calendar' %}" aria-label="Abrir cronograma" title="Cronograma">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
+        <span class="section-action__text">Cronograma</span>
+      </a>
+    </div>
+    {% elif instructor_toolbar == "overview" %}
+    <div class="section__actions">
+      {% if attendance_history %}
+      <button class="btn btn--secondary btn--sm section-action js-open-attendance-history-modal" type="button" aria-haspopup="dialog" aria-label="Abrir histórico" title="Histórico">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+        <span class="section-action__text">Histórico</span>
+      </button>
+      {% endif %}
+      <a class="btn btn--secondary btn--sm section-action" href="{% url 'system:calendar' %}" aria-label="Abrir cronograma" title="Cronograma">
+        <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
+        <span class="section-action__text">Cronograma</span>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  <div class="section__body" id="section-{{ section_slug }}">
+    <div class="panel">
+      <ul class="class-list" aria-label="Aulas de hoje">
+        {% for item in class_items %}
+        <li class="class-item{% if item.is_cancelled %} class-item--cancelled{% endif %}">
+          <span class="class-item__time" aria-label="Horário">{{ item.start_time|default:"—" }}</span>
+          <span class="class-item__dot" aria-hidden="true"></span>
+          <div class="class-item__info">
+            <div class="class-item__name">
+              {{ item.group_name|default:"Aula" }}{% if item.category_name %} · {{ item.category_name }}{% endif %}
+            </div>
+            {% if item.entry_role == 'instructor' %}
+            <div class="class-item__sub">
+              {% if item.is_cancelled %}
+                {{ item.cancellation_reason|default:"Cancelada" }}
+              {% else %}
+                {{ item.approved_count|default:0 }} confirmado{{ item.approved_count|default:0|pluralize }}{% if item.pending_count > 0 %} · <strong>{{ item.pending_count }} pendente{{ item.pending_count|pluralize }}</strong>{% endif %}
+              {% endif %}
+            </div>
+            {% if item.is_cancelled and item.can_uncancel_class %}
+            <div class="class-item__presence" id="presence-{{ section_slug }}-{{ forloop.counter }}">
+              <div class="presence-controls presence-controls--toolbar">
+                <span class="status-pill status-pill--neutral presence-status">
+                  <span class="presence-status__main">{% if item.is_special %}Aulão cancelado{% else %}Aula cancelada{% endif %}</span>
+                </span>
+                <div class="presence-actions">
+                  <button class="btn btn--outline presence-action js-instructor-restore-class"
+                          type="button"
+                          data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                          data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                          data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                          aria-label="Restaurar aula"
+                          title="Restaurar aula">
+                    <svg class="presence-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span class="presence-action__text">Restaurar</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            {% elif not item.is_cancelled %}
+            <div class="class-item__presence" id="presence-{{ section_slug }}-{{ forloop.counter }}">
+              {% if item.instructor_present %}
+                <div class="presence-controls presence-controls--confirmed">
+                  <span class="presence-chip__label">
+                    {% if item.substitute_confirmed and item.substitute_teacher_name %}
+                      <span class="presence-chip__line">Confirmado{% if item.instructor_checked_in_at %} · {{ item.instructor_checked_in_at|time:"H:i" }}{% endif %}</span>
+                      <span class="presence-chip__sub">{{ item.substitute_teacher_name }}</span>
+                    {% else %}
+                      Confirmado{% if item.instructor_checked_in_at %} · {{ item.instructor_checked_in_at|time:"H:i" }}{% endif %}
+                    {% endif %}
+                  </span>
+                  {% if item.can_cancel_presence %}
+                  <button class="presence-chip__dismiss js-instructor-self-checkin-cancel"
+                          type="button"
+                          data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                          data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                          data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                          data-presence-target="presence-{{ section_slug }}-{{ forloop.counter }}"
+                          aria-label="Cancelar confirmação"
+                          title="Não vou ministrar">
+                    <svg class="presence-chip__dismiss-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span class="presence-action__text">Cancelar</span>
+                  </button>
+                  {% endif %}
+                </div>
+              {% else %}
+                <div class="presence-controls presence-controls--toolbar">
+                  {% if item.substitute_pending and item.substitute_teacher_name %}
+                  <span class="status-pill status-pill--warning presence-status">
+                    <span class="presence-status__main">Aguardando</span>
+                    <span class="presence-status__sub">{{ item.substitute_teacher_name }}</span>
+                  </span>
+                  {% else %}
+                  <span class="status-pill status-pill--neutral presence-status">
+                    <span class="presence-status__main">Não confirmado</span>
+                  </span>
+                  {% endif %}
+                  {% if item.can_assign_substitute or item.can_confirm_presence or item.can_cancel_class %}
+                  <div class="presence-actions">
+                  {% if item.can_assign_substitute %}
+                  <button class="btn btn--outline presence-action js-open-substitute-modal"
+                          type="button"
+                          data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                          data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                          data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                          data-presence-target="presence-{{ section_slug }}-{{ forloop.counter }}"
+                          aria-haspopup="dialog"
+                          aria-label="Indicar substituto"
+                          title="Indicar substituto">
+                    <svg class="presence-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span class="presence-action__text">Indicar substituto</span>
+                  </button>
+                  {% endif %}
+                  {% if item.can_confirm_presence %}
+                  <button class="btn btn--outline presence-action js-instructor-self-checkin"
+                          type="button"
+                          data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                          data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                          data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                          data-presence-target="presence-{{ section_slug }}-{{ forloop.counter }}"
+                          aria-label="Confirmar presença"
+                          title="Vou ministrar">
+                    <svg class="presence-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                    <span class="presence-action__text">Confirmar</span>
+                  </button>
+                  {% endif %}
+                  {% if item.can_cancel_class %}
+                  <button class="btn btn--outline presence-action js-instructor-cancel-class"
+                          type="button"
+                          data-schedule-id="{% if not item.is_special %}{{ item.schedule_id }}{% endif %}"
+                          data-special-id="{% if item.is_special %}{{ item.special_id }}{% endif %}"
+                          data-is-special="{{ item.is_special|yesno:'true,false' }}"
+                          data-session-date="{{ item.session_date|date:'Y-m-d' }}"
+                          aria-label="{% if item.is_special %}Cancelar aulão{% else %}Cancelar aula{% endif %}"
+                          title="{% if item.is_special %}Cancelar aulão{% else %}Cancelar aula{% endif %}">
+                    <svg class="presence-action__icon presence-action__icon--calendar-x" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g stroke-width="1.75"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></g><g stroke-width="2.1"><path d="M9 13.5 15 19.5"/><path d="M15 13.5 9 19.5"/></g></svg>
+                    <span class="presence-action__text">Cancelar aula</span>
+                  </button>
+                  {% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+            {% endif %}
+            {% elif item.entry_role == 'overview' %}
+            <div class="class-item__sub">
+              {% if item.teacher_name %}Prof. {{ item.teacher_name }}{% endif %}
+              {% if not item.is_cancelled %}
+                {% if item.teacher_name %} · {% endif %}{{ item.approved_count|default:0 }} confirmado{{ item.approved_count|default:0|pluralize }}{% if item.pending_count > 0 %} · {{ item.pending_count }} aguardando{% endif %}
+              {% elif item.cancellation_reason %}
+                {% if item.teacher_name %} · {% endif %}{{ item.cancellation_reason }}
+              {% endif %}
+            </div>
+            {% elif item.teacher_name or item.cancellation_reason %}
+            <div class="class-item__sub">
+              {% if item.teacher_name %}{{ item.teacher_name }}{% endif %}{% if item.cancellation_reason %} · {{ item.cancellation_reason }}{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <div class="class-item__action">
+            {% if item.is_cancelled %}
+              {% if not item.can_uncancel_class %}
+              <span class="status-pill status-pill--neutral">Cancelada</span>
+              {% endif %}
+            {% elif item.entry_role == 'instructor' %}
+              <button class="btn btn--secondary btn--sm js-open-presence-modal"
+                      type="button"
+                      data-checkins-id="cs-{{ section_slug }}-{{ forloop.counter }}"
+                      aria-haspopup="dialog">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>{{ item.approved_count|default:0 }}</span>
+              </button>
+            {% elif item.entry_role == 'overview' %}
+              {% if item.is_cancelled %}
+                <span class="status-pill status-pill--neutral">Cancelada</span>
+              {% elif item.pending_count > 0 %}
+                <span class="status-pill status-pill--warning">{{ item.pending_count }} aguardando</span>
+              {% else %}
+                <span class="status-pill status-pill--success">{{ item.approved_count|default:0 }} presentes</span>
+              {% endif %}
+            {% elif item.entry_role == 'student' %}
+              {% if item.is_checkin_approved %}
+                <span class="status-pill status-pill--success">Confirmado</span>
+              {% elif item.has_checked_in %}
+                <span class="status-pill status-pill--warning">Aguardando</span>
+              {% elif not item.instructor_present %}
+                <span class="checkin-notice">Solicite ao professor que realize o check-in na aula para continuar</span>
+              {% else %}
+                <button
+                  class="btn btn--secondary btn--sm js-checkin"
+                  type="button"
+                  data-checkin-kind="{% if item.is_special %}special{% else %}regular{% endif %}"
+                  {% if item.is_special %}
+                  data-special-id="{{ item.special_id }}"
+                  {% else %}
+                  data-schedule-id="{{ item.schedule.pk }}"
+                  {% endif %}
+                >Check-in</button>
+              {% endif %}
+            {% endif %}
+          </div>
+
+          {% if item.entry_role == 'instructor' and not item.is_cancelled %}
+          <div class="js-checkin-source"
+               id="cs-{{ section_slug }}-{{ forloop.counter }}"
+               data-class-name="{{ item.group_name }}{% if item.category_name %} · {{ item.category_name }}{% endif %}"
+               hidden>
+            {% if item.checkins %}
+              {% for c in item.checkins %}
+              <div class="modal-checkin-item"
+                   data-checkin-id="{{ c.pk }}"
+                   data-is-special="{% if item.is_special %}true{% else %}false{% endif %}">
+                <span class="modal-checkin-item__name">{{ c.person_name }}</span>
+                <div class="modal-checkin-item__actions">
+                  {% if c.is_approved %}
+                    <span class="status-pill status-pill--success">Confirmado</span>
+                  {% else %}
+                    <span class="status-pill status-pill--warning">Aguardando</span>
+                    <button class="btn btn--primary btn--sm js-approve-checkin"
+                            type="button"
+                            data-checkin-id="{{ c.pk }}"
+                            data-is-special="{% if item.is_special %}true{% else %}false{% endif %}">Aprovar</button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="modal-empty">Nenhum check-in realizado ainda.</p>
+            {% endif %}
+          </div>
+          {% endif %}
+
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+{% endif %}

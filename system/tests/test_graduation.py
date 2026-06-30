@@ -318,18 +318,24 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
 
     @override_settings(
         SEED_INITIAL_ADMINISTRATIVE_PASSWORD="123456",
+        SEED_INITIAL_TEACHER_PASSWORD="123456",
     )
     def test_administrative_seed_creates_complete_person_record_with_graduation_history(self):
         PersonType.objects.create(
             code="administrative-assistant",
             display_name="Administrativo",
         )
+        PersonType.objects.create(code="instructor", display_name="Professor")
 
         self._call_seed("seed_system_initial_belt_ranks")
+        self._call_seed("seed_system_initial_ibjjf_age_categories")
+        self._call_seed("seed_system_initial_class_categories")
+        self._call_seed("seed_system_initial_teacher")
+        self._call_seed("seed_system_initial_class_catalog")
         self._call_seed("seed_system_initial_administrative")
         self._call_seed("seed_system_initial_administrative")
 
-        person = Person.objects.get(cpf="920.000.001-01")
+        person = Person.objects.get(cpf="920.000.011-81")
         current = get_current_graduation(person)
         self.assertEqual(current.belt_rank.code, "adult-purple")
         self.assertEqual(current.grade_number, 1)
@@ -341,4 +347,11 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
         self.assertTrue(person.previous_injuries)
         self.assertTrue(person.emergency_contact)
         self.assertEqual(person.graduations.count(), 12)
+        self.assertEqual(person.class_category.code, "adult")
+        self.assertEqual(person.class_enrollments.filter(status="active").count(), 2)
+        self.assertEqual(person.class_instructor_assignments.count(), 1)
+        self.assertEqual(
+            person.class_instructor_assignments.get().class_group.class_category.code,
+            "kids",
+        )
 

@@ -52,18 +52,18 @@ Depois, executar as seeds necessárias em ordem.
 5. `seed_system_initial_graduation_rules`
 6. `seed_system_initial_class_categories`
 7. `seed_system_initial_class_categories_teacher`
-8. `seed_system_initial_class_categories_administrative`
+8. `seed_system_initial_teacher`
 9. `seed_system_initial_class_catalog`
-10. `seed_system_initial_class_catalog_administrative`
-11. `seed_system_initial_product_categories`
-12. `seed_system_initial_product_catalog`
-13. `seed_system_initial_subscription_plans`
-14. `seed_system_initial_subscription_plans_values`
-15. `seed_system_initial_subscription_plans_stripe`
-16. `seed_system_initial_coupons`
-17. `seed_system_initial_holidays`
-18. `seed_system_initial_teacher`
-19. `seed_system_initial_administrative`
+10. `seed_system_initial_product_categories`
+11. `seed_system_initial_product_catalog`
+12. `seed_system_initial_subscription_plans`
+13. `seed_system_initial_subscription_plans_values`
+14. `seed_system_initial_subscription_plans_stripe`
+15. `seed_system_initial_coupons`
+16. `seed_system_initial_holidays`
+17. `seed_system_initial_administrative` — cria pessoa, portal, graduação, **matrículas de treino** e **apoio em turma**
+18. `seed_system_initial_class_categories_administrative` — legado/idempotente; mesma fonte do passo 17
+19. `seed_system_initial_class_catalog_administrative` — legado/idempotente; mesma fonte do passo 17
 20. `seed_system_initial_teacher_payroll_configs`
 
 Seeds específicas, como migração Kanri, devem ser executadas somente quando o objetivo exigir.

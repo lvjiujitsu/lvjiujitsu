@@ -2,12 +2,15 @@ import json
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils.dateparse import parse_date
 
 from system.constants import PersonTypeCode
-from system.models import Person, PersonType, PortalAccount
+from system.models import ClassCategory, Person, PersonType, PortalAccount
 from system.models.graduation import BeltRank, Graduation
+from system.services.administrative_training import sync_administrative_training_links
 
 
 class Command(BaseCommand):
@@ -51,10 +54,14 @@ class Command(BaseCommand):
                 account.save()
 
                 graduation_count = self._sync_graduation_history(person, entry.get("graduation_history", []))
+                training_summary = self._sync_training_links(person, entry)
 
                 action = "criado" if person_created else "atualizado"
                 grad_label = f", {graduation_count} graduação(ões) registrada(s)" if graduation_count else ""
-                self.stdout.write(f"  [{action}] {person.full_name} (CPF {cpf}){grad_label}")
+                training_label = self._format_training_summary(training_summary)
+                self.stdout.write(
+                    f"  [{action}] {person.full_name} (CPF {cpf}){grad_label}{training_label}"
+                )
 
                 if person_created:
                     created_count += 1
@@ -102,8 +109,9 @@ class Command(BaseCommand):
                 defaults[field] = value
         for field in _person_json_date_fields():
             value = entry.get(field)
-            if value:
-                defaults[field] = value
+            parsed = _parse_json_date(value)
+            if parsed:
+                defaults[field] = parsed
         if entry.get("jiu_jitsu_stripes") is not None:
             defaults["jiu_jitsu_stripes"] = entry["jiu_jitsu_stripes"]
         return defaults
@@ -117,8 +125,9 @@ class Command(BaseCommand):
                 setattr(person, field, value)
         for field in _person_json_date_fields():
             value = entry.get(field)
-            if value:
-                setattr(person, field, value)
+            parsed = _parse_json_date(value)
+            if parsed:
+                setattr(person, field, parsed)
         if entry.get("jiu_jitsu_stripes") is not None:
             person.jiu_jitsu_stripes = entry["jiu_jitsu_stripes"]
 
@@ -162,6 +171,39 @@ class Command(BaseCommand):
                 created += 1
         return created
 
+    def _sync_training_links(self, person: Person, entry: dict) -> dict:
+        if not (
+            entry.get("class_category")
+            or entry.get("class_enrollments")
+            or entry.get("class_group_category")
+            or entry.get("class_instructor_assignments")
+        ):
+            return {}
+        try:
+            return sync_administrative_training_links(person, entry)
+        except (ObjectDoesNotExist, ClassCategory.DoesNotExist) as exc:
+            raise CommandError(str(exc)) from exc
+
+    def _format_training_summary(self, summary: dict) -> str:
+        if not summary:
+            return ""
+        parts = []
+        if summary.get("category"):
+            parts.append(f"categoria {summary['category']}")
+        if summary.get("enrollment_groups"):
+            labels = ", ".join(
+                f"{group.display_name}/{group.class_category.display_name}"
+                for group in summary["enrollment_groups"]
+            )
+            parts.append(f"matrículas: {labels}")
+        if summary.get("assignment_groups"):
+            labels = ", ".join(
+                f"{group.display_name}/{group.class_category.display_name}"
+                for group in summary["assignment_groups"]
+            )
+            parts.append(f"apoio: {labels}")
+        return f" ({'; '.join(parts)})" if parts else ""
+
 
 def _person_json_string_fields():
     return (
@@ -185,3 +227,14 @@ def _person_json_date_fields():
         "martial_art_started_at",
         "martial_art_last_graduation_at",
     )
+
+
+def _parse_json_date(value):
+    if not value:
+        return None
+    if hasattr(value, "year"):
+        return value
+    parsed = parse_date(str(value))
+    if parsed is None:
+        raise CommandError(f"Data inválida no JSON administrativo: {value!r}")
+    return parsed

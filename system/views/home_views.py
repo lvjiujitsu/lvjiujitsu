@@ -113,6 +113,18 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         if context["show_staff_area"] and not trains:
             context["staff_today_classes"] = get_today_classes_staff_overview()
 
+        if context["needs_split"]:
+            context["personal_today_classes"] = context["my_classes"]
+            work_entries = [
+                entry
+                for entry in (context.get("today_classes") or [])
+                if getattr(entry, "entry_role", None) != "student"
+            ]
+            if work_entries:
+                context["staff_work_today_classes"] = work_entries
+            elif not trains and context.get("staff_today_classes"):
+                context["staff_work_today_classes"] = context["staff_today_classes"]
+
         if context["show_instructor_area"]:
             context["instructor_choices"] = _get_active_instructor_choices()
 
@@ -321,11 +333,21 @@ def _role_labels(person, is_instructor, is_administrative):
         labels.append("Administrativo")
     if is_instructor:
         labels.append("Professor")
+    trains_as_student = False
+    if person is not None:
+        trains_as_student = bool(
+            person.jiu_jitsu_belt
+            or person.class_enrollments.filter(status="active").exists()
+            or (
+                person.person_type_id
+                and person.person_type.code in STUDENT_PORTAL_PERSON_TYPE_CODES
+            )
+        )
+    if trains_as_student and "Aluno" not in labels:
+        labels.append("Aluno")
     if person is not None and person.person_type_id:
         code = person.person_type.code
-        if code in STUDENT_PORTAL_PERSON_TYPE_CODES and "Aluno" not in labels:
-            labels.append("Aluno")
-        if code == "guardian":
+        if code == "guardian" and "Responsável" not in labels:
             labels.append("Responsável")
     return labels
 
@@ -335,7 +357,9 @@ def _empty_context():
         "has_personal_area": False,
         "needs_split": False,
         "my_classes": [],
+        "personal_today_classes": [],
         "staff_today_classes": [],
+        "staff_work_today_classes": [],
         "today_classes": [],
         "attendance_history": [],
         "graduation_progress": None,

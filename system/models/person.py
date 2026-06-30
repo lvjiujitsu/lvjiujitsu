@@ -156,6 +156,18 @@ class Person(TimeStampedModel):
             return False
         return self.person_type.code in codes
 
+    def can_enroll_in_class_group(self) -> bool:
+        from system.constants import (
+            CLASS_ENROLLMENT_PERSON_TYPE_CODES,
+            PersonTypeCode,
+        )
+
+        if self.has_type_code(*CLASS_ENROLLMENT_PERSON_TYPE_CODES):
+            return True
+        return self.has_type_code(PersonTypeCode.ADMINISTRATIVE_ASSISTANT) and bool(
+            self.jiu_jitsu_belt or self.class_enrollments.filter(status="active").exists()
+        )
+
     @property
     def has_portal_access(self) -> bool:
         return hasattr(self, "access_account")

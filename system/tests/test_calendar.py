@@ -1267,7 +1267,7 @@ class AdministrativeProfileTestCase(TestCase):
             training_style=TrainingStyle.GI,
         )
         self.administrative = Person.objects.create(
-            full_name="Aline Admin", cpf="920.000.001-01",
+            full_name="Aline Admin", cpf="920.000.011-81",
             person_type=self.admin_type, birth_date=date(1995, 1, 1),
             biological_sex="female",
             class_group=self.adult_group,
@@ -1303,6 +1303,36 @@ class AdministrativeProfileTestCase(TestCase):
         entries = get_today_classes_for_administrative(self.administrative)
         adult = next(e for e in entries if e.group_name == "Adulto")
         self.assertTrue(adult.has_checked_in)
+
+    def test_get_today_classes_for_person_uses_active_enrollments_for_administrative_student(self):
+        layon = Person.objects.create(
+            full_name="Layon Prof", cpf="920.000.010-01",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        morning_group = ClassGroup.objects.create(
+            display_name="Adulto Manhã", class_category=self.category_adult, main_teacher=layon,
+        )
+        ClassSchedule.objects.create(
+            class_group=morning_group,
+            weekday=self.adult_schedule.weekday,
+            start_time=time(6, 30),
+            training_style=TrainingStyle.GI,
+        )
+        self.administrative.jiu_jitsu_belt = "purple"
+        self.administrative.save(update_fields=["jiu_jitsu_belt", "updated_at"])
+        ClassEnrollment.objects.create(
+            class_group=morning_group,
+            person=self.administrative,
+            status="active",
+        )
+
+        entries = get_today_classes_for_person(self.administrative)
+        regular_entries = [entry for entry in entries if not entry.is_special]
+        start_times = {entry.start_time for entry in regular_entries}
+
+        self.assertIn("06:30", start_times)
+        self.assertIn("19:00", start_times)
 
     def test_instructor_entry_exposes_approval_fields(self):
         student = Person.objects.create(

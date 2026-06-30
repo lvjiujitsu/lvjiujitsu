@@ -2,60 +2,69 @@ import json
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from system.models import ClassGroup, Person
+from system.models import Person
+from system.services.administrative_training import (
+    enrollment_specs,
+    instructor_assignment_specs,
+    sync_administrative_training_links,
+)
 from system.utils import format_cpf_digits
 
 
 class Command(BaseCommand):
-    help = "Vincula administrativos à sua turma principal (Person.class_group)."
+    help = (
+        "Reaplica vínculos de treino dos administrativos a partir de "
+        "static/initial_data/initial_administrative.json. "
+        "Preferencialmente já executado por seed_system_initial_administrative."
+    )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_class_catalog_administrative"))
         data = self._load_json()
 
-        entries_with_group = [e for e in data if e.get("class_group_category") and e.get("class_group_teacher_cpf")]
-        if not entries_with_group:
+        entries = [
+            entry for entry in data
+            if enrollment_specs(entry) or instructor_assignment_specs(entry) or entry.get("class_category")
+        ]
+        if not entries:
             self.stdout.write(self.style.WARNING(
-                "Nenhum administrativo com 'class_group_category' + 'class_group_teacher_cpf' "
-                "definidos em initial_administrative.json."
+                "Nenhum administrativo com turmas definidas em initial_administrative.json."
             ))
             return
 
         linked_count = 0
-        skipped_count = 0
 
         with transaction.atomic():
-            for entry in entries_with_group:
+            for entry in entries:
                 cpf = format_cpf_digits(entry.get("cpf", "").strip())
-                category_code = entry["class_group_category"].strip()
-                teacher_cpf = format_cpf_digits(entry["class_group_teacher_cpf"].strip())
-
                 person = self._get_person(cpf)
-                group = self._get_group(category_code, teacher_cpf)
+                try:
+                    summary = sync_administrative_training_links(person, entry)
+                except ObjectDoesNotExist as exc:
+                    raise CommandError(str(exc)) from exc
 
-                if person.class_group_id == group.pk:
-                    self.stdout.write(
-                        f"  [sem alteração] {person.full_name} → {group.display_name} "
-                        f"/ {group.class_category.display_name}"
+                labels = []
+                if summary.get("enrollment_groups"):
+                    labels.extend(
+                        f"matrícula {group.display_name}/{group.class_category.display_name}"
+                        for group in summary["enrollment_groups"]
                     )
-                    skipped_count += 1
-                    continue
-
-                person.class_group = group
-                person.save(update_fields=["class_group", "updated_at"])
-                self.stdout.write(
-                    f"  [vinculado] {person.full_name} → {group.display_name} "
-                    f"/ {group.class_category.display_name}"
-                )
+                if summary.get("assignment_groups"):
+                    labels.extend(
+                        f"apoio {group.display_name}/{group.class_category.display_name}"
+                        for group in summary["assignment_groups"]
+                    )
+                if summary.get("category"):
+                    labels.append(f"categoria {summary['category']}")
+                self.stdout.write(f"  [vinculado] {person.full_name} → {', '.join(labels)}")
                 linked_count += 1
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nAdministrativos: {linked_count} vinculado(s), {skipped_count} sem alteração."
-            )
+            self.style.SUCCESS(f"\nAdministrativos: {linked_count} vínculo(s) reaplicado(s).")
         )
 
     def _load_json(self) -> list:
@@ -72,21 +81,4 @@ class Command(BaseCommand):
             raise CommandError(
                 f"Administrativo com CPF '{cpf}' não encontrado. "
                 "Execute 'seed_system_initial_administrative' antes desta seed."
-            )
-
-    def _get_group(self, category_code: str, teacher_cpf: str) -> ClassGroup:
-        try:
-            return ClassGroup.objects.get(
-                class_category__code=category_code,
-                main_teacher__cpf=teacher_cpf,
-            )
-        except ClassGroup.DoesNotExist:
-            raise CommandError(
-                f"Turma não encontrada para categoria '{category_code}' e professor CPF '{teacher_cpf}'. "
-                "Execute 'seed_system_initial_class_catalog' antes desta seed."
-            )
-        except ClassGroup.MultipleObjectsReturned:
-            raise CommandError(
-                f"Múltiplas turmas encontradas para categoria '{category_code}' e professor CPF '{teacher_cpf}'. "
-                "Revise os dados de initial_administrative.json."
             )
