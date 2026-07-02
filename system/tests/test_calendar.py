@@ -1,3 +1,4 @@
+import json
 from datetime import date, time
 
 from django.contrib.auth import get_user_model
@@ -350,6 +351,17 @@ class CheckinApprovalServiceTestCase(TestCase):
         checkin.refresh_from_db()
         self.assertEqual(checkin.status, CheckinStatus.PENDING)
 
+    def test_approve_class_checkin_blocks_cancelled_session(self):
+        checkin, _ = perform_checkin(self.student, self.schedule.pk)
+        checkin.session.status = SessionStatus.CANCELLED
+        checkin.session.save(update_fields=["status"])
+
+        with self.assertRaises(ValueError):
+            approve_class_checkin(instructor=self.instructor, checkin_id=checkin.pk)
+
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.PENDING)
+
     def test_approve_class_checkin_authorizes_assigned_instructor(self):
         ClassInstructorAssignment.objects.create(
             class_group=self.group, person=self.other_instructor,
@@ -435,6 +447,71 @@ class CheckinApprovalServiceTestCase(TestCase):
         entries = get_today_classes_for_person(self.student)
         self.assertTrue(entries[0].is_checkin_approved)
         self.assertEqual(entries[0].checkin_status, CheckinStatus.APPROVED)
+
+
+class InstructorApproveCheckinViewTestCase(TestCase):
+    def setUp(self):
+        self.student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.instructor_type = PersonType.objects.create(code="instructor", display_name="Professor")
+        self.category = ClassCategory.objects.create(
+            code="adult", display_name="Adulto", audience=CategoryAudience.ADULT,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="adult-age", display_name="Adulto",
+            audience=CategoryAudience.ADULT, minimum_age=18, maximum_age=99,
+        )
+        self.instructor = Person.objects.create(
+            full_name="Prof. View Aprovador", cpf="900.000.000-11",
+            person_type=self.instructor_type, birth_date=date(1985, 1, 1),
+            biological_sex="male",
+        )
+        self.group = ClassGroup.objects.create(
+            display_name="Turma View Aprovação",
+            class_category=self.category, main_teacher=self.instructor,
+        )
+        today = timezone.localdate()
+        weekday_map = {
+            0: WeekdayCode.MONDAY, 1: WeekdayCode.TUESDAY,
+            2: WeekdayCode.WEDNESDAY, 3: WeekdayCode.THURSDAY,
+            4: WeekdayCode.FRIDAY, 5: WeekdayCode.SATURDAY,
+            6: WeekdayCode.SUNDAY,
+        }
+        self.schedule = ClassSchedule.objects.create(
+            class_group=self.group,
+            weekday=weekday_map[today.weekday()],
+            start_time=time(19, 0),
+            training_style=TrainingStyle.GI,
+        )
+        self.student = Person.objects.create(
+            full_name="Aluno View Aprovação", cpf="900.000.000-12",
+            person_type=self.student_type, birth_date=date(2000, 1, 1),
+            biological_sex="male",
+        )
+        ClassEnrollment.objects.create(
+            class_group=self.group, person=self.student, status="active",
+        )
+        account = PortalAccount(person=self.instructor)
+        account.set_password("123456")
+        account.save()
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
+        session.save()
+
+    def test_approve_checkin_of_cancelled_session_returns_clean_400(self):
+        checkin, _ = perform_checkin(self.student, self.schedule.pk)
+        checkin.session.status = SessionStatus.CANCELLED
+        checkin.session.save(update_fields=["status"])
+
+        response = self.client.post(
+            reverse("system:instructor-approve-checkin"),
+            data=json.dumps({"checkin_id": checkin.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cancelada", response.json()["error"])
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.PENDING)
 
 
 class InstructorScheduleOwnershipServiceTestCase(TestCase):
@@ -624,6 +701,19 @@ class SpecialClassServiceTestCase(TestCase):
         day_entry = next(d for d in data.days if d.date == today)
         self.assertEqual(len(day_entry.specials), 1)
         self.assertEqual(day_entry.specials[0].group_name, "Aulão mês")
+
+    def test_calendar_month_data_does_not_crash_when_special_falls_on_holiday(self):
+        today = timezone.localdate()
+        Holiday.objects.create(date=today, name="Feriado Aulão Fundacao")
+        create_special_class(
+            title="Aulão em feriado", date=today, start_time=time(19, 0),
+        )
+
+        data = get_calendar_month_data(today.year, today.month)
+
+        day_entry = next(d for d in data.days if d.date == today)
+        self.assertTrue(day_entry.specials[0].is_cancelled)
+        self.assertEqual(day_entry.specials[0].cancellation_reason, "Feriado Aulão Fundacao")
 
 
 class InstructorSelfCheckinServiceTestCase(TestCase):

@@ -78,7 +78,7 @@
           <div><dt>Ciclo</dt><dd>{{ plan.get_billing_cycle_display }}</dd></div>
           <div><dt>Pagamento</dt><dd>{{ plan.get_payment_method_display }}</dd></div>
           <div><dt>Plano familiar</dt><dd>{{ plan.is_family_plan|yesno:"Sim,Não" }}</dd></div>
-          <div><dt>Fidelidade</dt><dd>{{ plan.is_loyalty_plan|yesno:"Sim,Não" }}</dd></div>
+          <div><dt>Veterano</dt><dd>{{ plan.is_loyalty_plan|yesno:"Sim,Não" }}</dd></div>
           <div><dt>Descrição</dt><dd>{{ plan.description|default:"Sem descrição" }}</dd></div>
         </dl>
       </section>

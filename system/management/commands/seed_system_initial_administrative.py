@@ -10,7 +10,12 @@ from django.utils.dateparse import parse_date
 from system.constants import PersonTypeCode
 from system.models import ClassCategory, Person, PersonType, PortalAccount
 from system.models.graduation import BeltRank, Graduation
-from system.services.administrative_training import sync_administrative_training_links
+from system.services.administrative_training import (
+    sync_administrative_operational_roles,
+    sync_administrative_training_links,
+    validate_administrative_operational_role_dependencies,
+    validate_administrative_training_dependencies,
+)
 
 
 class Command(BaseCommand):
@@ -20,7 +25,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_administrative"))
         password = self._get_password()
         data = self._load_json()
-        administrative_type = self._get_administrative_type()
 
         if not data:
             self.stdout.write(self.style.WARNING(
@@ -40,12 +44,15 @@ class Command(BaseCommand):
                         f"Entrada inválida no JSON: 'cpf' e 'full_name' são obrigatórios. Entrada: {entry}"
                     )
 
+                person_type = self._get_person_type(entry)
+                self._validate_operational_role_dependencies(entry)
+                self._validate_training_dependencies(entry)
                 person, person_created = Person.objects.get_or_create(
                     cpf=cpf,
-                    defaults=self._build_person_defaults(entry, administrative_type),
+                    defaults=self._build_person_defaults(entry, person_type),
                 )
                 if not person_created:
-                    self._apply_person_updates(person, entry, administrative_type)
+                    self._apply_person_updates(person, entry, person_type)
                     person.save()
 
                 account, _ = PortalAccount.objects.get_or_create(person=person)
@@ -54,13 +61,15 @@ class Command(BaseCommand):
                 account.save()
 
                 graduation_count = self._sync_graduation_history(person, entry.get("graduation_history", []))
+                operational_summary = self._sync_operational_roles(person, entry)
                 training_summary = self._sync_training_links(person, entry)
 
                 action = "criado" if person_created else "atualizado"
                 grad_label = f", {graduation_count} graduação(ões) registrada(s)" if graduation_count else ""
+                operational_label = self._format_operational_summary(operational_summary)
                 training_label = self._format_training_summary(training_summary)
                 self.stdout.write(
-                    f"  [{action}] {person.full_name} (CPF {cpf}){grad_label}{training_label}"
+                    f"  [{action}] {person.full_name} (CPF {cpf}){grad_label}{operational_label}{training_label}"
                 )
 
                 if person_created:
@@ -89,19 +98,20 @@ class Command(BaseCommand):
         with path.open(encoding="utf-8") as f:
             return json.load(f)
 
-    def _get_administrative_type(self) -> PersonType:
+    def _get_person_type(self, entry: dict) -> PersonType:
+        code = (entry.get("person_type") or PersonTypeCode.ADMINISTRATIVE_ASSISTANT).strip()
         try:
-            return PersonType.objects.get(code=PersonTypeCode.ADMINISTRATIVE_ASSISTANT)
+            return PersonType.objects.get(code=code)
         except PersonType.DoesNotExist:
             raise CommandError(
-                "O tipo de pessoa 'administrative-assistant' não existe. "
+                f"O tipo de pessoa '{code}' não existe. "
                 "Execute 'seed_system_initial_person_type' antes desta seed."
             )
 
-    def _build_person_defaults(self, entry: dict, administrative_type: PersonType) -> dict:
+    def _build_person_defaults(self, entry: dict, person_type: PersonType) -> dict:
         defaults = {
             "full_name": entry["full_name"].strip(),
-            "person_type": administrative_type,
+            "person_type": person_type,
         }
         for field in _person_json_string_fields():
             value = entry.get(field, "")
@@ -116,9 +126,9 @@ class Command(BaseCommand):
             defaults["jiu_jitsu_stripes"] = entry["jiu_jitsu_stripes"]
         return defaults
 
-    def _apply_person_updates(self, person: Person, entry: dict, administrative_type: PersonType) -> None:
+    def _apply_person_updates(self, person: Person, entry: dict, person_type: PersonType) -> None:
         person.full_name = entry["full_name"].strip()
-        person.person_type = administrative_type
+        person.person_type = person_type
         for field in _person_json_string_fields():
             value = entry.get(field, "")
             if value:
@@ -183,6 +193,46 @@ class Command(BaseCommand):
             return sync_administrative_training_links(person, entry)
         except (ObjectDoesNotExist, ClassCategory.DoesNotExist) as exc:
             raise CommandError(str(exc)) from exc
+
+    def _sync_operational_roles(self, person: Person, entry: dict) -> dict:
+        try:
+            return sync_administrative_operational_roles(person, entry)
+        except ObjectDoesNotExist as exc:
+            raise CommandError(str(exc)) from exc
+
+    def _validate_operational_role_dependencies(self, entry: dict) -> None:
+        try:
+            validate_administrative_operational_role_dependencies(entry)
+        except ObjectDoesNotExist as exc:
+            raise CommandError(str(exc)) from exc
+
+    def _validate_training_dependencies(self, entry: dict) -> None:
+        if not (
+            entry.get("class_category")
+            or entry.get("class_enrollments")
+            or entry.get("class_group_category")
+            or entry.get("class_instructor_assignments")
+        ):
+            return
+        try:
+            validate_administrative_training_dependencies(entry)
+        except (ObjectDoesNotExist, ClassCategory.DoesNotExist) as exc:
+            raise CommandError(str(exc)) from exc
+
+    def _format_operational_summary(self, summary: dict) -> str:
+        assignments = summary.get("operational_roles") if summary else None
+        if not assignments:
+            return ""
+        labels = []
+        for assignment in assignments:
+            label = assignment.role.display_name
+            if assignment.class_group_id:
+                label = (
+                    f"{label}: {assignment.class_group.display_name}/"
+                    f"{assignment.class_group.class_category.display_name}"
+                )
+            labels.append(label)
+        return f" (papéis: {', '.join(labels)})"
 
     def _format_training_summary(self, summary: dict) -> str:
         if not summary:

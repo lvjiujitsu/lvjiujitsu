@@ -256,6 +256,38 @@
         </div>
       </div>
 
+      <!-- ─── Grupo: Papéis operacionais (somente can_manage_people) ────────────── -->
+      {% if can_manage_people %}
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Papéis operacionais</div>
+          <div class="form-grid">
+
+            <div class="form-field form-field--full">
+              <label>{{ form.operational_roles.label }}</label>
+              <div style="margin-top:0.5rem;">
+                {{ form.operational_roles }}
+              </div>
+              {% if form.operational_roles.help_text %}
+              <span class="form-field__help">{{ form.operational_roles.help_text }}</span>
+              {% endif %}
+              {{ form.operational_roles.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.class_assistant_group.id_for_label }}">{{ form.class_assistant_group.label }}</label>
+              {{ form.class_assistant_group }}
+              {% if form.class_assistant_group.help_text %}
+              <span class="form-field__help">{{ form.class_assistant_group.help_text }}</span>
+              {% endif %}
+              {{ form.class_assistant_group.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <!-- ─── Grupo: Endereço ───────────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">

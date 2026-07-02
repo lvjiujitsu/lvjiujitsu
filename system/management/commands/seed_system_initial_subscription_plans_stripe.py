@@ -156,10 +156,10 @@ class Command(BaseCommand):
         try:
             synced = sync_plan_to_stripe(plan)
             self.stdout.write(
-                f"    ↳ Stripe sincronizado: product={synced.stripe_product_id} price={synced.stripe_price_id}"
+                f"    -> Stripe sincronizado: product={synced.stripe_product_id} price={synced.stripe_price_id}"
             )
         except StripeSyncError as exc:
-            self.stdout.write(self.style.WARNING(f"    ↳ Falha na sincronização Stripe: {exc}"))
+            self.stdout.write(self.style.WARNING(f"    -> Falha na sincronização Stripe: {exc}"))
 
     def _build_code(self, entry: dict, billing_cycle: str) -> str:
         category_code = self._required(entry, "category_code")
@@ -178,7 +178,7 @@ class Command(BaseCommand):
             f"Assinatura recorrente mensal via Stripe. "
             f"Cobrança automática de R$ {self._decimal(cycle_data, 'charged_price')} todo mês. "
             f"Líquido mensal: R$ {self._decimal(cycle_data, 'monthly_net_price')}. "
-            f"Fidelidade mínima de 12 meses — sem cancelamento ou trancamento durante o período."
+            f"Permanência mínima de 12 meses — sem cancelamento ou trancamento durante o período."
         )
 
     def _build_display_order(self, entry: dict, billing_cycle: str) -> int:

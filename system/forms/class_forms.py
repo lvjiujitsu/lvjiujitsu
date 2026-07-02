@@ -11,7 +11,7 @@ from system.models import (
     Person,
     SpecialClass,
 )
-from system.constants import CLASS_STAFF_PERSON_TYPE_CODES, PersonTypeCode
+from system.constants import CLASS_STAFF_PERSON_TYPE_CODES, OperationalRoleCode, PersonTypeCode
 
 
 class ClassGroupForm(forms.ModelForm):
@@ -149,6 +149,12 @@ class ClassGroupForm(forms.ModelForm):
         return (
             Person.objects.filter(
                 Q(person_type__code__in=CLASS_STAFF_PERSON_TYPE_CODES, is_active=True)
+                | Q(
+                    operational_role_assignments__role__code=OperationalRoleCode.CLASS_ASSISTANT,
+                    operational_role_assignments__is_active=True,
+                    operational_role_assignments__role__is_active=True,
+                    is_active=True,
+                )
                 | Q(pk__in=current_ids),
             )
             .distinct()

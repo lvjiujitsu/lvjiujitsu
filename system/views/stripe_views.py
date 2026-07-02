@@ -32,8 +32,8 @@ class StripeWebhookView(View):
         except Exception:
             logger.exception(
                 "Webhook Stripe — falha ao processar evento %s (%s)",
-                event.get("id"),
-                event.get("type"),
+                event["id"] if "id" in event else None,
+                event["type"] if "type" in event else None,
             )
             return HttpResponse(status=500)
 

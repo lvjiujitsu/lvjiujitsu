@@ -8,7 +8,9 @@ from system.models import (
     ClassInstructorAssignment,
     ClassSchedule,
     IbjjfAgeCategory,
+    OperationalRole,
     Person,
+    PersonOperationalRole,
     PersonRelationship,
     PersonType,
     PortalAccount,
@@ -46,6 +48,13 @@ class IncomingRelationshipInline(admin.TabularInline):
     fields = ("source_person", "relationship_kind", "kinship_type", "kinship_other_label", "notes")
 
 
+class PersonOperationalRoleInline(admin.TabularInline):
+    model = PersonOperationalRole
+    extra = 0
+    autocomplete_fields = ("role", "class_group")
+    fields = ("role", "class_group", "is_active", "notes")
+
+
 class ClassScheduleInline(admin.TabularInline):
     model = ClassSchedule
     extra = 0
@@ -67,6 +76,13 @@ class PersonTypeAdmin(admin.ModelAdmin):
     search_fields = ("display_name", "code")
 
 
+@admin.register(OperationalRole)
+class OperationalRoleAdmin(admin.ModelAdmin):
+    list_display = ("display_name", "code", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("display_name", "code", "description")
+
+
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = (
@@ -81,7 +97,11 @@ class PersonAdmin(admin.ModelAdmin):
     list_filter = ("is_active", "person_type", "blood_type", "biological_sex")
     search_fields = ("full_name", "cpf", "email", "phone")
     autocomplete_fields = ("person_type", "class_category", "class_group", "class_schedule")
-    inlines = [OutgoingRelationshipInline, IncomingRelationshipInline]
+    inlines = [
+        PersonOperationalRoleInline,
+        OutgoingRelationshipInline,
+        IncomingRelationshipInline,
+    ]
 
     @admin.display(boolean=True, description="Acesso portal")
     def has_portal_access_flag(self, obj):

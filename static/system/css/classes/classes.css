@@ -1,0 +1,147 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   LV JIU JITSU — Turmas, categorias e horarios
+   Reaproveita tokens e componentes genericos de people.css (topbar, page-header,
+   panel, badge, btn, filter-panel, form-card/grid/field, empty-state, kpi-row).
+   Aqui ficam apenas os componentes especificos de listagem em card.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.entity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.entity-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.12s;
+  min-height: 64px;
+}
+
+.entity-card:first-child { border-radius: 0.875rem 0.875rem 0 0; }
+.entity-card:last-child { border-bottom: none; border-radius: 0 0 0.875rem 0.875rem; }
+.entity-card:only-child { border-radius: 0.875rem; }
+.entity-card:hover { background: var(--surface); }
+
+.entity-card__body { flex: 1; min-width: 0; }
+
+.entity-card__name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.entity-card__badges { display: flex; flex-wrap: wrap; gap: 0.3125rem; margin-top: 0.25rem; }
+
+.entity-card__meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.entity-card__actions { flex-shrink: 0; display: flex; align-items: center; gap: 0.5rem; }
+
+.schedule-slot-form {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--surface);
+}
+
+.schedule-slot-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.schedule-slot-form__title { font-weight: 600; font-size: 0.875rem; color: var(--muted); }
+
+.checkbox-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .checkbox-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.checkbox-card input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 0.125rem;
+  accent-color: var(--brand-red);
+}
+
+.request-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (min-width: 720px) {
+  .request-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.request-summary div {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.request-summary__full {
+  grid-column: 1 / -1;
+}
+
+.request-summary dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.request-summary dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}

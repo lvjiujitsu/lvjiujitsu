@@ -12,7 +12,7 @@ DATA_FILENAME = "seed_system_initial_subscription_plans.json"
 
 
 class Command(BaseCommand):
-    help = f"Cria os 3 planos de assinatura base (Individual, Fidelidade, Família) a partir de static/initial_data/{DATA_FILENAME}."
+    help = f"Cria os 3 planos de assinatura base (Individual, Veterano, Família) a partir de static/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_subscription_plans"))

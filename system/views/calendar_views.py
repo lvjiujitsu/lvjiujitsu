@@ -9,12 +9,12 @@ from django.views.generic import TemplateView
 from system.forms.class_forms import SpecialClassForm
 from system.constants import (
     CLASS_STAFF_PERSON_TYPE_CODES,
-    INSTRUCTOR_PERSON_TYPE_CODES,
-    PersonTypeCode,
+    PortalCapability,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
-from system.models import ClassSchedule, Person, SpecialClass
+from system.models import AuditAction, AuditModule, ClassSchedule, SpecialClass
 from system.models.calendar import ClassCheckin, SpecialClassCheckin
+from system.services.audit import record_audit_event
 from system.services.class_calendar import (
     assign_session_substitute,
     assign_special_substitute,
@@ -36,63 +36,15 @@ from system.services.class_calendar import (
     register_instructor_self_special_checkin,
     toggle_session_cancel,
 )
-from system.views.person_views import AdministrativeRequiredMixin
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
-
-
-class AdminCalendarView(AdministrativeRequiredMixin, TemplateView):
-    template_name = "calendar/admin_calendar.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        year = self.kwargs.get("year") or timezone.localdate().year
-        month = self.kwargs.get("month") or timezone.localdate().month
-        try:
-            year = int(year)
-            month = int(month)
-            if month < 1 or month > 12:
-                raise ValueError
-        except (ValueError, TypeError):
-            today = timezone.localdate()
-            year, month = today.year, today.month
-        context["calendar"] = get_calendar_month_data(year, month)
-        context["instructors"] = _get_instructor_choices()
-        return context
-
-
-def _get_instructor_choices():
-    return list(
-        Person.objects.filter(
-            person_type__code=PersonTypeCode.INSTRUCTOR,
-            is_active=True,
-        )
-        .order_by("full_name")
-        .values("pk", "full_name")
-    )
-
-
-class AdminToggleSessionView(AdministrativeRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        try:
-            body = json.loads(request.body)
-            schedule_id = int(body["schedule_id"])
-            date_str = body["date"]
-            reason = body.get("reason", "")
-            parts = date_str.split("-")
-            from datetime import date
-            session_date = date(int(parts[0]), int(parts[1]), int(parts[2]))
-        except (json.JSONDecodeError, KeyError, ValueError, IndexError):
-            return JsonResponse({"error": "Dados inválidos."}, status=400)
-
-        session = toggle_session_cancel(schedule_id, session_date, reason)
-        return JsonResponse({
-            "status": session.status,
-            "is_cancelled": session.is_cancelled,
-        })
 
 
 class CalendarView(PortalRoleRequiredMixin, TemplateView):
     allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES + CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (
+        PortalCapability.ACCESS_STUDENT_AREA,
+        PortalCapability.SUPPORT_CLASSES,
+    )
     template_name = "calendar/calendar.html"
 
     def _resolve_month(self):
@@ -114,10 +66,10 @@ class CalendarView(PortalRoleRequiredMixin, TemplateView):
         context["calendar"] = get_calendar_month_data(year, month)
 
         person = getattr(self.request, "portal_person", None)
-        is_instructor = (
+        is_instructor = bool(
             person is not None
-            and person.person_type
-            and person.person_type.code in CLASS_STAFF_PERSON_TYPE_CODES
+            and PortalCapability.SUPPORT_CLASSES
+            in getattr(self.request, "portal_capabilities", set())
         )
         context["show_instructor_area"] = is_instructor
 
@@ -169,52 +121,6 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
         })
 
 
-class AdminSpecialClassCreateView(AdministrativeRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        try:
-            body = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Dados inválidos."}, status=400)
-
-        form = SpecialClassForm(data=body)
-        if not form.is_valid():
-            return JsonResponse({"error": "Dados inválidos.", "fields": form.errors}, status=400)
-
-        special = create_special_class(
-            title=form.cleaned_data["title"],
-            date=form.cleaned_data["date"],
-            start_time=form.cleaned_data["start_time"],
-            duration_minutes=(
-                form.cleaned_data.get("duration_minutes")
-                or settings.SPECIAL_CLASS_DEFAULT_DURATION_MINUTES
-            ),
-            teacher=form.cleaned_data.get("teacher"),
-            notes=form.cleaned_data.get("notes") or "",
-        )
-        return JsonResponse({
-            "success": True,
-            "special": {
-                "id": special.pk,
-                "title": special.title,
-                "date": special.date.strftime("%Y-%m-%d"),
-                "start_time": special.start_time.strftime("%H:%M"),
-                "teacher_name": special.teacher.full_name if special.teacher else "",
-            },
-        })
-
-
-class AdminSpecialClassDeleteView(AdministrativeRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        try:
-            body = json.loads(request.body)
-            special_id = int(body["special_id"])
-        except (json.JSONDecodeError, KeyError, ValueError):
-            return JsonResponse({"error": "Dados inválidos."}, status=400)
-
-        delete_special_class(special_id)
-        return JsonResponse({"success": True})
-
-
 class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -247,6 +153,7 @@ InstructorCalendarView = CalendarView
 
 class InstructorToggleSessionView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -278,6 +185,7 @@ class InstructorToggleSessionView(PortalRoleRequiredMixin, View):
 
 class InstructorCancelClassTodayView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -328,6 +236,7 @@ class InstructorCancelClassTodayView(PortalRoleRequiredMixin, View):
 
 class InstructorSpecialClassCreateView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -370,6 +279,7 @@ class InstructorSpecialClassCreateView(PortalRoleRequiredMixin, View):
 
 class InstructorSpecialClassDeleteView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -395,6 +305,7 @@ class InstructorSpecialClassDeleteView(PortalRoleRequiredMixin, View):
 
 class InstructorSelfCheckinView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -430,6 +341,7 @@ class InstructorSelfCheckinView(PortalRoleRequiredMixin, View):
 
 class InstructorSelfCheckinCancelView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -459,6 +371,7 @@ class InstructorSelfCheckinCancelView(PortalRoleRequiredMixin, View):
 
 class InstructorSessionSubstituteView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -516,6 +429,7 @@ class InstructorSessionSubstituteView(PortalRoleRequiredMixin, View):
 
 class InstructorSelfSpecialCheckinView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -551,6 +465,7 @@ class InstructorSelfSpecialCheckinView(PortalRoleRequiredMixin, View):
 
 class InstructorSelfSpecialCheckinCancelView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -580,6 +495,7 @@ class InstructorSelfSpecialCheckinCancelView(PortalRoleRequiredMixin, View):
 
 class InstructorApproveCheckinView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -598,7 +514,16 @@ class InstructorApproveCheckinView(PortalRoleRequiredMixin, View):
             return JsonResponse({"error": "Check-in não encontrado."}, status=404)
         except PermissionError as e:
             return JsonResponse({"error": str(e)}, status=403)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
+        record_audit_event(
+            module=AuditModule.CHECKIN,
+            action=AuditAction.APPROVE,
+            actor_label=person.full_name,
+            entity_label=checkin.person.full_name,
+            summary=f"Presença aprovada na sessão de {checkin.session.date}.",
+        )
         return JsonResponse({
             "success": True,
             "status": checkin.status,
@@ -608,6 +533,7 @@ class InstructorApproveCheckinView(PortalRoleRequiredMixin, View):
 
 class InstructorApproveSpecialCheckinView(PortalRoleRequiredMixin, View):
     allowed_codes = CLASS_STAFF_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_CLASSES,)
 
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -626,6 +552,8 @@ class InstructorApproveSpecialCheckinView(PortalRoleRequiredMixin, View):
             return JsonResponse({"error": "Check-in não encontrado."}, status=404)
         except PermissionError as e:
             return JsonResponse({"error": str(e)}, status=403)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
         return JsonResponse({
             "success": True,

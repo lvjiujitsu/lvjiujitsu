@@ -7,16 +7,12 @@ from system.forms.class_forms import get_class_group_schedule_formset
 from system.models import ClassGroup, ClassSchedule
 from system.services.class_catalog import (
     build_schedule_day_summary,
+    get_admin_class_group_queryset,
+    get_admin_class_schedule_queryset,
     prepare_class_group_for_display,
 )
-from system.services.class_overview import (
-    get_admin_class_group_cards,
-    get_admin_schedule_day_cards,
-    get_class_group_card_by_pk,
-    get_schedule_day_card_by_pk,
-)
 from system.services.class_management import save_class_group_catalog
-from system.views.person_views import AdministrativeRequiredMixin
+from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
 
 
 class ClassGroupCatalogMixin:
@@ -67,10 +63,11 @@ class ClassGroupListView(AdministrativeRequiredMixin, ListView):
     context_object_name = "class_groups"
 
     def get_queryset(self):
-        return get_admin_class_group_cards()
+        return get_admin_class_group_queryset()
 
 
 class ClassGroupCreateView(
+    ModalFormMixin,
     AdministrativeRequiredMixin,
     ClassGroupCatalogMixin,
     CreateView,
@@ -78,10 +75,17 @@ class ClassGroupCreateView(
     model = ClassGroup
     form_class = ClassGroupForm
     template_name = "classes/class_group_form.html"
+    modal_name = "class-group-create"
     success_url = reverse_lazy("system:class-group-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova turma"
+        return context
 
 
 class ClassGroupUpdateView(
+    ModalFormMixin,
     AdministrativeRequiredMixin,
     ClassGroupCatalogMixin,
     UpdateView,
@@ -89,7 +93,13 @@ class ClassGroupUpdateView(
     model = ClassGroup
     form_class = ClassGroupForm
     template_name = "classes/class_group_form.html"
+    modal_name = "class-group-edit"
     success_url = reverse_lazy("system:class-group-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar turma"
+        return context
 
 
 class ClassGroupDeleteView(AdministrativeRequiredMixin, DeleteView):
@@ -104,10 +114,13 @@ class ClassGroupDetailView(AdministrativeRequiredMixin, DetailView):
     context_object_name = "class_group"
 
     def get_object(self, queryset=None):
-        class_group = get_class_group_card_by_pk(int(self.kwargs["pk"]))
-        if class_group is None:
-            raise Http404("Turma não encontrada.")
-        return class_group
+        try:
+            class_group = ClassGroup.objects.select_related(
+                "class_category", "main_teacher"
+            ).get(pk=self.kwargs["pk"])
+        except ClassGroup.DoesNotExist as error:
+            raise Http404("Turma não encontrada.") from error
+        return prepare_class_group_for_display(class_group)
 
 
 class ClassScheduleListView(AdministrativeRequiredMixin, ListView):
@@ -116,13 +129,14 @@ class ClassScheduleListView(AdministrativeRequiredMixin, ListView):
     context_object_name = "class_schedules"
 
     def get_queryset(self):
-        return get_admin_schedule_day_cards()
+        return get_admin_class_schedule_queryset()
 
 
-class ClassScheduleCreateView(AdministrativeRequiredMixin, CreateView):
+class ClassScheduleCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = ClassSchedule
     form_class = ClassScheduleForm
     template_name = "class_schedules/class_schedule_form.html"
+    modal_name = "class-schedule-create"
     success_url = reverse_lazy("system:class-schedule-list")
 
     def get_initial(self):
@@ -137,6 +151,7 @@ class ClassScheduleCreateView(AdministrativeRequiredMixin, CreateView):
         context["selected_class_group"] = self._get_selected_class_group(
             context.get("form")
         )
+        context["form_title"] = "Novo horário"
         return context
 
     def _get_selected_class_group(self, form):
@@ -155,10 +170,11 @@ class ClassScheduleCreateView(AdministrativeRequiredMixin, CreateView):
         return prepare_class_group_for_display(class_group)
 
 
-class ClassScheduleUpdateView(AdministrativeRequiredMixin, UpdateView):
+class ClassScheduleUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = ClassSchedule
     form_class = ClassScheduleForm
     template_name = "class_schedules/class_schedule_form.html"
+    modal_name = "class-schedule-edit"
     success_url = reverse_lazy("system:class-schedule-list")
 
     def get_context_data(self, **kwargs):
@@ -167,6 +183,7 @@ class ClassScheduleUpdateView(AdministrativeRequiredMixin, UpdateView):
             context["selected_class_group"] = prepare_class_group_for_display(
                 self.object.class_group
             )
+        context["form_title"] = "Editar horário"
         return context
 
 
@@ -182,7 +199,12 @@ class ClassScheduleDetailView(AdministrativeRequiredMixin, DetailView):
     context_object_name = "class_schedule"
 
     def get_object(self, queryset=None):
-        class_schedule = get_schedule_day_card_by_pk(int(self.kwargs["pk"]))
-        if class_schedule is None:
-            raise Http404("Horário não encontrado.")
+        try:
+            class_schedule = ClassSchedule.objects.select_related(
+                "class_group", "class_group__class_category", "class_group__main_teacher"
+            ).get(pk=self.kwargs["pk"])
+        except ClassSchedule.DoesNotExist as error:
+            raise Http404("Horário não encontrado.") from error
+        class_group = prepare_class_group_for_display(class_schedule.class_group)
+        class_schedule.class_group_title = class_group.catalog_title
         return class_schedule

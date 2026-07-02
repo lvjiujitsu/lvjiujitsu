@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 to_label = f"grau {rule.to_grade}" if rule.to_grade is not None else "próxima faixa"
                 status = "criada" if created else "atualizada"
                 self.stdout.write(
-                    f"  [{status}] {belt.display_name} grau {from_grade} → {to_label}"
+                    f"  [{status}] {belt.display_name} grau {from_grade} -> {to_label}"
                 )
                 if created:
                     created_count += 1

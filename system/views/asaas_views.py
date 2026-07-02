@@ -17,10 +17,7 @@ from system.models.asaas import (
     TeacherPayrollConfig,
 )
 from system.models.registration_order import PaymentStatus, RegistrationOrder
-from system.constants import (
-    ADMINISTRATIVE_PERSON_TYPE_CODES,
-    INSTRUCTOR_PERSON_TYPE_CODES,
-)
+from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.services.asaas_checkout import (
     AsaasCheckoutError,
     create_credit_card_charge_for_order,
@@ -36,10 +33,7 @@ from system.services.asaas_payroll import (
     refuse_payout,
 )
 from system.services.asaas_webhooks import process_asaas_event
-from system.services.payroll_rules import (
-    calculate_monthly_payroll,
-    get_staff_financial_context,
-)
+from system.services.payroll_rules import calculate_monthly_payroll
 from system.views.portal_mixins import (
     PortalLoginRequiredMixin,
     PortalRoleRequiredMixin,
@@ -313,47 +307,6 @@ class PayoutRefuseView(AdministrativeRequiredMixin, View):
         except PayrollError as exc:
             messages.error(request, str(exc))
         return redirect(request.POST.get("next") or self.success_url)
-
-
-class StaffFinancialRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = INSTRUCTOR_PERSON_TYPE_CODES + ADMINISTRATIVE_PERSON_TYPE_CODES
-
-
-class TeacherFinancialView(StaffFinancialRequiredMixin, View):
-    template_name = "home/instructor/financial.html"
-
-    def get(self, request, *args, **kwargs):
-        context = self._build_context(request)
-        return render(request, self.template_name, context)
-
-    def _build_context(self, request):
-        person = request.portal_person
-        staff_context = get_staff_financial_context(person)
-        available, base, committed = compute_available_balance(person)
-        recent_payouts = list(
-            TeacherPayout.objects.filter(person=person)
-            .order_by("-reference_month", "-created_at")[:10]
-        )
-        try:
-            config = person.payroll_config
-        except TeacherPayrollConfig.DoesNotExist:
-            config = None
-        try:
-            bank = person.teacher_bank_account
-        except TeacherBankAccount.DoesNotExist:
-            bank = None
-        return {
-            "config": config,
-            "bank": bank,
-            "available_balance": available,
-            "base_salary": base,
-            "committed_total": committed,
-            "recent_payouts": recent_payouts,
-            "calculation": staff_context["calculation"],
-            "linked_entries": staff_context["linked_entries"],
-            "held_entries": staff_context["held_entries"],
-            "refund_entries": staff_context["refund_entries"],
-        }
 
 
 class PayoutDispatchView(AdministrativeRequiredMixin, View):

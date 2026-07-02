@@ -1260,6 +1260,8 @@ def approve_class_checkin(*, instructor, checkin_id):
     is_substitute = checkin.session.substitute_teacher_id == instructor.pk
     if checkin.session.schedule.class_group_id not in instructor_group_ids and not is_substitute:
         raise PermissionError("Você não é responsável por esta turma.")
+    if checkin.session.is_cancelled:
+        raise ValueError("Esta aula foi cancelada.")
     if checkin.is_approved:
         return checkin
     checkin.status = CheckinStatus.APPROVED
@@ -1295,7 +1297,7 @@ def get_calendar_month_data(year, month):
     last_day = date(year, month, num_days)
 
     holidays = {
-        h.date: h.name
+        h.date: h
         for h in Holiday.objects.filter(
             date__gte=first_day,
             date__lte=last_day,
@@ -1333,7 +1335,8 @@ def get_calendar_month_data(year, month):
     for day_num in range(1, num_days + 1):
         current_date = date(year, month, day_num)
         weekday_code = PYTHON_WEEKDAY_TO_CODE[current_date.weekday()]
-        holiday_name = holidays.get(current_date, "")
+        holiday = holidays.get(current_date)
+        holiday_name = holiday.name if holiday else ""
         day_schedules = schedules_by_weekday.get(weekday_code, [])
         day_sessions = sessions_map.get(current_date, {})
 
@@ -1360,7 +1363,7 @@ def get_calendar_month_data(year, month):
 
         special_entries = []
         for sc in specials_by_date.get(current_date, []):
-            is_cancelled, cancellation_reason = _special_cancel_state(sc, holiday_name)
+            is_cancelled, cancellation_reason = _special_cancel_state(sc, holiday)
             special_entries.append(SimpleNamespace(
                 is_special=True,
                 special_id=sc.pk,

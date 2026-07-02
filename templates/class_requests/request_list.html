@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Solicitações de turmas — LV Jiu Jitsu</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=2">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">◐</button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair">↗</a>
+    </nav>
+  </header>
+
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert">
+      {% for message in messages %}<div class="system-message system-message--{{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Solicitações de turmas e horários</h1>
+          <p class="page-header__meta">Aprovação antes de alterar o catálogo</p>
+        </div>
+      </div>
+    </div>
+
+    <form class="filter-panel" method="get">
+      <div class="filter-panel__grid">
+        <div class="form-field">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="">Todos</option>
+            {% for code, label in status_choices %}<option value="{{ code }}"{% if current_status == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="request_type">Tipo</label>
+          <select id="request_type" name="request_type">
+            <option value="">Todos</option>
+            {% for code, label in type_choices %}<option value="{{ code }}"{% if current_type == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="filter-panel__actions">
+        <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:class-catalog-request-list' %}">Limpar</a>
+      </div>
+    </form>
+
+    <section class="section" aria-labelledby="class-request-list-title">
+      <div class="section__header">
+        <h2 class="section__title" id="class-request-list-title">{{ class_requests|length }} solicitação{{ class_requests|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if class_requests %}
+        <ul class="entity-list" aria-label="Solicitações de turmas">
+          {% for item in class_requests %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ item.get_request_type_display }} · {% if item.teacher_person %}{{ item.teacher_person.full_name }}{% else %}{{ item.full_name }}{% endif %}</div>
+              <div class="entity-card__badges">
+                <span class="badge {% if item.status == 'pending' %}badge--warning{% elif item.status == 'approved' %}badge--success{% elif item.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ item.get_status_display }}</span>
+                {% if item.class_category %}<span class="badge badge--neutral">{{ item.class_category.display_name }}</span>{% endif %}
+              </div>
+              <div class="entity-card__meta">
+                {% if item.target_class_group %}{{ item.target_class_group }} · {% endif %}{{ item.display_name|default:"Novo horário" }} · {{ item.get_weekday_display }} {{ item.start_time|time:"H:i" }}
+              </div>
+            </div>
+            <div class="entity-card__actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:class-catalog-request-detail' pk=item.pk %}">Ver</a>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhuma solicitação de turma encontrada.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+</body>
+</html>

@@ -12,14 +12,54 @@ from system.views.auth_views import PortalRegisterView
 class RegisterWizardStaticContractTestCase(SimpleTestCase):
     def test_register_template_and_script_contract(self):
         root = Path(__file__).resolve().parents[2]
-        template = (root / "templates" / "login" / "register.html").read_text()
-        script = (root / "static" / "system" / "js" / "auth" / "register.js").read_text()
+        template = (root / "templates" / "login" / "register.html").read_text(encoding="utf-8")
+        script = (root / "static" / "system" / "js" / "auth" / "register.js").read_text(encoding="utf-8")
 
         self.assertNotIn("SENTINEL_TEST_XZ99", template)
-        self.assertIn("register.js' %}?v=36", template)
+        self.assertIn("register.js' %}?v=42", template)
         self.assertIn("function showOnlyWizardStep", script)
         self.assertIn("function rehydratePendingWizardState", script)
         self.assertIn("document.querySelectorAll('.wizard-step')", script)
+
+    def test_user_data_render_functions_use_safe_dom_not_innerhtml(self):
+        root = Path(__file__).resolve().parents[2]
+        script = (root / "static" / "system" / "js" / "auth" / "register.js").read_text(encoding="utf-8")
+
+        def function_body(name):
+            start = script.index("function " + name)
+            depth = 0
+            started = False
+            for idx in range(start, len(script)):
+                ch = script[idx]
+                if ch == "{":
+                    depth += 1
+                    started = True
+                elif ch == "}":
+                    depth -= 1
+                    if started and depth == 0:
+                        return script[start:idx + 1]
+            raise AssertionError("function body not closed: " + name)
+
+        review_body = function_body("renderReview")
+        confirm_body = function_body("renderConfirmationSummary")
+
+        self.assertNotIn(".innerHTML", review_body)
+        self.assertNotIn(".innerHTML", confirm_body)
+        self.assertIn("el(", review_body)
+        self.assertIn("el(", confirm_body)
+
+
+class CalendarTemplateStaticContractTestCase(SimpleTestCase):
+    def test_calendar_template_loads_external_script_without_inline_logic(self):
+        root = Path(__file__).resolve().parents[2]
+        template = (root / "templates" / "calendar" / "calendar.html").read_text(encoding="utf-8")
+        script = (root / "static" / "system" / "js" / "calendar" / "calendar.js").read_text(encoding="utf-8")
+
+        self.assertIn("system/js/calendar/calendar.js' %}?v=1", template)
+        self.assertNotIn("function applyTheme", template)
+        self.assertNotIn("js-open-day-detail", template.split("<!-- ─── Scripts", 1)[-1])
+        self.assertNotIn(".innerHTML", script)
+        self.assertIn("function clearChildren", script)
 
 
 class PendingRegistrationSummaryContractTestCase(TestCase):

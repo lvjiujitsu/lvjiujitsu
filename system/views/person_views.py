@@ -1,15 +1,19 @@
 from collections import OrderedDict
 
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Prefetch
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseRedirect
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from system.forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from system.models import (
+    AuditAction,
+    AuditModule,
     ClassEnrollment,
     ClassGroup,
     ClassInstructorAssignment,
@@ -22,31 +26,43 @@ from system.models import (
 from system.models.membership import Membership, MembershipInvoice
 from system.models.plan import SubscriptionPlan
 from system.models.registration_order import PaymentStatus, RegistrationOrder
-from system.selectors import get_person_queryset
+from system.selectors import (
+    compute_veteran_member_since,
+    get_person_queryset,
+    is_veteran_plan_eligible,
+)
+from system.services.access_requests import get_administrative_access_requests_for_person
+from system.services.audit import record_audit_event, resolve_actor_label
 from system.services.class_catalog import prepare_class_group_for_display
 from system.services.class_overview import build_class_group_filter_value
+from system.services.class_requests import get_class_catalog_requests_history_for_person
 from system.services.graduation import compute_graduation_progress, get_graduation_history
 from system.services.membership import get_active_membership, get_membership_owner
+from system.services.veteran_plan import approve_veteran_plan, revoke_veteran_plan
 from system.constants import (
     ADMINISTRATIVE_PERSON_TYPE_CODES,
     CLASS_ENROLLMENT_PERSON_TYPE_CODES,
     INSTRUCTOR_PERSON_TYPE_CODES,
     PEOPLE_SUPPORT_PERSON_TYPE_CODES,
+    PortalCapability,
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
 class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
     allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.MANAGE_ACADEMY,)
 
 
 class PeopleSupportRequiredMixin(PortalRoleRequiredMixin):
     allowed_codes = PEOPLE_SUPPORT_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.SUPPORT_PEOPLE,)
 
 
 def _can_manage_people(request):
     return bool(
-        getattr(request, "portal_is_administrative", False)
+        PortalCapability.MANAGE_PEOPLE
+        in getattr(request, "portal_capabilities", set())
         or getattr(request, "portal_is_technical_admin", False)
     )
 
@@ -144,7 +160,18 @@ class PersonCreateView(ModalFormMixin, PeopleSupportRequiredMixin, CreateView):
         if not _can_manage_people(self.request):
             kwargs["person_type_codes"] = CLASS_ENROLLMENT_PERSON_TYPE_CODES
             kwargs["show_payroll_fields"] = False
+            kwargs["show_operational_role_fields"] = False
         return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        record_audit_event(
+            module=AuditModule.PERSON,
+            action=AuditAction.CREATE,
+            actor_label=resolve_actor_label(self.request),
+            entity_label=self.object.full_name,
+        )
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -152,7 +179,7 @@ class PersonCreateView(ModalFormMixin, PeopleSupportRequiredMixin, CreateView):
         return context
 
 
-class PersonUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
+class PersonUpdateView(ModalFormMixin, PeopleSupportRequiredMixin, UpdateView):
     model = Person
     form_class = PersonForm
     template_name = "people/person_form.html"
@@ -161,7 +188,30 @@ class PersonUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     success_url = reverse_lazy("system:person-list")
 
     def get_queryset(self):
-        return get_person_queryset()
+        queryset = get_person_queryset()
+        if not _can_manage_people(self.request):
+            queryset = queryset.filter(
+                person_type__code__in=CLASS_ENROLLMENT_PERSON_TYPE_CODES
+            )
+        return queryset
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if not _can_manage_people(self.request):
+            kwargs["person_type_codes"] = CLASS_ENROLLMENT_PERSON_TYPE_CODES
+            kwargs["show_payroll_fields"] = False
+            kwargs["show_operational_role_fields"] = False
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        record_audit_event(
+            module=AuditModule.PERSON,
+            action=AuditAction.UPDATE,
+            actor_label=resolve_actor_label(self.request),
+            entity_label=self.object.full_name,
+        )
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -202,6 +252,12 @@ class PersonDeleteView(AdministrativeRequiredMixin, DeleteView):
                 ),
             )
             return redirect("system:person-detail", pk=self.object.pk)
+        record_audit_event(
+            module=AuditModule.PERSON,
+            action=AuditAction.DELETE,
+            actor_label=resolve_actor_label(self.request),
+            entity_label=self.object.full_name,
+        )
         messages.success(
             self.request,
             f"{self.object.full_name} foi excluído(a) com sucesso.",
@@ -240,6 +296,12 @@ class PersonDetailView(ModalCrudMixin, PeopleSupportRequiredMixin, DetailView):
         if not context["can_manage_people"]:
             return context
         person = context["person"]
+        context["access_request_history"] = get_administrative_access_requests_for_person(
+            person, limit=20
+        )
+        context["class_request_history"] = get_class_catalog_requests_history_for_person(
+            person, limit=20
+        )
         billing_person = get_membership_owner(person)
         memberships = list(
             Membership.objects.filter(person=billing_person)
@@ -273,7 +335,28 @@ class PersonDetailView(ModalCrudMixin, PeopleSupportRequiredMixin, DetailView):
         context["available_plans"] = list(
             SubscriptionPlan.objects.filter(is_active=True).order_by("display_name")
         )
+        context["veteran_plan_owner"] = billing_person
+        context["veteran_member_since"] = compute_veteran_member_since(billing_person)
+        context["veteran_plan_eligible"] = is_veteran_plan_eligible(billing_person)
+        context["veteran_plan_tenure_years"] = settings.VETERAN_PLAN_TENURE_YEARS
         return context
+
+
+class VeteranPlanDecisionView(PortalRoleRequiredMixin, View):
+    required_capabilities = (PortalCapability.MANAGE_PEOPLE, PortalCapability.MANAGE_ACADEMY)
+
+    def post(self, request, pk, *args, **kwargs):
+        person = get_object_or_404(Person, pk=pk)
+        action = request.POST.get("action")
+        notes = request.POST.get("notes", "")
+        actor = getattr(request, "portal_person", None)
+        if action == "revoke":
+            revoke_veteran_plan(person, revoked_by=actor, notes=notes)
+            messages.success(request, "Plano Veterano revogado.")
+        else:
+            approve_veteran_plan(person, approved_by=actor, notes=notes)
+            messages.success(request, "Plano Veterano aprovado.")
+        return redirect("system:person-detail", pk=person.pk)
 
 
 class PersonTypeListView(AdministrativeRequiredMixin, ListView):
@@ -287,18 +370,30 @@ class PersonTypeListView(AdministrativeRequiredMixin, ListView):
         )
 
 
-class PersonTypeCreateView(AdministrativeRequiredMixin, CreateView):
+class PersonTypeCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = PersonType
     form_class = PersonTypeForm
     template_name = "person_types/person_type_form.html"
+    modal_name = "person-type-create"
     success_url = reverse_lazy("system:person-type-list")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Novo perfil"
+        return context
 
-class PersonTypeUpdateView(AdministrativeRequiredMixin, UpdateView):
+
+class PersonTypeUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = PersonType
     form_class = PersonTypeForm
     template_name = "person_types/person_type_form.html"
+    modal_name = "person-type-edit"
     success_url = reverse_lazy("system:person-type-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar perfil"
+        return context
 
 
 class PersonTypeDeleteView(AdministrativeRequiredMixin, DeleteView):

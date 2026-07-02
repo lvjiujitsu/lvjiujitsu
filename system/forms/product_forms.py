@@ -9,6 +9,18 @@ from system.services.registration_checkout import (
 )
 
 
+class ProductCategoryForm(forms.ModelForm):
+    class Meta:
+        model = ProductCategory
+        fields = ("code", "display_name", "display_order", "is_active")
+        labels = {
+            "code": "Código técnico",
+            "display_name": "Nome exibido",
+            "display_order": "Ordem de exibição",
+            "is_active": "Categoria ativa",
+        }
+
+
 class ProductCartForm(forms.Form):
     cart_payload = forms.CharField(widget=forms.HiddenInput)
 

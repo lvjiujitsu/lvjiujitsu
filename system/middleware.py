@@ -1,10 +1,15 @@
 from system.constants import (
-    ADMINISTRATIVE_PERSON_TYPE_CODES,
     INSTRUCTOR_PERSON_TYPE_CODES,
-    STUDENT_PORTAL_PERSON_TYPE_CODES,
+    PortalCapability,
     TECHNICAL_ADMIN_PERSON_TYPE_CODES,
+    TECHNICAL_ADMIN_CAPABILITIES,
 )
-from system.services import resolve_portal_account_from_session, resolve_technical_admin_from_session
+from system.services import (
+    get_person_capabilities,
+    get_person_operational_role_codes,
+    resolve_portal_account_from_session,
+    resolve_technical_admin_from_session,
+)
 
 
 class PortalSessionMiddleware:
@@ -20,6 +25,9 @@ class PortalSessionMiddleware:
         request.portal_is_instructor = False
         request.portal_is_student = False
         request.portal_type_codes = set()
+        request.portal_role_codes = set()
+        request.portal_capabilities = set()
+        request.portal_supports_classes = False
 
         access_account = resolve_portal_account_from_session(request)
         technical_admin_user = resolve_technical_admin_from_session(request)
@@ -30,24 +38,33 @@ class PortalSessionMiddleware:
             request.portal_is_instructor = True
             request.portal_is_student = True
             request.portal_type_codes = set(TECHNICAL_ADMIN_PERSON_TYPE_CODES)
+            request.portal_role_codes = set()
+            request.portal_capabilities = set(TECHNICAL_ADMIN_CAPABILITIES)
+            request.portal_supports_classes = True
 
         if access_account is not None:
             request.portal_account = access_account
             request.portal_person = access_account.person
+            person = access_account.person
             person_type_code = (
-                access_account.person.person_type.code
-                if access_account.person.person_type_id
+                person.person_type.code
+                if person.person_type_id
                 else ""
             )
             request.portal_type_codes = {person_type_code} if person_type_code else set()
-            request.portal_is_administrative = bool(
-                set(ADMINISTRATIVE_PERSON_TYPE_CODES) & request.portal_type_codes
+            request.portal_role_codes = get_person_operational_role_codes(person)
+            request.portal_capabilities = get_person_capabilities(person)
+            request.portal_is_administrative = (
+                PortalCapability.MANAGE_ACADEMY in request.portal_capabilities
             )
             request.portal_is_instructor = bool(
                 set(INSTRUCTOR_PERSON_TYPE_CODES) & request.portal_type_codes
             )
-            request.portal_is_student = bool(
-                set(STUDENT_PORTAL_PERSON_TYPE_CODES) & request.portal_type_codes
+            request.portal_is_student = (
+                PortalCapability.ACCESS_STUDENT_AREA in request.portal_capabilities
+            )
+            request.portal_supports_classes = (
+                PortalCapability.SUPPORT_CLASSES in request.portal_capabilities
             )
 
         return self.get_response(request)

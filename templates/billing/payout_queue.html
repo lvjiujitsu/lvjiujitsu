@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Repasses — LV Jiu Jitsu</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=1">
+</head>
+<body>
+
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
+        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </nav>
+  </header>
+
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:financial-control' %}">← Financeiro</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Repasses</h1>
+          <p class="page-header__meta">Fila de pagamentos a professores</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <form class="filter-form" method="get">
+        <div class="filter-field">
+          <label class="filter-label" for="status-filter">Status</label>
+          <select class="filter-select" id="status-filter" name="status">
+            <option value="">Todos</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+        </div>
+      </form>
+    </div>
+
+    <section class="section" aria-labelledby="payout-queue-title">
+      <div class="section__header">
+        <h2 class="section__title" id="payout-queue-title">{{ payouts|length }} repasse{{ payouts|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if payouts %}
+        <ul class="entity-list" aria-label="Fila de repasses">
+          {% for payout in payouts %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ payout.person.full_name }} · R$ {{ payout.amount|floatformat:2 }}</div>
+              <div class="entity-card__meta">Referência {{ payout.reference_month|date:"m/Y" }}</div>
+            </div>
+            <div class="entity-card__badges">
+              {% if payout.status == "paid" %}<span class="badge badge--success">{{ payout.get_status_display }}</span>
+              {% elif payout.status == "refused" %}<span class="badge badge--danger">{{ payout.get_status_display }}</span>
+              {% else %}<span class="badge badge--warning">{{ payout.get_status_display }}</span>{% endif %}
+            </div>
+            {% if payout.status == "pending" %}
+            <div class="entity-card__actions">
+              <form method="post" action="{% url 'system:payout-approve' payout_id=payout.pk %}">
+                {% csrf_token %}
+                <button class="btn btn--secondary btn--sm" type="submit">Aprovar</button>
+              </form>
+              <form method="post" action="{% url 'system:payout-refuse' payout_id=payout.pk %}">
+                {% csrf_token %}
+                <button class="btn btn--danger-outline btn--sm" type="submit">Recusar</button>
+              </form>
+            </div>
+            {% elif payout.status == "approved" %}
+            <div class="entity-card__actions">
+              <form method="post" action="{% url 'system:payout-dispatch' payout_id=payout.pk %}">
+                {% csrf_token %}
+                <button class="btn btn--primary btn--sm" type="submit">Enviar ao Asaas</button>
+              </form>
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% if is_paginated %}
+        <div class="filter-actions" style="padding:1rem 1.25rem;">
+          {% if page_obj.has_previous %}<a class="btn btn--secondary btn--sm" href="?page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn btn--secondary btn--sm" href="?page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhum repasse na fila.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+</body>
+</html>

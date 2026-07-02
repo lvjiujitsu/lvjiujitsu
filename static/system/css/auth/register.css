@@ -289,6 +289,19 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   color: #ffffff;
 }
 
+.profile-card--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-card--link:hover {
+  text-decoration: none;
+}
+
+.profile-card--link .profile-card__check {
+  color: var(--brand-red);
+}
+
 /* ─── Sub-opções ────────────────────────────────────────────────────────────── */
 
 .profile-suboption {
@@ -667,7 +680,7 @@ html[data-theme="dark"] .ibjjf-notice {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: 5px;
   border: 2px solid var(--border);
   display: flex;
   align-items: center;
@@ -682,10 +695,13 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 
 .class-card__radio-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #fff;
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  border-radius: 0;
+  background: none;
   display: none;
 }
 

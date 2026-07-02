@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from system.constants import OperationalRoleCode, PersonTypeCode
 from system.models import (
     BeltRank,
     BiologicalSex,
@@ -25,7 +26,7 @@ from system.models import (
     TrainingStyle,
     WeekdayCode,
 )
-from system.models.calendar import CheckinStatus, ClassCheckin
+from system.models.calendar import CheckinStatus, ClassCheckin, SessionStatus
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 from system.services.graduation import (
     compute_graduation_progress,
@@ -221,6 +222,14 @@ class GraduationServiceTestCase(TestCase):
         end = timezone.localdate()
         self.assertEqual(count_approved_classes_in_window(self.person, start, end), 3)
 
+    def test_count_approved_classes_excludes_cancelled_session(self):
+        checkin = self._create_approved_checkin(days_back=5)
+        checkin.session.status = SessionStatus.CANCELLED
+        checkin.session.save(update_fields=["status"])
+        start = timezone.localdate() - timedelta(days=30)
+        end = timezone.localdate()
+        self.assertEqual(count_approved_classes_in_window(self.person, start, end), 0)
+
     def test_compute_progress_with_pending_requirements(self):
         register_graduation(
             person=self.person, belt_rank=self.white, grade_number=0,
@@ -326,6 +335,7 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
             display_name="Administrativo",
         )
         PersonType.objects.create(code="instructor", display_name="Professor")
+        PersonType.objects.create(code=PersonTypeCode.STUDENT, display_name="Aluno")
 
         self._call_seed("seed_system_initial_belt_ranks")
         self._call_seed("seed_system_initial_ibjjf_age_categories")
@@ -336,6 +346,7 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
         self._call_seed("seed_system_initial_administrative")
 
         person = Person.objects.get(cpf="920.000.011-81")
+        self.assertEqual(person.person_type.code, PersonTypeCode.STUDENT)
         current = get_current_graduation(person)
         self.assertEqual(current.belt_rank.code, "adult-purple")
         self.assertEqual(current.grade_number, 1)
@@ -349,6 +360,7 @@ class InitialTeacherSeedGraduationTestCase(TestCase):
         self.assertEqual(person.graduations.count(), 12)
         self.assertEqual(person.class_category.code, "adult")
         self.assertEqual(person.class_enrollments.filter(status="active").count(), 2)
+        self.assertTrue(person.has_operational_role(OperationalRoleCode.CLASS_ASSISTANT))
         self.assertEqual(person.class_instructor_assignments.count(), 1)
         self.assertEqual(
             person.class_instructor_assignments.get().class_group.class_category.code,

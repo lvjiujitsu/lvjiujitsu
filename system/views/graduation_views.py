@@ -20,6 +20,7 @@ from system.forms.graduation_forms import (
 from system.models import BeltRank, Graduation, GraduationRule
 from system.selectors.graduation import get_graduation_overview
 from system.services.graduation import compute_graduation_progress
+from system.views.person_views import ModalFormMixin
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -36,18 +37,30 @@ class BeltRankListView(_AdministrativeRequiredMixin, ListView):
         return BeltRank.objects.order_by("display_order", "display_name")
 
 
-class BeltRankCreateView(_AdministrativeRequiredMixin, CreateView):
+class BeltRankCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
     model = BeltRank
     form_class = BeltRankForm
     template_name = "graduation/belt_rank_form.html"
+    modal_name = "belt-rank-create"
     success_url = reverse_lazy("system:belt-rank-list")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova faixa"
+        return context
 
-class BeltRankUpdateView(_AdministrativeRequiredMixin, UpdateView):
+
+class BeltRankUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, UpdateView):
     model = BeltRank
     form_class = BeltRankForm
     template_name = "graduation/belt_rank_form.html"
+    modal_name = "belt-rank-edit"
     success_url = reverse_lazy("system:belt-rank-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar faixa"
+        return context
 
 
 class BeltRankDetailView(_AdministrativeRequiredMixin, DetailView):
@@ -82,18 +95,30 @@ class GraduationRuleListView(_AdministrativeRequiredMixin, ListView):
         )
 
 
-class GraduationRuleCreateView(_AdministrativeRequiredMixin, CreateView):
+class GraduationRuleCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
     model = GraduationRule
     form_class = GraduationRuleForm
     template_name = "graduation/graduation_rule_form.html"
+    modal_name = "graduation-rule-create"
     success_url = reverse_lazy("system:graduation-rule-list")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova regra"
+        return context
 
-class GraduationRuleUpdateView(_AdministrativeRequiredMixin, UpdateView):
+
+class GraduationRuleUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, UpdateView):
     model = GraduationRule
     form_class = GraduationRuleForm
     template_name = "graduation/graduation_rule_form.html"
+    modal_name = "graduation-rule-edit"
     success_url = reverse_lazy("system:graduation-rule-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar regra"
+        return context
 
 
 class GraduationRuleDeleteView(_AdministrativeRequiredMixin, DeleteView):
@@ -116,16 +141,23 @@ class GraduationListView(_AdministrativeRequiredMixin, ListView):
         )
 
 
-class GraduationCreateView(_AdministrativeRequiredMixin, CreateView):
+class GraduationCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
     model = Graduation
     form_class = GraduationForm
     template_name = "graduation/graduation_form.html"
+    modal_name = "graduation-create"
     success_url = reverse_lazy("system:graduation-list")
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, "Graduação registrada com sucesso.")
+        if not self.is_modal():
+            messages.success(self.request, "Graduação registrada com sucesso.")
         return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova graduação"
+        return context
 
 
 class GraduationDeleteView(_AdministrativeRequiredMixin, DeleteView):

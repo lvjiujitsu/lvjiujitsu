@@ -1,0 +1,47 @@
+{% extends "lv/modal_frame.html" %}
+{% load static %}
+
+{% block modal_title %}{{ form_title }} — LV Jiu Jitsu{% endblock %}
+{% block modal_header_title %}{{ form_title }}{% endblock %}
+
+{% block modal_extra_head %}
+<link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+{% endblock %}
+
+{% block modal_content %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="system-messages" role="alert">
+    {% for error in form.non_field_errors %}
+    <div class="system-message system-message--error">{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="form-card">
+    <div class="form-group">
+      <div class="form-grid">
+        {% for field in form %}
+          {% if field.field.widget.input_type == "checkbox" %}
+          <div class="form-field form-field--checkbox">
+            {{ field }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field.errors }}
+          </div>
+          {% else %}
+          <div class="form-field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="button" class="btn btn--secondary" data-modal-close>Cancelar</button>
+    <button class="btn btn--primary" type="submit">Salvar faixa</button>
+  </div>
+</form>
+{% endblock %}

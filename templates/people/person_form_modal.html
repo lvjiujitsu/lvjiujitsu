@@ -1,0 +1,152 @@
+{% extends "lv/modal_frame.html" %}
+{% load static %}
+
+{% block modal_title %}{% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %} — LV Jiu Jitsu{% endblock %}
+{% block modal_header_title %}{% if object %}Editar {{ object.full_name }}{% else %}{{ person_create_label|default:"Nova pessoa" }}{% endif %}{% endblock %}
+
+{% block modal_extra_head %}
+<link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+{% endblock %}
+
+{% block modal_content %}
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="system-messages" role="alert">
+    {% for error in form.non_field_errors %}
+    <div class="system-message system-message--error">{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="form-card">
+    <div class="form-group">
+      <div class="form-group__title">Identificação</div>
+      <div class="form-grid">
+        <div class="form-field form-field--full">
+          <label for="{{ form.full_name.id_for_label }}">{{ form.full_name.label }} *</label>
+          {{ form.full_name }}
+          {{ form.full_name.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.cpf.id_for_label }}">{{ form.cpf.label }} *</label>
+          {{ form.cpf }}
+          {{ form.cpf.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+          {{ form.phone }}
+          {{ form.phone.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.birth_date.id_for_label }}">{{ form.birth_date.label }}</label>
+          {{ form.birth_date }}
+          {{ form.birth_date.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.biological_sex.id_for_label }}">{{ form.biological_sex.label }}</label>
+          {{ form.biological_sex }}
+          {{ form.biological_sex.errors }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-group">
+      <div class="form-group__title">Vínculo e turmas</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="{{ form.person_type.id_for_label }}">{{ form.person_type.label }} *</label>
+          {{ form.person_type }}
+          {{ form.person_type.errors }}
+        </div>
+        <div class="form-field">
+          <div class="form-checkbox-row">
+            {{ form.is_active }}
+            <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+          </div>
+          {{ form.is_active.errors }}
+        </div>
+        {% if form.class_groups %}
+        <div class="form-field form-field--full">
+          <label>{{ form.class_groups.label }}</label>
+          <div style="margin-top:0.5rem;">
+            {{ form.class_groups }}
+          </div>
+          {% if form.class_groups.help_text %}
+          <span class="form-field__help">{{ form.class_groups.help_text }}</span>
+          {% endif %}
+          {{ form.class_groups.errors }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if can_manage_people %}
+  <div class="form-card">
+    <div class="form-group">
+      <div class="form-group__title">Papéis operacionais</div>
+      <div class="form-grid">
+        <div class="form-field form-field--full">
+          <label>{{ form.operational_roles.label }}</label>
+          <div style="margin-top:0.5rem;">
+            {{ form.operational_roles }}
+          </div>
+          {% if form.operational_roles.help_text %}
+          <span class="form-field__help">{{ form.operational_roles.help_text }}</span>
+          {% endif %}
+          {{ form.operational_roles.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.class_assistant_group.id_for_label }}">{{ form.class_assistant_group.label }}</label>
+          {{ form.class_assistant_group }}
+          {% if form.class_assistant_group.help_text %}
+          <span class="form-field__help">{{ form.class_assistant_group.help_text }}</span>
+          {% endif %}
+          {{ form.class_assistant_group.errors }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-group">
+      <div class="form-group__title">Repasse do professor</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <div class="form-checkbox-row">
+            {{ form.payroll_enabled }}
+            <label for="{{ form.payroll_enabled.id_for_label }}">{{ form.payroll_enabled.label }}</label>
+          </div>
+          {{ form.payroll_enabled.errors }}
+        </div>
+        <div class="form-field">
+          <label for="{{ form.payroll_payment_day.id_for_label }}">{{ form.payroll_payment_day.label }}</label>
+          {{ form.payroll_payment_day }}
+          {{ form.payroll_payment_day.errors }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <p class="form-field__help">
+    Campos de saúde, endereço e histórico de arte marcial ficam disponíveis na
+    <a href="{% if object %}{% url 'system:person-detail' pk=object.pk %}{% else %}{% url 'system:person-list' %}{% endif %}" target="_top">página completa</a>
+    após salvar aqui.
+  </p>
+
+  <div class="form-actions">
+    <button type="button" class="btn btn--secondary" data-modal-close>Cancelar</button>
+    <button class="btn btn--primary" type="submit">Salvar pessoa</button>
+  </div>
+</form>
+{% endblock %}

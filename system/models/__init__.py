@@ -23,8 +23,10 @@ from .person import (
     JiuJitsuBelt,
     MartialArt,
     Person,
+    OperationalRole,
     PortalAccount,
     PortalPasswordResetToken,
+    PersonOperationalRole,
     PersonRelationship,
     PersonRelationshipKind,
     PersonType,
@@ -73,9 +75,25 @@ from .asaas import (
 )
 from .coupon import Coupon, DiscountType
 from .pre_registration import PreRegistration, PreRegistrationStatus
+from .request_workflows import (
+    AdministrativeAccessRequest,
+    AdministrativeAccessRequestOrigin,
+    AdministrativeAccessRequestStatus,
+    ClassCatalogRequest,
+    ClassCatalogRequestOrigin,
+    ClassCatalogRequestStatus,
+    ClassCatalogRequestType,
+)
 from .trial_access import TrialAccessGrant
+from .audit import AuditAction, AuditModule, OperationalAuditEntry
 
 __all__ = [
+    "AdministrativeAccessRequest",
+    "AdministrativeAccessRequestOrigin",
+    "AdministrativeAccessRequestStatus",
+    "AuditAction",
+    "AuditModule",
+    "OperationalAuditEntry",
     "Coupon",
     "DiscountType",
     "AsaasWebhookEvent",
@@ -94,6 +112,10 @@ __all__ = [
     "CheckinStatus",
     "ClassCategory",
     "ClassCheckin",
+    "ClassCatalogRequest",
+    "ClassCatalogRequestOrigin",
+    "ClassCatalogRequestStatus",
+    "ClassCatalogRequestType",
     "Graduation",
     "GraduationRule",
     "ClassEnrollment",
@@ -107,7 +129,9 @@ __all__ = [
     "IbjjfAgeCategory",
     "JiuJitsuBelt",
     "MartialArt",
+    "OperationalRole",
     "Person",
+    "PersonOperationalRole",
     "PersonRelationship",
     "PersonRelationshipKind",
     "PersonType",

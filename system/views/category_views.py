@@ -11,7 +11,10 @@ from system.models import (
     Person,
 )
 from system.services.class_catalog import prepare_class_group_for_display
-from system.views.person_views import AdministrativeRequiredMixin
+from system.views.person_views import (
+    AdministrativeRequiredMixin,
+    ModalFormMixin,
+)
 
 
 class ClassCategoryListView(AdministrativeRequiredMixin, ListView):
@@ -26,18 +29,30 @@ class ClassCategoryListView(AdministrativeRequiredMixin, ListView):
         ).order_by("display_order", "display_name")
 
 
-class ClassCategoryCreateView(AdministrativeRequiredMixin, CreateView):
+class ClassCategoryCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = ClassCategory
     form_class = ClassCategoryForm
     template_name = "class_categories/class_category_form.html"
+    modal_name = "class-category-create"
     success_url = reverse_lazy("system:class-category-list")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova categoria"
+        return context
 
-class ClassCategoryUpdateView(AdministrativeRequiredMixin, UpdateView):
+
+class ClassCategoryUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = ClassCategory
     form_class = ClassCategoryForm
     template_name = "class_categories/class_category_form.html"
+    modal_name = "class-category-edit"
     success_url = reverse_lazy("system:class-category-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar categoria"
+        return context
 
 
 class ClassCategoryDeleteView(AdministrativeRequiredMixin, DeleteView):

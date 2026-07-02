@@ -42,7 +42,7 @@ Tornar obrigatorio e verificavel que:
 - `AGENTS.md`
 - `CLAUDE.md`
 - `docs/prd/PRD-001-cadastro-cliente.md`
-- `docs/prd/PRD-021-revisao-fluxo-cadastro.md`
+- `docs/prd/PRD-088-revisao-fluxo-cadastro.md`
 - `docs/prd/PRD-021-etapas-pagamento-separadas-cadastro.md`
 - `docs/prd/PRD-038-redesign-etapa-materiais-wizard.md`
 - `docs/prd/PRD-039-fluxo-guardian-asaas-home-multiplicador.md`

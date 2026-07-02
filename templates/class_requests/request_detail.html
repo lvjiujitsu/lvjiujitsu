@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Solicitação de turma — LV Jiu Jitsu</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=2">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">◐</button>
+    </nav>
+  </header>
+
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert">
+      {% for message in messages %}<div class="system-message system-message--{{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:class-catalog-request-list' %}">← Solicitações</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ class_request.get_request_type_display }}</h1>
+          <p class="page-header__meta">{% if class_request.teacher_person %}{{ class_request.teacher_person.full_name }}{% else %}{{ class_request.full_name }}{% endif %}</p>
+        </div>
+        <span class="badge {% if class_request.status == 'pending' %}badge--warning{% elif class_request.status == 'approved' %}badge--success{% elif class_request.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ class_request.get_status_display }}</span>
+      </div>
+    </div>
+
+    <section class="form-card">
+      <div class="form-group">
+        <h2 class="form-group__title">Resumo</h2>
+        <dl class="request-summary">
+          <div><dt>Origem</dt><dd>{{ class_request.get_origin_display }}</dd></div>
+          <div><dt>Turma existente</dt><dd>{{ class_request.target_class_group|default:"—" }}</dd></div>
+          <div><dt>Categoria</dt><dd>{{ class_request.class_category|default:"—" }}</dd></div>
+          <div><dt>Nome da turma</dt><dd>{{ class_request.display_name|default:"—" }}</dd></div>
+          <div><dt>Dia</dt><dd>{{ class_request.get_weekday_display }}</dd></div>
+          <div><dt>Horário</dt><dd>{{ class_request.start_time|time:"H:i" }}</dd></div>
+          <div><dt>Estilo</dt><dd>{{ class_request.get_training_style_display }}</dd></div>
+          <div><dt>Duração</dt><dd>{{ class_request.duration_minutes }} min</dd></div>
+          {% if class_request.extra_schedules %}
+          <div class="request-summary__full">
+            <dt>Horários adicionais</dt>
+            <dd>
+              <ul>
+                {% for extra in class_request.extra_schedules %}
+                <li>{{ extra.weekday }} · {{ extra.training_style }} · {{ extra.start_time }} · {{ extra.duration_minutes }} min</li>
+                {% endfor %}
+              </ul>
+            </dd>
+          </div>
+          {% endif %}
+          <div class="request-summary__full"><dt>Justificativa</dt><dd>{{ class_request.justification }}</dd></div>
+          {% if class_request.created_class_group %}<div><dt>Turma criada</dt><dd>{{ class_request.created_class_group }}</dd></div>{% endif %}
+          {% if class_request.decision_notes %}<div class="request-summary__full"><dt>Decisão</dt><dd>{{ class_request.decision_notes }}</dd></div>{% endif %}
+        </dl>
+      </div>
+    </section>
+
+    {% if class_request.status == 'pending' %}
+    <form method="post" class="form-card" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <h2 class="form-group__title">Ajustar e decidir</h2>
+        {% if decision_form.non_field_errors %}
+        <div class="system-message system-message--error">{{ decision_form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-grid">
+          {% for field in decision_form %}
+          <div class="form-field{% if field.name == 'decision_notes' %} form-field--full{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--secondary" type="submit" name="action" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn btn--danger-outline" type="submit" name="action" value="reject">Recusar</button>
+        <button class="btn btn--primary" type="submit" name="action" value="approve">Aprovar</button>
+      </div>
+    </form>
+    {% endif %}
+  </main>
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+</body>
+</html>

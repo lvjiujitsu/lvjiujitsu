@@ -23,6 +23,20 @@ class PersonType(TimeStampedModel):
         return self.display_name
 
 
+class OperationalRole(TimeStampedModel):
+    code = models.SlugField(max_length=80, unique=True)
+    display_name = models.CharField(max_length=120, unique=True)
+    description = models.TextField(blank=True)
+    capabilities = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("display_name",)
+
+    def __str__(self) -> str:
+        return self.display_name
+
+
 class BloodType(models.TextChoices):
     A_POSITIVE = "A+", "A+"
     A_NEGATIVE = "A-", "A-"
@@ -144,6 +158,28 @@ class Person(TimeStampedModel):
     address_complement = models.CharField("Complemento", max_length=100, blank=True, default="")
     address_neighborhood = models.CharField("Bairro", max_length=100, blank=True, default="")
     city = models.CharField("Cidade", max_length=100, blank=True, default="")
+    veteran_plan_approved = models.BooleanField(
+        "Plano Veterano aprovado manualmente",
+        default=False,
+    )
+    veteran_plan_approved_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="veteran_plan_approvals_made",
+        null=True,
+        blank=True,
+        verbose_name="Aprovado por",
+    )
+    veteran_plan_approved_at = models.DateTimeField(
+        "Aprovado em",
+        null=True,
+        blank=True,
+    )
+    veteran_plan_approved_notes = models.TextField(
+        "Justificativa da aprovação",
+        blank=True,
+        default="",
+    )
 
     class Meta:
         ordering = ("full_name",)
@@ -155,6 +191,16 @@ class Person(TimeStampedModel):
         if not self.person_type_id:
             return False
         return self.person_type.code in codes
+
+    def has_operational_role(self, *codes: str) -> bool:
+        from system.services.portal_capabilities import get_person_operational_role_codes
+
+        return bool(set(codes) & get_person_operational_role_codes(self))
+
+    def has_capability(self, *capabilities: str) -> bool:
+        from system.services.portal_capabilities import person_has_any_capability
+
+        return person_has_any_capability(self, *capabilities)
 
     def can_enroll_in_class_group(self) -> bool:
         from system.constants import (
@@ -197,6 +243,46 @@ class Person(TimeStampedModel):
             if category.matches_age(age):
                 return category
         return None
+
+
+class PersonOperationalRole(TimeStampedModel):
+    person = models.ForeignKey(
+        Person,
+        on_delete=models.CASCADE,
+        related_name="operational_role_assignments",
+    )
+    role = models.ForeignKey(
+        OperationalRole,
+        on_delete=models.PROTECT,
+        related_name="person_assignments",
+    )
+    class_group = models.ForeignKey(
+        "system.ClassGroup",
+        on_delete=models.CASCADE,
+        related_name="operational_role_assignments",
+        null=True,
+        blank=True,
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ("person__full_name", "role__display_name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("person", "role"),
+                condition=Q(class_group__isnull=True),
+                name="unique_person_global_operational_role",
+            ),
+            models.UniqueConstraint(
+                fields=("person", "role", "class_group"),
+                name="unique_person_scoped_operational_role",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        scope = f" / {self.class_group}" if self.class_group_id else ""
+        return f"{self.person.full_name} -> {self.role.display_name}{scope}"
 
 
 class PortalAccount(TimeStampedModel):

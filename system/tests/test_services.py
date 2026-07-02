@@ -21,6 +21,7 @@ from system.models import (
     ClassSession,
     PayoutKind,
     PayoutStatus,
+    SessionStatus,
     SubscriptionPlan,
     TeacherBankAccount,
     TeacherPayout,
@@ -369,6 +370,48 @@ class PayrollRulesServiceTestCase(TestCase):
         self.assertEqual(result["total"], Decimal("25.00"))
         self.assertEqual(result["class_total"], Decimal("25.00"))
         self.assertEqual(result["class_attendance_count"], 1)
+
+    def test_per_class_attendance_rule_excludes_cancelled_session(self):
+        schedule = ClassSchedule.objects.create(
+            class_group=self.group,
+            weekday=WeekdayCode.MONDAY,
+            start_time="18:00",
+            training_style="gi",
+        )
+        session = ClassSession.objects.create(
+            schedule=schedule,
+            date=date(2026, 4, 6),
+        )
+        ClassCheckin.objects.create(
+            session=session,
+            person=self.student,
+            status=CheckinStatus.APPROVED,
+        )
+        session.status = SessionStatus.CANCELLED
+        session.save(update_fields=["status"])
+        TeacherPayrollConfig.objects.create(
+            person=self.teacher,
+            monthly_salary=Decimal("0.00"),
+            payment_day=28,
+            notes=encode_payroll_rules(
+                [
+                    {
+                        "method": PAYROLL_METHOD_PER_CLASS_ATTENDANCE,
+                        "amount": "25.00",
+                        "scope": "class_group",
+                        "class_group_id": self.group.pk,
+                    },
+                ]
+            ),
+        )
+
+        result = calculate_monthly_payroll(
+            self.teacher,
+            reference_month=date(2026, 4, 1),
+        )
+
+        self.assertEqual(result["total"], Decimal("0.00"))
+        self.assertEqual(result["class_attendance_count"], 0)
 
     @override_settings(PAYROLL_REFUND_HOLD_DAYS=7)
     def test_ignores_student_percentage_entry_before_refund_hold_window(self):

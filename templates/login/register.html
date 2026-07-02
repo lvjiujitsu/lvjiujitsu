@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=18">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=20">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -209,6 +209,28 @@
               </div>
             </div>
           </div>
+
+          <a
+            class="profile-card profile-card--link"
+            href="{% url 'system:class-catalog-request-public-teacher-create' %}"
+            aria-label="Propor cadastro como professor"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19V5"/>
+                <path d="M4 5h16"/>
+                <path d="M4 12h12"/>
+                <path d="M4 19h10"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Professor</span>
+              <span class="profile-card__desc">Quero propor uma turma ou horário inicial</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </a>
 
         </div>{# /profile-options #}
 
@@ -643,12 +665,12 @@
         <div id="plan-cards-area"></div>
         <p class="form-field__error" id="plan-step-error" hidden></p>
 
-        {# Aviso de fidelidade — exibido apenas quando plano Stripe é selecionado #}
+        {# Aviso de permanência mínima — exibido apenas quando plano Stripe é selecionado #}
         <div class="stripe-commitment-notice" id="stripe-commitment-notice" hidden>
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <div>
             <strong>Assinatura recorrente — cobrança mensal automática no cartão</strong>
-            <p>Este plano exige fidelidade mínima de <strong>12 meses</strong>. Não é possível cancelar ou trancar a assinatura durante o período de fidelidade.</p>
+            <p>Este plano exige permanência mínima de <strong>12 meses</strong>. Não é possível cancelar ou trancar a assinatura durante esse período de permanência.</p>
           </div>
         </div>
 
@@ -777,6 +799,6 @@
 
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=36" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=42" defer></script>
 </body>
 </html>

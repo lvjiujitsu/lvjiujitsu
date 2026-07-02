@@ -153,6 +153,8 @@ CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config("CLASS_SCHEDULE_DEFAULT_DURATIO
 SPECIAL_CLASS_DEFAULT_TITLE             = config("SPECIAL_CLASS_DEFAULT_TITLE",             default="Aulão")
 SPECIAL_CLASS_DEFAULT_DURATION_MINUTES  = config("SPECIAL_CLASS_DEFAULT_DURATION_MINUTES",  default=90, cast=int)
 PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=int)
+VETERAN_PLAN_TENURE_YEARS   = config("VETERAN_PLAN_TENURE_YEARS",   default=2,  cast=int)
+VETERAN_PLAN_GAP_GRACE_DAYS = config("VETERAN_PLAN_GAP_GRACE_DAYS", default=60, cast=int)
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
@@ -260,6 +262,11 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            # transaction_mode=IMMEDIATE adquire o lock de escrita já no BEGIN,
+            # evitando o "database is locked" da subida de lock DEFERRED->EXCLUSIVE
+            # sob escritas concorrentes (ex: rajada de webhooks Stripe locais).
+            # timeout maior é o retry de reforço para o caso de fila mesmo assim.
+            'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'},
         }
     }
 

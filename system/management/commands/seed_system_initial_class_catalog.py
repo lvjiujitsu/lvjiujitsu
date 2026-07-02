@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 sc = self._sync_schedules(group, entry.get("schedules", []))
                 schedules_created += sc
                 if sc:
-                    self.stdout.write(f"    → {sc} horário(s) criado(s)")
+                    self.stdout.write(f"    -> {sc} horário(s) criado(s)")
 
         self.stdout.write(
             self.style.SUCCESS(

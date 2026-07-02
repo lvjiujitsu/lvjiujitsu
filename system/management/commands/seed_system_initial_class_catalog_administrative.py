@@ -60,7 +60,7 @@ class Command(BaseCommand):
                     )
                 if summary.get("category"):
                     labels.append(f"categoria {summary['category']}")
-                self.stdout.write(f"  [vinculado] {person.full_name} → {', '.join(labels)}")
+                self.stdout.write(f"  [vinculado] {person.full_name} -> {', '.join(labels)}")
                 linked_count += 1
 
         self.stdout.write(

@@ -35,7 +35,7 @@ Disponibilizar um módulo administrativo coerente com o padrão visual existente
 - `templates/people/person_confirm_delete.html`
 - `static/system/css/people/people.css`
 - `docs/prd/PRD-045-pessoas-listagem-detalhe.md`
-- `docs/prd/PRD-028-crud-planos-precificacao-dinamica.md`
+- `docs/prd/PRD-089-crud-planos-precificacao-dinamica.md`
 - `docs/prd/PRD-007-reformular-planos-precificacao-elegibilidade.md`
 - `docs/prd/PRD-006-padronizar-tela-troca-plano.md`
 - `docs/prd/PRD-019-troca-plano-padrao-plan-selector.md`

@@ -85,7 +85,7 @@ class SubscriptionPlan(TimeStampedModel):
         default=PlanPaymentMethod.CREDIT_CARD,
     )
     is_family_plan = models.BooleanField("Plano familiar", default=False)
-    is_loyalty_plan = models.BooleanField("Plano fidelidade", default=False)
+    is_loyalty_plan = models.BooleanField("Plano veterano", default=False)
     base_monthly_net_price = models.DecimalField(
         "Valor líquido mensal desejado",
         max_digits=10,

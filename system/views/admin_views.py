@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.views.generic import TemplateView
+from django.views.generic import ListView, TemplateView
 
 from system.models import (
     BeltRank,
@@ -8,6 +8,7 @@ from system.models import (
     ClassSchedule,
     Graduation,
     GraduationRule,
+    OperationalAuditEntry,
     Person,
     PersonType,
     Product,
@@ -69,11 +70,18 @@ class AdminHubView(AdministrativeRequiredMixin, TemplateView):
                 "primary_label": "produtos ativos",
             },
             {
-                "title": "Perfis e acessos",
-                "description": "Tipos de pessoa, permissões operacionais e Django Admin.",
+                "title": "Tipos de vínculo",
+                "description": "Catálogo global (Aluno, Professor, Administrativo). Para dar apoio de turma ou gestão a uma pessoa, edite o cadastro em Pessoas.",
                 "url_name": "system:person-type-list",
                 "primary_count": PersonType.objects.filter(is_active=True).count(),
-                "primary_label": "perfis ativos",
+                "primary_label": "tipos ativos",
+            },
+            {
+                "title": "Auditoria",
+                "description": "Trilha de ações operacionais: cadastro, presença e financeiro.",
+                "url_name": "system:audit-log-list",
+                "primary_count": OperationalAuditEntry.objects.count(),
+                "primary_label": "entradas registradas",
             },
         ]
         context["admin_kpis"] = [
@@ -86,4 +94,24 @@ class AdminHubView(AdministrativeRequiredMixin, TemplateView):
             {"label": "Repasses", "value": TeacherPayout.objects.count()},
             {"label": "Usuários técnicos", "value": get_user_model().objects.count()},
         ]
+        return context
+
+
+class AuditLogListView(AdministrativeRequiredMixin, ListView):
+    model = OperationalAuditEntry
+    template_name = "audit/audit_log_list.html"
+    context_object_name = "entries"
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = OperationalAuditEntry.objects.all()
+        module = self.request.GET.get("module") or ""
+        if module:
+            queryset = queryset.filter(module=module)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["module_filter"] = self.request.GET.get("module") or ""
+        context["module_choices"] = OperationalAuditEntry._meta.get_field("module").choices
         return context

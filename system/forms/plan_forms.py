@@ -82,7 +82,7 @@ class PlanForm(forms.ModelForm):
             "billing_cycle": "Ciclo de cobrança",
             "payment_method": "Meio de pagamento",
             "is_family_plan": "Plano familiar",
-            "is_loyalty_plan": "Plano fidelidade",
+            "is_loyalty_plan": "Plano veterano",
             "requires_special_authorization": "Exige autorização especial",
             "price": "Preço cobrado",
             "monthly_reference_price": "Referência mensal",

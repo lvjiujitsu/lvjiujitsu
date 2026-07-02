@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Pessoas — LV Jiu Jitsu</title>
   {% load static %}
-  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
 </head>
 <body>
@@ -54,9 +55,13 @@
           <p class="page-header__meta">Pessoas cadastradas no sistema</p>
         </div>
         <div class="page-header__actions">
-          <a class="btn btn--primary" href="{% url 'system:person-create' %}">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-crud-modal-open="{% url 'system:person-create' %}?modal=1"
+          >
             + {{ person_create_label }}
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -215,6 +220,31 @@
               <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=person.pk %}">
                 Detalhe
               </a>
+              {% if can_manage_people %}
+              <button
+                type="button"
+                class="btn-icon"
+                data-crud-modal-open="{% url 'system:person-update' pk=person.pk %}?modal=1"
+                aria-label="Editar {{ person.full_name }}"
+                title="Editar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <a
+                class="btn-icon"
+                href="{% url 'system:person-delete' pk=person.pk %}"
+                data-confirm-delete-open
+                data-confirm-delete-label="{{ person.full_name }}"
+                aria-label="Excluir {{ person.full_name }}"
+                title="Excluir"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </a>
+              {% endif %}
             </div>
 
           </li>
@@ -235,28 +265,29 @@
 
   </main>
 
+  <!-- ─── Modal CRUD (create/editar) ──────────────────────────────────────── -->
+  <dialog class="crud-modal" data-crud-modal aria-label="Formulário de pessoa">
+    <iframe class="crud-modal__frame" data-crud-modal-frame src="about:blank" title="Formulário de pessoa"></iframe>
+  </dialog>
+
+  <!-- ─── Diálogo de confirmação de exclusão ──────────────────────────────── -->
+  <dialog class="confirm-delete-dialog" data-confirm-delete-dialog aria-label="Confirmar exclusão">
+    <form method="post" data-confirm-delete-form>
+      {% csrf_token %}
+      <p class="confirm-delete-dialog__text">
+        Confirma excluir <strong data-confirm-delete-name></strong>? Essa ação não pode ser desfeita.
+      </p>
+      <div class="confirm-delete-dialog__actions">
+        <button type="button" class="btn btn--secondary" data-confirm-delete-cancel>Cancelar</button>
+        <button type="submit" class="btn btn--danger">Excluir</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script>
-    (function () {
-      var toggle = document.getElementById('theme-toggle');
-      var sun = document.getElementById('icon-sun');
-      var moon = document.getElementById('icon-moon');
-
-      function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        if (theme === 'dark') { sun.removeAttribute('hidden'); moon.setAttribute('hidden', ''); }
-        else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
-      }
-
-      applyTheme(localStorage.getItem('lv-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-
-      toggle.addEventListener('click', function () {
-        var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('lv-theme', next);
-        applyTheme(next);
-      });
-    })();
-  </script>
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+  <script src="{% static 'system/js/lv/crud_modal.js' %}"></script>
+  <script src="{% static 'system/js/lv/confirm_delete.js' %}"></script>
 
 </body>
 </html>

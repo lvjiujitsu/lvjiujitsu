@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block modal_title %}LV Jiu Jitsu{% endblock %}</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  {% block modal_extra_head %}{% endblock %}
+</head>
+<body class="modal-frame-body" data-modal-name="{{ crud_modal_name }}">
+  <div class="modal-frame">
+    <header class="modal-frame__header">
+      <h1 class="modal-frame__title">{% block modal_header_title %}{% endblock %}</h1>
+      <button type="button" class="modal-frame__close" data-modal-close aria-label="Fechar">&times;</button>
+    </header>
+    <div class="modal-frame__body">
+      {% if messages %}
+      <div class="system-messages" role="alert" aria-live="assertive">
+        {% for message in messages %}
+        <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block modal_content %}{% endblock %}
+    </div>
+  </div>
+  <script src="{% static 'system/js/lv/modal_child.js' %}"></script>
+  {% block modal_extra_scripts %}{% endblock %}
+</body>
+</html>

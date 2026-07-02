@@ -1,8 +1,4 @@
 from .calendar_views import (
-    AdminCalendarView,
-    AdminSpecialClassCreateView,
-    AdminSpecialClassDeleteView,
-    AdminToggleSessionView,
     InstructorApproveCheckinView,
     InstructorApproveSpecialCheckinView,
     InstructorCalendarView,
@@ -103,7 +99,6 @@ from .asaas_views import (
     PayoutQueueView,
     PayoutRefuseView,
     PayrollListView,
-    TeacherFinancialView,
 )
 from .billing_admin_views import (
     ApprovalQueueView,
@@ -132,10 +127,6 @@ from .person_views import (
 )
 
 __all__ = [
-    "AdminCalendarView",
-    "AdminSpecialClassCreateView",
-    "AdminSpecialClassDeleteView",
-    "AdminToggleSessionView",
     "HomeView",
     "BeltRankCreateView",
     "BeltRankDeleteView",
@@ -182,7 +173,6 @@ __all__ = [
     "PayoutQueueView",
     "PayoutRefuseView",
     "PayrollListView",
-    "TeacherFinancialView",
     "CancelMembershipActionView",
     "ChangeMembershipPlanActionView",
     "DeferPaymentView",

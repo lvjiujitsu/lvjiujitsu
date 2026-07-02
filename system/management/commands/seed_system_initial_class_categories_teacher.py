@@ -34,13 +34,13 @@ class Command(BaseCommand):
                 category = self._get_category(category_code)
 
                 if person.class_category_id == category.pk:
-                    self.stdout.write(f"  [sem alteração] {person.full_name} → {category.display_name}")
+                    self.stdout.write(f"  [sem alteração] {person.full_name} -> {category.display_name}")
                     skipped_count += 1
                     continue
 
                 person.class_category = category
                 person.save(update_fields=["class_category", "updated_at"])
-                self.stdout.write(f"  [vinculado] {person.full_name} → {category.display_name}")
+                self.stdout.write(f"  [vinculado] {person.full_name} -> {category.display_name}")
                 linked_count += 1
 
         self.stdout.write(

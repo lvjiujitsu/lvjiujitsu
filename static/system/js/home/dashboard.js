@@ -76,6 +76,16 @@
     });
   }
 
+  function bindAutoDismissMessages() {
+    var container = document.querySelector('.system-messages');
+    if (!container) return;
+    container.style.transition = 'opacity 0.4s';
+    setTimeout(function () {
+      container.style.opacity = '0';
+      setTimeout(function () { container.hidden = true; }, 400);
+    }, 5000);
+  }
+
   function bindTabs() {
     var tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons.forEach(function (button) {
@@ -655,6 +665,161 @@
     });
   }
 
+  function bindPlanChangeModal() {
+    var config = readConfig();
+    var csrfToken = getCsrfToken();
+    var openBtn = document.querySelector('.js-open-plan-change-modal');
+    var overlay = document.getElementById('plan-change-modal');
+    if (!openBtn || !overlay) return;
+
+    var closeButtons = overlay.querySelectorAll('.js-close-plan-change-modal');
+    var form = overlay.querySelector('.js-plan-change-form');
+    var cards = overlay.querySelectorAll('.js-plan-change-card');
+    var filterPills = overlay.querySelectorAll('.js-plan-change-filter-pill');
+    var upgradeNotice = overlay.querySelector('.js-plan-change-upgrade-notice');
+    var leftoverChoice = overlay.querySelector('.js-plan-change-leftover-choice');
+    var errorEl = form ? form.querySelector('.modal__error') : null;
+    var submitBtn = form ? form.querySelector('[type="submit"]') : null;
+
+    var planFilter = { frequency: null, cycle: null, method: null };
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    function getSelectedInput() {
+      return form ? form.querySelector('input[name="selected_plan"]:checked') : null;
+    }
+
+    function updateSelectionState() {
+      var input = getSelectedInput();
+      cards.forEach(function (card) {
+        var cardInput = card.querySelector('input[name="selected_plan"]');
+        card.classList.toggle('plan-change-card--selected', !!input && cardInput === input);
+      });
+
+      if (!input) {
+        if (upgradeNotice) upgradeNotice.hidden = true;
+        if (leftoverChoice) leftoverChoice.hidden = true;
+        if (submitBtn) submitBtn.disabled = true;
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = false;
+      var isUpgrade = input.getAttribute('data-is-upgrade') === '1';
+      var hasLeftover = input.getAttribute('data-has-leftover') === '1';
+      if (upgradeNotice) upgradeNotice.hidden = !isUpgrade;
+      if (leftoverChoice) leftoverChoice.hidden = isUpgrade || !hasLeftover;
+    }
+
+    function applyCardFilter() {
+      cards.forEach(function (card) {
+        var matches =
+          (!planFilter.frequency || card.getAttribute('data-weekly-frequency') === planFilter.frequency) &&
+          (!planFilter.cycle || card.getAttribute('data-billing-cycle') === planFilter.cycle) &&
+          (!planFilter.method || card.getAttribute('data-payment-method') === planFilter.method);
+        card.hidden = !matches;
+        if (!matches) {
+          var input = card.querySelector('input[name="selected_plan"]');
+          if (input && input.checked) input.checked = false;
+        }
+      });
+      updateSelectionState();
+    }
+
+    function selectPill(pill) {
+      var filterType = pill.getAttribute('data-filter');
+      var value = pill.getAttribute('data-value');
+      planFilter[filterType] = value;
+      overlay.querySelectorAll('.js-plan-change-filter-pill[data-filter="' + filterType + '"]').forEach(function (btn) {
+        btn.classList.toggle('plan-filter-pill--active', btn === pill);
+      });
+      applyCardFilter();
+    }
+
+    filterPills.forEach(function (pill) {
+      pill.addEventListener('click', function () { selectPill(pill); });
+    });
+
+    openBtn.addEventListener('click', function () {
+      // Seleciona a primeira opção de cada filtro para já mostrar poucos cards
+      ['frequency', 'cycle', 'method'].forEach(function (filterType) {
+        var firstPill = overlay.querySelector('.js-plan-change-filter-pill[data-filter="' + filterType + '"]');
+        if (firstPill) selectPill(firstPill);
+      });
+      applyCardFilter();
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+      if (errorEl) errorEl.textContent = '';
+    });
+
+    closeButtons.forEach(function (btn) {
+      btn.addEventListener('click', closeModal);
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+
+    cards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        var input = card.querySelector('input[name="selected_plan"]');
+        if (input) {
+          input.checked = true;
+          updateSelectionState();
+        }
+      });
+    });
+
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var url = config.planChangeUrl;
+        var selectedInput = getSelectedInput();
+        if (!url || !selectedInput) return;
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (errorEl) errorEl.textContent = '';
+
+        var leftoverInput = form.querySelector('input[name="leftover_action"]:checked');
+        var body = new URLSearchParams();
+        body.append('selected_plan', selectedInput.value);
+        if (leftoverInput) body.append('leftover_action', leftoverInput.value);
+
+        fetch(url, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: body
+        })
+          .then(function (response) {
+            return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+          })
+          .then(function (result) {
+            if (!result.ok || !result.data.success) {
+              if (submitBtn) submitBtn.disabled = false;
+              if (errorEl) errorEl.textContent = (result.data && result.data.error) || 'Erro ao trocar plano.';
+              return;
+            }
+            if (result.data.redirect_url) {
+              window.location.href = result.data.redirect_url;
+              return;
+            }
+            closeModal();
+            location.reload();
+          })
+          .catch(function () {
+            if (submitBtn) submitBtn.disabled = false;
+            if (errorEl) errorEl.textContent = 'Falha de conexão.';
+          });
+      });
+    }
+  }
+
   function bindSubstituteTeacherModal() {
     var cfg = readConfig();
     var overlay = document.getElementById('substitute-teacher-modal');
@@ -801,6 +966,7 @@
   }
 
   bindThemeToggle();
+  bindAutoDismissMessages();
   bindTabs();
   bindCheckins();
   bindApproveCheckins();
@@ -810,6 +976,7 @@
   bindGradHistoryModal();
   bindGradDetailsToggle();
   bindBillingDetailsToggle();
+  bindPlanChangeModal();
   bindInstructorSelfCheckin();
   bindInstructorSelfCheckinCancel();
   bindSubstituteTeacherModal();

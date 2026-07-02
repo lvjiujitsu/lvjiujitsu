@@ -14,6 +14,7 @@ from system.models import (
 from system.models.calendar import (
     CheckinStatus,
     ClassCheckin,
+    SessionStatus,
     SpecialClassCheckin,
 )
 
@@ -27,7 +28,9 @@ def count_approved_classes_in_window(person, start_date, end_date):
             status=CheckinStatus.APPROVED,
             session__date__gte=start_date,
             session__date__lte=end_date,
-        ).values_list("session__date", flat=True)
+        )
+        .exclude(session__status=SessionStatus.CANCELLED)
+        .values_list("session__date", flat=True)
     )
     special_dates = set(
         SpecialClassCheckin.objects.filter(
@@ -35,7 +38,9 @@ def count_approved_classes_in_window(person, start_date, end_date):
             status=CheckinStatus.APPROVED,
             special_class__date__gte=start_date,
             special_class__date__lte=end_date,
-        ).values_list("special_class__date", flat=True)
+        )
+        .exclude(special_class__status=SessionStatus.CANCELLED)
+        .values_list("special_class__date", flat=True)
     )
     return len(regular_dates | special_dates)
 
@@ -278,7 +283,7 @@ def ensure_initial_graduation_for_beginner(person, awarded_at=None):
     )
     belt_rank = get_initial_belt_rank_for_person(person, awarded_at)
     if belt_rank is None:
-        raise ValueError("Não há faixa inicial ativa compatível com a idade do aluno.")
+        return None
 
     return Graduation.objects.create(
         person=person,

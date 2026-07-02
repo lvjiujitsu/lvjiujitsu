@@ -363,16 +363,6 @@
     return state.stepSequence.length > 0;
   }
 
-  function lockPostPaymentBack() {
-    var back = document.getElementById('wizard-back');
-    var backLabel = document.getElementById('wizard-back-label');
-    if (backLabel) backLabel.textContent = 'Voltar';
-    if (!back) return;
-    back.style.visibility = 'hidden';
-    back.style.pointerEvents = 'none';
-    back.onclick = function (e) { e.preventDefault(); };
-  }
-
   function goTo(targetIdx) {
     if (!state.stepSequence.length) buildStepSequence();
     if (targetIdx < 0 || targetIdx >= state.stepSequence.length) return;
@@ -393,7 +383,6 @@
     if (stepId === 'step-martial')   onEnterMartial(martialPersonIndexAt(seqIdx));
     if (stepId === 'step-classes')   onEnterClasses(classPersonIndexAt(seqIdx));
     if (stepId === 'step-plan')      onEnterPlan();
-    if (stepId === 'step-checkout')  onEnterCheckout();
   }
 
   // ── Elementos — Etapa de perfil ───────────────────────────────────────────────
@@ -1228,7 +1217,6 @@
   };
 
   var planFilter    = { frequency: null, cycle: null, method: null };
-  var selectedPlanId = null;
   var currentPlanPersonIndex = 0;
 
   function fmtPrice(val) {
@@ -1280,11 +1268,20 @@
     var persons = getTrainingPersonsForPlans();
     var person = persons[currentPlanPersonIndex] || persons[0] || {};
     var audience = resolveAudience(person.birthdate);
+    // Conta pessoas do mesmo grupo etário (adulto vs kids/juvenil) para
+    // decidir se um plano familiar está disponível — precisa bater tanto
+    // a quantidade quanto a faixa etária, senão um plano familiar adulto
+    // aparece como opção para um grupo de só crianças (e vice-versa).
+    var sameAudienceCount = persons.filter(function (p) {
+      var personAudience = resolveAudience(p.birthdate);
+      if (audience === 'adult') return personAudience === 'adult';
+      return personAudience === 'kids' || personAudience === 'juvenile';
+    }).length;
     return getEligiblePlans().filter(function (p) {
       if (!audience) return true;
-      if (p.is_family_plan) return persons.length >= 2;
-      if (p.audience === 'adult') return audience === 'adult';
-      if (p.audience === 'kids_juvenile') return audience === 'kids' || audience === 'juvenile';
+      if (p.audience === 'adult' && audience !== 'adult') return false;
+      if (p.audience === 'kids_juvenile' && audience !== 'kids' && audience !== 'juvenile') return false;
+      if (p.is_family_plan) return sameAudienceCount >= 2;
       return true;
     });
   }
@@ -1510,7 +1507,6 @@
   }
 
   function selectPlan(planId) {
-    selectedPlanId = planId;
     ensurePlanSelections();
     if (state.planSelections[currentPlanPersonIndex]) {
       state.planSelections[currentPlanPersonIndex].planId = planId;
@@ -1565,7 +1561,6 @@
     setHidden('id_selected_plans_payload', JSON.stringify(payload));
     if (payload.length && payload[0].plan_id) {
       setHidden('id_selected_plan', payload[0].plan_id);
-      selectedPlanId = payload[0].plan_id;
     }
   }
 
@@ -1593,95 +1588,6 @@
       ? planCatalog.find(function (p) { return p.id === currentSelection.planId; }) || null
       : null;
     updateStripeUiForPlan(currentPlan);
-  }
-
-  // ── Checkout — resumo e pagamento ─────────────────────────────────────────────
-
-  function getSelectedPlan() {
-    if (!selectedPlanId) return null;
-    return planCatalog.find(function (p) { return p.id === selectedPlanId; }) || null;
-  }
-
-  function onEnterCheckout() {
-    var summaryArea  = document.getElementById('checkout-summary-area');
-    var actionsArea  = document.getElementById('checkout-actions-area');
-    var plan         = getSelectedPlan();
-    var isHolder     = state.profile === PROFILE_HOLDER;
-    var numPersons   = isHolder ? (1 + state.deps.length) : state.deps.length;
-
-    // ── Resumo ──
-    var sumHtml = '<div class="checkout-summary">';
-
-    if (plan) {
-      var price = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
-      sumHtml += '<div class="checkout-summary__section">';
-      sumHtml += '<p class="checkout-summary__label">Plano selecionado</p>';
-      sumHtml += '<div class="checkout-summary__plan-row">';
-      sumHtml += '<span class="checkout-summary__plan-name">' + escHtml(plan.commercial_tier_label || '') + '</span>';
-      sumHtml += '<span class="checkout-summary__plan-price">' + fmtPrice(price) + ' <small>/' + escHtml(plan.cycle || '') + '</small></span>';
-      sumHtml += '</div>';
-      var metaParts = [];
-      if (plan.payment_method_label) metaParts.push(plan.payment_method_label);
-      if (plan.weekly_frequency_label) metaParts.push(plan.weekly_frequency_label);
-      if (metaParts.length) sumHtml += '<p class="checkout-summary__plan-meta">' + escHtml(metaParts.join(' · ')) + '</p>';
-      if (plan.installment_count > 1 && plan.installment_label) {
-        sumHtml += '<p class="checkout-summary__plan-installment">' + escHtml(plan.installment_label) + '</p>';
-      }
-      sumHtml += '</div>';
-    }
-
-    if (numPersons > 0) {
-      var personLabel = isHolder ? 'Você' : '';
-      if (state.deps.length > 0) {
-        var depWord = isHolder ? 'dependente' : 'aluno';
-        if (isHolder) {
-          personLabel = '1 titular + ' + state.deps.length + ' ' + (state.deps.length === 1 ? depWord : depWord + 's');
-        } else {
-          personLabel = state.deps.length + ' ' + (state.deps.length === 1 ? depWord : depWord + 's');
-        }
-      }
-      sumHtml += '<div class="checkout-summary__section">';
-      sumHtml += '<p class="checkout-summary__label">Matrículas</p>';
-      sumHtml += '<p class="checkout-summary__value">' + escHtml(personLabel || (numPersons + ' pessoa(s)')) + '</p>';
-      sumHtml += '</div>';
-    }
-
-    sumHtml += '</div>';
-    if (summaryArea) summaryArea.innerHTML = sumHtml;
-
-    // ── Ações ──
-    if (!actionsArea) return;
-    var actHtml = '';
-
-    if (plan) {
-      var isPix = plan.payment_method === 'pix';
-      actHtml += '<button type="button" class="btn-checkout-pay" id="btn-pay-now">';
-      actHtml += isPix
-        ? '<svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Pagar com PIX'
-        : '<svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Pagar com Cartão';
-      actHtml += '</button>';
-    }
-
-    actHtml += '<button type="button" class="btn-checkout-later" id="btn-pay-later">Concluir e pagar depois</button>';
-    actionsArea.innerHTML = actHtml;
-
-    var btnNow = document.getElementById('btn-pay-now');
-    if (btnNow) {
-      btnNow.addEventListener('click', function () {
-        var p = getSelectedPlan();
-        setHidden('id_checkout_action', p ? resolvePlanCheckoutAction(p) : 'asaas_card');
-        document.getElementById('wizard-form').submit();
-      });
-    }
-
-    var btnLater = document.getElementById('btn-pay-later');
-    if (btnLater) {
-      btnLater.addEventListener('click', function () {
-        // Aula experimental: não exige plano selecionado
-        setHidden('id_checkout_action', 'pay_later');
-        document.getElementById('wizard-form').submit();
-      });
-    }
   }
 
   // ── Catálogo de turmas (declarado após as funções de plano) ───────────────────
@@ -1764,9 +1670,10 @@
     }
 
     if (elClassSubtitle) {
-      elClassSubtitle.textContent = person.name
+      var subtitleBase = person.name
         ? 'Turma para ' + person.name
         : 'Selecione a turma que deseja frequentar';
+      elClassSubtitle.textContent = subtitleBase + ' — você pode escolher mais de uma.';
     }
 
     if (elClassError) { elClassError.textContent = ''; elClassError.hidden = true; }
@@ -1839,25 +1746,59 @@
       .replace(/"/g, '&quot;');
   }
 
+  // ── Construção de DOM segura ──────────────────────────────────────────────────
+
+  function el(tag, opts, children) {
+    var node = document.createElement(tag);
+    opts = opts || {};
+    if (opts.className) node.className = opts.className;
+    if (opts.text !== undefined && opts.text !== null) node.textContent = opts.text;
+    if (opts.attrs) {
+      Object.keys(opts.attrs).forEach(function (key) { node.setAttribute(key, opts.attrs[key]); });
+    }
+    (children || []).forEach(function (child) {
+      if (child) node.appendChild(child);
+    });
+    return node;
+  }
+
+  function clearChildren(node) {
+    if (!node) return;
+    while (node.firstChild) node.removeChild(node.firstChild);
+  }
+
+  // Markup fixo (sem dado de usuário) — usado apenas para ícones estáticos.
+  function svgIcon(markup) {
+    var template = document.createElement('template');
+    template.innerHTML = markup;
+    return template.content.firstChild;
+  }
+
   function selectClassGroup(classPersonIdx, groupId) {
-    if (!state.classSelections[classPersonIdx]) return;
-    // Seleção única: substitui o array
-    state.classSelections[classPersonIdx].ids = [groupId];
+    var selection = state.classSelections[classPersonIdx];
+    if (!selection) return;
+    // Seleção múltipla: alterna a turma no array (adiciona ou remove)
+    var index = selection.ids.indexOf(groupId);
+    if (index === -1) {
+      selection.ids.push(groupId);
+    } else {
+      selection.ids.splice(index, 1);
+    }
     // Atualiza visual dos cards
     if (!elClassCatalog) return;
     elClassCatalog.querySelectorAll('.class-card').forEach(function (card) {
-      var selected = card.getAttribute('data-group-id') === groupId;
+      var selected = selection.ids.indexOf(card.getAttribute('data-group-id')) !== -1;
       card.classList.toggle('class-card--selected', selected);
       card.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
     // Limpa erro ao selecionar
-    if (elClassError) { elClassError.textContent = ''; elClassError.hidden = true; }
+    if (elClassError && selection.ids.length > 0) { elClassError.textContent = ''; elClassError.hidden = true; }
   }
 
   function validateClasses(classPersonIdx) {
     var sel = state.classSelections[classPersonIdx];
     if (!sel || sel.ids.length === 0) {
-      if (elClassError) { elClassError.textContent = 'Selecione uma turma para continuar.'; elClassError.hidden = false; }
+      if (elClassError) { elClassError.textContent = 'Selecione ao menos uma turma para continuar.'; elClassError.hidden = false; }
       return false;
     }
     return true;
@@ -2130,6 +2071,26 @@
 
   if (elWizardBack) {
     elWizardBack.addEventListener('click', function (e) {
+      var visibleStep = document.querySelector('.wizard-step:not([hidden])');
+      var visibleId = visibleStep ? visibleStep.id : null;
+
+      // Pós-pagamento: resumo final volta para materiais
+      if (visibleId === 'step-review') {
+        e.preventDefault();
+        showPostPaymentMode('step-products');
+        bindProductsSection();
+        return;
+      }
+
+      // Pós-pagamento: materiais volta para o plano (modo pago, sem permitir trocar).
+      // Usa showPlanPaidMode() diretamente — o bootstrap da página pode ter pulado
+      // step-plan (ex: materiais já estava concluído), deixando planAlreadyPaid=false.
+      if (visibleId === 'step-products') {
+        e.preventDefault();
+        showPlanPaidMode();
+        return;
+      }
+
       if (state.stepIndex === 0) return; // deixa navegar para login
       e.preventDefault();
       var currentId = state.stepSequence[state.stepIndex];
@@ -2146,28 +2107,32 @@
 
   // ── Pós-pagamento: modo materiais e revisão ───────────────────────────────────
 
-  var CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  var CHECK_ICON_MARKUP = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
   function renderConfirmationSummary(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
 
-    var html = '<div class="reg-confirm-panel">';
-    html += '<div class="reg-confirm-panel__heading">Resumo do cadastro</div>';
+    var panel = el('div', { className: 'reg-confirm-panel' });
+    panel.appendChild(el('div', { className: 'reg-confirm-panel__heading', text: 'Resumo do cadastro' }));
     var firstRow = true;
 
     function addRow(label, value, meta) {
       if (!value) return;
-      if (!firstRow) html += '<div class="reg-confirm-panel__divider"></div>';
+      if (!firstRow) panel.appendChild(el('div', { className: 'reg-confirm-panel__divider' }));
       firstRow = false;
-      html += '<div class="reg-confirm-panel__row">';
-      html += '<span class="reg-confirm-panel__icon reg-confirm-panel__icon--ok" aria-hidden="true">' + CHECK_ICON + '</span>';
-      html += '<div class="reg-confirm-panel__info">';
-      html += '<p class="reg-confirm-panel__label">' + label + '</p>';
-      html += '<p class="reg-confirm-panel__value">' + escHtml(value) + '</p>';
-      if (meta) html += '<p class="reg-confirm-panel__meta">' + escHtml(meta) + '</p>';
-      html += '</div>';
-      html += '</div>';
+
+      var icon = el('span', { className: 'reg-confirm-panel__icon reg-confirm-panel__icon--ok', attrs: { 'aria-hidden': 'true' } });
+      icon.appendChild(svgIcon(CHECK_ICON_MARKUP));
+
+      var infoChildren = [
+        el('p', { className: 'reg-confirm-panel__label', text: label }),
+        el('p', { className: 'reg-confirm-panel__value', text: value }),
+      ];
+      if (meta) infoChildren.push(el('p', { className: 'reg-confirm-panel__meta', text: meta }));
+      var info = el('div', { className: 'reg-confirm-panel__info' }, infoChildren);
+
+      panel.appendChild(el('div', { className: 'reg-confirm-panel__row' }, [icon, info]));
     }
 
     if (pendingPersonData) {
@@ -2184,8 +2149,8 @@
       addRow('Plano contratado', planOrderData.plan_name, planMeta);
     }
 
-    html += '</div>';
-    container.innerHTML = html;
+    clearChildren(container);
+    container.appendChild(panel);
   }
 
   function showPostPaymentMode(stepId) {
@@ -2204,8 +2169,6 @@
       state.stepIndex = idx;
       updateProgress();
     }
-
-    lockPostPaymentBack();
   }
 
   function fmtCurrency(value) {
@@ -2608,75 +2571,85 @@
   function renderReview() {
     var area = document.getElementById('review-summary-area');
     if (!area) return;
-    var html = '';
+    var blocks = [];
 
     // Bloco do responsável ou aluno principal
     if (pendingPersonData) {
       var isGuardian = pendingPersonData.person_type_code === 'guardian';
-      html += '<div class="order-review-block">';
-      html += '<p class="order-review-block__label">' + (isGuardian ? 'Responsável' : 'Aluno') + '</p>';
-      html += '<p class="order-review-block__name">' + escHtml(pendingPersonData.full_name) + '</p>';
+      var mainChildren = [
+        el('p', { className: 'order-review-block__label', text: isGuardian ? 'Responsável' : 'Aluno' }),
+        el('p', { className: 'order-review-block__name', text: pendingPersonData.full_name }),
+      ];
       if (pendingPersonData.email) {
-        html += '<p class="order-review-block__meta">' + escHtml(pendingPersonData.email) + '</p>';
+        mainChildren.push(el('p', { className: 'order-review-block__meta', text: pendingPersonData.email }));
       }
-      html += '</div>';
+      blocks.push(el('div', { className: 'order-review-block' }, mainChildren));
 
       // Alunos vinculados (perfil guardian)
       var students = pendingPersonData.students || [];
       var planTotal = parseFloat((planOrderData && planOrderData.total) || 0);
       var perStudent = students.length > 0 ? planTotal / students.length : planTotal;
       students.forEach(function (s, idx) {
-        html += '<div class="order-review-block">';
-        html += '<p class="order-review-block__label">Aluno ' + (idx + 1) + '</p>';
-        html += '<p class="order-review-block__name">' + escHtml(s.full_name) + '</p>';
+        var studentChildren = [
+          el('p', { className: 'order-review-block__label', text: 'Aluno ' + (idx + 1) }),
+          el('p', { className: 'order-review-block__name', text: s.full_name }),
+        ];
         if (s.class_group_name) {
-          html += '<p class="order-review-block__meta">Turma: ' + escHtml(s.class_group_name) + '</p>';
+          studentChildren.push(el('p', { className: 'order-review-block__meta', text: 'Turma: ' + s.class_group_name }));
         }
         if (planOrderData && planOrderData.plan_name) {
-          html += '<p class="order-review-block__meta">Plano: ' + escHtml(planOrderData.plan_name) + '</p>';
+          studentChildren.push(el('p', { className: 'order-review-block__meta', text: 'Plano: ' + planOrderData.plan_name }));
         }
         if (perStudent > 0) {
-          html += '<p class="order-review-block__amount">R$ ' + perStudent.toFixed(2).replace('.', ',') + '</p>';
+          studentChildren.push(el('p', { className: 'order-review-block__amount', text: 'R$ ' + perStudent.toFixed(2).replace('.', ',') }));
         }
-        html += '</div>';
+        blocks.push(el('div', { className: 'order-review-block' }, studentChildren));
       });
 
       // Aluno único (perfil holder)
       if (!isGuardian && pendingPersonData.class_group_name) {
-        html += '<div class="order-review-block">';
-        html += '<p class="order-review-block__label">Turma</p>';
-        html += '<p class="order-review-block__name">' + escHtml(pendingPersonData.class_group_name) + '</p>';
-        html += '</div>';
+        blocks.push(el('div', { className: 'order-review-block' }, [
+          el('p', { className: 'order-review-block__label', text: 'Turma' }),
+          el('p', { className: 'order-review-block__name', text: pendingPersonData.class_group_name }),
+        ]));
       }
     }
 
     if (planOrderData && planOrderData.plan_name) {
-      html += '<div class="order-review-block">';
-      html += '<p class="order-review-block__label">Plano contratado</p>';
-      html += '<p class="order-review-block__name">' + escHtml(planOrderData.plan_name || 'Plano') + '</p>';
-      html += '<p class="order-review-block__amount">Total: R$ ' + (parseFloat(planOrderData.total || 0).toFixed(2).replace('.', ',')) + '</p>';
-      html += '</div>';
+      blocks.push(el('div', { className: 'order-review-block' }, [
+        el('p', { className: 'order-review-block__label', text: 'Plano contratado' }),
+        el('p', { className: 'order-review-block__name', text: planOrderData.plan_name || 'Plano' }),
+        el('p', { className: 'order-review-block__amount', text: 'Total: R$ ' + (parseFloat(planOrderData.total || 0).toFixed(2).replace('.', ',')) }),
+      ]));
     }
 
     if (materialsOrderData && materialsOrderData.items && materialsOrderData.items.length > 0) {
-      html += '<div class="order-review-block">';
-      html += '<p class="order-review-block__label">Materiais</p>';
+      var materialsChildren = [el('p', { className: 'order-review-block__label', text: 'Materiais' })];
       materialsOrderData.items.forEach(function (item) {
-        html += '<div class="order-review-item">';
-        html += '<span>' + escHtml(item.name) + ' × ' + item.quantity + '</span>';
-        html += '<span>R$ ' + (parseFloat(item.subtotal || 0).toFixed(2).replace('.', ',')) + '</span>';
-        html += '</div>';
+        materialsChildren.push(el('div', { className: 'order-review-item' }, [
+          el('span', { text: item.name + ' × ' + item.quantity }),
+          el('span', { text: 'R$ ' + (parseFloat(item.subtotal || 0).toFixed(2).replace('.', ',')) }),
+        ]));
       });
-      html += '<p class="order-review-block__amount" style="margin-top:.5rem">Total materiais: R$ ' + (parseFloat(materialsOrderData.total || 0).toFixed(2).replace('.', ',')) + '</p>';
-      html += '</div>';
+      materialsChildren.push(el('p', {
+        className: 'order-review-block__amount',
+        attrs: { style: 'margin-top:.5rem' },
+        text: 'Total materiais: R$ ' + (parseFloat(materialsOrderData.total || 0).toFixed(2).replace('.', ',')),
+      }));
+      blocks.push(el('div', { className: 'order-review-block' }, materialsChildren));
     } else {
-      html += '<div class="order-review-block">';
-      html += '<p class="order-review-block__label">Materiais</p>';
-      html += '<p class="order-review-block__name" style="color:var(--muted);font-weight:400">Nenhum material selecionado</p>';
-      html += '</div>';
+      blocks.push(el('div', { className: 'order-review-block' }, [
+        el('p', { className: 'order-review-block__label', text: 'Materiais' }),
+        el('p', {
+          className: 'order-review-block__name',
+          attrs: { style: 'color:var(--muted);font-weight:400' },
+          text: 'Nenhum material selecionado',
+        }),
+      ]));
     }
 
-    area.innerHTML = html;
+    clearChildren(area);
+    blocks.forEach(function (block) { area.appendChild(block); });
   }
 
   var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
@@ -2834,33 +2807,13 @@
       };
     }
 
-    // Link "Recomeçar cadastro" — limpa sessão e sessionStorage, volta para /register/
-    var resetContainerId = 'plan-paid-reset-link';
-    var existingReset = document.getElementById(resetContainerId);
+    // Remove o link "Recomeçar cadastro" de renderizações anteriores, se existir
+    var existingReset = document.getElementById('plan-paid-reset-link');
     if (existingReset) existingReset.remove();
-    var resetWrap = document.createElement('div');
-    resetWrap.id = resetContainerId;
-    resetWrap.style.cssText = 'text-align:center;margin-top:12px;';
-    var resetAnchor = document.createElement('a');
-    resetAnchor.href = '#';
-    resetAnchor.textContent = 'Recomeçar cadastro';
-    resetAnchor.style.cssText = 'font-size:0.85rem;color:var(--muted);text-decoration:underline;';
-    resetAnchor.addEventListener('click', function (e) {
-      e.preventDefault();
-      clearWizardState();
-      window.location.href = '/register/recomecar/';
-    });
-    resetWrap.appendChild(resetAnchor);
-    var nextBtn2 = document.getElementById('step-plan-next');
-    if (nextBtn2 && nextBtn2.parentNode) {
-      nextBtn2.parentNode.insertBefore(resetWrap, nextBtn2.nextSibling);
-    }
 
     // Restaura wizard-form (necessário quando chamado via onEnterPlan a partir de step-products)
     var wizFormPaid = document.getElementById('wizard-form');
     if (wizFormPaid) wizFormPaid.hidden = false;
-
-    lockPostPaymentBack();
 
     // Auto-dismiss da mensagem Django após 5s (a banner JS já exibe a confirmação)
     var sysMsgs = document.querySelector('.wizard-system-messages');

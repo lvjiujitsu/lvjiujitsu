@@ -9,8 +9,10 @@ from .plan_eligibility import (
     build_eligibility_context_for_registration,
     classify_audience_from_age,
     classify_class_groups_audience,
+    compute_veteran_member_since,
     get_eligible_plans,
     is_plan_eligible,
+    is_veteran_plan_eligible,
 )
 from .product_backorders import (
     count_ready_backorders_for_person,
@@ -29,6 +31,7 @@ __all__ = [
     "build_eligibility_context_for_registration",
     "classify_audience_from_age",
     "classify_class_groups_audience",
+    "compute_veteran_member_since",
     "count_ready_backorders_for_person",
     "get_active_backorder",
     "get_admin_backorder_queue",
@@ -42,4 +45,5 @@ __all__ = [
     "resolve_material_request_recipient",
     "has_active_backorder_for_variant",
     "is_plan_eligible",
+    "is_veteran_plan_eligible",
 ]

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Financeiro — LV Jiu Jitsu</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=1">
+</head>
+<body>
+
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
+        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </nav>
+  </header>
+
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Financeiro</h1>
+          <p class="page-header__meta">Pedidos, assinaturas e repasses</p>
+        </div>
+        <div class="page-header__actions">
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:approval-queue' %}">Aprovações</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:pending-payments' %}">Pendentes</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:payroll-list' %}">Folha</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:payout-queue' %}">Repasses</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-row" aria-label="Totais financeiros">
+      <div class="kpi-card"><span class="kpi-card__value">R$ {{ financial_dashboard.totals.available|floatformat:2 }}</span><span class="kpi-card__label">Disponível</span></div>
+      <div class="kpi-card"><span class="kpi-card__value">R$ {{ financial_dashboard.totals.receivable|floatformat:2 }}</span><span class="kpi-card__label">A receber</span></div>
+      <div class="kpi-card"><span class="kpi-card__value">R$ {{ financial_dashboard.totals.net_inflows|floatformat:2 }}</span><span class="kpi-card__label">Entradas líquidas</span></div>
+      <div class="kpi-card"><span class="kpi-card__value">R$ {{ financial_dashboard.totals.outflows|floatformat:2 }}</span><span class="kpi-card__label">Saídas</span></div>
+    </div>
+
+    <section class="section" aria-labelledby="financial-entries-title">
+      <div class="section__header">
+        <h2 class="section__title" id="financial-entries-title">{{ orders|length }} pedido{{ orders|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if orders %}
+        <ul class="entity-list" aria-label="Histórico de pedidos">
+          {% for order in orders %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">#{{ order.pk }} · {{ order.person.full_name }}</div>
+              <div class="entity-card__meta">{{ order.plan.display_name|default:"Sem plano" }} · R$ {{ order.total|floatformat:2 }} · {{ order.created_at|date:"d/m/Y" }}</div>
+            </div>
+            <div class="entity-card__badges">
+              {% if order.payment_status == "paid" %}<span class="badge badge--success">{{ order.get_payment_status_display }}</span>
+              {% elif order.payment_status == "pending" %}<span class="badge badge--warning">{{ order.get_payment_status_display }}</span>
+              {% elif order.payment_status == "refunded" or order.payment_status == "canceled" or order.payment_status == "failed" %}<span class="badge badge--danger">{{ order.get_payment_status_display }}</span>
+              {% else %}<span class="badge badge--neutral">{{ order.get_payment_status_display }}</span>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% if is_paginated %}
+        <div class="filter-actions" style="padding:1rem 1.25rem;">
+          {% if page_obj.has_previous %}<a class="btn btn--secondary btn--sm" href="?page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn btn--secondary btn--sm" href="?page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhum pedido registrado.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+</body>
+</html>

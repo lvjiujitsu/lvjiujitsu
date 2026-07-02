@@ -1,0 +1,13 @@
+{% extends "lv/modal_frame.html" %}
+
+{% block modal_title %}Excluir regra — LV Jiu Jitsu{% endblock %}
+{% block modal_header_title %}Excluir regra{% endblock %}
+
+{% block modal_content %}
+<p>Confirma excluir esta regra ({{ object.belt_rank.display_name }} grau {{ object.from_grade }})? Essa ação não pode ser desfeita.</p>
+<form method="post" class="form-actions" style="margin-top:1rem;">
+  {% csrf_token %}
+  <button type="button" class="btn btn--secondary" data-modal-close>Cancelar</button>
+  <button type="submit" class="btn btn--danger">Excluir</button>
+</form>
+{% endblock %}

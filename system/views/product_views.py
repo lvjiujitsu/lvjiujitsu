@@ -2,14 +2,21 @@ import json
 from collections import OrderedDict
 
 from django.contrib import messages
+from django.db.models import Count
+from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from system.forms.product_forms import ProductCartForm, ProductForm, get_product_variant_formset
-from system.models.product import Product, ProductVariant
+from system.forms.product_forms import (
+    ProductCartForm,
+    ProductCategoryForm,
+    ProductForm,
+    get_product_variant_formset,
+)
+from system.models.product import Product, ProductCategory, ProductVariant
 from system.models.product_backorder import ProductBackorder
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.constants import MATERIAL_REQUEST_PERSON_TYPE_CODES
@@ -22,7 +29,6 @@ from system.selectors.person_selectors import (
     get_material_request_recipient_queryset,
     resolve_material_request_recipient,
 )
-from system.services.membership import get_membership_owner
 from system.services.product_backorders import (
     ProductBackorderError,
     cancel_backorder,
@@ -39,7 +45,7 @@ from system.services.registration_checkout import (
     create_product_only_order,
     get_product_catalog_payload,
 )
-from system.views.person_views import AdministrativeRequiredMixin
+from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
 
@@ -81,11 +87,19 @@ class ProductListView(AdministrativeRequiredMixin, ListView):
         return get_product_list_cards()
 
 
-class ProductCreateView(AdministrativeRequiredMixin, ProductVariantMixin, CreateView):
+class ProductCreateView(
+    ModalFormMixin, AdministrativeRequiredMixin, ProductVariantMixin, CreateView
+):
     model = Product
     form_class = ProductForm
     template_name = "products/product_form.html"
+    modal_name = "product-create"
     success_url = reverse_lazy("system:product-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Novo material"
+        return context
 
 
 class ProductDetailView(AdministrativeRequiredMixin, DetailView):
@@ -96,13 +110,21 @@ class ProductDetailView(AdministrativeRequiredMixin, DetailView):
         return get_product_card_by_pk(self.kwargs["pk"])
 
 
-class ProductUpdateView(AdministrativeRequiredMixin, ProductVariantMixin, UpdateView):
+class ProductUpdateView(
+    ModalFormMixin, AdministrativeRequiredMixin, ProductVariantMixin, UpdateView
+):
     model = Product
     form_class = ProductForm
     template_name = "products/product_form.html"
+    modal_name = "product-edit"
 
     def get_success_url(self):
         return reverse_lazy("system:product-detail", kwargs={"pk": self.object.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar material"
+        return context
 
 
 class ProductDeleteView(AdministrativeRequiredMixin, DeleteView):
@@ -239,7 +261,8 @@ class StudentBackorderListView(PortalRoleRequiredMixin, ListView):
     context_object_name = "backorders"
 
     def get_queryset(self):
-        return get_backorders_for_person(self.request.portal_person)
+        recipients = get_material_request_recipient_queryset(self.request.portal_person)
+        return get_backorders_for_person(recipients)
 
 
 class StudentBackorderConfirmView(PortalRoleRequiredMixin, View):
@@ -284,11 +307,10 @@ class StudentOrderHistoryView(PortalRoleRequiredMixin, ListView):
     context_object_name = "orders"
 
     def get_queryset(self):
-        person = self.request.portal_person
-        billing_owner = get_membership_owner(person) or person
+        recipients = get_material_request_recipient_queryset(self.request.portal_person)
         return (
             RegistrationOrder.objects.filter(
-                person=billing_owner,
+                person__in=recipients,
                 payment_status__in=(
                     PaymentStatus.PAID,
                     PaymentStatus.EXEMPTED,
@@ -350,3 +372,67 @@ def _resolve_purchase_person_or_message(request):
     if person is None:
         messages.error(request, "Selecione uma pessoa válida para a solicitação.")
     return person
+
+
+class ProductCategoryListView(AdministrativeRequiredMixin, ListView):
+    model = ProductCategory
+    template_name = "product_categories/product_category_list.html"
+    context_object_name = "product_categories"
+
+    def get_queryset(self):
+        return ProductCategory.objects.annotate(
+            product_count=Count("products", distinct=True)
+        ).order_by("display_order", "display_name")
+
+
+class ProductCategoryCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
+    model = ProductCategory
+    form_class = ProductCategoryForm
+    template_name = "product_categories/product_category_form.html"
+    modal_name = "product-category-create"
+    success_url = reverse_lazy("system:product-category-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Nova categoria"
+        return context
+
+
+class ProductCategoryUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
+    model = ProductCategory
+    form_class = ProductCategoryForm
+    template_name = "product_categories/product_category_form.html"
+    modal_name = "product-category-edit"
+    success_url = reverse_lazy("system:product-category-list")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form_title"] = "Editar categoria"
+        return context
+
+
+class ProductCategoryDeleteView(AdministrativeRequiredMixin, DeleteView):
+    model = ProductCategory
+    template_name = "product_categories/product_category_confirm_delete.html"
+    success_url = reverse_lazy("system:product-category-list")
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except ProtectedError:
+            messages.error(
+                self.request,
+                f"Não foi possível excluir {self.object.display_name} porque há produtos vinculados.",
+            )
+            return redirect("system:product-category-list")
+
+
+class ProductCategoryDetailView(AdministrativeRequiredMixin, DetailView):
+    model = ProductCategory
+    template_name = "product_categories/product_category_detail.html"
+    context_object_name = "product_category"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["products"] = self.object.products.order_by("display_name")
+        return context

@@ -4,8 +4,8 @@ from django.utils.formats import date_format
 from django.views.generic import RedirectView, TemplateView
 
 from system.constants import (
-    PEOPLE_SUPPORT_PERSON_TYPE_CODES,
     PersonTypeCode,
+    PortalCapability,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
 from system.models import Person
@@ -34,8 +34,22 @@ from system.services.membership import (
     get_membership_owner,
     has_dependents,
 )
+from system.services.plan_change import (
+    build_membership_summary,
+    build_plan_catalog,
+    build_plan_catalog_filters,
+)
 from system.services.payroll_rules import calculate_monthly_payroll
+from system.services.access_requests import (
+    get_administrative_access_requests_for_person,
+    get_pending_administrative_access_request_count,
+)
+from system.services.class_requests import (
+    get_class_catalog_requests_for_person,
+    get_pending_class_catalog_request_count,
+)
 from system.services.trial_access import get_active_trial_for_person
+from system.services.portal_capabilities import get_operational_role_labels
 from system.views.portal_mixins import PortalLoginRequiredMixin
 
 
@@ -62,6 +76,7 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         is_administrative = getattr(request, "portal_is_administrative", False)
         is_instructor = getattr(request, "portal_is_instructor", False)
         is_student = getattr(request, "portal_is_student", False)
+        can_support_classes = getattr(request, "portal_supports_classes", False)
 
         today = timezone.localdate()
         context["today_weekday"] = date_format(today, "l")
@@ -72,20 +87,41 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         context["is_administrative"] = is_administrative
         context["is_instructor"] = is_instructor
         context["is_student"] = is_student
+        context["can_support_classes"] = can_support_classes
         context["show_staff_area"] = is_admin or is_administrative
-        context["show_instructor_area"] = is_admin or is_administrative or is_instructor
+        context["show_instructor_area"] = (
+            is_admin or is_administrative or is_instructor or can_support_classes
+        )
         context["can_access_people"] = _can_access_people(request)
+        context["can_manage_class_requests"] = _can_manage_class_requests(request)
+        context["can_manage_access_requests"] = _can_manage_access_requests(request)
         context["portal_display_name"] = _get_portal_display_name(request)
-        context["role_labels"] = _role_labels(person, is_instructor, is_administrative)
+        context["role_labels"] = _role_labels(
+            person,
+            is_instructor,
+            is_administrative,
+            can_support_classes,
+        )
         context.update(_empty_context())
 
         if context["show_staff_area"]:
             context["financial_dashboard"] = build_financial_dashboard()
+            context["pending_administrative_access_request_count"] = (
+                get_pending_administrative_access_request_count()
+            )
+            context["pending_class_catalog_request_count"] = (
+                get_pending_class_catalog_request_count()
+            )
 
         if person is None:
             if context["show_staff_area"]:
                 context["staff_today_classes"] = get_today_classes_staff_overview()
             return context
+
+        context["administrative_access_requests"] = (
+            get_administrative_access_requests_for_person(person)
+        )
+        context["class_catalog_requests"] = get_class_catalog_requests_for_person(person)
 
         enrolled = person.class_enrollments.filter(status="active").exists()
         trains = bool(is_instructor or is_student or person.jiu_jitsu_belt or enrolled)
@@ -100,10 +136,16 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             context["graduation_history"] = get_graduation_history(person)
             context.update(_build_belt_context(context["graduation_progress"]))
 
-        if is_admin or is_instructor:
-            context["today_classes"] = get_today_classes_for_instructor(person)
+        if is_instructor or (can_support_classes and not is_administrative):
+            support_classes = get_today_classes_for_instructor(person)
             context["attendance_history"] = get_instructor_checkin_history(person)
-        elif is_administrative:
+            if trains and not is_instructor:
+                context["today_classes"] = _merge_class_entries(
+                    context["my_classes"], support_classes
+                )
+            else:
+                context["today_classes"] = support_classes
+        elif is_admin or is_administrative:
             context["today_classes"] = get_today_classes_for_administrative(person)
             context["attendance_history"] = get_instructor_checkin_history(person)
         elif trains:
@@ -152,6 +194,23 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             context["dependents"] = _build_dependents(person)
 
         return context
+
+
+def _merge_class_entries(personal_entries, support_entries):
+    seen_keys = set()
+    merged = []
+    for entry in list(personal_entries or []) + list(support_entries or []):
+        key = (
+            getattr(entry, "entry_role", None),
+            getattr(entry, "schedule", None) and entry.schedule.pk,
+            getattr(entry, "special_id", None),
+        )
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        merged.append(entry)
+    merged.sort(key=lambda entry: entry.start_time or "")
+    return merged
 
 
 def _build_belt_context(graduation_progress):
@@ -210,9 +269,23 @@ def _build_billing_context(person, is_student):
             "is_active_tab": True,
             "billing_owner": billing_owner,
         }]
+
+    own_membership = get_active_membership(person)
+    plan_change_locked = bool(own_membership and own_membership.stripe_subscription_id)
+    plan_change_catalog = (
+        build_plan_catalog(person, own_membership)
+        if own_membership and not plan_change_locked
+        else []
+    )
+    plan_change_filters = build_plan_catalog_filters(plan_change_catalog)
     return {
         "active_trial_access": active_trial_access,
         "billing_tabs": billing_tabs,
+        "plan_change_membership": own_membership,
+        "plan_change_summary": build_membership_summary(own_membership),
+        "plan_change_catalog": plan_change_catalog,
+        "plan_change_filters": plan_change_filters,
+        "plan_change_locked": plan_change_locked,
     }
 
 
@@ -259,80 +332,23 @@ def _build_dependents(guardian):
         progress = compute_graduation_progress(dependent)
         dependents.append({
             "person": dependent,
-            "belt_view": _build_belt_view(dependent, progress),
-            "classes": get_today_classes_for_person(dependent),
-            "billing": _billing_summary(dependent),
             "graduation_progress": progress,
+            "today_classes": get_today_classes_for_person(dependent),
+            "active_membership": get_active_membership(dependent),
         })
     return dependents
 
 
-def _billing_summary(person):
-    active = get_active_membership(person)
-    return {
-        "active_membership": active,
-        "pending_order": get_latest_open_order(person),
-        "plan_name": active.plan.display_name if active and active.plan_id else None,
-    }
 
 
-_BELT_BODY = {
-    "white": "#ececec",
-    "blue": "#1c52a3",
-    "purple": "#5b3a8c",
-    "brown": "#6a4528",
-    "black": "#2b2b31",
-    "red_black": "#b3261e",
-    "red_white": "#b3261e",
-    "red": "#b3261e",
-}
-
-
-def _build_belt_view(person, graduation_progress):
-    code = getattr(person, "jiu_jitsu_belt", "") or ""
-    if not code:
-        return None
-
-    body = _BELT_BODY.get(code, "#ececec")
-    if code == "black":
-        tip = "#b3261e"
-    elif code == "red_white":
-        tip = "#ececec"
-    else:
-        tip = "#17171a"
-
-    grade = None
-    if graduation_progress is not None:
-        grade = graduation_progress.current_grade_number
-    if grade is None:
-        grade = getattr(person, "jiu_jitsu_stripes", None)
-    grade = max(0, min(int(grade or 0), 6))
-
-    tip_x, tip_w, stripe_w, gap = 230, 80, 6, 7
-    total = grade * stripe_w + (grade - 1) * gap if grade > 0 else 0
-    start = tip_x + (tip_w - total) // 2
-    stripes = [start + i * (stripe_w + gap) for i in range(grade)]
-
-    label = person.get_jiu_jitsu_belt_display()
-    if graduation_progress is not None and graduation_progress.current_belt_rank:
-        label = str(graduation_progress.current_belt_rank)
-
-    return {
-        "body": body,
-        "tip": tip,
-        "stripes": stripes,
-        "needs_border": code in ("white", "red_white"),
-        "grade": grade,
-        "label": label,
-    }
-
-
-def _role_labels(person, is_instructor, is_administrative):
+def _role_labels(person, is_instructor, is_administrative, can_support_classes):
     labels = []
     if is_administrative:
         labels.append("Administrativo")
     if is_instructor:
         labels.append("Professor")
+    if can_support_classes and not is_instructor and not is_administrative:
+        labels.extend(get_operational_role_labels(person))
     trains_as_student = False
     if person is not None:
         trains_as_student = bool(
@@ -369,8 +385,17 @@ def _empty_context():
         "belt_stripes": [],
         "active_trial_access": None,
         "billing_tabs": [],
+        "plan_change_membership": None,
+        "plan_change_summary": None,
+        "plan_change_catalog": [],
+        "plan_change_filters": {"frequencies": [], "cycles": [], "methods": []},
+        "plan_change_locked": False,
         "dependents": [],
         "financial_dashboard": None,
+        "pending_administrative_access_request_count": 0,
+        "pending_class_catalog_request_count": 0,
+        "administrative_access_requests": [],
+        "class_catalog_requests": [],
         "payroll_calculation": None,
         "payroll_available_balance": None,
         "payroll_base_salary": None,
@@ -397,10 +422,36 @@ def _get_portal_display_name(request):
 def _can_access_people(request):
     if getattr(request, "portal_is_technical_admin", False):
         return True
-    person = getattr(request, "portal_person", None)
-    if person is None or not person.person_type_id:
-        return False
-    return person.person_type.code in PEOPLE_SUPPORT_PERSON_TYPE_CODES
+    return (
+        PortalCapability.SUPPORT_PEOPLE
+        in getattr(request, "portal_capabilities", set())
+    )
+
+
+def _can_manage_access_requests(request):
+    if getattr(request, "portal_is_technical_admin", False):
+        return True
+    capabilities = getattr(request, "portal_capabilities", set())
+    return bool(
+        {
+            PortalCapability.MANAGE_PEOPLE,
+            PortalCapability.MANAGE_ACADEMY,
+        }
+        & set(capabilities)
+    )
+
+
+def _can_manage_class_requests(request):
+    if getattr(request, "portal_is_technical_admin", False):
+        return True
+    capabilities = getattr(request, "portal_capabilities", set())
+    return bool(
+        {
+            PortalCapability.MANAGE_CLASSES,
+            PortalCapability.MANAGE_ACADEMY,
+        }
+        & set(capabilities)
+    )
 
 
 def _get_active_instructor_choices():

@@ -7,6 +7,7 @@ from system.models import (
     ClassSchedule,
     Person,
 )
+from system.models.person import PersonRelationship, PersonRelationshipKind
 from system.services.class_overview import parse_class_group_filter_value
 from system.constants import (
     CLASS_ENROLLMENT_PERSON_TYPE_CODES,
@@ -109,7 +110,15 @@ def get_material_request_recipient_queryset(actor):
             .distinct()
             .order_by("full_name")
         )
-    return queryset.filter(pk=actor.pk)
+    dependent_ids = PersonRelationship.objects.filter(
+        source_person=actor,
+        relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+    ).values_list("target_person_id", flat=True)
+    return (
+        queryset.filter(Q(pk=actor.pk) | Q(pk__in=dependent_ids))
+        .distinct()
+        .order_by("full_name")
+    )
 
 
 def resolve_material_request_recipient(actor, raw_person_id=None):

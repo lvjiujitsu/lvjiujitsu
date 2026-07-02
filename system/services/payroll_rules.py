@@ -9,7 +9,12 @@ from django.utils import timezone
 
 from system.constants import CLASS_STAFF_PERSON_TYPE_CODES
 from system.models.asaas import TeacherPayrollConfig
-from system.models.calendar import CheckinStatus, ClassCheckin, SpecialClassCheckin
+from system.models.calendar import (
+    CheckinStatus,
+    ClassCheckin,
+    SessionStatus,
+    SpecialClassCheckin,
+)
 from system.models.class_membership import ClassEnrollment, EnrollmentStatus
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 
@@ -829,19 +834,27 @@ def _count_class_attendances(person, group_ids, reference_month, *, include_spec
     period_start, period_end = _month_bounds(reference_month)
     total = 0
     if group_ids:
-        total += ClassCheckin.objects.filter(
-            session__schedule__class_group_id__in=group_ids,
-            session__date__gte=period_start,
-            session__date__lte=period_end,
-            status=CheckinStatus.APPROVED,
-        ).count()
+        total += (
+            ClassCheckin.objects.filter(
+                session__schedule__class_group_id__in=group_ids,
+                session__date__gte=period_start,
+                session__date__lte=period_end,
+                status=CheckinStatus.APPROVED,
+            )
+            .exclude(session__status=SessionStatus.CANCELLED)
+            .count()
+        )
     if include_special:
-        total += SpecialClassCheckin.objects.filter(
-            special_class__teacher=person,
-            special_class__date__gte=period_start,
-            special_class__date__lte=period_end,
-            status=CheckinStatus.APPROVED,
-        ).count()
+        total += (
+            SpecialClassCheckin.objects.filter(
+                special_class__teacher=person,
+                special_class__date__gte=period_start,
+                special_class__date__lte=period_end,
+                status=CheckinStatus.APPROVED,
+            )
+            .exclude(special_class__status=SessionStatus.CANCELLED)
+            .count()
+        )
     return total
 
 

@@ -14,6 +14,8 @@ from system.models.registration_order import (
     RegistrationOrder,
 )
 from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
+from system.models import AuditAction, AuditModule
+from system.services.audit import record_audit_event, resolve_actor_label
 from system.services.membership import (
     exempt_order,
     mark_order_manually_paid,
@@ -107,6 +109,13 @@ class MarkOrderPaidActionView(_BillingAdminMixin, View):
         notes = request.POST.get("notes", "").strip()
         admin_user = getattr(request, "technical_admin_user", None)
         mark_order_manually_paid(order, admin_user, notes=notes)
+        record_audit_event(
+            module=AuditModule.FINANCIAL,
+            action=AuditAction.MARK_PAID,
+            actor_label=resolve_actor_label(request),
+            entity_label=f"Pedido #{order.pk} · {order.person.full_name}",
+            summary=f"Marcado como pago manualmente. R$ {order.total}.",
+        )
         messages.success(
             request, f"Pedido #{order.pk} marcado como pago."
         )

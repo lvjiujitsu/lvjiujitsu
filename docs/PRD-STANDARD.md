@@ -4,7 +4,8 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 
 ## Regras
 
-- Verificar o próximo número sem duplicar.
+- Verificar o próximo número sem duplicar, usando `docs/prd/README.md` como índice canônico (não confiar apenas em `ls`, que não revela gaps reservados ou duplicatas).
+- Atualizar `docs/prd/README.md` ao criar uma PRD nova.
 - Criar antes do código.
 - Declarar skills.
 - Usar critérios comportamentais e verificáveis.

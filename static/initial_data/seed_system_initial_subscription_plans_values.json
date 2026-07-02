@@ -137,7 +137,7 @@
   },
   {
     "category_code": "loyalty",
-    "category_name": "Fidelidade",
+    "category_name": "Veterano",
     "weekly_frequency": 2,
     "gateway_code": "asaas_pix",
     "gateway_name": "Asaas",
@@ -171,7 +171,7 @@
   },
   {
     "category_code": "loyalty",
-    "category_name": "Fidelidade",
+    "category_name": "Veterano",
     "weekly_frequency": 2,
     "gateway_code": "asaas_card",
     "gateway_name": "Asaas",
@@ -205,7 +205,7 @@
   },
   {
     "category_code": "loyalty",
-    "category_name": "Fidelidade",
+    "category_name": "Veterano",
     "weekly_frequency": 5,
     "gateway_code": "asaas_pix",
     "gateway_name": "Asaas",
@@ -239,7 +239,7 @@
   },
   {
     "category_code": "loyalty",
-    "category_name": "Fidelidade",
+    "category_name": "Veterano",
     "weekly_frequency": 5,
     "gateway_code": "asaas_card",
     "gateway_name": "Asaas",

@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=13">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=17">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
-    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}"}</script>
+    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}"}</script>
 
     {% if messages %}
     <div class="system-messages" role="alert" aria-live="assertive">
@@ -129,8 +129,24 @@
             <span class="quick-link__icon" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/><path d="M9.5 12.5l1.75 1.75L15 10.5"/></svg>
             </span>
-            Perfis e acessos
+            Tipos de vínculo
           </a>
+          {% if can_manage_access_requests %}
+          <a class="quick-link" href="{% url 'system:administrative-access-request-list' %}">
+            <span class="quick-link__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/><path d="M8 11h8"/><path d="M12 7v8"/></svg>
+            </span>
+            Acessos{% if pending_administrative_access_request_count %} · {{ pending_administrative_access_request_count }}{% endif %}
+          </a>
+          {% endif %}
+          {% if can_manage_class_requests %}
+          <a class="quick-link" href="{% url 'system:class-catalog-request-list' %}">
+            <span class="quick-link__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 5h16"/><path d="M4 12h12"/><path d="M4 19h10"/><path d="M18 15l2 2 3-4"/></svg>
+            </span>
+            Solicitações de turmas{% if pending_class_catalog_request_count %} · {{ pending_class_catalog_request_count }}{% endif %}
+          </a>
+          {% endif %}
         </nav>
       </div>
     </section>
@@ -148,6 +164,68 @@
       {% endif %}
     {% elif staff_work_today_classes %}
     {% include "home/partials/today_classes_section.html" with class_items=staff_work_today_classes section_slug="turmas-staff" instructor_toolbar="full" attendance_history=attendance_history only %}
+    {% endif %}
+
+    {% if show_instructor_area or administrative_access_requests or class_catalog_requests %}
+    <section class="section" aria-labelledby="requests-title">
+      <div class="section__header">
+        <div class="section__title-row">
+          <button class="section__toggle" type="button"
+                  data-section="requests" aria-expanded="true" aria-controls="section-requests"
+                  aria-label="Recolher solicitações">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <h2 class="section__title" id="requests-title">Solicitações</h2>
+        </div>
+      </div>
+      <div class="section__body" id="section-requests">
+        <div class="panel request-panel">
+          {% if show_instructor_area %}
+          <div class="request-actions">
+            <a class="btn btn--primary btn--sm" href="{% url 'system:class-catalog-request-create' %}">Solicitar turma/horário</a>
+          </div>
+          {% endif %}
+          {% if administrative_access_requests or class_catalog_requests %}
+          <ul class="request-home-list" aria-label="Minhas solicitações">
+            {% for item in administrative_access_requests %}
+            <li class="request-home-item">
+              <div class="request-home-item__body">
+                <span class="request-home-item__title">Acesso administrativo</span>
+                <span class="request-home-item__meta">{{ item.created_at|date:"d/m/Y" }} · {{ item.requested_role_codes|join:", " }}</span>
+              </div>
+              <span class="status-pill {% if item.status == 'pending' %}status-pill--warning{% elif item.status == 'approved' %}status-pill--success{% elif item.status == 'rejected' %}status-pill--danger{% else %}status-pill--neutral{% endif %}">{{ item.get_status_display }}</span>
+              {% if item.status == 'pending' %}
+              <form method="post" action="{% url 'system:administrative-access-request-self-cancel' pk=item.pk %}">
+                {% csrf_token %}
+                <button class="btn btn--secondary btn--sm" type="submit">Cancelar</button>
+              </form>
+              {% endif %}
+            </li>
+            {% endfor %}
+            {% for item in class_catalog_requests %}
+            <li class="request-home-item">
+              <div class="request-home-item__body">
+                <span class="request-home-item__title">{{ item.get_request_type_display }}</span>
+                <span class="request-home-item__meta">{{ item.created_at|date:"d/m/Y" }} · {{ item.display_name|default:"Novo horário" }}</span>
+              </div>
+              <span class="status-pill {% if item.status == 'pending' %}status-pill--warning{% elif item.status == 'approved' %}status-pill--success{% elif item.status == 'rejected' %}status-pill--danger{% else %}status-pill--neutral{% endif %}">{{ item.get_status_display }}</span>
+              {% if item.status == 'pending' %}
+              <form method="post" action="{% url 'system:class-catalog-request-self-cancel' pk=item.pk %}">
+                {% csrf_token %}
+                <button class="btn btn--secondary btn--sm" type="submit">Cancelar</button>
+              </form>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="empty-state" role="status">
+            <p class="empty-state__text">Nenhuma solicitação registrada.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
     {% endif %}
 
     <!-- ─── Repasse (professor) ──────────────────────────────────────────── -->
@@ -392,7 +470,9 @@
                     {% if m.status == "past_due" and tab.pending_order %}
                     <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
                     {% endif %}
-                    <span class="btn btn--secondary btn--sm" aria-disabled="true" title="Em breve">Trocar plano</span>
+                    {% if tab.is_active_tab and not plan_change_locked and plan_change_catalog and m.status == "active" or tab.is_active_tab and not plan_change_locked and plan_change_catalog and m.status == "exempted" %}
+                    <button class="btn btn--secondary btn--sm js-open-plan-change-modal" type="button">Trocar plano</button>
+                    {% endif %}
                   </div>
 
                   {% if tab.recent_invoices %}
@@ -470,6 +550,48 @@
       </div>
     </section>
     {% endif %}
+    {% endif %}
+
+    {% if dependents %}
+    <!-- ─── Meus dependentes (responsável) ───────────────────────────────── -->
+    <section class="section" aria-labelledby="dependents-title">
+      <div class="section__header">
+        <h2 class="section__title" id="dependents-title">Meus dependentes</h2>
+      </div>
+      <div class="panel">
+        <ul class="entity-list" aria-label="Meus dependentes">
+          {% for dep in dependents %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ dep.person.full_name }}</div>
+              <div class="entity-card__badges">
+                {% if dep.graduation_progress.current_belt_rank %}
+                <span class="badge badge--info">{{ dep.graduation_progress.current_belt_rank }}{% if dep.graduation_progress.current_grade_number %} · {{ dep.graduation_progress.current_grade_number }}º grau{% endif %}</span>
+                {% endif %}
+                {% if dep.active_membership.status == "active" %}
+                <span class="badge badge--success">Mensalidade em dia</span>
+                {% elif dep.active_membership.status == "past_due" %}
+                <span class="badge badge--danger">Mensalidade em atraso</span>
+                {% elif dep.active_membership.status == "exempted" %}
+                <span class="badge badge--success">Isento</span>
+                {% else %}
+                <span class="badge badge--neutral">Sem plano ativo</span>
+                {% endif %}
+              </div>
+              <div class="entity-card__meta">
+                {% if dep.today_classes %}{{ dep.today_classes|length }} aula{{ dep.today_classes|length|pluralize }} hoje{% else %}Sem aula hoje{% endif %}
+              </div>
+            </div>
+            {% if can_access_people %}
+            <div class="entity-card__actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=dep.person.pk %}">Ver perfil</a>
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
     {% endif %}
 
     <!-- ─── Financeiro (staff) ────────────────────────────────────────────── -->
@@ -735,8 +857,121 @@
   </div>
   {% endif %}
 
+  <!-- ─── Modal: trocar plano ────────────────────────────────────────────────── -->
+  {% if plan_change_catalog %}
+  <div class="modal-overlay" id="plan-change-modal" hidden role="dialog" aria-modal="true" aria-labelledby="plan-change-modal-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="plan-change-modal-title">Trocar plano</h2>
+        <button class="modal__close js-close-plan-change-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      {% if plan_change_summary %}
+      <p class="modal__label">
+        Saldo disponível no ciclo atual: <strong>R$ {{ plan_change_summary.available_credit }}</strong>
+        ({{ plan_change_summary.days_remaining }} dia{{ plan_change_summary.days_remaining|pluralize }} restante{{ plan_change_summary.days_remaining|pluralize }})
+      </p>
+      {% endif %}
+      <form class="js-plan-change-form" novalidate>
+        <div class="js-plan-change-filters">
+          {% if plan_change_filters.frequencies|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Frequência semanal</p>
+            <div class="plan-filter-row">
+              {% for freq in plan_change_filters.frequencies %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="frequency" data-value="{{ freq.value }}">{{ freq.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if plan_change_filters.cycles|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Período de cobrança</p>
+            <div class="plan-filter-row">
+              {% for cycle in plan_change_filters.cycles %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="cycle" data-value="{{ cycle.value }}">{{ cycle.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if plan_change_filters.methods|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Forma de pagamento</p>
+            <div class="plan-filter-row">
+              {% for method in plan_change_filters.methods %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="method" data-value="{{ method.value }}">{{ method.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="plan-change-cards" role="radiogroup" aria-label="Planos disponíveis">
+          {% for plan in plan_change_catalog %}
+          <label
+            class="plan-change-card js-plan-change-card"
+            data-plan-id="{{ plan.id }}"
+            data-weekly-frequency="{{ plan.weekly_frequency }}"
+            data-billing-cycle="{{ plan.billing_cycle }}"
+            data-payment-method="{{ plan.payment_method }}"
+          >
+            <input
+              type="radio"
+              name="selected_plan"
+              value="{{ plan.id }}"
+              class="plan-change-card__input"
+              data-is-upgrade="{{ plan.proration.is_upgrade|yesno:"1,0" }}"
+              data-has-leftover="{{ plan.proration.has_leftover|yesno:"1,0" }}"
+              data-additional-charge="{{ plan.proration.additional_charge }}"
+              data-leftover-credit="{{ plan.proration.leftover_credit }}"
+              hidden
+            >
+            <span class="plan-change-card__radio" aria-hidden="true"><span class="plan-change-card__radio-dot"></span></span>
+            <span class="plan-change-card__body">
+              <span class="plan-change-card__tier">{{ plan.name }}</span>
+              <span class="plan-change-card__price-wrap">
+                <span class="plan-change-card__price">R$ {{ plan.price|floatformat:2 }}</span>
+                <span class="plan-change-card__price-cycle">/{{ plan.cycle|lower }}</span>
+              </span>
+              <span class="plan-change-card__meta">{{ plan.audience_label }} · {{ plan.weekly_frequency_label }}</span>
+              {% if plan.proration.is_upgrade %}
+              <span class="plan-change-card__proration plan-change-card__proration--charge">+ R$ {{ plan.proration.additional_charge }} a pagar agora</span>
+              {% elif plan.proration.has_leftover %}
+              <span class="plan-change-card__proration plan-change-card__proration--save">Você economiza R$ {{ plan.proration.leftover_credit }} agora</span>
+              {% else %}
+              <span class="plan-change-card__proration plan-change-card__proration--neutral">Sem custo adicional agora</span>
+              {% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="system-message system-message--warning js-plan-change-upgrade-notice" role="status" hidden>
+          Esse plano exige pagamento da diferença agora. Você será redirecionado para a tela de pagamento.
+        </div>
+
+        <div class="modal__field js-plan-change-leftover-choice" hidden>
+          <label class="modal__label">Sobra do plano atual</label>
+          <label style="display:flex;align-items:center;gap:0.375rem;font-weight:400;">
+            <input type="radio" name="leftover_action" value="keep_credit" checked> Guardar como crédito na próxima renovação
+          </label>
+          <label style="display:flex;align-items:center;gap:0.375rem;font-weight:400;">
+            <input type="radio" name="leftover_action" value="refund"> Devolver agora (estorno)
+          </label>
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-plan-change-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit" disabled>Confirmar troca</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=7" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=11" defer></script>
 
 </body>
 </html>

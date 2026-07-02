@@ -17,10 +17,15 @@ from system.models.registration_order import (
     PaymentStatus,
     RegistrationOrder,
 )
+from system.selectors.plan_eligibility import (
+    build_eligibility_context_for_person,
+    get_eligible_plans,
+)
 from system.services.membership import (
     MONTHS_BY_BILLING_CYCLE,
     _add_months,
     add_billing_cycle,
+    get_membership_owner,
 )
 from system.services.asaas_client import AsaasClientError, refund_payment
 from system.services.payroll_rules import append_order_refund_record
@@ -28,10 +33,19 @@ from system.services.stripe_admin_actions import (
     StripeAdminActionError,
     refund_order,
 )
+from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
 
 
 class PlanChangeError(Exception):
     pass
+
+
+_CYCLE_INSTALLMENTS = {
+    "monthly": 1,
+    "quarterly": 3,
+    "semiannual": 6,
+    "annual": 12,
+}
 
 
 def _quantize(value):
@@ -59,6 +73,157 @@ def get_membership_amount_paid(membership):
     if membership.plan and membership.plan.price:
         return _quantize(membership.plan.price)
     return Decimal("0.00")
+
+
+def _build_installment_label(plan):
+    if plan.payment_method != "credit_card":
+        return ""
+    n = _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1)
+    if n <= 1:
+        return "1x"
+    if plan.monthly_reference_price:
+        price_str = f"R$ {plan.monthly_reference_price:.2f}".replace(".", ",")
+        return f"{n}x {price_str}"
+    return f"{n}x"
+
+
+def serialize_plan_with_proration(plan, proration):
+    tier = resolve_commercial_tier(
+        is_family_plan=plan.is_family_plan, is_loyalty_plan=plan.is_loyalty_plan
+    )
+    return {
+        "id": plan.pk,
+        "code": plan.code,
+        "name": plan.display_name,
+        "commercial_tier": tier,
+        "commercial_tier_label": COMMERCIAL_TIER_LABELS.get(tier, tier),
+        "price": str(plan.price),
+        "monthly_reference_price": (
+            str(plan.monthly_reference_price)
+            if plan.monthly_reference_price is not None
+            else ""
+        ),
+        "cycle": plan.get_billing_cycle_display(),
+        "billing_cycle": plan.billing_cycle,
+        "payment_method": plan.payment_method,
+        "payment_method_label": plan.get_payment_method_display(),
+        "is_family_plan": plan.is_family_plan,
+        "audience": plan.audience,
+        "audience_label": plan.get_audience_display(),
+        "weekly_frequency": plan.weekly_frequency,
+        "weekly_frequency_label": plan.get_weekly_frequency_display(),
+        "installment_label": _build_installment_label(plan),
+        "installment_count": (
+            _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1)
+            if plan.payment_method == "credit_card"
+            else 0
+        ),
+        "proration": {
+            "cycles_covered": proration["cycles_covered"],
+            "extension_months": proration["extension_months"],
+            "new_period_end": proration["new_period_end"].isoformat(),
+            "leftover_credit": str(proration["leftover_credit"]),
+            "additional_charge": str(proration["additional_charge"]),
+            "is_upgrade": proration["is_upgrade"],
+            "is_extension": proration["is_extension"],
+            "has_leftover": proration["has_leftover"],
+        },
+    }
+
+
+def build_membership_summary(membership):
+    if membership is None:
+        return None
+    last_order = get_last_paid_order(membership)
+    amount_paid = (
+        Decimal(last_order.total) if last_order and last_order.total
+        else Decimal(membership.plan.price or 0)
+    )
+    period_start = membership.current_period_start
+    period_end = membership.current_period_end
+    cycle_days = max((period_end - period_start).days, 1) if period_start and period_end else 0
+    now = timezone.now()
+    days_used = max(0, min((now - period_start).days, cycle_days)) if period_start else 0
+    days_remaining = max(0, cycle_days - days_used)
+
+    if amount_paid > 0 and cycle_days > 0:
+        daily = amount_paid / Decimal(cycle_days)
+        consumed = (daily * Decimal(days_used)).quantize(Decimal("0.01"))
+        available = (amount_paid - consumed).quantize(Decimal("0.01"))
+    else:
+        consumed = Decimal("0.00")
+        available = Decimal("0.00")
+    if available < 0:
+        available = Decimal("0.00")
+
+    return {
+        "plan_name": membership.plan.display_name,
+        "plan_cycle": membership.plan.get_billing_cycle_display(),
+        "amount_paid": str(amount_paid.quantize(Decimal("0.01"))),
+        "amount_consumed": str(consumed),
+        "available_credit": str(available),
+        "cycle_days": cycle_days,
+        "days_used": days_used,
+        "days_remaining": days_remaining,
+        "period_end": period_end.isoformat() if period_end else "",
+        "payment_provider": last_order.payment_provider if last_order else "",
+        "refund_supported": bool(
+            last_order
+            and last_order.payment_provider in ("stripe", "asaas")
+            and (last_order.stripe_payment_intent_id or last_order.asaas_payment_id)
+        ),
+    }
+
+
+def build_plan_catalog(person, membership):
+    if not membership or membership.status not in (
+        MembershipStatus.ACTIVE,
+        MembershipStatus.EXEMPTED,
+    ):
+        return []
+    billing_owner = get_membership_owner(person) or person
+    eligibility = build_eligibility_context_for_person(billing_owner)
+    available_plans = (
+        get_eligible_plans(eligibility)
+        .exclude(pk=membership.plan_id)
+        .exclude(gateway_code="stripe_card")
+    )
+    catalog = []
+    for plan in available_plans:
+        try:
+            proration = calculate_plan_change(membership, plan)
+        except PlanChangeError:
+            continue
+        catalog.append(serialize_plan_with_proration(plan, proration))
+    return catalog
+
+
+def build_plan_catalog_filters(catalog):
+    frequencies = []
+    seen_frequencies = set()
+    cycles = []
+    seen_cycles = set()
+    methods = []
+    seen_methods = set()
+    for plan in catalog:
+        freq = plan["weekly_frequency"]
+        if freq not in seen_frequencies:
+            seen_frequencies.add(freq)
+            frequencies.append({"value": freq, "label": plan["weekly_frequency_label"]})
+        cycle = plan["billing_cycle"]
+        if cycle not in seen_cycles:
+            seen_cycles.add(cycle)
+            cycles.append({"value": cycle, "label": plan["cycle"]})
+        method = plan["payment_method"]
+        if method not in seen_methods:
+            seen_methods.add(method)
+            methods.append({"value": method, "label": plan["payment_method_label"]})
+    frequencies.sort(key=lambda item: item["value"])
+    return {
+        "frequencies": frequencies,
+        "cycles": cycles,
+        "methods": methods,
+    }
 
 
 def calculate_plan_change(membership, new_plan):

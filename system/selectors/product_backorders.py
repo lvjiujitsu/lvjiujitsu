@@ -19,9 +19,9 @@ def get_active_backorder(person, variant):
     )
 
 
-def get_backorders_for_person(person):
+def get_backorders_for_person(persons):
     return (
-        ProductBackorder.objects.filter(person=person)
+        ProductBackorder.objects.filter(person__in=persons)
         .select_related("variant", "variant__product", "confirmed_order")
         .order_by(
             "-status",

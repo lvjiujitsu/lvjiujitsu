@@ -13,7 +13,7 @@ from system.services.plan_management import (
     get_plan_by_pk,
     get_plan_list,
 )
-from system.views.person_views import AdministrativeRequiredMixin
+from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
 
 
 class PlanListView(AdministrativeRequiredMixin, ListView):
@@ -38,15 +38,18 @@ class PlanListView(AdministrativeRequiredMixin, ListView):
         return context
 
 
-class PlanCreateView(AdministrativeRequiredMixin, CreateView):
+class PlanCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = SubscriptionPlan
     form_class = PlanForm
     template_name = "plans/plan_form.html"
+    modal_template_name = "plans/plan_form_modal.html"
+    modal_name = "plan-create"
     success_url = reverse_lazy("system:plan-list")
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, "Plano criado com sucesso.")
+        if not self.is_modal():
+            messages.success(self.request, "Plano criado com sucesso.")
         return response
 
     def get_context_data(self, **kwargs):
@@ -69,17 +72,20 @@ class PlanDetailView(AdministrativeRequiredMixin, DetailView):
         return context
 
 
-class PlanUpdateView(AdministrativeRequiredMixin, UpdateView):
+class PlanUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = SubscriptionPlan
     form_class = PlanForm
     template_name = "plans/plan_form.html"
+    modal_template_name = "plans/plan_form_modal.html"
+    modal_name = "plan-edit"
 
     def get_success_url(self):
         return reverse_lazy("system:plan-detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        messages.success(self.request, "Plano atualizado com sucesso.")
+        if not self.is_modal():
+            messages.success(self.request, "Plano atualizado com sucesso.")
         return response
 
     def get_context_data(self, **kwargs):

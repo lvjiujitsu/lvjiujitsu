@@ -4,13 +4,15 @@ from system.models import (
     BiologicalSex,
     BloodType,
     ClassCategory,
+    ClassGroup,
     JiuJitsuBelt,
     MartialArt,
+    OperationalRole,
     Person,
     PersonType,
 )
 from system.models.class_membership import get_class_group_eligibility_error
-from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES
+from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES, OperationalRoleCode
 from system.services.class_overview import (
     build_class_group_filter_value,
     get_class_group_filter_choices,
@@ -18,6 +20,7 @@ from system.services.class_overview import (
     get_weekday_filter_choices,
     resolve_class_group_selection,
 )
+from system.services.operational_roles import sync_person_operational_roles
 from system.services.registration import sync_person_class_enrollments
 from system.services.payroll_rules import (
     PayrollRuleError,
@@ -123,6 +126,10 @@ class PersonForm(forms.ModelForm):
         "class_groups",
         "is_active",
     )
+    operational_role_field_names = (
+        "operational_roles",
+        "class_assistant_group",
+    )
     main_field_names = (
         "full_name",
         "cpf",
@@ -170,6 +177,19 @@ class PersonForm(forms.ModelForm):
         label="Turmas liberadas",
         help_text="Selecione as turmas que a pessoa pode frequentar. Os horários ativos dessas turmas ficam liberados automaticamente.",
         widget=forms.CheckboxSelectMultiple,
+    )
+    operational_roles = forms.ModelMultipleChoiceField(
+        queryset=OperationalRole.objects.none(),
+        required=False,
+        label="Papéis operacionais",
+        help_text="Funções acumuláveis desta pessoa (apoio de turma, gestão etc.), além do tipo de vínculo.",
+        widget=forms.CheckboxSelectMultiple,
+    )
+    class_assistant_group = forms.ModelChoiceField(
+        queryset=ClassGroup.objects.none(),
+        required=False,
+        label="Turma do apoio",
+        help_text="Obrigatório quando o papel \"Apoio de turma\" estiver selecionado.",
     )
     payroll_enabled = forms.BooleanField(
         required=False,
@@ -306,6 +326,7 @@ class PersonForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         person_type_codes = kwargs.pop("person_type_codes", None)
         self.show_payroll_fields = kwargs.pop("show_payroll_fields", True)
+        self.show_operational_role_fields = kwargs.pop("show_operational_role_fields", True)
         super().__init__(*args, **kwargs)
         self.fields["has_martial_art"].widget.attrs.update(
             {"data-martial-art-presence-select": "person"}
@@ -321,6 +342,32 @@ class PersonForm(forms.ModelForm):
             person_type_queryset = person_type_queryset.filter(code__in=person_type_codes)
         self.fields["person_type"].queryset = person_type_queryset.order_by("display_name")
         self.fields["class_groups"].choices = get_public_class_group_choice_options()
+        self.fields["operational_roles"].queryset = OperationalRole.objects.filter(
+            is_active=True
+        ).order_by("display_name")
+        self.fields["class_assistant_group"].queryset = ClassGroup.objects.filter(
+            is_active=True
+        ).order_by("class_category__display_order", "display_name")
+        if self.instance.pk:
+            active_assignments = list(
+                self.instance.operational_role_assignments.filter(is_active=True)
+            )
+            self.fields["operational_roles"].initial = [
+                assignment.role_id for assignment in active_assignments
+            ]
+            class_assistant_assignment = next(
+                (
+                    assignment
+                    for assignment in active_assignments
+                    if assignment.role.code == OperationalRoleCode.CLASS_ASSISTANT
+                    and assignment.class_group_id
+                ),
+                None,
+            )
+            if class_assistant_assignment:
+                self.fields["class_assistant_group"].initial = (
+                    class_assistant_assignment.class_group_id
+                )
         if self.instance.pk:
             self.initial["has_martial_art"] = (
                 MARTIAL_ART_EXPERIENCE_YES
@@ -378,6 +425,8 @@ class PersonForm(forms.ModelForm):
                 "previous_academy",
                 "person_type",
                 "class_groups",
+                "operational_roles",
+                "class_assistant_group",
                 "is_active",
                 "payroll_enabled",
                 "payroll_payment_day",
@@ -422,6 +471,12 @@ class PersonForm(forms.ModelForm):
         if not self.show_payroll_fields:
             return []
         return self._bound_fields(self.payroll_field_names)
+
+    @property
+    def operational_role_fields(self):
+        if not self.show_operational_role_fields:
+            return []
+        return self._bound_fields(self.operational_role_field_names)
 
     def _bound_fields(self, field_names):
         return [self[name] for name in field_names]
@@ -484,7 +539,22 @@ class PersonForm(forms.ModelForm):
                 seen_errors.add(message)
         cleaned_data["class_groups"] = class_groups
         self._clean_payroll_config(cleaned_data)
+        self._clean_operational_roles(cleaned_data)
         return cleaned_data
+
+    def _clean_operational_roles(self, cleaned_data):
+        if not self.show_operational_role_fields:
+            cleaned_data["operational_roles"] = []
+            return
+        selected_roles = cleaned_data.get("operational_roles") or []
+        needs_class_group = any(
+            role.code == OperationalRoleCode.CLASS_ASSISTANT for role in selected_roles
+        )
+        if needs_class_group and not cleaned_data.get("class_assistant_group"):
+            self.add_error(
+                "class_assistant_group",
+                "Selecione a turma para o apoio de turma.",
+            )
 
     def _clear_martial_art_history(self, cleaned_data):
         cleaned_data["martial_art"] = ""
@@ -516,6 +586,13 @@ class PersonForm(forms.ModelForm):
                 save_person_payroll_config(person, self.cleaned_data)
             except PayrollRuleError as exc:
                 raise ValueError(str(exc)) from exc
+            if self.show_operational_role_fields:
+                selected_roles = self.cleaned_data.get("operational_roles") or []
+                sync_person_operational_roles(
+                    person,
+                    [role.pk for role in selected_roles],
+                    class_assistant_group=self.cleaned_data.get("class_assistant_group"),
+                )
         return person
 
     def _clean_payroll_config(self, cleaned_data):

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
+from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 
 from system.models.category import CategoryAudience
 from system.models.class_group import ClassGroup
@@ -19,6 +22,7 @@ class PlanEligibilityContext:
     adult_active: bool
     kids_juvenile_active_count: int
     allow_special_authorization: bool = False
+    veteran_eligible: bool = False
 
     @property
     def total_active_count(self) -> int:
@@ -33,6 +37,57 @@ class PlanEligibilityContext:
         return self.kids_juvenile_active_count >= 2
 
 
+def compute_veteran_member_since(person, *, reference_date=None):
+    """Data de início do vínculo contínuo atual, derivada do histórico de Membership.
+
+    Um intervalo sem Membership ativa/isenta/em atraso maior que
+    VETERAN_PLAN_GAP_GRACE_DAYS reinicia a contagem.
+    """
+    if person is None:
+        return None
+
+    from system.models.membership import Membership
+
+    reference = reference_date or timezone.now()
+    grace = timedelta(days=settings.VETERAN_PLAN_GAP_GRACE_DAYS)
+
+    stints = []
+    memberships = Membership.objects.filter(
+        person=person,
+        activated_at__isnull=False,
+    ).order_by("activated_at")
+    for membership in memberships:
+        start = membership.activated_at
+        end = membership.canceled_at or membership.current_period_end
+        if end is not None and end < start:
+            end = start
+        stints.append((start, end))
+
+    if not stints:
+        return None
+
+    current_start = stints[0][0]
+    previous_end = stints[0][1] or reference
+    for start, end in stints[1:]:
+        if start - previous_end > grace:
+            current_start = start
+        previous_end = max(previous_end, end or reference)
+    return current_start
+
+
+def is_veteran_plan_eligible(person, *, reference_date=None) -> bool:
+    if person is None:
+        return False
+    if getattr(person, "veteran_plan_approved", False):
+        return True
+    member_since = compute_veteran_member_since(person, reference_date=reference_date)
+    if member_since is None:
+        return False
+    reference = reference_date or timezone.now()
+    tenure_threshold = timedelta(days=365 * settings.VETERAN_PLAN_TENURE_YEARS)
+    return (reference - member_since) >= tenure_threshold
+
+
 def get_eligible_plans(context: PlanEligibilityContext, *, base_queryset=None):
     queryset = base_queryset if base_queryset is not None else SubscriptionPlan.objects.filter(
         is_active=True
@@ -40,6 +95,9 @@ def get_eligible_plans(context: PlanEligibilityContext, *, base_queryset=None):
 
     if not context.allow_special_authorization:
         queryset = queryset.exclude(requires_special_authorization=True)
+
+    if not context.veteran_eligible:
+        queryset = queryset.exclude(is_loyalty_plan=True)
 
     audience_filter = _build_audience_filter(context)
     if audience_filter is None:
@@ -50,6 +108,8 @@ def get_eligible_plans(context: PlanEligibilityContext, *, base_queryset=None):
 
 def is_plan_eligible(plan: SubscriptionPlan, context: PlanEligibilityContext) -> bool:
     if not context.allow_special_authorization and plan.requires_special_authorization:
+        return False
+    if plan.is_loyalty_plan and not context.veteran_eligible:
         return False
     if plan.audience == PlanAudience.ADULT:
         if not context.adult_active:
@@ -167,6 +227,7 @@ def build_eligibility_context_for_person(person, *, allow_special_authorization=
         adult_active=adult_active,
         kids_juvenile_active_count=kids_juvenile_count,
         allow_special_authorization=allow_special_authorization,
+        veteran_eligible=is_veteran_plan_eligible(person),
     )
 
 

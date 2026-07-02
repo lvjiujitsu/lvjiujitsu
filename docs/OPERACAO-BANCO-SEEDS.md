@@ -51,22 +51,46 @@ Depois, executar as seeds necessárias em ordem.
 4. `seed_system_initial_ibjjf_age_categories`
 5. `seed_system_initial_graduation_rules`
 6. `seed_system_initial_class_categories`
-7. `seed_system_initial_class_categories_teacher`
-8. `seed_system_initial_teacher`
+7. `seed_system_initial_teacher`
+8. `seed_system_initial_class_categories_teacher`
 9. `seed_system_initial_class_catalog`
-10. `seed_system_initial_product_categories`
-11. `seed_system_initial_product_catalog`
-12. `seed_system_initial_subscription_plans`
-13. `seed_system_initial_subscription_plans_values`
-14. `seed_system_initial_subscription_plans_stripe`
-15. `seed_system_initial_coupons`
-16. `seed_system_initial_holidays`
-17. `seed_system_initial_administrative` — cria pessoa, portal, graduação, **matrículas de treino** e **apoio em turma**
-18. `seed_system_initial_class_categories_administrative` — legado/idempotente; mesma fonte do passo 17
-19. `seed_system_initial_class_catalog_administrative` — legado/idempotente; mesma fonte do passo 17
-20. `seed_system_initial_teacher_payroll_configs`
+10. `seed_system_initial_teacher_payroll_configs`
+11. `seed_system_initial_administrative` — cria pessoa, portal, graduação, **matrículas de treino** e **apoio em turma**
+12. `seed_system_initial_class_categories_administrative` — legado/idempotente; mesma fonte do passo 11
+13. `seed_system_initial_class_catalog_administrative` — legado/idempotente; mesma fonte do passo 11
+14. `seed_system_initial_product_categories`
+15. `seed_system_initial_product_catalog`
+16. `seed_system_initial_subscription_plans`
+17. `seed_system_initial_subscription_plans_values`
+18. `seed_system_initial_subscription_plans_stripe`
+19. `seed_system_initial_coupons`
+20. `seed_system_initial_holidays`
 
 Seeds específicas, como migração Kanri, devem ser executadas somente quando o objetivo exigir.
+
+## Seeds locais de homologação visual
+
+As seeds abaixo são fictícias, extensas e manuais. Elas não fazem parte do bootstrap canônico nem devem rodar em HG/produção sem decisão explícita.
+
+Dependem, no mínimo, dos passos 2, 3, 4, 6, 7 e 9 das seeds de referência:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py seed_system_initial_test_students
+.\.venv\Scripts\python.exe manage.py seed_system_initial_test_guardians
+.\.venv\Scripts\python.exe manage.py seed_system_initial_test_administrative
+.\.venv\Scripts\python.exe manage.py seed_system_initial_test_teachers
+```
+
+Arquivos de dados:
+
+- `static/initial_data/seed_system_initial_test_students.json`
+- `static/initial_data/seed_system_initial_test_guardians.json`
+- `static/initial_data/seed_system_initial_test_administrative.json`
+- `static/initial_data/seed_system_initial_test_teachers.json`
+
+Senha local das contas fictícias: `LvTest@2026`.
+
+Usar essas contas para homologar, uma a uma, as combinações de aluno, dependente, responsável, professor, administrativo, papéis operacionais, faixas, experiência marcial e tipos sanguíneos descritas na PRD-111.
 
 ## Supabase HG
 

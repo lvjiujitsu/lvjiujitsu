@@ -6,7 +6,7 @@ from .category import CategoryAudience, IbjjfAgeCategory
 from .class_group import ClassGroup
 from .common import TimeStampedModel
 from .person import BiologicalSex, Person
-from system.constants import CLASS_STAFF_PERSON_TYPE_CODES
+from system.constants import CLASS_STAFF_PERSON_TYPE_CODES, PortalCapability
 
 
 class EnrollmentStatus(models.TextChoices):
@@ -111,11 +111,14 @@ class ClassInstructorAssignment(TimeStampedModel):
                     )
                 }
             )
-        if self.person_id and not self.person.has_type_code(*CLASS_STAFF_PERSON_TYPE_CODES):
+        if self.person_id and not (
+            self.person.has_type_code(*CLASS_STAFF_PERSON_TYPE_CODES)
+            or self.person.has_capability(PortalCapability.SUPPORT_CLASSES)
+        ):
             raise ValidationError(
                 {
                     "person": (
-                        "A pessoa precisa possuir o tipo Administrativo ou Professor "
+                        "A pessoa precisa possuir papel de apoio ou o tipo Administrativo/Professor "
                         "para atuar como apoio/instrutor auxiliar da turma."
                     )
                 }

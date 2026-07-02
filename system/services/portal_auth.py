@@ -1,10 +1,11 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
+from django.db.models import Prefetch
 from django.urls import reverse
 from django.utils import timezone
 
-from system.models import PortalAccount, PortalPasswordResetToken
+from system.models import PersonOperationalRole, PortalAccount, PortalPasswordResetToken
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.membership import get_latest_open_order
 from system.services.trial_access import has_active_trial_for_person
@@ -76,7 +77,7 @@ def resolve_portal_account_from_session(request):
         return None
 
     access_account = (
-        PortalAccount.objects.select_related("person")
+        _portal_account_queryset()
         .filter(pk=access_account_id, is_active=True, person__is_active=True)
         .first()
     )
@@ -203,7 +204,25 @@ def _normalize_cpf_identifier(identifier: str):
 
 def _get_active_account_by_cpf(formatted_cpf: str):
     return (
-        PortalAccount.objects.select_related("person")
+        _portal_account_queryset()
         .filter(person__cpf=formatted_cpf, is_active=True, person__is_active=True)
         .first()
+    )
+
+
+def _portal_account_queryset():
+    return PortalAccount.objects.select_related(
+        "person",
+        "person__person_type",
+    ).prefetch_related(
+        Prefetch(
+            "person__operational_role_assignments",
+            queryset=PersonOperationalRole.objects.select_related(
+                "role",
+                "class_group",
+            ).filter(
+                is_active=True,
+                role__is_active=True,
+            ),
+        )
     )

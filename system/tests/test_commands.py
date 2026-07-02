@@ -15,7 +15,7 @@ from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 
 from clear_migrations import remove_runtime_artifacts
-from system.constants import PersonTypeCode
+from system.constants import OperationalRoleCode, PersonTypeCode
 from system.models import (
     BeltRank,
     CategoryAudience,
@@ -27,6 +27,7 @@ from system.models import (
     TeacherPayrollConfig,
 )
 from system.services.payroll_rules import decode_payroll_rules
+from system.tests.seed_helpers import DEFAULT_SEED_PASSWORD
 
 
 class ClearMigrationsCleanupTestCase(SimpleTestCase):
@@ -229,6 +230,76 @@ class HolidaySeedCommandTestCase(TestCase):
 
         corpus_christi = Holiday.objects.get(date="2026-06-04")
         self.assertEqual(corpus_christi.name, "Corpus Christi")
+
+
+class AdministrativeSeedCommandTestCase(TestCase):
+    @staticmethod
+    def _call(command_name):
+        call_command(command_name, stdout=StringIO())
+
+    def _seed_person_types_and_belts(self):
+        self._call("seed_system_initial_person_type")
+        self._call("seed_system_initial_belt_ranks")
+
+    def _seed_full_administrative_dependencies(self):
+        self._seed_person_types_and_belts()
+        self._call("seed_system_initial_ibjjf_age_categories")
+        self._call("seed_system_initial_class_categories")
+        self._call("seed_system_initial_teacher")
+        self._call("seed_system_initial_class_catalog")
+
+    def _administrative_password_settings(self):
+        return self.settings(
+            SEED_INITIAL_ADMINISTRATIVE_PASSWORD=DEFAULT_SEED_PASSWORD,
+            SEED_INITIAL_TEACHER_PASSWORD=DEFAULT_SEED_PASSWORD,
+        )
+
+    def test_administrative_seed_reports_missing_class_categories_before_partial_write(self):
+        with self._administrative_password_settings():
+            self._seed_person_types_and_belts()
+
+            with self.assertRaisesMessage(CommandError, "seed_system_initial_class_categories"):
+                self._call("seed_system_initial_administrative")
+
+        self.assertFalse(Person.objects.filter(cpf="920.000.011-81").exists())
+
+    def test_administrative_seed_reports_missing_class_catalog_before_partial_write(self):
+        with self._administrative_password_settings():
+            self._seed_person_types_and_belts()
+            self._call("seed_system_initial_class_categories")
+            self._call("seed_system_initial_teacher")
+
+            with self.assertRaisesMessage(CommandError, "seed_system_initial_class_catalog"):
+                self._call("seed_system_initial_administrative")
+
+        self.assertFalse(Person.objects.filter(cpf="920.000.011-81").exists())
+
+    def test_administrative_legacy_link_seeds_are_idempotent_after_main_seed(self):
+        with self._administrative_password_settings():
+            self._seed_full_administrative_dependencies()
+            self._call("seed_system_initial_administrative")
+            self._call("seed_system_initial_class_categories_administrative")
+            self._call("seed_system_initial_class_categories_administrative")
+            self._call("seed_system_initial_class_catalog_administrative")
+            self._call("seed_system_initial_class_catalog_administrative")
+
+        person = Person.objects.get(cpf="920.000.011-81")
+        self.assertEqual(person.person_type.code, PersonTypeCode.STUDENT)
+        self.assertEqual(person.class_category.code, "adult")
+        self.assertEqual(person.class_enrollments.filter(status="active").count(), 2)
+        self.assertTrue(person.has_operational_role(OperationalRoleCode.CLASS_ASSISTANT))
+        self.assertEqual(
+            person.operational_role_assignments.get().class_group.class_category.code,
+            "kids",
+        )
+        self.assertEqual(person.class_instructor_assignments.count(), 1)
+        self.assertEqual(
+            person.class_instructor_assignments.get().class_group.class_category.code,
+            "kids",
+        )
+        miguel = Person.objects.get(cpf="920.000.012-62")
+        self.assertEqual(miguel.person_type.code, PersonTypeCode.STUDENT)
+        self.assertFalse(miguel.operational_role_assignments.exists())
 
 
 class KanriStudentsMigrationSeedCommandTestCase(TestCase):

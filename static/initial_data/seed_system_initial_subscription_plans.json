@@ -11,11 +11,11 @@
   },
   {
     "code": "loyalty",
-    "display_name": "Fidelidade",
+    "display_name": "Veterano",
     "audience": "adult",
     "is_family_plan": false,
     "is_loyalty_plan": true,
-    "description": "Plano com compromisso de fidelidade — desconto progressivo por ciclo.",
+    "description": "Plano para alunos com pelo menos 2 anos de vínculo contínuo na academia — desconto progressivo por ciclo.",
     "display_order": 2,
     "is_active": true
   },

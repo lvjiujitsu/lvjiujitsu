@@ -1,0 +1,606 @@
+from datetime import time
+
+from django.contrib.auth.hashers import make_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+
+from system.constants import PersonTypeCode, PortalCapability
+from system.models import (
+    ClassCatalogRequest,
+    ClassCatalogRequestOrigin,
+    ClassCatalogRequestStatus,
+    ClassCatalogRequestType,
+    ClassGroup,
+    ClassInstructorAssignment,
+    ClassSchedule,
+    Person,
+    PortalAccount,
+)
+from system.services.registration import ensure_default_person_types
+from system.utils import ensure_formatted_cpf
+
+
+def create_existing_teacher_class_request(
+    *,
+    requester,
+    request_type,
+    class_group,
+    class_category,
+    display_name,
+    weekday,
+    training_style,
+    start_time,
+    duration_minutes,
+    default_capacity,
+    justification,
+    extra_schedules=None,
+):
+    if request_type == ClassCatalogRequestType.NEW_SCHEDULE:
+        _validate_scoped_class_group(requester, class_group)
+        _validate_schedule_slot_available(
+            class_group=class_group,
+            weekday=weekday,
+            training_style=training_style,
+            start_time=start_time,
+        )
+        if extra_schedules:
+            raise ValidationError("Horários adicionais só se aplicam à criação de nova turma.")
+    elif request_type == ClassCatalogRequestType.NEW_CLASS_GROUP:
+        if class_category is None:
+            raise ValidationError("Selecione a categoria da nova turma.")
+        if not (display_name or "").strip():
+            raise ValidationError("Informe o nome da nova turma.")
+    else:
+        raise ValidationError("Tipo de solicitação inválido para professor logado.")
+
+    _validate_schedule_payload(weekday, training_style, start_time, duration_minutes)
+    normalized_extra_schedules = _normalize_extra_schedules(
+        extra_schedules, primary_slot=(weekday, training_style, start_time)
+    )
+    request = ClassCatalogRequest.objects.create(
+        origin=ClassCatalogRequestOrigin.PORTAL,
+        status=ClassCatalogRequestStatus.PENDING,
+        request_type=request_type,
+        requester_person=requester,
+        teacher_person=requester,
+        target_class_group=class_group if request_type == ClassCatalogRequestType.NEW_SCHEDULE else None,
+        class_category=class_category,
+        display_name=(display_name or "").strip(),
+        weekday=weekday,
+        training_style=training_style,
+        start_time=start_time,
+        duration_minutes=duration_minutes,
+        default_capacity=default_capacity or 0,
+        justification=(justification or "").strip(),
+        extra_schedules=_serialize_extra_schedules(normalized_extra_schedules),
+    )
+    request.payload = _build_payload(request)
+    request.save(update_fields=("payload", "updated_at"))
+    return request
+
+
+def create_new_teacher_class_request(
+    *,
+    full_name,
+    cpf,
+    email,
+    phone,
+    password,
+    class_category,
+    display_name,
+    weekday,
+    training_style,
+    start_time,
+    duration_minutes,
+    default_capacity,
+    justification,
+    martial_art="",
+    martial_art_graduation="",
+    jiu_jitsu_belt="",
+    jiu_jitsu_stripes=None,
+    extra_schedules=None,
+):
+    formatted_cpf = ensure_formatted_cpf(cpf)
+    if _has_pending_new_teacher_request(formatted_cpf):
+        raise ValidationError("Já existe uma proposta pendente para este CPF.")
+    if class_category is None:
+        raise ValidationError("Selecione a categoria da turma proposta.")
+    if not (display_name or "").strip():
+        raise ValidationError("Informe o nome da turma proposta.")
+    if not password:
+        raise ValidationError("Informe uma senha inicial para o professor.")
+    _validate_schedule_payload(weekday, training_style, start_time, duration_minutes)
+    normalized_extra_schedules = _normalize_extra_schedules(
+        extra_schedules, primary_slot=(weekday, training_style, start_time)
+    )
+
+    request = ClassCatalogRequest.objects.create(
+        origin=ClassCatalogRequestOrigin.PUBLIC_REGISTRATION,
+        status=ClassCatalogRequestStatus.PENDING,
+        request_type=ClassCatalogRequestType.NEW_TEACHER_WITH_SCHEDULE,
+        full_name=(full_name or "").strip(),
+        cpf=formatted_cpf,
+        email=(email or "").strip(),
+        phone=(phone or "").strip(),
+        password_hash=make_password(password),
+        martial_art=martial_art or "",
+        martial_art_graduation=martial_art_graduation or "",
+        jiu_jitsu_belt=jiu_jitsu_belt or "",
+        jiu_jitsu_stripes=jiu_jitsu_stripes,
+        class_category=class_category,
+        display_name=(display_name or "").strip(),
+        weekday=weekday,
+        training_style=training_style,
+        start_time=start_time,
+        duration_minutes=duration_minutes,
+        default_capacity=default_capacity or 0,
+        justification=(justification or "").strip(),
+        extra_schedules=_serialize_extra_schedules(normalized_extra_schedules),
+    )
+    request.payload = _build_payload(request)
+    request.save(update_fields=("payload", "updated_at"))
+    return request
+
+
+@transaction.atomic
+def approve_class_catalog_request(
+    request_id,
+    *,
+    approved_by,
+    class_group=None,
+    class_category=None,
+    display_name=None,
+    weekday=None,
+    training_style=None,
+    start_time=None,
+    duration_minutes=None,
+    default_capacity=None,
+    decision_notes="",
+):
+    catalog_request = (
+        ClassCatalogRequest.objects.select_for_update()
+        .select_related(
+            "requester_person",
+            "teacher_person",
+            "target_class_group",
+            "class_category",
+        )
+        .get(pk=request_id)
+    )
+    _require_pending(catalog_request)
+    approved = _resolve_approved_payload(
+        catalog_request,
+        class_group=class_group,
+        class_category=class_category,
+        display_name=display_name,
+        weekday=weekday,
+        training_style=training_style,
+        start_time=start_time,
+        duration_minutes=duration_minutes,
+        default_capacity=default_capacity,
+    )
+
+    if catalog_request.request_type == ClassCatalogRequestType.NEW_SCHEDULE:
+        created_group = _approve_new_schedule(catalog_request, approved)
+        created_teacher = None
+    elif catalog_request.request_type == ClassCatalogRequestType.NEW_CLASS_GROUP:
+        created_teacher = catalog_request.teacher_person
+        created_group = _approve_new_class_group(catalog_request, approved, created_teacher)
+    else:
+        created_teacher = _resolve_or_create_instructor(catalog_request)
+        created_group = _approve_new_class_group(catalog_request, approved, created_teacher)
+
+    catalog_request.status = ClassCatalogRequestStatus.APPROVED
+    catalog_request.created_teacher = created_teacher
+    catalog_request.created_class_group = created_group
+    catalog_request.decided_by = approved_by
+    catalog_request.decided_at = timezone.now()
+    catalog_request.decision_notes = (decision_notes or "").strip()
+    catalog_request.approved_payload = _payload_to_json(approved)
+    catalog_request.save(
+        update_fields=(
+            "status",
+            "created_teacher",
+            "created_class_group",
+            "decided_by",
+            "decided_at",
+            "decision_notes",
+            "approved_payload",
+            "updated_at",
+        )
+    )
+    return catalog_request
+
+
+@transaction.atomic
+def reject_class_catalog_request(request_id, *, rejected_by, decision_notes):
+    catalog_request = ClassCatalogRequest.objects.select_for_update().get(pk=request_id)
+    _require_pending(catalog_request)
+    if not (decision_notes or "").strip():
+        raise ValidationError("Informe o motivo da recusa.")
+    catalog_request.status = ClassCatalogRequestStatus.REJECTED
+    catalog_request.decided_by = rejected_by
+    catalog_request.decided_at = timezone.now()
+    catalog_request.decision_notes = decision_notes.strip()
+    catalog_request.save(
+        update_fields=(
+            "status",
+            "decided_by",
+            "decided_at",
+            "decision_notes",
+            "updated_at",
+        )
+    )
+    return catalog_request
+
+
+@transaction.atomic
+def cancel_class_catalog_request(request_id, *, canceled_by, decision_notes=""):
+    catalog_request = ClassCatalogRequest.objects.select_for_update().get(pk=request_id)
+    _require_pending(catalog_request)
+    catalog_request.status = ClassCatalogRequestStatus.CANCELED
+    catalog_request.decided_by = canceled_by
+    catalog_request.decided_at = timezone.now()
+    catalog_request.decision_notes = (decision_notes or "Cancelada pelo solicitante.").strip()
+    catalog_request.save(
+        update_fields=(
+            "status",
+            "decided_by",
+            "decided_at",
+            "decision_notes",
+            "updated_at",
+        )
+    )
+    return catalog_request
+
+
+CLASS_CATALOG_DECISION_CAPABILITIES = (
+    PortalCapability.MANAGE_CLASSES,
+    PortalCapability.MANAGE_ACADEMY,
+)
+
+
+def can_decide_class_catalog_request(request_capabilities):
+    return bool(set(CLASS_CATALOG_DECISION_CAPABILITIES) & set(request_capabilities))
+
+
+def can_cancel_class_catalog_request(catalog_request, *, actor, actor_capabilities):
+    if can_decide_class_catalog_request(actor_capabilities):
+        return True
+    if actor is None:
+        return False
+    return actor.pk in (catalog_request.requester_person_id, catalog_request.teacher_person_id)
+
+
+def get_class_catalog_requests_for_person(person, limit=5):
+    if person is None:
+        return []
+    return list(
+        ClassCatalogRequest.objects.filter(
+            requester_person=person,
+        )
+        .select_related("target_class_group", "created_class_group")
+        .order_by("-created_at")[:limit]
+    )
+
+
+def get_class_catalog_requests_history_for_person(person, limit=20):
+    if person is None:
+        return []
+    return list(
+        ClassCatalogRequest.objects.filter(
+            Q(requester_person=person) | Q(teacher_person=person) | Q(created_teacher=person)
+        )
+        .select_related("target_class_group", "created_class_group")
+        .order_by("-created_at")
+        .distinct()[:limit]
+    )
+
+
+def get_pending_class_catalog_request_count():
+    return ClassCatalogRequest.objects.filter(
+        status=ClassCatalogRequestStatus.PENDING,
+    ).count()
+
+
+def _approve_new_schedule(catalog_request, approved):
+    class_group = approved["class_group"]
+    _validate_schedule_slot_available(
+        class_group=class_group,
+        weekday=approved["weekday"],
+        training_style=approved["training_style"],
+        start_time=approved["start_time"],
+        exclude_request_id=catalog_request.pk,
+    )
+    ClassSchedule.objects.create(
+        class_group=class_group,
+        weekday=approved["weekday"],
+        training_style=approved["training_style"],
+        start_time=approved["start_time"],
+        duration_minutes=approved["duration_minutes"],
+        display_order=0,
+        is_active=True,
+    )
+    return class_group
+
+
+def _approve_new_class_group(catalog_request, approved, teacher):
+    if teacher is None:
+        raise ValidationError("A solicitação não possui professor aprovado.")
+    class_group = ClassGroup.objects.create(
+        display_name=approved["display_name"],
+        class_category=approved["class_category"],
+        main_teacher=teacher,
+        default_capacity=approved["default_capacity"],
+        is_active=True,
+    )
+    ClassSchedule.objects.create(
+        class_group=class_group,
+        weekday=approved["weekday"],
+        training_style=approved["training_style"],
+        start_time=approved["start_time"],
+        duration_minutes=approved["duration_minutes"],
+        display_order=0,
+        is_active=True,
+    )
+    for index, extra in enumerate(_deserialize_extra_schedules(catalog_request.extra_schedules), start=1):
+        _validate_schedule_slot_available(
+            class_group=class_group,
+            weekday=extra["weekday"],
+            training_style=extra["training_style"],
+            start_time=extra["start_time"],
+        )
+        ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=extra["weekday"],
+            training_style=extra["training_style"],
+            start_time=extra["start_time"],
+            duration_minutes=extra["duration_minutes"],
+            display_order=index,
+            is_active=True,
+        )
+    return class_group
+
+
+def _resolve_or_create_instructor(catalog_request):
+    person_types = ensure_default_person_types()
+    instructor_type = person_types[PersonTypeCode.INSTRUCTOR]
+    person = Person.objects.filter(cpf=catalog_request.cpf).first()
+    if person is None:
+        person = Person.objects.create(
+            full_name=catalog_request.full_name,
+            cpf=catalog_request.cpf,
+            email=catalog_request.email,
+            phone=catalog_request.phone,
+            person_type=instructor_type,
+            martial_art=catalog_request.martial_art,
+            martial_art_graduation=catalog_request.martial_art_graduation,
+            jiu_jitsu_belt=catalog_request.jiu_jitsu_belt,
+            jiu_jitsu_stripes=catalog_request.jiu_jitsu_stripes,
+            is_active=True,
+        )
+    else:
+        person.person_type = instructor_type
+        person.is_active = True
+        for field_name in ("email", "phone"):
+            if not getattr(person, field_name) and getattr(catalog_request, field_name):
+                setattr(person, field_name, getattr(catalog_request, field_name))
+        person.save(update_fields=("person_type", "is_active", "email", "phone", "updated_at"))
+    _ensure_portal_account(person, catalog_request.password_hash)
+    return person
+
+
+def _ensure_portal_account(person, password_hash):
+    account = getattr(person, "access_account", None)
+    if account is not None:
+        if not account.is_active:
+            account.is_active = True
+            account.save(update_fields=("is_active", "updated_at"))
+        return account
+    return PortalAccount.objects.create(
+        person=person,
+        password_hash=password_hash or make_password(None),
+        is_active=True,
+    )
+
+
+def _resolve_approved_payload(
+    catalog_request,
+    *,
+    class_group,
+    class_category,
+    display_name,
+    weekday,
+    training_style,
+    start_time,
+    duration_minutes,
+    default_capacity,
+):
+    resolved_group = class_group or catalog_request.target_class_group
+    resolved_category = class_category or catalog_request.class_category
+    resolved_display_name = (display_name if display_name is not None else catalog_request.display_name).strip()
+    resolved_weekday = weekday or catalog_request.weekday
+    resolved_training_style = training_style or catalog_request.training_style
+    resolved_start_time = start_time or catalog_request.start_time
+    resolved_duration = duration_minutes or catalog_request.duration_minutes
+    resolved_capacity = default_capacity if default_capacity is not None else catalog_request.default_capacity
+
+    if catalog_request.request_type == ClassCatalogRequestType.NEW_SCHEDULE and resolved_group is None:
+        raise ValidationError("Selecione a turma que receberá o novo horário.")
+    if catalog_request.request_type != ClassCatalogRequestType.NEW_SCHEDULE:
+        if resolved_category is None:
+            raise ValidationError("Selecione a categoria da nova turma.")
+        if not resolved_display_name:
+            raise ValidationError("Informe o nome da nova turma.")
+    _validate_schedule_payload(
+        resolved_weekday,
+        resolved_training_style,
+        resolved_start_time,
+        resolved_duration,
+    )
+    return {
+        "class_group": resolved_group,
+        "class_category": resolved_category,
+        "display_name": resolved_display_name,
+        "weekday": resolved_weekday,
+        "training_style": resolved_training_style,
+        "start_time": resolved_start_time,
+        "duration_minutes": resolved_duration,
+        "default_capacity": resolved_capacity or 0,
+    }
+
+
+def _validate_scoped_class_group(person, class_group):
+    if class_group is None:
+        raise ValidationError("Selecione a turma existente.")
+    if class_group.main_teacher_id == person.pk:
+        return
+    if ClassInstructorAssignment.objects.filter(class_group=class_group, person=person).exists():
+        return
+    raise ValidationError("Professor pode solicitar horário apenas para turma em que atua.")
+
+
+def _validate_schedule_payload(weekday, training_style, start_time, duration_minutes):
+    if not weekday:
+        raise ValidationError("Informe o dia da semana.")
+    if not training_style:
+        raise ValidationError("Informe o estilo de treino.")
+    if start_time is None:
+        raise ValidationError("Informe o horário de início.")
+    if not duration_minutes or int(duration_minutes) <= 0:
+        raise ValidationError("Informe uma duração válida.")
+
+
+def _validate_schedule_slot_available(
+    *,
+    class_group,
+    weekday,
+    training_style,
+    start_time,
+    exclude_request_id=None,
+):
+    if ClassSchedule.objects.filter(
+        class_group=class_group,
+        weekday=weekday,
+        training_style=training_style,
+        start_time=start_time,
+    ).exists():
+        raise ValidationError("Já existe horário igual para esta turma.")
+    pending_queryset = ClassCatalogRequest.objects.filter(
+        status=ClassCatalogRequestStatus.PENDING,
+        target_class_group=class_group,
+        weekday=weekday,
+        training_style=training_style,
+        start_time=start_time,
+    )
+    if exclude_request_id is not None:
+        pending_queryset = pending_queryset.exclude(pk=exclude_request_id)
+    if pending_queryset.exists():
+        raise ValidationError("Já existe solicitação pendente para este horário.")
+
+
+MAX_EXTRA_SCHEDULES = 4
+
+
+def _normalize_extra_schedules(extra_schedules, *, primary_slot):
+    if not extra_schedules:
+        return []
+    if len(extra_schedules) > MAX_EXTRA_SCHEDULES:
+        raise ValidationError(
+            f"São permitidos no máximo {MAX_EXTRA_SCHEDULES} horários adicionais por solicitação."
+        )
+    seen_slots = {primary_slot}
+    normalized = []
+    for extra in extra_schedules:
+        weekday = extra.get("weekday")
+        training_style = extra.get("training_style")
+        start_time = extra.get("start_time")
+        duration_minutes = extra.get("duration_minutes")
+        _validate_schedule_payload(weekday, training_style, start_time, duration_minutes)
+        slot = (weekday, training_style, start_time)
+        if slot in seen_slots:
+            raise ValidationError("Horários adicionais não podem repetir dia, estilo e horário.")
+        seen_slots.add(slot)
+        normalized.append(
+            {
+                "weekday": weekday,
+                "training_style": training_style,
+                "start_time": start_time,
+                "duration_minutes": int(duration_minutes),
+            }
+        )
+    return normalized
+
+
+def _serialize_extra_schedules(normalized_extra_schedules):
+    return [
+        {
+            "weekday": extra["weekday"],
+            "training_style": extra["training_style"],
+            "start_time": extra["start_time"].strftime("%H:%M"),
+            "duration_minutes": extra["duration_minutes"],
+        }
+        for extra in normalized_extra_schedules
+    ]
+
+
+def _deserialize_extra_schedules(stored_extra_schedules):
+    deserialized = []
+    for extra in stored_extra_schedules or []:
+        deserialized.append(
+            {
+                "weekday": extra["weekday"],
+                "training_style": extra["training_style"],
+                "start_time": time.fromisoformat(extra["start_time"]),
+                "duration_minutes": extra["duration_minutes"],
+            }
+        )
+    return deserialized
+
+
+def _has_pending_new_teacher_request(cpf):
+    return ClassCatalogRequest.objects.filter(
+        request_type=ClassCatalogRequestType.NEW_TEACHER_WITH_SCHEDULE,
+        status=ClassCatalogRequestStatus.PENDING,
+        cpf=cpf,
+    ).exists()
+
+
+def _require_pending(catalog_request):
+    if catalog_request.status != ClassCatalogRequestStatus.PENDING:
+        raise ValidationError("A solicitação já foi decidida.")
+
+
+def _build_payload(catalog_request):
+    return _payload_to_json(
+        {
+            "class_group": catalog_request.target_class_group,
+            "class_category": catalog_request.class_category,
+            "display_name": catalog_request.display_name,
+            "weekday": catalog_request.weekday,
+            "training_style": catalog_request.training_style,
+            "start_time": catalog_request.start_time,
+            "duration_minutes": catalog_request.duration_minutes,
+            "default_capacity": catalog_request.default_capacity,
+        }
+    )
+
+
+def _payload_to_json(payload):
+    class_group = payload.get("class_group")
+    class_category = payload.get("class_category")
+    start_time = payload.get("start_time")
+    return {
+        "class_group_id": class_group.pk if class_group else None,
+        "class_group_label": str(class_group) if class_group else "",
+        "class_category_id": class_category.pk if class_category else None,
+        "class_category_label": str(class_category) if class_category else "",
+        "display_name": payload.get("display_name") or "",
+        "weekday": payload.get("weekday") or "",
+        "training_style": payload.get("training_style") or "",
+        "start_time": start_time.strftime("%H:%M") if start_time else "",
+        "duration_minutes": payload.get("duration_minutes") or 0,
+        "default_capacity": payload.get("default_capacity") or 0,
+    }

@@ -475,6 +475,27 @@
             {% if m.current_period_end %}Vencimento: {{ m.current_period_end|date:"d/m/Y" }}{% endif %}
             {% if m.gateway_subscription_id %} · ID: {{ m.gateway_subscription_id }}{% endif %}
           </div>
+          {% if m.status == "active" or m.status == "past_due" or m.status == "exempted" %}
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.625rem;">
+            {% if available_plans %}
+            <form method="post" action="{% url 'system:change-membership-plan' membership_id=m.pk %}" style="display:inline-flex;gap:0.375rem;align-items:center;">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <select name="plan_id" class="filter-select" aria-label="Novo plano">
+                {% for plan in available_plans %}
+                <option value="{{ plan.pk }}" {% if plan.pk == m.plan_id %}selected{% endif %}>{{ plan.display_name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn--secondary btn--sm">Trocar plano</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{% url 'system:cancel-membership' membership_id=m.pk %}" onsubmit="return confirm('Confirma cancelar a assinatura #{{ m.pk }}?');">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <button type="submit" class="btn btn--danger-outline btn--sm">Cancelar assinatura</button>
+            </form>
+          </div>
+          {% endif %}
           {% endwith %}
           {% else %}
           <p style="font-size:0.875rem;color:var(--muted);">Nenhum plano ativo.</p>
@@ -563,6 +584,81 @@
         </div>
         {% endif %}
 
+        <!-- Plano Veterano -->
+        <div class="detail-section" style="border-bottom:none;">
+          <h3 class="detail-section__title">Plano Veterano</h3>
+          <div style="display:flex;align-items:center;gap:0.625rem;margin-bottom:0.375rem;flex-wrap:wrap;">
+            {% if veteran_plan_eligible %}
+              <span class="badge badge--success">Elegível</span>
+            {% else %}
+              <span class="badge badge--neutral">Não elegível</span>
+            {% endif %}
+            {% if veteran_plan_owner.veteran_plan_approved %}
+              <span class="badge badge--success">Aprovação manual ativa</span>
+            {% endif %}
+          </div>
+          <div class="billing-plan-detail">
+            {% if veteran_member_since %}
+              Vínculo contínuo desde {{ veteran_member_since|date:"d/m/Y" }} (mínimo exigido: {{ veteran_plan_tenure_years }} anos).
+            {% else %}
+              Sem histórico de assinatura ativa para calcular tempo de vínculo.
+            {% endif %}
+          </div>
+          {% if veteran_plan_owner.veteran_plan_approved_notes %}
+          <div class="billing-plan-detail">Justificativa: {{ veteran_plan_owner.veteran_plan_approved_notes }}</div>
+          {% endif %}
+          {% if veteran_plan_owner.veteran_plan_approved_by %}
+          <div class="billing-plan-detail">
+            Decidido por {{ veteran_plan_owner.veteran_plan_approved_by.full_name }} em {{ veteran_plan_owner.veteran_plan_approved_at|date:"d/m/Y H:i" }}
+          </div>
+          {% endif %}
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.625rem;">
+            {% if veteran_plan_owner.veteran_plan_approved %}
+            <form method="post" action="{% url 'system:person-veteran-plan-decision' pk=veteran_plan_owner.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="revoke">
+              <button type="submit" class="btn btn--secondary btn--sm">Revogar plano Veterano</button>
+            </form>
+            {% else %}
+            <form method="post" action="{% url 'system:person-veteran-plan-decision' pk=veteran_plan_owner.pk %}" style="display:inline-flex;gap:0.375rem;align-items:center;flex-wrap:wrap;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="approve">
+              <input type="text" name="notes" class="filter-select" placeholder="Justificativa (opcional)">
+              <button type="submit" class="btn btn--secondary btn--sm">Aprovar plano Veterano</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── Solicitações (somente can_manage_people) ─────────────────────────── -->
+    {% if can_manage_people and access_request_history or can_manage_people and class_request_history %}
+    <section class="section" aria-labelledby="requests-history-heading">
+      <div class="section__header">
+        <h2 class="section__title" id="requests-history-heading">Solicitações</h2>
+      </div>
+      <div class="detail-panel">
+        <div class="detail-section" style="border-bottom:none;">
+          <ul class="grad-history" aria-label="Histórico de solicitações">
+            {% for item in access_request_history %}
+            <li class="grad-history-item">
+              <span class="grad-history-item__date">{{ item.created_at|date:"d/m/Y" }}</span>
+              <span class="grad-history-item__belt">Acesso administrativo — {{ item.requested_role_codes|join:", "|default:"gestão completa" }}</span>
+              <span class="badge {% if item.status == 'pending' %}badge--warning{% elif item.status == 'approved' %}badge--success{% elif item.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ item.get_status_display }}</span>
+            </li>
+            {% endfor %}
+            {% for item in class_request_history %}
+            <li class="grad-history-item">
+              <span class="grad-history-item__date">{{ item.created_at|date:"d/m/Y" }}</span>
+              <span class="grad-history-item__belt">{{ item.get_request_type_display }} — {{ item.display_name|default:item.target_class_group|default:"—" }}</span>
+              <span class="badge {% if item.status == 'pending' %}badge--warning{% elif item.status == 'approved' %}badge--success{% elif item.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ item.get_status_display }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
       </div>
     </section>
     {% endif %}
