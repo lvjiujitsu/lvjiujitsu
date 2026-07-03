@@ -6,164 +6,139 @@
   <title>Editar dependente — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=7">
 </head>
-<body class="dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
-  <main class="dependent-shell" id="main-content">
-    <header class="dependent-header">
+<body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
+
+  <div class="wizard-shell">
+
+    <header class="wizard-header">
       {% if is_modal %}
-      <button class="dependent-back" type="button" data-dependent-frame-close>← Voltar</button>
+      <button class="wizard-back" type="button" data-dependent-frame-close>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Fechar
+      </button>
       {% else %}
-      <a class="dependent-back" href="{% url 'system:home' %}">← Voltar</a>
+      <a class="wizard-back" href="{% url 'system:home' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Voltar
+      </a>
       {% endif %}
-      <img class="dependent-header__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="100">
-      <span class="dependent-progress">Dados do dependente</span>
+      <img src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" class="wizard-header__logo" width="100">
+      <div class="wizard-progress">Dados do dependente</div>
     </header>
 
-    <section class="dependent-hero" aria-labelledby="dependent-edit-title">
-      <p class="dependent-hero__eyebrow">Dependente de {{ owner.full_name }}</p>
-      <h1 class="dependent-hero__title" id="dependent-edit-title">Editar dependente</h1>
-      <p class="dependent-hero__subtitle">Atualize dados pessoais, saúde e histórico marcial.</p>
-    </section>
-
-    <form class="dependent-form" method="post" action="{% url 'system:dependent-edit' pk=dependent.pk %}{% if is_modal %}?modal=1{% endif %}" novalidate>
-      {% csrf_token %}
-      {% if is_modal %}<input type="hidden" name="_modal" value="1">{% endif %}
-
-      {% if form.non_field_errors %}
-      <div class="form-errors" role="alert">
-        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    <div class="wizard-step">
+      <div class="wizard-step__heading">
+        <p class="dep-step-badge">Dependente de {{ owner.full_name }}</p>
+        <h1 class="wizard-step__title">Editar dependente</h1>
+        <p class="wizard-step__subtitle">Atualize dados pessoais, saúde e histórico marcial.</p>
       </div>
-      {% endif %}
 
-      <section class="dependent-step" aria-labelledby="edit-personal-title">
-        <div class="dependent-step__heading">
-          <span class="dependent-step__number">1</span>
-          <div>
-            <h2 id="edit-personal-title">Dados pessoais</h2>
-            <p>Identificação e contato do dependente.</p>
-          </div>
-        </div>
-        <div class="field-grid field-grid--three">
-          <label class="field field--wide">
-            <span>Nome completo</span>
-            {{ form.full_name }}
-            {% for error in form.full_name.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Data de nascimento</span>
-            {{ form.birth_date }}
-            {% for error in form.birth_date.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Sexo biológico</span>
-            {{ form.biological_sex }}
-            {% for error in form.biological_sex.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>E-mail</span>
-            {{ form.email }}
-            {% for error in form.email.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Telefone</span>
-            {{ form.phone }}
-            {% for error in form.phone.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-        </div>
-      </section>
+      <form class="wizard-form" method="post" action="{% url 'system:dependent-edit' pk=dependent.pk %}{% if is_modal %}?modal=1{% endif %}" novalidate>
+        {% csrf_token %}
+        {% if is_modal %}<input type="hidden" name="_modal" value="1">{% endif %}
 
-      <section class="dependent-step" aria-labelledby="edit-health-title">
-        <div class="dependent-step__heading">
-          <span class="dependent-step__number">2</span>
-          <div>
-            <h2 id="edit-health-title">Saúde</h2>
-            <p>Dados usados para segurança no treino.</p>
-          </div>
+        {% if form.non_field_errors %}
+        <div class="wizard-system-message wizard-system-message--error">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
         </div>
-        <div class="field-grid field-grid--two">
-          <label class="field">
-            <span>Tipo sanguíneo</span>
-            {{ form.blood_type }}
-            {% for error in form.blood_type.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field field--wide">
-            <span>Contato de emergência</span>
-            {{ form.emergency_contact }}
-            {% for error in form.emergency_contact.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Alergias</span>
-            {{ form.allergies }}
-            {% for error in form.allergies.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Lesões</span>
-            {{ form.previous_injuries }}
-            {% for error in form.previous_injuries.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-        </div>
-      </section>
-
-      <section class="dependent-step" aria-labelledby="edit-martial-title">
-        <div class="dependent-step__heading">
-          <span class="dependent-step__number">3</span>
-          <div>
-            <h2 id="edit-martial-title">Histórico marcial</h2>
-            <p>Faixa, graus e datas usadas no cálculo de graduação.</p>
-          </div>
-        </div>
-        <div class="field-grid field-grid--three">
-          <label class="field">
-            <span>Arte marcial</span>
-            {{ form.martial_art }}
-            {% for error in form.martial_art.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Graduação</span>
-            {{ form.martial_art_graduation }}
-            {% for error in form.martial_art_graduation.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Faixa de Jiu Jitsu</span>
-            {{ form.jiu_jitsu_belt }}
-            {% for error in form.jiu_jitsu_belt.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Graus</span>
-            {{ form.jiu_jitsu_stripes }}
-            {% for error in form.jiu_jitsu_stripes.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Início no treino</span>
-            {{ form.martial_art_started_at }}
-            {% for error in form.martial_art_started_at.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field">
-            <span>Última graduação</span>
-            {{ form.martial_art_last_graduation_at }}
-            {% for error in form.martial_art_last_graduation_at.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-          <label class="field field--wide">
-            <span>Academia anterior</span>
-            {{ form.previous_academy }}
-            {% for error in form.previous_academy.errors %}<small>{{ error }}</small>{% endfor %}
-          </label>
-        </div>
-      </section>
-
-      <div class="dependent-actions">
-        {% if is_modal %}
-        <button class="btn btn--secondary" type="button" data-dependent-frame-close>Cancelar</button>
-        {% else %}
-        <a class="btn btn--secondary" href="{% url 'system:home' %}">Cancelar</a>
         {% endif %}
-        <button class="btn btn--primary" type="submit">Salvar dependente</button>
-      </div>
-    </form>
-  </main>
+
+        <div class="wizard-form__fields">
+          <p class="dep-step-badge">Dados pessoais</p>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.full_name.id_for_label }}">Nome completo</label>
+            {{ form.full_name }}
+            {% for error in form.full_name.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.birth_date.id_for_label }}">Data de nascimento</label>
+            {{ form.birth_date }}
+            {% for error in form.birth_date.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.biological_sex.id_for_label }}">Sexo biológico</label>
+            <div class="form-select-wrapper">{{ form.biological_sex }}</div>
+            {% for error in form.biological_sex.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.email.id_for_label }}">E-mail <span class="form-label-optional">(opcional)</span></label>
+            {{ form.email }}
+            {% for error in form.email.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.phone.id_for_label }}">Telefone <span class="form-label-optional">(opcional)</span></label>
+            {{ form.phone }}
+          </div>
+
+          <p class="dep-step-badge">Saúde</p>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.blood_type.id_for_label }}">Tipo sanguíneo <span class="form-label-optional">(opcional)</span></label>
+            <div class="form-select-wrapper">{{ form.blood_type }}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.allergies.id_for_label }}">Alergias <span class="form-label-optional">(opcional)</span></label>
+            {{ form.allergies }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.previous_injuries.id_for_label }}">Lesões <span class="form-label-optional">(opcional)</span></label>
+            {{ form.previous_injuries }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.emergency_contact.id_for_label }}">Contato de emergência <span class="form-label-optional">(opcional)</span></label>
+            {{ form.emergency_contact }}
+          </div>
+
+          <p class="dep-step-badge">Histórico marcial</p>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.martial_art.id_for_label }}">Arte marcial <span class="form-label-optional">(opcional)</span></label>
+            <div class="form-select-wrapper">{{ form.martial_art }}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.martial_art_graduation.id_for_label }}">Graduação <span class="form-label-optional">(opcional)</span></label>
+            {{ form.martial_art_graduation }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.jiu_jitsu_belt.id_for_label }}">Faixa de Jiu Jitsu <span class="form-label-optional">(opcional)</span></label>
+            <div class="form-select-wrapper">{{ form.jiu_jitsu_belt }}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.jiu_jitsu_stripes.id_for_label }}">Graus <span class="form-label-optional">(opcional)</span></label>
+            {{ form.jiu_jitsu_stripes }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.martial_art_started_at.id_for_label }}">Início no treino <span class="form-label-optional">(opcional)</span></label>
+            {{ form.martial_art_started_at }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.martial_art_last_graduation_at.id_for_label }}">Última graduação <span class="form-label-optional">(opcional)</span></label>
+            {{ form.martial_art_last_graduation_at }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.previous_academy.id_for_label }}">Academia anterior <span class="form-label-optional">(opcional)</span></label>
+            {{ form.previous_academy }}
+          </div>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button class="btn-next" type="submit">Salvar dependente</button>
+          {% if is_modal %}
+          <button class="btn-checkout-later" type="button" data-dependent-frame-close>Cancelar</button>
+          {% else %}
+          <a class="btn-checkout-later" href="{% url 'system:home' %}">Cancelar</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
   {% if is_modal %}
-  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=2" defer></script>
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=6" defer></script>
   {% endif %}
 </body>
 </html>

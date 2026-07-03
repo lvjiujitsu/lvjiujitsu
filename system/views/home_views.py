@@ -345,6 +345,7 @@ def _build_dependents(guardian):
             "graduation_progress": progress,
             "graduation_history": get_graduation_history(dependent),
             "today_classes": get_today_classes_for_person(dependent),
+            "attendance_history": get_student_checkin_history(dependent, limit=5),
             "active_membership": get_active_membership(dependent),
             "billing_owner": get_membership_owner(dependent),
             "edit_url": reverse("system:dependent-edit", args=[dependent.pk]),

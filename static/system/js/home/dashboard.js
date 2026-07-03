@@ -379,6 +379,46 @@
     });
   }
 
+  function bindDependentProfileModals() {
+    var overlays = document.querySelectorAll('.dependent-profile-modal-overlay');
+    if (!overlays.length) return;
+
+    function closeModal(overlay) {
+      overlay.setAttribute('hidden', '');
+      document.body.classList.remove('modal-open');
+    }
+
+    document.addEventListener('click', function (e) {
+      var openBtn = e.target.closest('.js-open-dependent-profile');
+      if (openBtn) {
+        var target = document.getElementById(openBtn.getAttribute('data-target'));
+        if (target) {
+          target.removeAttribute('hidden');
+          document.body.classList.add('modal-open');
+        }
+        return;
+      }
+      var closeBtn = e.target.closest('.js-close-dependent-profile');
+      if (closeBtn) {
+        var overlay = closeBtn.closest('.dependent-profile-modal-overlay');
+        if (overlay) closeModal(overlay);
+      }
+    });
+
+    overlays.forEach(function (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeModal(overlay);
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      overlays.forEach(function (overlay) {
+        if (!overlay.hasAttribute('hidden')) closeModal(overlay);
+      });
+    });
+  }
+
   function bindDependentRemoveConfirm() {
     document.addEventListener('submit', function (e) {
       var form = e.target.closest('.js-dependent-remove-form');
@@ -1145,6 +1185,7 @@
   bindCalendarModal();
   bindClientProfileModal();
   bindDependentRegistrationModal();
+  bindDependentProfileModals();
   bindDependentRemoveConfirm();
   bindSpecialClassModal();
   bindPresenceModal();

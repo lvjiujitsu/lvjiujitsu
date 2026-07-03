@@ -1197,53 +1197,10 @@ body.modal-open {
   backdrop-filter: blur(2px);
 }
 
-.dependent-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 72px;
-  padding: 1rem 1.125rem;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.dependent-modal__eyebrow {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.dependent-modal__title {
-  margin-top: 0.15rem;
-  color: var(--text);
-  font-size: 1.15rem;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-
-.dependent-modal__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted);
-}
-
-.dependent-modal__close:hover {
-  color: var(--text);
-  border-color: var(--brand-red);
-}
-
 .dependent-modal__frame {
   display: block;
   width: 100%;
-  height: calc(100% - 72px);
+  height: 100%;
   border: 0;
   background: var(--bg);
 }
@@ -1255,15 +1212,6 @@ body.modal-open {
     max-height: 100dvh;
     border: 0;
     border-radius: 0;
-  }
-
-  .dependent-modal__header {
-    min-height: 64px;
-    padding: 0.75rem 0.875rem;
-  }
-
-  .dependent-modal__frame {
-    height: calc(100% - 64px);
   }
 }
 
@@ -2812,6 +2760,27 @@ body.modal-open {
   border-color: rgba(196, 18, 48, 0.18);
 }
 
+/* ─── Avatar com iniciais (client-profile / dependente) ──────────────────── */
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-red-muted);
+  color: var(--brand-red);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.avatar-circle--lg {
+  width: 46px;
+  height: 46px;
+  font-size: 1.05rem;
+}
+
 /* ─── Financeiro (staff home) ─────────────────────────────────────────────── */
 .financial-panel {
   padding: 1.125rem 1.25rem 1.25rem;
@@ -2945,22 +2914,6 @@ body.modal-open {
   color: var(--danger);
 }
 
-.dependent-summary-grid {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 0.9rem;
-}
-
-.dependent-summary {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.875rem;
-  border: 1px solid var(--border-soft);
-  border-radius: 0.75rem;
-  background: var(--surface);
-}
-
-.dependent-summary__label,
 .client-profile__label,
 .client-profile-modal__eyebrow {
   color: var(--muted);
@@ -2968,46 +2921,6 @@ body.modal-open {
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-}
-
-.dependent-summary strong {
-  color: var(--text);
-  font-size: 0.95rem;
-  line-height: 1.35;
-}
-
-.dependent-summary small {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.dependent-history {
-  margin-top: 0.35rem;
-}
-
-.dependent-history summary {
-  color: var(--brand-red);
-  cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.dependent-history ul {
-  display: grid;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
-}
-
-.dependent-history li {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.dependent-history li strong {
-  font-size: 0.8rem;
 }
 
 .client-profile-modal {
@@ -3060,7 +2973,7 @@ body.modal-open {
   transform: translateY(-50%);
 }
 
-.client-profile__section strong {
+.client-profile__section:has(.section-action) strong {
   padding-right: 3.5rem;
 }
 
@@ -3069,8 +2982,84 @@ body.modal-open {
   font-size: 0.78rem;
 }
 
+/* ─── Cabeçalho de modal com avatar (client-profile / dependent-profile) ─── */
+.profile-modal__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.profile-modal__identity .role-badges { margin-top: 0.375rem; }
+
+/* ─── Card compacto de dependente (home) ─────────────────────────────────── */
+.dependent-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* ─── Popup de detalhes do dependente: presença ──────────────────────────── */
+.presence-list {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.presence-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.82rem;
+}
+
+.presence-list__date {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 2.75rem;
+}
+
+.presence-list__info {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Popup de detalhes do dependente: histórico de graduação ────────────── */
+.dependent-history-list__title {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dependent-history-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.dependent-history-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.dependent-history-list li strong {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
 @media (min-width: 720px) {
-  .dependent-summary-grid,
   .client-profile__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3085,7 +3074,8 @@ body.modal-open {
     align-items: flex-start;
   }
 
-  .dependent-summary-grid {
-    gap: 0.6rem;
+  .profile-modal__identity,
+  .dependent-card__identity {
+    gap: 0.55rem;
   }
 }

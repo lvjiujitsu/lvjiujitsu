@@ -163,10 +163,9 @@ class DependentRegistrationForm(forms.Form):
         self.fields["dependent_class_groups"].valid_value = lambda value: True
         self.fields["selected_plan"].choices = [("", "Selecione")] + [
             (plan.pk, plan.display_name)
-            for plan in SubscriptionPlan.objects.filter(is_active=True).order_by(
-                "display_order",
-                "price",
-            )
+            for plan in SubscriptionPlan.objects.filter(
+                is_active=True, requires_special_authorization=False,
+            ).order_by("display_order", "price")
         ]
         self.material_variants = _get_material_variants()
         for variant in self.material_variants:
@@ -178,6 +177,19 @@ class DependentRegistrationForm(forms.Form):
                 initial=0,
                 label=str(variant),
             )
+        self._apply_wizard_widget_classes()
+
+    def _apply_wizard_widget_classes(self):
+        for field in self.fields.values():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                continue
+            if isinstance(widget, forms.Textarea):
+                widget.attrs.setdefault("class", "form-input form-textarea")
+            elif isinstance(widget, forms.Select):
+                widget.attrs.setdefault("class", "form-input form-select")
+            else:
+                widget.attrs.setdefault("class", "form-input")
 
     def clean_dependent_cpf(self):
         value = self.cleaned_data.get("dependent_cpf")
@@ -405,6 +417,19 @@ class DependentProfileForm(forms.ModelForm):
             "allergies": forms.Textarea(attrs={"rows": 3}),
             "previous_injuries": forms.Textarea(attrs={"rows": 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            widget = field.widget
+            if isinstance(widget, forms.CheckboxInput):
+                continue
+            if isinstance(widget, forms.Textarea):
+                widget.attrs.setdefault("class", "form-input form-textarea")
+            elif isinstance(widget, forms.Select):
+                widget.attrs.setdefault("class", "form-input form-select")
+            else:
+                widget.attrs.setdefault("class", "form-input")
 
     def clean(self):
         cleaned_data = super().clean()

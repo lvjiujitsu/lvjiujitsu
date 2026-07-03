@@ -6,10 +6,11 @@
   <title>Dependente adicionado — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=7">
   <script src="{% static 'system/js/dependents/dependent_registration_done.js' %}?v=1" defer></script>
 </head>
-<body class="dependent-page dependent-page--modal dependent-page--done">
+<body class="register-page dependent-page dependent-page--modal dependent-page--done">
   <main class="dependent-shell dependent-shell--done" id="main-content">
     <section class="dependent-modal-done" data-dependent-modal-done role="status" aria-live="polite">
       <span class="dependent-modal-done__icon" aria-hidden="true">OK</span>

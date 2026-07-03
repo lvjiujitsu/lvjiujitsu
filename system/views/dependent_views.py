@@ -1,3 +1,4 @@
+import json
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -19,10 +20,12 @@ from system.services.dependent_registration import (
     save_checkout_url,
     update_dependent_pre_registration,
 )
+from system.services.class_overview import get_registration_catalog_payload
 from system.services.financial_transactions import resolve_checkout_action_for_plan
 from system.services.registration_checkout import (
     create_pre_registration_materials_payment,
     create_pre_registration_plan_payment,
+    get_plan_catalog_payload,
 )
 from system.views.portal_mixins import PortalLoginRequiredMixin
 
@@ -159,6 +162,12 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         context["family_plan_selected"] = self._family_plan_selected(context["form"])
         context["material_groups"] = self._build_material_groups(context["form"])
         context["is_modal"] = self._is_modal_request()
+        context["class_catalog_json"] = json.dumps(
+            get_registration_catalog_payload(), ensure_ascii=False
+        )
+        context["plan_catalog_json"] = json.dumps(
+            get_plan_catalog_payload(), ensure_ascii=False
+        )
         return context
 
     def _is_modal_request(self):
