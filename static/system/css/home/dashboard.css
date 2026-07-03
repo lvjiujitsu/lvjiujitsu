@@ -586,6 +586,27 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   border-color: var(--brand-red-muted);
 }
 
+.btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn--danger:hover {
+  filter: brightness(0.95);
+}
+
+.btn--danger-outline {
+  background: var(--danger-muted);
+  border-color: transparent;
+  color: var(--danger);
+}
+
+.btn--danger-outline:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .class-item__error {
   color: var(--danger);
   font-size: 0.6875rem;
@@ -612,6 +633,52 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .status-pill--warning { background: var(--warning-muted); color: var(--warning); }
 .status-pill--danger  { background: var(--danger-muted);  color: var(--danger);  }
 .status-pill--neutral { background: var(--surface-soft);  color: var(--muted);   }
+
+.pending-checkin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.checkin-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.checkin-cancel-button:hover {
+  border-color: var(--brand-red-muted);
+  color: var(--brand-red);
+}
+
+.checkin-cancel-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.checkin-cancel-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.checkin-cancel-button__icon {
+  flex-shrink: 0;
+}
 
 .checkin-notice {
   font-size: 0.7rem;
@@ -2925,6 +2992,8 @@ body.modal-open {
 
 .client-profile-modal {
   width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
 }
 
 .client-profile {
@@ -2933,9 +3002,18 @@ body.modal-open {
   padding: 1.25rem;
 }
 
+.client-profile__view {
+  display: grid;
+  gap: 1rem;
+}
+
 .client-profile__grid {
   display: grid;
   gap: 0.75rem;
+}
+
+.client-profile__grid-wide {
+  grid-column: 1 / -1;
 }
 
 .client-profile__grid div,
@@ -2980,6 +3058,111 @@ body.modal-open {
 .client-profile__section small {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.client-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.client-profile__actions--form {
+  justify-content: flex-end;
+}
+
+.client-profile-form,
+.client-profile-delete {
+  display: grid;
+  gap: 0.875rem;
+  padding: 0.875rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.client-profile-form[hidden],
+.client-profile-delete[hidden] {
+  display: none;
+}
+
+.client-profile-form__grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.client-profile-form__wide {
+  grid-column: 1 / -1;
+}
+
+.client-profile-form__message {
+  border: 1px solid var(--success);
+  border-radius: 0.625rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--success-muted);
+  color: var(--success);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.client-profile-form__message[hidden] {
+  display: none;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.form-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.form-textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.form-input:focus,
+.form-select:focus {
+  border-color: var(--brand-red);
+  box-shadow: 0 0 0 3px var(--brand-red-muted);
+  outline: none;
+}
+
+.form-field__error {
+  min-height: 1rem;
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.form-select-wrapper {
+  position: relative;
+}
+
+.client-profile-delete {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.client-profile-delete small {
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 /* ─── Cabeçalho de modal com avatar (client-profile / dependent-profile) ─── */
@@ -3061,6 +3244,10 @@ body.modal-open {
 
 @media (min-width: 720px) {
   .client-profile__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .client-profile-form__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

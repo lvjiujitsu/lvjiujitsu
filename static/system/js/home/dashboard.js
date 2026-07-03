@@ -106,59 +106,174 @@
     });
   }
 
-  function bindCheckins() {
-    var config = readConfig();
-    var csrfToken = getCsrfToken();
-    document.querySelectorAll('.js-checkin').forEach(function (button) {
-      button.addEventListener('click', function () {
-        var isSpecial = button.getAttribute('data-checkin-kind') === 'special';
-        var url = isSpecial ? config.studentSpecialCheckinUrl : config.studentCheckinUrl;
-        var id = isSpecial ? button.getAttribute('data-special-id') : button.getAttribute('data-schedule-id');
-        var payload = {};
+  function getStudentCheckinMeta(button) {
+    var kind = button.getAttribute('data-checkin-kind') || 'regular';
+    var isSpecial = kind === 'special';
+    var id = isSpecial ? button.getAttribute('data-special-id') : button.getAttribute('data-schedule-id');
+    return { kind: kind, isSpecial: isSpecial, id: id };
+  }
 
-        if (!url || !id) {
-          showCheckinError(button, 'Aula sem identificador de check-in.');
-          return;
-        }
+  function createCheckinButton(kind, id) {
+    var button = document.createElement('button');
+    button.className = 'btn btn--secondary btn--sm js-checkin';
+    button.type = 'button';
+    button.setAttribute('data-checkin-kind', kind);
+    if (kind === 'special') {
+      button.setAttribute('data-special-id', id);
+    } else {
+      button.setAttribute('data-schedule-id', id);
+    }
+    button.textContent = 'Check-in';
+    return button;
+  }
 
-        payload[isSpecial ? 'special_id' : 'schedule_id'] = id;
-        button.disabled = true;
-        button.textContent = 'Aguardando...';
+  function createUndoIcon() {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'checkin-cancel-button__icon');
+    svg.setAttribute('width', '13');
+    svg.setAttribute('height', '13');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2.1');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
 
-        fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-          },
-          body: JSON.stringify(payload)
-        })
-          .then(function (response) {
-            return response.json().then(function (data) {
-              return { ok: response.ok, data: data };
-            });
-          })
-          .then(function (result) {
-            if (!result.ok || !result.data.success) {
-              button.disabled = false;
-              button.textContent = 'Check-in';
-              showCheckinError(button, result.data.error);
-              return;
-            }
-            replaceButtonWithPill(button, 'Aguardando aprovação', 'warning');
-          })
-          .catch(function () {
-            button.disabled = false;
-            button.textContent = 'Check-in';
-            showCheckinError(button, 'Falha de conexão ao registrar check-in.');
-          });
+    var first = document.createElementNS(ns, 'path');
+    first.setAttribute('d', 'M3 7v6h6');
+    var second = document.createElementNS(ns, 'path');
+    second.setAttribute('d', 'M21 17a9 9 0 0 0-15-6.7L3 13');
+    svg.appendChild(first);
+    svg.appendChild(second);
+    return svg;
+  }
+
+  function createPendingCheckinGroup(kind, id) {
+    var group = document.createElement('div');
+    group.className = 'pending-checkin';
+    group.appendChild(createStatusPill('Aguardando aprovação', 'warning'));
+
+    var button = document.createElement('button');
+    button.className = 'checkin-cancel-button js-cancel-checkin';
+    button.type = 'button';
+    button.setAttribute('data-checkin-kind', kind);
+    if (kind === 'special') {
+      button.setAttribute('data-special-id', id);
+    } else {
+      button.setAttribute('data-schedule-id', id);
+    }
+    button.setAttribute('aria-label', 'Desfazer check-in');
+    button.appendChild(createUndoIcon());
+
+    var label = document.createElement('span');
+    label.textContent = 'Desfazer';
+    button.appendChild(label);
+    group.appendChild(button);
+    return group;
+  }
+
+  function postJson(url, payload, csrfToken) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify(payload)
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        return { ok: response.ok, data: data };
       });
     });
   }
 
-  function replaceButtonWithPill(button, text, modifier) {
-    var pill = createStatusPill(text, modifier);
-    button.replaceWith(pill);
+  function handleStudentCheckin(button, config, csrfToken) {
+    var meta = getStudentCheckinMeta(button);
+    var url = meta.isSpecial ? config.studentSpecialCheckinUrl : config.studentCheckinUrl;
+    var payload = {};
+
+    if (!url || !meta.id) {
+      showCheckinError(button, 'Aula sem identificador de check-in.');
+      return;
+    }
+
+    payload[meta.isSpecial ? 'special_id' : 'schedule_id'] = meta.id;
+    button.disabled = true;
+    button.textContent = 'Aguardando...';
+
+    postJson(url, payload, csrfToken)
+      .then(function (result) {
+        if (!result.ok || !result.data.success) {
+          button.disabled = false;
+          button.textContent = 'Check-in';
+          showCheckinError(button, result.data.error);
+          return;
+        }
+        button.replaceWith(createPendingCheckinGroup(meta.kind, meta.id));
+      })
+      .catch(function () {
+        button.disabled = false;
+        button.textContent = 'Check-in';
+        showCheckinError(button, 'Falha de conexão ao registrar check-in.');
+      });
+  }
+
+  function handleStudentCheckinCancel(button, config, csrfToken) {
+    var meta = getStudentCheckinMeta(button);
+    var url = meta.isSpecial ? config.studentSpecialCheckinCancelUrl : config.studentCheckinCancelUrl;
+    var payload = {};
+    var label = button.querySelector('span');
+
+    if (!url || !meta.id) {
+      showCheckinError(button, 'Aula sem identificador para desfazer check-in.');
+      return;
+    }
+
+    payload[meta.isSpecial ? 'special_id' : 'schedule_id'] = meta.id;
+    button.disabled = true;
+    if (label) label.textContent = 'Desfazendo...';
+
+    postJson(url, payload, csrfToken)
+      .then(function (result) {
+        if (!result.ok || !result.data.success) {
+          button.disabled = false;
+          if (label) label.textContent = 'Desfazer';
+          showCheckinError(button, result.data.error);
+          return;
+        }
+
+        var group = button.closest('.pending-checkin');
+        var replacement = createCheckinButton(meta.kind, meta.id);
+        if (group) {
+          group.replaceWith(replacement);
+        } else {
+          button.replaceWith(replacement);
+        }
+      })
+      .catch(function () {
+        button.disabled = false;
+        if (label) label.textContent = 'Desfazer';
+        showCheckinError(button, 'Falha de conexão ao desfazer check-in.');
+      });
+  }
+
+  function bindCheckins() {
+    var config = readConfig();
+    var csrfToken = getCsrfToken();
+    document.addEventListener('click', function (e) {
+      var cancelButton = e.target.closest('.js-cancel-checkin');
+      if (cancelButton) {
+        handleStudentCheckinCancel(cancelButton, config, csrfToken);
+        return;
+      }
+
+      var checkinButton = e.target.closest('.js-checkin');
+      if (checkinButton) {
+        handleStudentCheckin(checkinButton, config, csrfToken);
+      }
+    });
   }
 
   function handleApproveCheckin(button) {
@@ -346,6 +461,11 @@
   function bindClientProfileModal() {
     var overlay = document.getElementById('client-profile-modal');
     if (!overlay) return;
+    var viewPanel = overlay.querySelector('[data-client-profile-view]');
+    var editForm = overlay.querySelector('.js-client-profile-form');
+    var deleteForm = overlay.querySelector('.js-client-profile-delete');
+    var messageEl = overlay.querySelector('.client-profile-form__message');
+    var deleteError = overlay.querySelector('[data-client-profile-delete-error]');
 
     function openModal() {
       overlay.removeAttribute('hidden');
@@ -355,6 +475,69 @@
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.classList.remove('modal-open');
+      showView();
+    }
+
+    function showView() {
+      if (viewPanel) viewPanel.removeAttribute('hidden');
+      if (editForm) editForm.setAttribute('hidden', '');
+      if (deleteForm) deleteForm.setAttribute('hidden', '');
+      clearClientProfileErrors();
+      if (messageEl) messageEl.setAttribute('hidden', '');
+      if (deleteError) deleteError.textContent = '';
+    }
+
+    function showEdit() {
+      if (viewPanel) viewPanel.setAttribute('hidden', '');
+      if (deleteForm) deleteForm.setAttribute('hidden', '');
+      if (editForm) editForm.removeAttribute('hidden');
+      clearClientProfileErrors();
+      if (messageEl) messageEl.setAttribute('hidden', '');
+    }
+
+    function showDelete() {
+      if (viewPanel) viewPanel.setAttribute('hidden', '');
+      if (editForm) editForm.setAttribute('hidden', '');
+      if (deleteForm) deleteForm.removeAttribute('hidden');
+      if (deleteError) deleteError.textContent = '';
+    }
+
+    function clearClientProfileErrors() {
+      overlay.querySelectorAll('[data-client-profile-error]').forEach(function (node) {
+        node.textContent = '';
+      });
+      if (messageEl) {
+        messageEl.textContent = '';
+        messageEl.setAttribute('hidden', '');
+      }
+    }
+
+    function setClientProfileErrors(errors) {
+      clearClientProfileErrors();
+      if (errors && errors.__all__ && messageEl) {
+        messageEl.textContent = errors.__all__.join(' ');
+        messageEl.removeAttribute('hidden');
+      }
+      Object.keys(errors || {}).forEach(function (fieldName) {
+        if (fieldName === '__all__') return;
+        var node = overlay.querySelector('[data-client-profile-error="' + fieldName + '"]');
+        if (node) node.textContent = (errors[fieldName] || []).join(' ');
+      });
+    }
+
+    function setText(selector, value) {
+      var node = overlay.querySelector(selector);
+      if (node) node.textContent = value || '—';
+    }
+
+    function updateClientProfileDisplay(person) {
+      if (!person) return;
+      setText('[data-client-profile-name]', person.full_name);
+      setText('[data-client-profile-email]', person.email);
+      setText('[data-client-profile-phone]', person.phone);
+      setText('[data-client-profile-birth-date]', person.birth_date);
+      setText('[data-client-profile-address]', person.address);
+      setText('[data-client-profile-avatar]', person.initial);
     }
 
     document.addEventListener('click', function (e) {
@@ -369,6 +552,111 @@
       if (!closeBtn || !overlay.contains(closeBtn)) return;
       closeModal();
     });
+
+    document.addEventListener('click', function (e) {
+      if (!overlay.contains(e.target)) return;
+      if (e.target.closest('.js-client-profile-edit')) {
+        showEdit();
+        return;
+      }
+      if (e.target.closest('.js-client-profile-cancel')) {
+        showView();
+        return;
+      }
+      if (e.target.closest('.js-client-profile-delete-open')) {
+        showDelete();
+        return;
+      }
+      if (e.target.closest('.js-client-profile-delete-cancel')) {
+        showView();
+      }
+    });
+
+    if (editForm) {
+      editForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearClientProfileErrors();
+        if (messageEl) messageEl.setAttribute('hidden', '');
+        var submit = editForm.querySelector('button[type="submit"]');
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Salvando...';
+        }
+        fetch(editForm.action, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCsrfToken() },
+          body: new FormData(editForm),
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (submit) {
+              submit.disabled = false;
+              submit.textContent = 'Salvar alterações';
+            }
+            if (!result.ok || !result.data.success) {
+              setClientProfileErrors(result.data.errors || {});
+              return;
+            }
+            updateClientProfileDisplay(result.data.person);
+            if (messageEl) {
+              messageEl.textContent = result.data.message || 'Cadastro atualizado.';
+              messageEl.removeAttribute('hidden');
+            }
+            showView();
+          })
+          .catch(function () {
+            if (submit) {
+              submit.disabled = false;
+              submit.textContent = 'Salvar alterações';
+            }
+            setClientProfileErrors({ __all__: ['Falha de conexão ao salvar.'] });
+          });
+      });
+    }
+
+    if (deleteForm) {
+      deleteForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (deleteError) deleteError.textContent = '';
+        var submit = deleteForm.querySelector('button[type="submit"]');
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Encerrando...';
+        }
+        fetch(deleteForm.action, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCsrfToken() },
+          body: new FormData(deleteForm),
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok || !result.data.success) {
+              if (submit) {
+                submit.disabled = false;
+                submit.textContent = 'Confirmar exclusão';
+              }
+              if (deleteError) deleteError.textContent = result.data.error || 'Não foi possível encerrar o cadastro.';
+              return;
+            }
+            window.location.href = result.data.redirect_url || '/login/';
+          })
+          .catch(function () {
+            if (submit) {
+              submit.disabled = false;
+              submit.textContent = 'Confirmar exclusão';
+            }
+            if (deleteError) deleteError.textContent = 'Falha de conexão.';
+          });
+      });
+    }
 
     overlay.addEventListener('click', function (e) {
       if (e.target === overlay) closeModal();

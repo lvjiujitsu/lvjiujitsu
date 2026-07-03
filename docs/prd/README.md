@@ -136,3 +136,5 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-119-dependente-materiais-idempotencia-cpf.md](PRD-119-dependente-materiais-idempotencia-cpf.md) | Dependente com materiais, idempotência e CPF pendente |
 | [PRD-120-dependente-modal-home.md](PRD-120-dependente-modal-home.md) | Dependente em modal na home |
 | [PRD-121-home-cliente-dependentes-mensalidades-crud.md](PRD-121-home-cliente-dependentes-mensalidades-crud.md) | Home do cliente com dependentes, mensalidades e CRUD modal |
+| [PRD-122-desfazer-checkin-pendente-aluno.md](PRD-122-desfazer-checkin-pendente-aluno.md) | Desfazer check-in pendente do aluno |
+| [PRD-123-modal-conta-cliente-editar-excluir.md](PRD-123-modal-conta-cliente-editar-excluir.md) | Modal da conta do cliente com edição e exclusão |

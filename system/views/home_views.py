@@ -1,6 +1,9 @@
+from django.db import transaction
+from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.views import View
 from django.views.generic import RedirectView, TemplateView
 
 from system.constants import (
@@ -8,7 +11,8 @@ from system.constants import (
     PortalCapability,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
-from system.models import Person
+from system.forms import ClientProfileForm
+from system.models import AuditAction, AuditModule, Person
 from system.models.asaas import TeacherBankAccount, TeacherPayrollConfig, TeacherPayout
 from system.models.calendar import ClassSession, SpecialClass as SpecialClassModel
 from system.models.membership import MembershipInvoice
@@ -51,6 +55,8 @@ from system.services.class_requests import (
 )
 from system.services.trial_access import get_active_trial_for_person
 from system.services.portal_capabilities import get_operational_role_labels
+from system.services.audit import record_audit_event
+from system.services.portal_auth import logout_portal_identity
 from system.views.portal_mixins import PortalLoginRequiredMixin
 
 
@@ -107,6 +113,11 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             is_instructor,
             is_administrative,
             can_support_classes,
+        )
+        context["client_profile_update_url"] = reverse("system:client-profile-update")
+        context["client_profile_deactivate_url"] = reverse("system:client-profile-deactivate")
+        context["client_profile_form"] = (
+            ClientProfileForm(instance=person) if person is not None else None
         )
         context.update(_empty_context())
 
@@ -208,6 +219,72 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         return context
 
 
+class ClientProfileUpdateView(PortalLoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if person is None:
+            return JsonResponse({"success": False, "error": "Não autenticado."}, status=403)
+
+        form = ClientProfileForm(request.POST, instance=person)
+        if not form.is_valid():
+            return JsonResponse(
+                {"success": False, "errors": _json_form_errors(form)},
+                status=400,
+            )
+
+        updated_person = form.save()
+        record_audit_event(
+            module=AuditModule.PERSON,
+            action=AuditAction.UPDATE,
+            actor_label=updated_person.full_name,
+            entity_label=updated_person.full_name,
+            summary="Cadastro atualizado pelo próprio cliente.",
+        )
+        return JsonResponse({
+            "success": True,
+            "message": "Cadastro atualizado.",
+            "person": _client_profile_payload(updated_person),
+        })
+
+
+class ClientProfileDeactivateView(PortalLoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if person is None:
+            return JsonResponse({"success": False, "error": "Não autenticado."}, status=403)
+        if request.POST.get("confirm") != "ENCERRAR":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Digite ENCERRAR para confirmar a exclusão do cadastro.",
+                },
+                status=400,
+            )
+
+        person_name = person.full_name
+        with transaction.atomic():
+            person.is_active = False
+            person.save(update_fields=("is_active", "updated_at"))
+            account = getattr(person, "access_account", None)
+            if account is not None:
+                account.is_active = False
+                account.save(update_fields=("is_active", "updated_at"))
+            record_audit_event(
+                module=AuditModule.PERSON,
+                action=AuditAction.DELETE,
+                actor_label=person_name,
+                entity_label=person_name,
+                summary="Cadastro encerrado pelo próprio cliente.",
+            )
+
+        logout_portal_identity(request)
+        return JsonResponse({
+            "success": True,
+            "message": "Cadastro encerrado.",
+            "redirect_url": reverse("system:login"),
+        })
+
+
 def _merge_class_entries(personal_entries, support_entries):
     seen_keys = set()
     merged = []
@@ -223,6 +300,31 @@ def _merge_class_entries(personal_entries, support_entries):
         merged.append(entry)
     merged.sort(key=lambda entry: entry.start_time or "")
     return merged
+
+
+def _json_form_errors(form):
+    errors = {}
+    for field_name, error_list in form.errors.items():
+        errors[field_name] = [str(error) for error in error_list]
+    return errors
+
+
+def _client_profile_payload(person):
+    address_parts = [
+        person.address,
+        person.address_number,
+        person.address_complement,
+        person.address_neighborhood,
+        person.city,
+    ]
+    return {
+        "full_name": person.full_name,
+        "initial": (person.full_name[:1] or "").upper(),
+        "email": person.email or "",
+        "phone": person.phone or "",
+        "birth_date": date_format(person.birth_date, "SHORT_DATE_FORMAT") if person.birth_date else "",
+        "address": ", ".join(part for part in address_parts if part),
+    }
 
 
 def _build_belt_context(graduation_progress):

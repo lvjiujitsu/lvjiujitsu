@@ -5,8 +5,10 @@ from .calendar_views import (
     InstructorSpecialClassCreateView,
     InstructorSpecialClassDeleteView,
     InstructorToggleSessionView,
+    StudentCheckinCancelView,
     StudentCheckinView,
     StudentScheduleView,
+    StudentSpecialClassCheckinCancelView,
     StudentSpecialClassCheckinView,
 )
 from .auth_views import (
@@ -57,6 +59,8 @@ from .graduation_views import (
     GraduationRuleUpdateView,
 )
 from .home_views import (
+    ClientProfileDeactivateView,
+    ClientProfileUpdateView,
     DashboardRedirectView,
     HomeView,
     RootRedirectView,
@@ -128,6 +132,8 @@ from .person_views import (
 
 __all__ = [
     "HomeView",
+    "ClientProfileDeactivateView",
+    "ClientProfileUpdateView",
     "BeltRankCreateView",
     "BeltRankDeleteView",
     "BeltRankDetailView",
@@ -227,7 +233,9 @@ __all__ = [
     "StudentOrderHistoryView",
     "PlanChangeSelectView",
     "RootRedirectView",
+    "StudentCheckinCancelView",
     "StudentCheckinView",
     "StudentScheduleView",
+    "StudentSpecialClassCheckinCancelView",
     "StudentSpecialClassCheckinView",
 ]

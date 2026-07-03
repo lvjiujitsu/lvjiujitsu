@@ -27,6 +27,8 @@ from system.services.class_calendar import (
     cancel_class_without_instructor,
     cancel_instructor_self_checkin,
     cancel_instructor_self_special_checkin,
+    cancel_student_checkin,
+    cancel_student_special_class_checkin,
     cancel_special_without_instructor,
     create_special_class,
     delete_special_class,
@@ -127,6 +129,32 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
         })
 
 
+class StudentCheckinCancelView(PortalLoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if not person:
+            return JsonResponse({"error": "Não autenticado."}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            schedule_id = int(body["schedule_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            _, changed = cancel_student_checkin(person, schedule_id)
+        except ClassSchedule.DoesNotExist:
+            return JsonResponse({"error": "Aula não encontrada."}, status=404)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        return JsonResponse({
+            "success": True,
+            "changed": changed,
+            "message": "Check-in desfeito." if changed else "Nenhum check-in pendente encontrado.",
+        })
+
+
 class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         person = getattr(request, "portal_person", None)
@@ -150,6 +178,32 @@ class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
             "success": True,
             "created": created,
             "message": "Check-in no aulão realizado!" if created else "Você já fez check-in neste aulão.",
+        })
+
+
+class StudentSpecialClassCheckinCancelView(PortalLoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        person = getattr(request, "portal_person", None)
+        if not person:
+            return JsonResponse({"error": "Não autenticado."}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            special_id = int(body["special_id"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            _, changed = cancel_student_special_class_checkin(person, special_id)
+        except SpecialClass.DoesNotExist:
+            return JsonResponse({"error": "Aulão não encontrado."}, status=404)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+        return JsonResponse({
+            "success": True,
+            "changed": changed,
+            "message": "Check-in desfeito." if changed else "Nenhum check-in pendente encontrado.",
         })
 
 

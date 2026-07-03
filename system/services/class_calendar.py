@@ -286,8 +286,10 @@ def get_today_classes_for_person(person):
                 cancellation_reason=cancellation_reason,
                 instructor_present=sc.instructor_present and not sc.is_cancelled,
                 has_checked_in=checkin is not None,
+                checkin_id=checkin.pk if checkin else None,
                 checkin_status=checkin.status if checkin else "",
                 is_checkin_approved=bool(checkin and checkin.is_approved),
+                can_cancel_checkin=bool(checkin and not checkin.is_approved),
             ))
         return entries
 
@@ -350,8 +352,10 @@ def get_today_classes_for_person(person):
             cancellation_reason=cancellation_reason,
             instructor_present=_student_instructor_present(session),
             has_checked_in=checkin is not None,
+            checkin_id=checkin.pk if checkin else None,
             checkin_status=checkin.status if checkin else "",
             is_checkin_approved=bool(checkin and checkin.is_approved),
+            can_cancel_checkin=bool(checkin and not checkin.is_approved),
         ))
     result.extend(_special_entries())
     return result
@@ -639,8 +643,10 @@ def get_today_classes_for_administrative(person):
                 cancellation_reason=cancellation_reason,
                 instructor_present=_student_instructor_present(session),
                 has_checked_in=checkin is not None,
+                checkin_id=checkin.pk if checkin else None,
                 checkin_status=checkin.status if checkin else "",
                 is_checkin_approved=bool(checkin and checkin.is_approved),
+                can_cancel_checkin=bool(checkin and not checkin.is_approved),
             ))
 
     all_specials = list(
@@ -705,8 +711,10 @@ def get_today_classes_for_administrative(person):
                 cancellation_reason=cancellation_reason,
                 instructor_present=special.instructor_present and not special.is_cancelled,
                 has_checked_in=checkin is not None,
+                checkin_id=checkin.pk if checkin else None,
                 checkin_status=checkin.status if checkin else "",
                 is_checkin_approved=bool(checkin and checkin.is_approved),
+                can_cancel_checkin=bool(checkin and not checkin.is_approved),
             ))
 
     entries.sort(key=lambda e: e.start_time)
@@ -1247,6 +1255,24 @@ def perform_checkin(person, schedule_id):
 
 
 @transaction.atomic
+def cancel_student_checkin(person, schedule_id):
+    today = timezone.localdate()
+    schedule = ClassSchedule.objects.get(pk=schedule_id)
+    session = ClassSession.objects.filter(schedule=schedule, date=today).first()
+    if session is None:
+        return None, False
+
+    checkin = ClassCheckin.objects.filter(session=session, person=person).first()
+    if checkin is None:
+        return None, False
+    if checkin.is_approved:
+        raise ValueError("Check-in já aprovado não pode ser desfeito pelo aluno.")
+
+    checkin.delete()
+    return checkin, True
+
+
+@transaction.atomic
 def approve_class_checkin(*, instructor, checkin_id):
     checkin = (
         ClassCheckin.objects.select_related(
@@ -1467,6 +1493,23 @@ def perform_special_class_checkin(person, special_id):
     if created:
         consume_trial_for_person(person)
     return checkin, created
+
+
+@transaction.atomic
+def cancel_student_special_class_checkin(person, special_id):
+    special = SpecialClass.objects.get(pk=special_id)
+    today = timezone.localdate()
+    if special.date != today:
+        raise ValueError("Cancelamento de check-in só é permitido no dia do aulão.")
+
+    checkin = SpecialClassCheckin.objects.filter(special_class=special, person=person).first()
+    if checkin is None:
+        return None, False
+    if checkin.is_approved:
+        raise ValueError("Check-in já aprovado não pode ser desfeito pelo aluno.")
+
+    checkin.delete()
+    return checkin, True
 
 
 def _get_month_name(month):

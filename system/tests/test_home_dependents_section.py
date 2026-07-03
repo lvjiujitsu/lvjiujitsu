@@ -76,6 +76,88 @@ class HomeDependentsSectionTestCase(TestCase):
         self.assertIn('class="btn-icon js-open-client-profile"', content)
         self.assertIn('id="client-profile-modal"', content)
         self.assertIn("Dados do cliente", content)
+        self.assertIn("Editar cadastro", content)
+        self.assertIn("Excluir cadastro", content)
+
+    def test_client_profile_update_changes_allowed_fields_and_preserves_cpf(self):
+        self._login_as(self.guardian)
+
+        response = self.client.post(
+            reverse("system:client-profile-update"),
+            data={
+                "full_name": "Responsável Editado Conta",
+                "cpf": "000.000.000-00",
+                "birth_date": "1980-02-03",
+                "biological_sex": BiologicalSex.MALE,
+                "email": "conta.editada@example.com",
+                "phone": "(11) 97777-1234",
+                "postal_code": "01001-000",
+                "address": "Rua Conta",
+                "address_number": "123",
+                "address_complement": "Sala 2",
+                "address_neighborhood": "Centro",
+                "city": "São Paulo",
+                "blood_type": "",
+                "allergies": "Sem alergias",
+                "previous_injuries": "",
+                "emergency_contact": "Contato Conta",
+                "martial_art": "jiu_jitsu",
+                "martial_art_graduation": "",
+                "jiu_jitsu_belt": "blue",
+                "jiu_jitsu_stripes": "1",
+                "martial_art_started_at": "2022-01-01",
+                "martial_art_last_graduation_at": "2024-01-01",
+                "previous_academy": "Academia Conta",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.guardian.refresh_from_db()
+        self.assertEqual(self.guardian.full_name, "Responsável Editado Conta")
+        self.assertEqual(self.guardian.email, "conta.editada@example.com")
+        self.assertEqual(self.guardian.cpf, "390.533.447-05")
+        self.assertEqual(self.guardian.jiu_jitsu_belt, "blue")
+        self.assertEqual(self.guardian.jiu_jitsu_stripes, 1)
+
+    def test_client_profile_update_returns_field_errors(self):
+        self._login_as(self.guardian)
+
+        response = self.client.post(
+            reverse("system:client-profile-update"),
+            data={
+                "full_name": "",
+                "birth_date": "1980-02-03",
+                "biological_sex": BiologicalSex.MALE,
+                "email": "email-invalido",
+                "phone": "(11) 97777-1234",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["success"])
+        self.assertIn("full_name", data["errors"])
+        self.assertIn("email", data["errors"])
+
+    def test_client_profile_deactivate_disables_person_account_and_session(self):
+        account = self._login_as(self.guardian)
+
+        response = self.client.post(
+            reverse("system:client-profile-deactivate"),
+            data={"confirm": "ENCERRAR"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["redirect_url"], reverse("system:login"))
+        self.guardian.refresh_from_db()
+        account.refresh_from_db()
+        self.assertFalse(self.guardian.is_active)
+        self.assertFalse(account.is_active)
+        self.assertNotIn(PORTAL_ACCOUNT_SESSION_KEY, self.client.session)
 
     def test_guardian_home_separates_owner_and_dependent_billing_and_crud(self):
         self.guardian.jiu_jitsu_belt = "blue"
@@ -239,6 +321,7 @@ class HomeDependentsSectionTestCase(TestCase):
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
         session.save()
+        return account
 
     def _create_plan(self, code, display_name):
         return SubscriptionPlan.objects.create(

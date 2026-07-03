@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=22">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=24">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
-    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}"}</script>
+    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentCheckinCancelUrl":"{% url 'system:student-checkin-cancel' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","studentSpecialCheckinCancelUrl":"{% url 'system:student-special-checkin-cancel' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}"}</script>
 
     {% if messages %}
     <div class="system-messages" role="alert" aria-live="assertive">
@@ -701,10 +701,10 @@
     <div class="modal client-profile-modal">
       <div class="modal__header profile-modal__header">
         <div class="profile-modal__identity">
-          <span class="avatar-circle avatar-circle--lg" aria-hidden="true">{{ client_person.full_name|first|upper }}</span>
+          <span class="avatar-circle avatar-circle--lg" data-client-profile-avatar aria-hidden="true">{{ client_person.full_name|first|upper }}</span>
           <div>
             <p class="client-profile-modal__eyebrow">Dados do cliente</p>
-            <h2 class="modal__title" id="client-profile-modal-title">{{ client_person.full_name }}</h2>
+            <h2 class="modal__title" id="client-profile-modal-title" data-client-profile-name>{{ client_person.full_name }}</h2>
             {% if role_labels %}
             <div class="role-badges" aria-label="Perfis ativos">
               {% for label in role_labels %}
@@ -719,50 +719,100 @@
         </button>
       </div>
       <div class="client-profile">
-        <dl class="client-profile__grid">
-          <div>
-            <dt>CPF</dt>
-            <dd>{{ client_person.cpf|default:"—" }}</dd>
+        <div class="client-profile__view" data-client-profile-view>
+          <dl class="client-profile__grid">
+            <div>
+              <dt>CPF</dt>
+              <dd data-client-profile-cpf>{{ client_person.cpf|default:"—" }}</dd>
+            </div>
+            <div>
+              <dt>E-mail</dt>
+              <dd data-client-profile-email>{{ client_person.email|default:"—" }}</dd>
+            </div>
+            <div>
+              <dt>Telefone</dt>
+              <dd data-client-profile-phone>{{ client_person.phone|default:"—" }}</dd>
+            </div>
+            <div>
+              <dt>Nascimento</dt>
+              <dd data-client-profile-birth-date>{{ client_person.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+            </div>
+            <div class="client-profile__grid-wide">
+              <dt>Endereço</dt>
+              <dd data-client-profile-address>{% if client_person.address or client_person.city %}{{ client_person.address }}{% if client_person.address_number %}, {{ client_person.address_number }}{% endif %}{% if client_person.address_complement %}, {{ client_person.address_complement }}{% endif %}{% if client_person.address_neighborhood %} · {{ client_person.address_neighborhood }}{% endif %}{% if client_person.city %} · {{ client_person.city }}{% endif %}{% else %}—{% endif %}</dd>
+            </div>
+          </dl>
+          <div class="client-profile__actions">
+            <button class="btn btn--secondary btn--sm js-client-profile-edit" type="button">Editar cadastro</button>
+            <button class="btn btn--danger-outline btn--sm js-client-profile-delete-open" type="button">Excluir cadastro</button>
           </div>
-          <div>
-            <dt>E-mail</dt>
-            <dd>{{ client_person.email|default:"—" }}</dd>
-          </div>
-          <div>
-            <dt>Telefone</dt>
-            <dd>{{ client_person.phone|default:"—" }}</dd>
-          </div>
-        </dl>
-        <section class="client-profile__section" aria-label="Plano do titular">
-          <span class="client-profile__label">Plano do titular</span>
-          {% if client_billing_tab.active_membership %}
-          <strong>{{ client_billing_tab.active_membership.plan.display_name }}</strong>
-          <small>{{ client_billing_tab.active_membership.get_status_display }}{% if client_billing_tab.active_membership.current_period_end %} · até {{ client_billing_tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
-          {% elif client_billing_tab.pending_order %}
-          <strong>Pagamento pendente</strong>
-          <small>Conclua o pagamento para ativar a mensalidade.</small>
-          {% else %}
-          <strong>Nenhum plano ativo</strong>
-          <small>Sem mensalidade registrada para o titular.</small>
+          <section class="client-profile__section" aria-label="Plano do titular">
+            <span class="client-profile__label">Plano do titular</span>
+            {% if client_billing_tab.active_membership %}
+            <strong>{{ client_billing_tab.active_membership.plan.display_name }}</strong>
+            <small>{{ client_billing_tab.active_membership.get_status_display }}{% if client_billing_tab.active_membership.current_period_end %} · até {{ client_billing_tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
+            {% elif client_billing_tab.pending_order %}
+            <strong>Pagamento pendente</strong>
+            <small>Conclua o pagamento para ativar a mensalidade.</small>
+            {% else %}
+            <strong>Nenhum plano ativo</strong>
+            <small>Sem mensalidade registrada para o titular.</small>
+            {% endif %}
+          </section>
+          {% if show_dependents_area %}
+          <section class="client-profile__section" aria-label="Dependentes">
+            <span class="client-profile__label">Dependentes</span>
+            <strong>{{ dependents|length }} cadastrado{{ dependents|length|pluralize }}</strong>
+            <a
+              class="btn btn--secondary btn--sm section-action js-open-dependent-modal js-close-client-profile"
+              href="{{ dependent_add_modal_url }}"
+              data-dependent-modal-url="{{ dependent_add_modal_url }}"
+              data-dependent-modal-title="Adicionar dependente"
+              aria-label="Adicionar dependente"
+              title="Adicionar dependente"
+            >
+              <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+              <span class="section-action__text">Adicionar dependente</span>
+            </a>
+          </section>
           {% endif %}
-        </section>
-        {% if show_dependents_area %}
-        <section class="client-profile__section" aria-label="Dependentes">
-          <span class="client-profile__label">Dependentes</span>
-          <strong>{{ dependents|length }} cadastrado{{ dependents|length|pluralize }}</strong>
-          <a
-            class="btn btn--secondary btn--sm section-action js-open-dependent-modal js-close-client-profile"
-            href="{{ dependent_add_modal_url }}"
-            data-dependent-modal-url="{{ dependent_add_modal_url }}"
-            data-dependent-modal-title="Adicionar dependente"
-            aria-label="Adicionar dependente"
-            title="Adicionar dependente"
-          >
-            <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
-            <span class="section-action__text">Adicionar dependente</span>
-          </a>
-        </section>
-        {% endif %}
+        </div>
+
+        <form class="client-profile-form js-client-profile-form" method="post" action="{{ client_profile_update_url }}" hidden novalidate>
+          {% csrf_token %}
+          <div class="client-profile-form__message" role="status" aria-live="polite" hidden></div>
+          <div class="client-profile-form__grid">
+            {% for field in client_profile_form %}
+            <div class="form-field{% if field.name == 'allergies' or field.name == 'previous_injuries' or field.name == 'emergency_contact' or field.name == 'address' or field.name == 'martial_art_graduation' or field.name == 'previous_academy' %} client-profile-form__wide{% endif %}">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% if field.field.widget.input_type == "select" %}
+              <div class="form-select-wrapper">{{ field }}</div>
+              {% else %}
+              {{ field }}
+              {% endif %}
+              <p class="form-field__error" data-client-profile-error="{{ field.name }}"></p>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="client-profile__actions client-profile__actions--form">
+            <button class="btn btn--primary btn--sm" type="submit">Salvar alterações</button>
+            <button class="btn btn--secondary btn--sm js-client-profile-cancel" type="button">Cancelar</button>
+          </div>
+        </form>
+
+        <form class="client-profile-delete js-client-profile-delete" method="post" action="{{ client_profile_deactivate_url }}" hidden novalidate>
+          {% csrf_token %}
+          <span class="client-profile__label">Zona de exclusão</span>
+          <strong>Excluir cadastro</strong>
+          <small>Seu acesso será encerrado e o cadastro ficará inativo. Histórico financeiro, compras, presenças e graduação permanecem preservados para auditoria da academia.</small>
+          <label class="form-label" for="client-profile-delete-confirm">Digite ENCERRAR para confirmar</label>
+          <input class="form-input" id="client-profile-delete-confirm" name="confirm" autocomplete="off">
+          <p class="form-field__error" data-client-profile-delete-error></p>
+          <div class="client-profile__actions client-profile__actions--form">
+            <button class="btn btn--danger btn--sm" type="submit">Confirmar exclusão</button>
+            <button class="btn btn--secondary btn--sm js-client-profile-delete-cancel" type="button">Cancelar</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -1225,7 +1275,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=15" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=18" defer></script>
 
 </body>
 </html>

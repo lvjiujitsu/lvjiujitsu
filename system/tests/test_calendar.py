@@ -42,6 +42,8 @@ from system.services.class_calendar import (
     cancel_class_without_instructor,
     cancel_instructor_self_checkin,
     cancel_instructor_self_special_checkin,
+    cancel_student_checkin,
+    cancel_student_special_class_checkin,
     cancel_special_without_instructor,
     create_special_class,
     delete_special_class,
@@ -169,6 +171,117 @@ class CalendarServiceTestCase(TestCase):
         perform_checkin(self.person, self.schedule.pk)
         checkin, created = perform_checkin(self.person, self.schedule.pk)
         self.assertFalse(created)
+
+    def test_cancel_student_checkin_clears_pending(self):
+        perform_checkin(self.person, self.schedule.pk)
+
+        checkin, changed = cancel_student_checkin(self.person, self.schedule.pk)
+
+        self.assertTrue(changed)
+        self.assertEqual(checkin.person, self.person)
+        self.assertFalse(ClassCheckin.objects.filter(person=self.person).exists())
+
+    def test_cancel_student_checkin_blocks_approved(self):
+        checkin, _ = perform_checkin(self.person, self.schedule.pk)
+        instructor = Person.objects.create(
+            full_name="Prof. Cancel Block", cpf="111.111.111-22",
+            person_type=PersonType.objects.create(code="instructor-cancel", display_name="Professor"),
+            birth_date=date(1985, 1, 1), biological_sex="male",
+        )
+        self.group.main_teacher = instructor
+        self.group.save(update_fields=["main_teacher", "updated_at"])
+        approve_class_checkin(instructor=instructor, checkin_id=checkin.pk)
+
+        with self.assertRaises(ValueError):
+            cancel_student_checkin(self.person, self.schedule.pk)
+
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.APPROVED)
+
+    def test_cancel_student_special_checkin_clears_pending(self):
+        special = create_special_class(
+            title="Aulão teste",
+            date=timezone.localdate(),
+            start_time=time(20, 0),
+        )
+        perform_special_class_checkin(self.person, special.pk)
+
+        checkin, changed = cancel_student_special_class_checkin(self.person, special.pk)
+
+        self.assertTrue(changed)
+        self.assertEqual(checkin.person, self.person)
+        self.assertFalse(SpecialClassCheckin.objects.filter(person=self.person).exists())
+
+    def test_student_special_checkin_cancel_view_returns_success(self):
+        self._login_portal_account(self.account)
+        special = create_special_class(
+            title="Aulão view",
+            date=timezone.localdate(),
+            start_time=time(20, 0),
+        )
+        perform_special_class_checkin(self.person, special.pk)
+
+        response = self.client.post(
+            reverse("system:student-special-checkin-cancel"),
+            data=json.dumps({"special_id": special.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["changed"])
+        self.assertFalse(SpecialClassCheckin.objects.filter(person=self.person).exists())
+
+    def test_student_checkin_cancel_view_returns_success(self):
+        self._login_portal_account(self.account)
+        perform_checkin(self.person, self.schedule.pk)
+
+        response = self.client.post(
+            reverse("system:student-checkin-cancel"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["changed"])
+        self.assertFalse(ClassCheckin.objects.filter(person=self.person).exists())
+
+    def test_student_checkin_cancel_view_blocks_approved(self):
+        self._login_portal_account(self.account)
+        checkin, _ = perform_checkin(self.person, self.schedule.pk)
+        instructor = Person.objects.create(
+            full_name="Prof. View Cancel Block", cpf="111.111.111-33",
+            person_type=PersonType.objects.create(code="instructor-view-cancel", display_name="Professor"),
+            birth_date=date(1985, 1, 1), biological_sex="male",
+        )
+        self.group.main_teacher = instructor
+        self.group.save(update_fields=["main_teacher", "updated_at"])
+        approve_class_checkin(instructor=instructor, checkin_id=checkin.pk)
+
+        response = self.client.post(
+            reverse("system:student-checkin-cancel"),
+            data=json.dumps({"schedule_id": self.schedule.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("aprovado", response.json()["error"])
+        checkin.refresh_from_db()
+        self.assertEqual(checkin.status, CheckinStatus.APPROVED)
+
+    def test_student_home_renders_cancel_action_for_pending_checkin(self):
+        self._login_portal_account(self.account)
+        perform_checkin(self.person, self.schedule.pk)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("js-cancel-checkin", content)
+        self.assertIn("Desfazer", content)
 
     def test_trial_is_consumed_on_first_checkin_only(self):
         plan = SubscriptionPlan.objects.create(

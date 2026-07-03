@@ -87,6 +87,8 @@ from system.views.graduation_views import (
 )
 from system.views.stripe_views import StripeWebhookView
 from system.views.home_views import (
+    ClientProfileDeactivateView,
+    ClientProfileUpdateView,
     DashboardRedirectView,
     HomeView,
 )
@@ -129,7 +131,9 @@ from system.views.calendar_views import (
     InstructorSpecialClassCreateView,
     InstructorSpecialClassDeleteView,
     InstructorToggleSessionView,
+    StudentCheckinCancelView,
     StudentCheckinView,
+    StudentSpecialClassCheckinCancelView,
     StudentSpecialClassCheckinView,
 )
 from system.views.payment_views import (
@@ -201,6 +205,8 @@ urlpatterns = [
     # Redirecionamento pós-login e home unificada
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
     path("home/", HomeView.as_view(), name="home"),
+    path("account/profile/update/", ClientProfileUpdateView.as_view(), name="client-profile-update"),
+    path("account/profile/deactivate/", ClientProfileDeactivateView.as_view(), name="client-profile-deactivate"),
     path("dependents/add/", DependentRegistrationView.as_view(), name="dependent-add"),
     path("dependents/<int:pk>/edit/", DependentUpdateView.as_view(), name="dependent-edit"),
     path("dependents/<int:pk>/remove/", DependentRemoveView.as_view(), name="dependent-remove"),
@@ -383,7 +389,9 @@ urlpatterns = [
     path("meus-materiais/pedidos/", RedirectView.as_view(pattern_name="system:student-order-history", permanent=False)),
 
     path("aulas/checkin/", StudentCheckinView.as_view(), name="student-checkin"),
+    path("aulas/checkin/cancelar/", StudentCheckinCancelView.as_view(), name="student-checkin-cancel"),
     path("aulas/aulao/checkin/", StudentSpecialClassCheckinView.as_view(), name="student-special-checkin"),
+    path("aulas/aulao/checkin/cancelar/", StudentSpecialClassCheckinCancelView.as_view(), name="student-special-checkin-cancel"),
 
     # Ações do professor (check-in, aulão, sessão)
     path("aulas/professor/presenca/", InstructorSelfCheckinView.as_view(), name="instructor-self-checkin"),

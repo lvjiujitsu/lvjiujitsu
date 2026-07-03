@@ -213,7 +213,29 @@
               {% if item.is_checkin_approved %}
                 <span class="status-pill status-pill--success">Confirmado</span>
               {% elif item.has_checked_in %}
-                <span class="status-pill status-pill--warning">Aguardando</span>
+                {% if item.can_cancel_checkin %}
+                <div class="pending-checkin">
+                  <span class="status-pill status-pill--warning">Aguardando aprovação</span>
+                  <button
+                    class="checkin-cancel-button js-cancel-checkin"
+                    type="button"
+                    data-checkin-kind="{% if item.is_special %}special{% else %}regular{% endif %}"
+                    data-checkin-id="{{ item.checkin_id }}"
+                    {% if item.is_special %}
+                    data-special-id="{{ item.special_id }}"
+                    {% else %}
+                    data-schedule-id="{{ item.schedule.pk }}"
+                    {% endif %}
+                    aria-label="Desfazer check-in de {{ item.group_name }}">
+                    <svg class="checkin-cancel-button__icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>
+                    </svg>
+                    <span>Desfazer</span>
+                  </button>
+                </div>
+                {% else %}
+                <span class="status-pill status-pill--warning">Aguardando aprovação</span>
+                {% endif %}
               {% elif not item.instructor_present %}
                 <span class="checkin-notice">Solicite ao professor que realize o check-in na aula para continuar</span>
               {% else %}
