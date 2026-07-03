@@ -8,55 +8,58 @@
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
-  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=7">
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=11">
   <script type="application/json" id="dep-class-catalog-json">{{ class_catalog_json|safe }}</script>
   <script type="application/json" id="dep-plan-catalog-json">{{ plan_catalog_json|safe }}</script>
+  <script type="application/json" id="dep-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
 </head>
 <body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
 
   <div class="wizard-shell">
 
-    <header class="wizard-header">
-      {% if is_modal %}
-      <button class="wizard-back" type="button" id="wizard-back" data-modal-close-fallback>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        <span id="wizard-back-label">Fechar</span>
-      </button>
-      {% else %}
-      <a class="wizard-back" href="{% url 'system:home' %}" id="wizard-back">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        <span id="wizard-back-label">Voltar</span>
-      </a>
+    <div class="wizard-shell__top">
+      <div class="dep-wizard-topbar">
+        {% if is_modal %}
+        <button class="wizard-back" type="button" id="wizard-back" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span id="wizard-back-label">Voltar</span>
+        </button>
+        {% else %}
+        <a class="wizard-back" href="{% url 'system:home' %}" id="wizard-back">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span id="wizard-back-label">Voltar</span>
+        </a>
+        {% endif %}
+        <div class="wizard-progress" id="wizard-progress" aria-live="polite">
+          Etapa <span id="wizard-step-current">1</span> de <span id="wizard-step-total">7</span>
+        </div>
+      </div>
+
+      <div class="wizard-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1">
+        <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:14%"></div>
+      </div>
+
+      {% if messages %}
+      <div class="wizard-system-messages" role="alert" aria-live="assertive">
+        {% for message in messages %}
+        <div class="wizard-system-message wizard-system-message--{{ message.tags }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
       {% endif %}
-      <img src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" class="wizard-header__logo" width="100">
-      <div class="wizard-progress" id="wizard-progress" aria-live="polite">
-        Etapa <span id="wizard-step-current">1</span> de <span id="wizard-step-total">5</span>
+
+      {% if payment_confirmed %}
+      <div class="wizard-system-message wizard-system-message--success">
+        Pagamento confirmado. Confira os dados e informe a senha do dependente para finalizar.
       </div>
-    </header>
-
-    <div class="wizard-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1">
-      <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:20%"></div>
+      {% endif %}
     </div>
-
-    {% if messages %}
-    <div class="wizard-system-messages" role="alert" aria-live="assertive">
-      {% for message in messages %}
-      <div class="wizard-system-message wizard-system-message--{{ message.tags }}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        {{ message }}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if payment_confirmed %}
-    <div class="wizard-system-message wizard-system-message--success">
-      Pagamento confirmado. Confira os dados e informe a senha do dependente para finalizar.
-    </div>
-    {% endif %}
 
     <form
       class="wizard-form"
+      id="dep-wizard-form"
       method="post"
       action="{% url 'system:dependent-add' %}{% if is_modal %}?modal=1{% endif %}"
       data-payment-confirmed="{{ payment_confirmed|yesno:'true,false' }}"
@@ -129,22 +132,27 @@
 
           <div class="form-field">
             <label class="form-label" for="{{ form.dependent_password.id_for_label }}">Senha de acesso</label>
-            <div class="form-input-wrapper">{{ form.dependent_password }}</div>
+            <div class="form-input-wrapper">
+              {{ form.dependent_password }}
+              <button type="button" class="password-toggle" id="dep-pw-toggle" aria-label="Mostrar senha" aria-controls="{{ form.dependent_password.id_for_label }}">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
             {% for error in form.dependent_password.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
           </div>
 
           <div class="form-field">
             <label class="form-label" for="{{ form.dependent_password_confirm.id_for_label }}">Confirmar senha</label>
-            <div class="form-input-wrapper">{{ form.dependent_password_confirm }}</div>
+            <div class="form-input-wrapper">
+              {{ form.dependent_password_confirm }}
+              <button type="button" class="password-toggle" id="dep-pwc-toggle" aria-label="Mostrar senha" aria-controls="{{ form.dependent_password_confirm.id_for_label }}">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
             {% for error in form.dependent_password_confirm.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
           </div>
-        </div>
-
-        <div class="wizard-step__actions">
-          <button type="button" class="btn-next" data-step-next>
-            Próximo
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
         </div>
       </section>
 
@@ -172,13 +180,6 @@
             <label class="form-label" for="{{ form.dependent_emergency_contact.id_for_label }}">Contato de emergência <span class="form-label-optional">(opcional)</span></label>
             {{ form.dependent_emergency_contact }}
           </div>
-        </div>
-
-        <div class="wizard-step__actions">
-          <button type="button" class="btn-next" data-step-next>
-            Próximo
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
         </div>
       </section>
 
@@ -239,37 +240,23 @@
             </div>
           </div>
         </div>
-
-        <div class="wizard-step__actions">
-          <button type="button" class="btn-next" data-step-next>
-            Próximo
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </div>
       </section>
 
       {# ── Etapa 4 — Turma ──────────────────────────────────────────────────── #}
-      <section class="wizard-step" data-step="4" hidden>
+      <section class="wizard-step" data-step="4" data-step-key="classes" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Turma</p>
           <h1 class="wizard-step__title">Escolha a turma</h1>
           <p class="wizard-step__subtitle">Turma para o dependente — você pode escolher mais de uma.</p>
         </div>
 
-        <div id="dep-class-catalog"></div>
+        <div class="class-catalog" id="dep-class-catalog"></div>
         <div hidden>{{ form.dependent_class_groups }}</div>
         {% for error in form.dependent_class_groups.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
-
-        <div class="wizard-step__actions">
-          <button type="button" class="btn-next" data-step-next>
-            Próximo
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </div>
       </section>
 
       {# ── Etapa 5 — Condição financeira ────────────────────────────────────── #}
-      <section class="wizard-step" data-step="5" hidden>
+      <section class="wizard-step" data-step="5" data-step-key="plan" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Escolha o plano do dependente</h1>
           <p class="wizard-step__subtitle">Use um plano familiar já ativo ou selecione uma mensalidade própria</p>
@@ -290,17 +277,10 @@
           <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}</div>
           {% for error in form.selected_plan.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
         </div>
-
-        <div class="wizard-step__actions">
-          <button type="button" class="btn-next" data-step-next>
-            Próximo
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </div>
       </section>
 
       {# ── Etapa 6 — Materiais ──────────────────────────────────────────────── #}
-      <section class="wizard-step" data-step="6" hidden>
+      <section class="wizard-step" data-step="6" data-step-key="materials" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Materiais opcionais</h1>
           <p class="wizard-step__subtitle">Selecione materiais para o dependente ou deixe tudo zerado para comprar depois</p>
@@ -320,11 +300,15 @@
             <div class="materials-list">
               {% for product_row in group.products %}
               <div class="material-item">
-                <div class="material-item__header">
+                <button type="button" class="material-item__header" data-material-toggle aria-expanded="false">
                   <strong>{{ product_row.product.display_name }}</strong>
-                  <span>R$ {{ product_row.product.unit_price|floatformat:2 }}</span>
-                </div>
-                <div class="material-variants">
+                  <span class="material-item__header-right">
+                    <span class="material-item__count" hidden></span>
+                    <span>R$ {{ product_row.product.unit_price|floatformat:2 }}</span>
+                    <svg class="material-item__chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </button>
+                <div class="material-variants" hidden>
                   {% for variant_row in product_row.variants %}
                   <label class="material-variant">
                     <span class="material-variant__label">
@@ -352,23 +336,36 @@
         </div>
         {{ form.materials_checkout_action.as_hidden }}
         {% endif %}
+      </section>
 
-        <div class="wizard-step__actions">
-          <button
-            class="btn-next"
-            type="submit"
-            data-step-next
-            data-final-label="{% if payment_confirmed or family_plan_selected %}Continuar{% else %}Ir para pagamento{% endif %}"
-          >
-            <span data-btn-label>{% if payment_confirmed or family_plan_selected %}Continuar{% else %}Ir para pagamento{% endif %}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
+      {# ── Etapa 7 — Revisar e confirmar ────────────────────────────────────── #}
+      <section class="wizard-step" data-step="7" data-step-key="review" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Revisão</p>
+          <h1 class="wizard-step__title">Revisar e confirmar</h1>
+          <p class="wizard-step__subtitle">Confira os dados do dependente antes de confirmar</p>
         </div>
+
+        <div class="review-summary" id="dep-review-summary"></div>
       </section>
 
     </form>
+
+    <div class="wizard-shell__footer">
+      <button
+        class="btn-next"
+        type="button"
+        id="dep-wizard-next-btn"
+        form="dep-wizard-form"
+        data-step-next
+        data-final-label="{% if payment_confirmed or family_plan_selected %}Continuar{% else %}Ir para pagamento{% endif %}"
+      >
+        <span data-btn-label>Próximo</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
   </div>
 
-  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=6" defer></script>
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=11" defer></script>
 </body>
 </html>

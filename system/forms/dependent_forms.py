@@ -33,17 +33,31 @@ MATERIAL_FIELD_PREFIX = "material_variant_"
 
 class DependentRegistrationForm(forms.Form):
     dependent_name = forms.CharField(max_length=255, label="Nome completo")
-    dependent_cpf = forms.CharField(max_length=14, label="CPF")
+    dependent_cpf = forms.CharField(
+        max_length=14,
+        label="CPF",
+        widget=forms.TextInput(
+            attrs={"inputmode": "numeric", "maxlength": "14", "placeholder": "000.000.000-00", "autocomplete": "off"}
+        ),
+    )
     dependent_birthdate = forms.DateField(
-        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
         label="Data de nascimento",
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
     )
     dependent_biological_sex = forms.ChoiceField(
         choices=[("", "Selecione")] + list(BiologicalSex.choices),
         label="Sexo biológico",
     )
     dependent_email = forms.EmailField(required=False, label="E-mail")
-    dependent_phone = forms.CharField(required=False, max_length=20, label="Telefone")
+    dependent_phone = forms.CharField(
+        required=False,
+        max_length=20,
+        label="Telefone",
+        widget=forms.TextInput(
+            attrs={"type": "tel", "inputmode": "tel", "maxlength": "16", "placeholder": "(00) 00000-0000", "autocomplete": "tel"}
+        ),
+    )
     dependent_password = forms.CharField(
         strip=False,
         label="Senha",
@@ -115,13 +129,15 @@ class DependentRegistrationForm(forms.Form):
     )
     dependent_martial_art_started_at = forms.DateField(
         required=False,
-        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
         label="Início no treino",
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
     )
     dependent_martial_art_last_graduation_at = forms.DateField(
         required=False,
-        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        input_formats=["%Y-%m-%d", "%d/%m/%Y"],
         label="Última graduação",
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
     )
     dependent_previous_academy = forms.CharField(
         required=False,

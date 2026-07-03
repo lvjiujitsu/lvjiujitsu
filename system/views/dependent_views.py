@@ -20,6 +20,7 @@ from system.services.dependent_registration import (
     save_checkout_url,
     update_dependent_pre_registration,
 )
+from system.services.class_catalog import get_ibjjf_age_category_payload
 from system.services.class_overview import get_registration_catalog_payload
 from system.services.financial_transactions import resolve_checkout_action_for_plan
 from system.services.registration_checkout import (
@@ -167,6 +168,9 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         )
         context["plan_catalog_json"] = json.dumps(
             get_plan_catalog_payload(), ensure_ascii=False
+        )
+        context["ibjjf_categories_json"] = json.dumps(
+            get_ibjjf_age_category_payload(), ensure_ascii=False
         )
         return context
 

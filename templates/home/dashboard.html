@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=25">
 </head>
 <body>
 
@@ -374,7 +374,7 @@
               id="tab-{{ forloop.counter }}"
               data-tab="{{ forloop.counter }}"
               type="button"
-            >{{ tab.person.full_name|truncatewords:1 }}</button>
+            >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
             {% endfor %}
           </div>
           {% endif %}
@@ -820,19 +820,30 @@
 
   {% if show_dependents_area %}
   <!-- ─── Modal: adicionar dependente ───────────────────────────────────────── -->
-  <dialog
-    class="dependent-modal"
+  <div
+    class="modal-overlay"
     id="dependent-registration-modal"
-    aria-label="Dependentes"
+    hidden
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="dependent-registration-modal-title"
     {% if dependent_modal_open %}data-open-on-load="true"{% endif %}
   >
-    <iframe
-      class="dependent-modal__frame js-dependent-registration-frame"
-      title="Cadastro de dependente"
-      data-src="{{ dependent_add_modal_url }}"
-      loading="lazy"
-    ></iframe>
-  </dialog>
+    <div class="modal modal--wide dependent-modal">
+      <div class="modal__header">
+        <h2 class="modal__title dependent-modal__title" id="dependent-registration-modal-title">Adicionar dependente</h2>
+        <button class="modal__close js-close-dependent-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <iframe
+        class="dependent-modal__frame js-dependent-registration-frame"
+        title="Cadastro de dependente"
+        data-src="{{ dependent_add_modal_url }}"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </div>
   {% endif %}
 
   {% if dependents %}
@@ -1275,7 +1286,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=18" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=19" defer></script>
 
 </body>
 </html>

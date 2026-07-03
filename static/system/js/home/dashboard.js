@@ -374,12 +374,12 @@
   }
 
   function bindDependentRegistrationModal() {
-    var dialog = document.getElementById('dependent-registration-modal');
-    if (!dialog) return;
+    var overlay = document.getElementById('dependent-registration-modal');
+    if (!overlay) return;
 
-    var frame = dialog.querySelector('.js-dependent-registration-frame');
-    var modalTitle = dialog.querySelector('.dependent-modal__title');
-    var closeButtons = dialog.querySelectorAll('.js-close-dependent-modal');
+    var frame = overlay.querySelector('.js-dependent-registration-frame');
+    var modalTitle = overlay.querySelector('.dependent-modal__title');
+    var closeButtons = overlay.querySelectorAll('.js-close-dependent-modal');
     var defaultTitle = modalTitle ? modalTitle.textContent : 'Adicionar dependente';
 
     function cleanUrlState() {
@@ -399,21 +399,13 @@
       if (frame && frame.getAttribute('src') !== frameUrl) {
         frame.setAttribute('src', frameUrl);
       }
-      if (typeof dialog.showModal === 'function') {
-        if (!dialog.open) dialog.showModal();
-      } else {
-        dialog.setAttribute('open', '');
-      }
-      document.body.classList.add('modal-open');
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
-      if (typeof dialog.close === 'function' && dialog.open) {
-        dialog.close();
-      } else {
-        dialog.removeAttribute('open');
-      }
-      document.body.classList.remove('modal-open');
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
       cleanUrlState();
     }
 
@@ -431,13 +423,12 @@
       button.addEventListener('click', closeModal);
     });
 
-    dialog.addEventListener('click', function (e) {
-      if (e.target === dialog) closeModal();
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
     });
 
-    dialog.addEventListener('cancel', function () {
-      document.body.classList.remove('modal-open');
-      cleanUrlState();
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
     });
 
     window.addEventListener('message', function (event) {
@@ -452,7 +443,7 @@
       }
     });
 
-    if (dialog.getAttribute('data-open-on-load') === 'true') {
+    if (overlay.getAttribute('data-open-on-load') === 'true') {
       var params = new URL(window.location.href).searchParams;
       openModal(params.get('dependent_modal_url') || (frame ? frame.getAttribute('data-src') : null));
     }

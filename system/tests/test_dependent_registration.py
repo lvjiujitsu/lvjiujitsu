@@ -289,6 +289,17 @@ class DependentRegistrationFlowTestCase(TestCase):
         self.assertContains(response, "Kimono Dependente Teste")
         self.assertContains(response, "Azul")
 
+    def test_ibjjf_categories_and_review_step_render_in_dependent_wizard(self):
+        self._login()
+
+        response = self.client.get(reverse("system:dependent-add"), {"modal": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="dep-ibjjf-json"')
+        self.assertContains(response, "adult-dependents")
+        self.assertContains(response, 'data-step="7"')
+        self.assertContains(response, "Revisar e confirmar")
+
     def test_modal_invalid_post_renders_errors_inside_modal(self):
         self._login()
 
