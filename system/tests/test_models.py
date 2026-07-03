@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from django.test import TestCase
@@ -5,8 +7,12 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from system.forms import PortalRegistrationForm
+from system.constants import PersonTypeCode
 from system.models import (
     BiologicalSex,
+    CategoryAudience,
+    ClassCategory,
+    ClassGroup,
     Person,
     PersonType,
     PortalAccount,
@@ -140,8 +146,19 @@ class PersonModelTestCase(TestCase):
                 "other_name": "Professor Teste",
                 "other_cpf": "10433218100",
                 "other_birthdate": "01/01/1990",
+                "other_biological_sex": "male",
                 "other_password": "123456",
                 "other_password_confirm": "123456",
+                "teacher_assignment_mode": "propose",
+                "teacher_proposed_schedule_payload": json.dumps(
+                    {
+                        "category_id": "1",
+                        "display_name": "Adulto Manha",
+                        "weekdays": ["monday"],
+                        "start_time": "07:00",
+                    }
+                ),
+                "operational_financial_arrangement": "volunteer",
             }
         )
 
@@ -149,3 +166,146 @@ class PersonModelTestCase(TestCase):
         created = form.save()
 
         self.assertEqual(created["other"].person_type.code, "instructor")
+
+    def test_teacher_operational_registration_requires_schedule_weekdays(self):
+        PersonType.objects.create(code=PersonTypeCode.INSTRUCTOR, display_name="Professor")
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.INSTRUCTOR),
+                "teacher_assignment_mode": "propose",
+                "teacher_proposed_schedule_payload": json.dumps(
+                    {
+                        "category_id": "1",
+                        "display_name": "Adulto Manha",
+                        "weekdays": [],
+                        "start_time": "07:00",
+                    }
+                ),
+                "operational_financial_arrangement": "volunteer",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("teacher_proposed_schedule_payload", form.errors)
+
+    def test_teacher_operational_registration_accepts_multi_day_schedule_and_paid_pix(self):
+        PersonType.objects.create(code=PersonTypeCode.INSTRUCTOR, display_name="Professor")
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.INSTRUCTOR),
+                "teacher_assignment_mode": "propose",
+                "teacher_proposed_schedule_payload": json.dumps(
+                    {
+                        "category_id": "1",
+                        "display_name": "Adulto Manha",
+                        "weekdays": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+                        "start_time": "07:00",
+                    }
+                ),
+                "operational_financial_arrangement": "paid_mixed",
+                "operational_payout_method": "pix",
+                "operational_pix_key_type": "cpf",
+                "operational_pix_key": "104.332.181-00",
+                "operational_fixed_amount": "300.00",
+                "operational_student_percentage": "20",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+
+    def test_teacher_operational_registration_accepts_active_class_with_current_teacher_payload(self):
+        instructor_type = PersonType.objects.create(
+            code=PersonTypeCode.INSTRUCTOR,
+            display_name="Professor",
+        )
+        current_teacher = Person.objects.create(
+            full_name="Professor Atual",
+            cpf="136.246.880-02",
+            person_type=instructor_type,
+        )
+        category = ClassCategory.objects.create(
+            code="adult",
+            display_name="Adulto",
+            audience=CategoryAudience.ADULT,
+        )
+        class_group = ClassGroup.objects.create(
+            display_name="Adulto Noite",
+            class_category=category,
+            main_teacher=current_teacher,
+        )
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.INSTRUCTOR),
+                "teacher_assignment_mode": "existing",
+                "teacher_existing_class_groups_payload": json.dumps(
+                    [
+                        {
+                            "id": class_group.pk,
+                            "label": "Adulto · Adulto Noite",
+                            "teacher_names": ["Professor Atual"],
+                            "approval_scope": "admin_and_current_teacher",
+                        }
+                    ]
+                ),
+                "operational_financial_arrangement": "volunteer",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        self.assertEqual(form.cleaned_data["teacher_existing_class_group"], str(class_group.pk))
+
+    def test_paid_operational_registration_requires_payout_target(self):
+        PersonType.objects.create(code=PersonTypeCode.ADMINISTRATIVE_ASSISTANT, display_name="Administrativo")
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.ADMINISTRATIVE_ASSISTANT),
+                "operational_requested_roles_payload": json.dumps(["people-support"]),
+                "operational_financial_arrangement": "paid_fixed",
+                "operational_payout_method": "none",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("operational_payout_method", form.errors)
+
+    def test_barter_operational_registration_clears_payout_fields(self):
+        PersonType.objects.create(code=PersonTypeCode.ADMINISTRATIVE_ASSISTANT, display_name="Administrativo")
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.ADMINISTRATIVE_ASSISTANT),
+                "operational_requested_roles_payload": json.dumps(["people-support"]),
+                "operational_financial_arrangement": "barter",
+                "operational_payout_method": "pix",
+                "operational_pix_key_type": "cpf",
+                "operational_pix_key": "104.332.181-00",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        self.assertEqual(form.cleaned_data["operational_payout_method"], "none")
+        self.assertEqual(form.cleaned_data["operational_pix_key"], "")
+
+    def test_administrative_operational_registration_requires_requested_role(self):
+        PersonType.objects.create(code=PersonTypeCode.ADMINISTRATIVE_ASSISTANT, display_name="Administrativo")
+        form = PortalRegistrationForm(
+            data={
+                **self._base_other_registration_payload(PersonTypeCode.ADMINISTRATIVE_ASSISTANT),
+                "operational_requested_roles_payload": "[]",
+                "operational_financial_arrangement": "volunteer",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("operational_requested_roles_payload", form.errors)
+
+    def _base_other_registration_payload(self, person_type_code):
+        return {
+            "registration_profile": "other",
+            "other_type_code": person_type_code,
+            "other_name": "Cadastro Operacional",
+            "other_cpf": "10433218100",
+            "other_birthdate": "01/01/1990",
+            "other_biological_sex": BiologicalSex.MALE,
+            "other_password": "123456",
+            "other_password_confirm": "123456",
+        }

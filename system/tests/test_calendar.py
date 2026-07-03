@@ -232,6 +232,19 @@ class CalendarServiceTestCase(TestCase):
         self.assertIn('id="calendar-day-modal"', content)
         self.assertIn('id="calendar-day-modal-body"', content)
 
+    def test_calendar_embedded_mode_is_same_origin_and_hides_topbar(self):
+        self._login_portal_account(self.account)
+
+        response = self.client.get(f'{reverse("system:calendar")}?embedded=1')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Frame-Options"], "SAMEORIGIN")
+        content = response.content.decode("utf-8")
+        self.assertIn('class="calendar-embedded"', content)
+        self.assertIn("calendar-board", content)
+        self.assertIn("?embedded=1", content)
+        self.assertNotIn('class="topbar"', content)
+
     def test_student_entry_has_instructor_present_true_when_no_session(self):
         classes = get_today_classes_for_person(self.person)
         self.assertEqual(len(classes), 1)

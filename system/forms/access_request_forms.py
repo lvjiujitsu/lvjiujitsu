@@ -1,8 +1,15 @@
 from django import forms
 
-from system.models import OperationalRole
+from system.models import OperationalRole, PixKeyType
 from system.services.access_requests import create_administrative_access_request
 from system.utils import ensure_formatted_cpf
+
+
+TRAINING_INTENT_NONE = "none"
+TRAINING_INTENT_STUDENT = "student"
+COMPENSATION_NONE = "none"
+COMPENSATION_BARTER = "barter"
+COMPENSATION_PIX = "pix"
 
 
 class AdministrativeAccessRequestForm(forms.Form):
@@ -10,6 +17,27 @@ class AdministrativeAccessRequestForm(forms.Form):
     cpf = forms.CharField(max_length=14, label="CPF")
     email = forms.EmailField(required=False, label="E-mail")
     phone = forms.CharField(required=False, max_length=20, label="Telefone")
+    training_intent = forms.ChoiceField(
+        choices=(
+            (TRAINING_INTENT_NONE, "Somente acesso administrativo"),
+            (TRAINING_INTENT_STUDENT, "Administrativo e aluno"),
+        ),
+        label="Como esse perfil será usado?",
+    )
+    compensation_preference = forms.ChoiceField(
+        choices=(
+            (COMPENSATION_NONE, "Sem recebimento"),
+            (COMPENSATION_BARTER, "Permuta"),
+            (COMPENSATION_PIX, "Receber por PIX"),
+        ),
+        label="Compensação prevista",
+    )
+    pix_key_type = forms.ChoiceField(
+        choices=(("", "Selecione"),) + tuple(PixKeyType.choices),
+        required=False,
+        label="Tipo da chave PIX",
+    )
+    pix_key = forms.CharField(required=False, max_length=140, label="Chave PIX")
     requested_roles = forms.ModelMultipleChoiceField(
         queryset=OperationalRole.objects.none(),
         required=False,
@@ -72,12 +100,27 @@ class AdministrativeAccessRequestForm(forms.Form):
         roles = cleaned_data.get("requested_roles") or []
         if not roles and not cleaned_data.get("grant_full_administrative"):
             self.add_error("requested_roles", "Selecione ao menos uma área solicitada.")
+        if cleaned_data.get("compensation_preference") == COMPENSATION_PIX:
+            if not cleaned_data.get("pix_key_type"):
+                self.add_error("pix_key_type", "Selecione o tipo da chave PIX.")
+            if not (cleaned_data.get("pix_key") or "").strip():
+                self.add_error("pix_key", "Informe a chave PIX.")
         if self.require_password:
             password = cleaned_data.get("password") or ""
             password_confirm = cleaned_data.get("password_confirm") or ""
             if password and password_confirm and password != password_confirm:
                 self.add_error("password_confirm", "As senhas não coincidem.")
         return cleaned_data
+
+    def get_request_payload(self):
+        return {
+            "training_intent": self.cleaned_data.get("training_intent") or TRAINING_INTENT_NONE,
+            "compensation_preference": (
+                self.cleaned_data.get("compensation_preference") or COMPENSATION_NONE
+            ),
+            "pix_key_type": self.cleaned_data.get("pix_key_type") or "",
+            "pix_key": (self.cleaned_data.get("pix_key") or "").strip(),
+        }
 
     def save(self):
         roles = self.cleaned_data.get("requested_roles") or []
@@ -92,6 +135,7 @@ class AdministrativeAccessRequestForm(forms.Form):
             justification=self.cleaned_data["justification"],
             requester=self.portal_person,
             password=self.cleaned_data.get("password", ""),
+            request_payload=self.get_request_payload(),
         )
 
 

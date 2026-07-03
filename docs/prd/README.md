@@ -129,3 +129,10 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-112-solicitacao-acesso-administrativo-pendente.md](PRD-112-solicitacao-acesso-administrativo-pendente.md) | Solicitacao de acesso administrativo pendente |
 | [PRD-113-solicitacao-turmas-horarios-professor.md](PRD-113-solicitacao-turmas-horarios-professor.md) | Solicitacao de turmas e horarios por professor |
 | [PRD-114-elegibilidade-plano-veterano.md](PRD-114-elegibilidade-plano-veterano.md) | Elegibilidade do plano Veterano (ex-Fidelidade) por tempo de casa |
+| [PRD-115-wizard-perfis-operacionais-sequenciais.md](PRD-115-wizard-perfis-operacionais-sequenciais.md) | Wizard de perfis operacionais sequenciais |
+| [PRD-116-home-aluno-permissoes-cronograma-fidelidade.md](PRD-116-home-aluno-permissoes-cronograma-fidelidade.md) | Home do aluno com permissoes, cronograma modal e fidelidade |
+| [PRD-117-fidelidade-contratual-planos-recorrentes.md](PRD-117-fidelidade-contratual-planos-recorrentes.md) | Fidelidade contratual para planos recorrentes |
+| [PRD-118-adicionar-dependente-pos-matricula.md](PRD-118-adicionar-dependente-pos-matricula.md) | Adicionar dependente pós-matrícula |
+| [PRD-119-dependente-materiais-idempotencia-cpf.md](PRD-119-dependente-materiais-idempotencia-cpf.md) | Dependente com materiais, idempotência e CPF pendente |
+| [PRD-120-dependente-modal-home.md](PRD-120-dependente-modal-home.md) | Dependente em modal na home |
+| [PRD-121-home-cliente-dependentes-mensalidades-crud.md](PRD-121-home-cliente-dependentes-mensalidades-crud.md) | Home do cliente com dependentes, mensalidades e CRUD modal |

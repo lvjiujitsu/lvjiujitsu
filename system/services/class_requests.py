@@ -17,6 +17,7 @@ from system.models import (
     ClassSchedule,
     Person,
     PortalAccount,
+    TeacherBankAccount,
 )
 from system.services.registration import ensure_default_person_types
 from system.utils import ensure_formatted_cpf
@@ -101,6 +102,7 @@ def create_new_teacher_class_request(
     jiu_jitsu_belt="",
     jiu_jitsu_stripes=None,
     extra_schedules=None,
+    payout_data=None,
 ):
     formatted_cpf = ensure_formatted_cpf(cpf)
     if _has_pending_new_teacher_request(formatted_cpf):
@@ -139,7 +141,7 @@ def create_new_teacher_class_request(
         justification=(justification or "").strip(),
         extra_schedules=_serialize_extra_schedules(normalized_extra_schedules),
     )
-    request.payload = _build_payload(request)
+    request.payload = _build_payload(request, payout_data=payout_data)
     request.save(update_fields=("payload", "updated_at"))
     return request
 
@@ -389,6 +391,7 @@ def _resolve_or_create_instructor(catalog_request):
                 setattr(person, field_name, getattr(catalog_request, field_name))
         person.save(update_fields=("person_type", "is_active", "email", "phone", "updated_at"))
     _ensure_portal_account(person, catalog_request.password_hash)
+    _sync_teacher_bank_account(person, catalog_request.payload.get("payout") or {})
     return person
 
 
@@ -573,26 +576,27 @@ def _require_pending(catalog_request):
         raise ValidationError("A solicitação já foi decidida.")
 
 
-def _build_payload(catalog_request):
-    return _payload_to_json(
-        {
-            "class_group": catalog_request.target_class_group,
-            "class_category": catalog_request.class_category,
-            "display_name": catalog_request.display_name,
-            "weekday": catalog_request.weekday,
-            "training_style": catalog_request.training_style,
-            "start_time": catalog_request.start_time,
-            "duration_minutes": catalog_request.duration_minutes,
-            "default_capacity": catalog_request.default_capacity,
-        }
-    )
+def _build_payload(catalog_request, *, payout_data=None):
+    payload = {
+        "class_group": catalog_request.target_class_group,
+        "class_category": catalog_request.class_category,
+        "display_name": catalog_request.display_name,
+        "weekday": catalog_request.weekday,
+        "training_style": catalog_request.training_style,
+        "start_time": catalog_request.start_time,
+        "duration_minutes": catalog_request.duration_minutes,
+        "default_capacity": catalog_request.default_capacity,
+    }
+    if payout_data is not None:
+        payload["payout"] = _normalize_payout_payload(payout_data)
+    return _payload_to_json(payload)
 
 
 def _payload_to_json(payload):
     class_group = payload.get("class_group")
     class_category = payload.get("class_category")
     start_time = payload.get("start_time")
-    return {
+    result = {
         "class_group_id": class_group.pk if class_group else None,
         "class_group_label": str(class_group) if class_group else "",
         "class_category_id": class_category.pk if class_category else None,
@@ -604,3 +608,48 @@ def _payload_to_json(payload):
         "duration_minutes": payload.get("duration_minutes") or 0,
         "default_capacity": payload.get("default_capacity") or 0,
     }
+    if "payout" in payload:
+        result["payout"] = payload.get("payout") or {}
+    return result
+
+
+def _normalize_payout_payload(payout_data):
+    payout_data = payout_data or {}
+    method = payout_data.get("method") or "none"
+    if method not in {"none", "pix", "bank_account"}:
+        method = "none"
+    pix_key_type = (payout_data.get("pix_key_type") or "").strip()
+    pix_key = (payout_data.get("pix_key") or "").strip()
+    bank_account_details = (payout_data.get("bank_account_details") or "").strip()
+    if method == "pix" and (not pix_key_type or not pix_key):
+        raise ValidationError("Informe tipo e chave PIX para recebimento do professor.")
+    if method == "bank_account" and not bank_account_details:
+        raise ValidationError("Informe os dados bancários para recebimento do professor.")
+    return {
+        "method": method,
+        "pix_key_type": pix_key_type if method == "pix" else "",
+        "pix_key": pix_key if method == "pix" else "",
+        "bank_account_details": bank_account_details if method == "bank_account" else "",
+        "holder_name": (payout_data.get("holder_name") or "").strip(),
+        "holder_document": (payout_data.get("holder_document") or "").strip(),
+    }
+
+
+def _sync_teacher_bank_account(person, payout):
+    if not payout or payout.get("method") != "pix":
+        return None
+    pix_key = (payout.get("pix_key") or "").strip()
+    pix_key_type = (payout.get("pix_key_type") or "").strip()
+    if not pix_key or not pix_key_type:
+        return None
+    account, _ = TeacherBankAccount.objects.update_or_create(
+        person=person,
+        defaults={
+            "pix_key": pix_key,
+            "pix_key_type": pix_key_type,
+            "holder_name": (payout.get("holder_name") or "").strip(),
+            "holder_document": (payout.get("holder_document") or "").strip(),
+            "is_active": True,
+        },
+    )
+    return account

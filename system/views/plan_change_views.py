@@ -11,6 +11,7 @@ from system.services.plan_change import (
     apply_plan_change_with_leftover_refund,
     calculate_plan_change,
     create_plan_change_order,
+    get_plan_change_lock,
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
@@ -26,20 +27,15 @@ class PlanChangeSelectView(PortalRoleRequiredMixin, View):
     def post(self, request):
         person = request.portal_person
         membership = get_active_membership(person)
-        if membership and membership.stripe_subscription_id:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "error": (
-                        "Sua mensalidade é uma assinatura recorrente no cartão. "
-                        "Fale com a academia para trocar de plano."
-                    ),
-                },
-                status=400,
-            )
         if not membership:
             return JsonResponse(
                 {"success": False, "error": "Você não possui uma assinatura ativa."},
+                status=400,
+            )
+        plan_change_lock = get_plan_change_lock(membership)
+        if plan_change_lock["is_locked"]:
+            return JsonResponse(
+                {"success": False, "error": plan_change_lock["message"]},
                 status=400,
             )
 

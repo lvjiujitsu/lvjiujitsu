@@ -132,6 +132,24 @@ class PlanChangeSelectViewTestCase(TestCase):
         self.membership.refresh_from_db()
         self.assertEqual(self.membership.plan_id, self.current_plan.pk)
 
+    def test_stripe_gateway_membership_is_rejected_without_subscription_id(self):
+        self.current_plan.payment_method = PlanPaymentMethod.CREDIT_CARD
+        self.current_plan.gateway_code = "stripe_card"
+        self.current_plan.save(update_fields=["payment_method", "gateway_code"])
+        self._login()
+
+        response = self.client.post(
+            reverse("system:plan-change-select"),
+            data={"selected_plan": self.cheaper_plan.pk},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = json.loads(response.content)
+        self.assertFalse(payload["success"])
+        self.assertIn("assinatura recorrente", payload["error"])
+        self.membership.refresh_from_db()
+        self.assertEqual(self.membership.plan_id, self.current_plan.pk)
+
     def test_same_plan_is_rejected(self):
         self._login()
 
@@ -225,4 +243,18 @@ class HomeDashboardPlanChangeContextTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["plan_change_locked"])
         self.assertFalse(response.context["plan_change_catalog"])
+        self.assertNotContains(response, "js-open-plan-change-modal")
+
+    def test_home_locks_stripe_gateway_plan_without_subscription_id(self):
+        self.current_plan.payment_method = PlanPaymentMethod.CREDIT_CARD
+        self.current_plan.gateway_code = "stripe_card"
+        self.current_plan.save(update_fields=["payment_method", "gateway_code"])
+        self._login(self.account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["plan_change_locked"])
+        self.assertFalse(response.context["plan_change_catalog"])
+        self.assertContains(response, "Troca e cancelamento liberados em")
         self.assertNotContains(response, "js-open-plan-change-modal")

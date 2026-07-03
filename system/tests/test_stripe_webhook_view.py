@@ -25,7 +25,11 @@ class StripeWebhookViewErrorLoggingTestCase(TestCase):
         with patch(
             "system.views.stripe_views.process_stripe_event",
             side_effect=ValueError("boom"),
-        ):
+        ), self.assertLogs("system.views.stripe_views", level="ERROR") as logs:
             response = self._post_event(event)
 
         self.assertEqual(response.status_code, 500)
+        self.assertEqual(len(logs.records), 1)
+        self.assertIn("evt_test_1", logs.records[0].getMessage())
+        self.assertIs(logs.records[0].exc_info[0], ValueError)
+        self.assertEqual(str(logs.records[0].exc_info[1]), "boom")

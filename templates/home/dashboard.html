@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=17">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=21">
 </head>
 <body>
 
@@ -16,6 +16,13 @@
       <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
     </a>
     <nav class="topbar__actions" aria-label="Ações do usuário">
+      {% if client_person %}
+      <button class="btn-icon js-open-client-profile" type="button" aria-label="Dados do cliente" title="Dados do cliente" aria-haspopup="dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </button>
+      {% endif %}
       <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
         <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
@@ -44,22 +51,6 @@
       {% endfor %}
     </div>
     {% endif %}
-
-    <!-- Cabeçalho da página -->
-    <div class="page-header">
-      <p class="page-header__eyebrow">{{ today_weekday }} · {{ today_date }}</p>
-      <h1 class="page-header__title">Olá, {{ portal_display_name }}</h1>
-      {% if role_labels %}
-      <div class="role-badges" aria-label="Perfis ativos">
-        {% for label in role_labels %}
-        <span class="role-badge{% if label == 'Aluno' %} role-badge--primary{% endif %}">{{ label }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% if show_staff_area and not has_personal_area %}
-      <p class="page-header__hint">Gestão · sem área pessoal de treino</p>
-      {% endif %}
-    </div>
 
     {% if needs_split %}
     <section class="area-block" aria-labelledby="personal-area-title">
@@ -157,7 +148,7 @@
       {% if staff_today_classes %}
       {% include "home/partials/today_classes_section.html" with class_items=staff_today_classes section_slug="turmas" instructor_toolbar="overview" attendance_history=attendance_history only %}
       {% elif today_classes %}
-      {% include "home/partials/today_classes_section.html" with class_items=today_classes section_slug="turmas" instructor_toolbar="full" attendance_history=attendance_history only %}
+      {% include "home/partials/today_classes_section.html" with class_items=today_classes section_slug="turmas" instructor_toolbar=today_classes_toolbar attendance_history=attendance_history only %}
       {% endif %}
       {% if has_personal_area %}
       {% include "home/partials/graduation_section.html" %}
@@ -357,8 +348,8 @@
     {% endif %}
 
     <!-- ─── Mensalidade (aluno / responsável) ────────────────────────────── -->
-    {% if has_personal_area and not needs_split %}
-    {% if is_student and billing_tabs %}
+    {% if show_billing_area and not needs_split %}
+    {% if billing_tabs %}
     <section class="section" aria-labelledby="billing-title">
       <div class="section__header">
         <div class="section__title-row">
@@ -402,7 +393,7 @@
                 <!-- Cabeçalho compacto sempre visível -->
                 <div class="billing-compact-header">
                   <div class="billing-compact-info">
-                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <span class="billing-compact-info__label">{% if tab.is_active_tab %}Mensalidade do titular{% else %}Mensalidade do dependente{% endif %}</span>
                     <div class="billing-compact-info__plan">
                       {% if m.status == "active" %}
                         <span class="badge badge--success">Ativo</span>
@@ -470,8 +461,13 @@
                     {% if m.status == "past_due" and tab.pending_order %}
                     <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
                     {% endif %}
-                    {% if tab.is_active_tab and not plan_change_locked and plan_change_catalog and m.status == "active" or tab.is_active_tab and not plan_change_locked and plan_change_catalog and m.status == "exempted" %}
+                    {% if tab.is_active_tab and plan_change_locked and plan_change_lock_message and m.status == "active" %}
+                    <p class="billing-lock-notice" role="status">{{ plan_change_lock_message }}</p>
+                    {% endif %}
+                    {% if tab.is_active_tab and not plan_change_locked and plan_change_catalog %}
+                      {% if m.status == "active" or m.status == "exempted" %}
                     <button class="btn btn--secondary btn--sm js-open-plan-change-modal" type="button">Trocar plano</button>
+                      {% endif %}
                     {% endif %}
                   </div>
 
@@ -498,7 +494,7 @@
               {% elif tab.pending_order %}
                 <div class="billing-compact-header">
                   <div class="billing-compact-info">
-                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <span class="billing-compact-info__label">{% if tab.is_active_tab %}Mensalidade do titular{% else %}Mensalidade do dependente{% endif %}</span>
                     <div class="billing-compact-info__plan">
                       <span class="badge badge--warning">Pendente</span>
                       <span class="billing-compact-info__name">Pagamento pendente</span>
@@ -513,7 +509,7 @@
               {% elif active_trial_access %}
                 <div class="billing-compact-header">
                   <div class="billing-compact-info">
-                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <span class="billing-compact-info__label">{% if tab.is_active_tab %}Mensalidade do titular{% else %}Mensalidade do dependente{% endif %}</span>
                     <div class="billing-compact-info__plan">
                       <span class="badge badge--info">Experimental</span>
                       <span class="billing-compact-info__name">Acesso experimental</span>
@@ -532,7 +528,7 @@
               {% else %}
                 <div class="billing-compact-header">
                   <div class="billing-compact-info">
-                    <span class="billing-compact-info__label">Minha mensalidade</span>
+                    <span class="billing-compact-info__label">{% if tab.is_active_tab %}Mensalidade do titular{% else %}Mensalidade do dependente{% endif %}</span>
                     <div class="billing-compact-info__plan">
                       <span class="badge badge--neutral">Sem plano</span>
                       <span class="billing-compact-info__name">Nenhum plano ativo</span>
@@ -552,44 +548,131 @@
     {% endif %}
     {% endif %}
 
-    {% if dependents %}
-    <!-- ─── Meus dependentes (responsável) ───────────────────────────────── -->
+    {% if show_dependents_area %}
+    <!-- ─── Dependentes ───────────────────────────────────────────────────── -->
     <section class="section" aria-labelledby="dependents-title">
       <div class="section__header">
-        <h2 class="section__title" id="dependents-title">Meus dependentes</h2>
+        <h2 class="section__title" id="dependents-title">{% if dependents %}Meus dependentes{% else %}Dependentes{% endif %}</h2>
+        <div class="section__actions">
+          <a
+            class="btn btn--secondary btn--sm section-action js-open-dependent-modal"
+            href="{{ dependent_add_modal_url }}"
+            data-dependent-modal-url="{{ dependent_add_modal_url }}"
+            data-dependent-modal-title="Adicionar dependente"
+            aria-label="Adicionar dependente"
+            title="Adicionar dependente"
+          >
+            <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+            <span class="section-action__text">Adicionar dependente</span>
+          </a>
+        </div>
       </div>
       <div class="panel">
+        {% if dependents %}
         <ul class="entity-list" aria-label="Meus dependentes">
           {% for dep in dependents %}
           <li class="entity-card">
             <div class="entity-card__body">
-              <div class="entity-card__name">{{ dep.person.full_name }}</div>
-              <div class="entity-card__badges">
-                {% if dep.graduation_progress.current_belt_rank %}
-                <span class="badge badge--info">{{ dep.graduation_progress.current_belt_rank }}{% if dep.graduation_progress.current_grade_number %} · {{ dep.graduation_progress.current_grade_number }}º grau{% endif %}</span>
-                {% endif %}
-                {% if dep.active_membership.status == "active" %}
-                <span class="badge badge--success">Mensalidade em dia</span>
-                {% elif dep.active_membership.status == "past_due" %}
-                <span class="badge badge--danger">Mensalidade em atraso</span>
-                {% elif dep.active_membership.status == "exempted" %}
-                <span class="badge badge--success">Isento</span>
-                {% else %}
-                <span class="badge badge--neutral">Sem plano ativo</span>
-                {% endif %}
+              <div class="entity-card__topline">
+                <div>
+                  <div class="entity-card__name">{{ dep.person.full_name }}</div>
+                  <div class="entity-card__meta">
+                    {% if dep.today_classes %}{{ dep.today_classes|length }} aula{{ dep.today_classes|length|pluralize }} hoje{% else %}Sem aula hoje{% endif %}
+                  </div>
+                </div>
+                <div class="entity-card__actions entity-card__actions--icons">
+                  <a
+                    class="icon-action icon-action--edit js-open-dependent-modal"
+                    href="{{ dep.edit_url }}?modal=1"
+                    data-dependent-modal-url="{{ dep.edit_url }}?modal=1"
+                    data-dependent-modal-title="Editar dependente"
+                    aria-label="Editar dependente"
+                    title="Editar dependente"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span class="section-action__text">Editar dependente</span>
+                  </a>
+                  <form class="entity-action-form js-dependent-remove-form" method="post" action="{{ dep.remove_url }}" data-confirm-message="Remover {{ dep.person.full_name }} dos seus dependentes? O histórico da pessoa será preservado.">
+                    {% csrf_token %}
+                    <button class="icon-action icon-action--delete" type="submit" aria-label="Remover dependente" title="Remover dependente">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      <span class="section-action__text">Remover dependente</span>
+                    </button>
+                  </form>
+                </div>
               </div>
-              <div class="entity-card__meta">
-                {% if dep.today_classes %}{{ dep.today_classes|length }} aula{{ dep.today_classes|length|pluralize }} hoje{% else %}Sem aula hoje{% endif %}
+              <div class="dependent-summary-grid">
+                <section class="dependent-summary" aria-label="Mensalidade do dependente">
+                  <span class="dependent-summary__label">Mensalidade do dependente</span>
+                  {% if dep.active_membership %}
+                    <strong>{{ dep.active_membership.plan.display_name }}</strong>
+                    <div class="entity-card__badges">
+                      {% if dep.active_membership.status == "active" %}
+                      <span class="badge badge--success">Mensalidade em dia</span>
+                      {% elif dep.active_membership.status == "past_due" %}
+                      <span class="badge badge--danger">Mensalidade em atraso</span>
+                      {% elif dep.active_membership.status == "exempted" %}
+                      <span class="badge badge--success">Isento</span>
+                      {% else %}
+                      <span class="badge badge--warning">{{ dep.active_membership.get_status_display }}</span>
+                      {% endif %}
+                    </div>
+                    {% if dep.billing_owner and dep.billing_owner != dep.person %}
+                    <small>Vinculada ao responsável {{ dep.billing_owner.full_name }}.</small>
+                    {% elif dep.active_membership.current_period_end %}
+                    <small>Vigência até {{ dep.active_membership.current_period_end|date:"d/m/Y" }}.</small>
+                    {% endif %}
+                  {% else %}
+                    <strong>Nenhum plano ativo</strong>
+                    <div class="entity-card__badges">
+                      <span class="badge badge--neutral">Sem plano ativo</span>
+                    </div>
+                  {% endif %}
+                </section>
+                <section class="dependent-summary" aria-label="Graduação do dependente">
+                  <span class="dependent-summary__label">Graduação do dependente</span>
+                  {% if dep.graduation_progress.current_belt_rank %}
+                  <strong>{{ dep.graduation_progress.current_belt_rank }}{% if dep.graduation_progress.current_grade_number %} · {{ dep.graduation_progress.current_grade_number }}º grau{% endif %}</strong>
+                  {% if dep.graduation_progress.progress_pct %}
+                  <small>{{ dep.graduation_progress.progress_pct|floatformat:0 }}% do próximo grau.</small>
+                  {% endif %}
+                  {% else %}
+                  <strong>Sem graduação registrada</strong>
+                  {% endif %}
+                  {% if dep.graduation_history %}
+                  <details class="dependent-history">
+                    <summary>Histórico de graduação</summary>
+                    <ul>
+                      {% for history in dep.graduation_history %}
+                      <li>
+                        <span>{{ history.awarded_at|date:"d/m/Y" }}</span>
+                        <strong>{{ history.belt_rank }}{% if history.grade_number %} · {{ history.grade_number }}º grau{% endif %}</strong>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </details>
+                  {% else %}
+                  <small>Sem histórico de graduação.</small>
+                  {% endif %}
+                </section>
               </div>
             </div>
-            {% if can_access_people %}
-            <div class="entity-card__actions">
-              <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=dep.person.pk %}">Ver perfil</a>
-            </div>
-            {% endif %}
           </li>
           {% endfor %}
         </ul>
+        {% else %}
+        <div class="empty-state dependent-empty" role="status">
+          <p class="empty-state__text">Nenhum dependente cadastrado para este perfil.</p>
+          <div class="empty-state__actions">
+            <a
+              class="btn btn--primary btn--sm js-open-dependent-modal"
+              href="{{ dependent_add_modal_url }}"
+              data-dependent-modal-url="{{ dependent_add_modal_url }}"
+              data-dependent-modal-title="Adicionar dependente"
+            >Adicionar dependente</a>
+          </div>
+        </div>
+        {% endif %}
       </div>
     </section>
     {% endif %}
@@ -641,8 +724,117 @@
 
   </main>
 
+  {% if client_person %}
+  <!-- ─── Modal: dados do cliente ───────────────────────────────────────────── -->
+  <div class="modal-overlay" id="client-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="client-profile-modal-title">
+    <div class="modal client-profile-modal">
+      <div class="modal__header">
+        <div>
+          <p class="client-profile-modal__eyebrow">Dados do cliente</p>
+          <h2 class="modal__title" id="client-profile-modal-title">{{ client_person.full_name }}</h2>
+        </div>
+        <button class="modal__close js-close-client-profile" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="client-profile">
+        {% if role_labels %}
+        <div class="role-badges" aria-label="Perfis ativos">
+          {% for label in role_labels %}
+          <span class="role-badge{% if label == 'Aluno' %} role-badge--primary{% endif %}">{{ label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <dl class="client-profile__grid">
+          <div>
+            <dt>CPF</dt>
+            <dd>{{ client_person.cpf|default:"—" }}</dd>
+          </div>
+          <div>
+            <dt>E-mail</dt>
+            <dd>{{ client_person.email|default:"—" }}</dd>
+          </div>
+          <div>
+            <dt>Telefone</dt>
+            <dd>{{ client_person.phone|default:"—" }}</dd>
+          </div>
+        </dl>
+        <section class="client-profile__section" aria-label="Plano do titular">
+          <span class="client-profile__label">Plano do titular</span>
+          {% if client_billing_tab.active_membership %}
+          <strong>{{ client_billing_tab.active_membership.plan.display_name }}</strong>
+          <small>{{ client_billing_tab.active_membership.get_status_display }}{% if client_billing_tab.active_membership.current_period_end %} · até {{ client_billing_tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
+          {% elif client_billing_tab.pending_order %}
+          <strong>Pagamento pendente</strong>
+          <small>Conclua o pagamento para ativar a mensalidade.</small>
+          {% else %}
+          <strong>Nenhum plano ativo</strong>
+          <small>Sem mensalidade registrada para o titular.</small>
+          {% endif %}
+        </section>
+        {% if show_dependents_area %}
+        <section class="client-profile__section" aria-label="Dependentes">
+          <span class="client-profile__label">Dependentes</span>
+          <strong>{{ dependents|length }} cadastrado{{ dependents|length|pluralize }}</strong>
+          <a
+            class="btn btn--secondary btn--sm section-action js-open-dependent-modal js-close-client-profile"
+            href="{{ dependent_add_modal_url }}"
+            data-dependent-modal-url="{{ dependent_add_modal_url }}"
+            data-dependent-modal-title="Adicionar dependente"
+            aria-label="Adicionar dependente"
+            title="Adicionar dependente"
+          >
+            <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+            <span class="section-action__text">Adicionar dependente</span>
+          </a>
+        </section>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_dependents_area %}
+  <!-- ─── Modal: adicionar dependente ───────────────────────────────────────── -->
+  <dialog
+    class="dependent-modal"
+    id="dependent-registration-modal"
+    aria-labelledby="dependent-registration-modal-title"
+    {% if dependent_modal_open %}data-open-on-load="true"{% endif %}
+  >
+    <div class="dependent-modal__header">
+      <div>
+        <p class="dependent-modal__eyebrow">Dependentes</p>
+        <h2 class="dependent-modal__title" id="dependent-registration-modal-title">Adicionar dependente</h2>
+      </div>
+      <button class="dependent-modal__close js-close-dependent-modal" type="button" aria-label="Fechar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <iframe
+      class="dependent-modal__frame js-dependent-registration-frame"
+      title="Cadastro de dependente"
+      data-src="{{ dependent_add_modal_url }}"
+      loading="lazy"
+    ></iframe>
+  </dialog>
+  {% endif %}
+
+  <!-- ─── Modal: cronograma ────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="calendar-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
+    <div class="modal modal--calendar">
+      <div class="modal__header">
+        <h2 class="modal__title" id="calendar-modal-title">Cronograma</h2>
+        <button class="modal__close js-close-calendar-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <iframe class="calendar-modal__frame js-calendar-frame" title="Cronograma da academia" loading="lazy"></iframe>
+    </div>
+  </div>
+
   <!-- ─── Modal: criar aulão ───────────────────────────────────────────────── -->
-  {% if show_instructor_area %}
+  {% if can_create_special_classes %}
   <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-aulao-title">
     <div class="modal">
       <div class="modal__header">
@@ -971,7 +1163,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=11" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=14" defer></script>
 
 </body>
 </html>

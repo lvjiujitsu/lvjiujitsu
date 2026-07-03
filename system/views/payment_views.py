@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views import View
 
 from system.models.person import PersonRelationship, PersonRelationshipKind, PortalAccount
@@ -10,6 +11,7 @@ from system.models.registration_order import (
     RegistrationOrder,
 )
 from system.services import login_portal_identity
+from system.services.dependent_registration import DEPENDENT_FLOW_KIND
 from system.services.membership import get_latest_open_order
 from system.services.trial_access import grant_trial_for_order
 
@@ -228,8 +230,25 @@ class PaymentSuccessView(View):
         if pre_registration is None:
             return None
 
-        request.session["pending_pre_registration_id"] = pre_registration.pk
         snapshot = pre_registration.form_snapshot or {}
+        if snapshot.get("flow_kind") == DEPENDENT_FLOW_KIND:
+            request.session["pending_dependent_pre_registration_id"] = pre_registration.pk
+            if stage == "plan":
+                snapshot["plan_paid"] = True
+                pre_registration.form_snapshot = snapshot
+                pre_registration.status = PreRegistrationStatus.PAYMENT_CONFIRMED
+                pre_registration.save(update_fields=["form_snapshot", "status", "updated_at"])
+            elif stage == "materials":
+                snapshot["materials_paid"] = True
+                pre_registration.form_snapshot = snapshot
+                pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+            messages.success(
+                request,
+                "Pagamento confirmado. Revise os dados e finalize o dependente.",
+            )
+            return redirect(f"{reverse('system:home')}?dependent_modal=1")
+
+        request.session["pending_pre_registration_id"] = pre_registration.pk
         if stage == "plan":
             snapshot["plan_paid"] = True
             pre_registration.form_snapshot = snapshot

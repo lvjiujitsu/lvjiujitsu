@@ -141,6 +141,68 @@ class HomeDashboardContractTestCase(TestCase):
         self.assertNotIn('id="quick-title"', content)
         self.assertNotIn("Minha faixa", content)
 
+    def test_student_with_today_class_does_not_receive_instructor_toolbar(self):
+        from system.models import (
+            ClassCategory,
+            ClassEnrollment,
+            ClassGroup,
+            ClassSchedule,
+            IbjjfAgeCategory,
+        )
+        from system.services.class_calendar import PYTHON_WEEKDAY_TO_CODE
+
+        student_type = PersonType.objects.create(
+            code=PersonTypeCode.STUDENT,
+            display_name="Aluno",
+        )
+        category = ClassCategory.objects.create(
+            code="adult-student-toolbar",
+            display_name="Adulto",
+            audience=CategoryAudience.ADULT,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="adult-student-toolbar",
+            display_name="Adulto",
+            audience=CategoryAudience.ADULT,
+            minimum_age=18,
+            display_order=1,
+        )
+        class_group = ClassGroup.objects.create(
+            display_name="Jiu Jitsu",
+            class_category=category,
+        )
+        today_weekday = PYTHON_WEEKDAY_TO_CODE[date.today().weekday()]
+        ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=today_weekday,
+            start_time="06:30",
+        )
+        person = Person.objects.create(
+            full_name="Aluno Sem Aulão",
+            cpf="123.581.321-00",
+            person_type=student_type,
+            birth_date=date(1990, 3, 14),
+            biological_sex="male",
+        )
+        ClassEnrollment.objects.create(
+            person=person,
+            class_group=class_group,
+            status="active",
+        )
+        account = PortalAccount(person=person)
+        account.set_password("123456")
+        account.save()
+        self._login_portal_account(account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["today_classes_toolbar"], "overview")
+        self.assertContains(response, "Turmas de hoje")
+        self.assertContains(response, "js-open-calendar-modal")
+        self.assertNotContains(response, "Criar aulão")
+        self.assertNotContains(response, f'href="{reverse("system:calendar")}"')
+
     def test_class_assistant_student_cannot_access_financial_control(self):
         student_type = PersonType.objects.create(
             code=PersonTypeCode.STUDENT,

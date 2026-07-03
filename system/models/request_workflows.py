@@ -58,6 +58,7 @@ class AdministrativeAccessRequest(TimeStampedModel):
     approved_role_codes = models.JSONField(default=list, blank=True)
     grant_full_administrative = models.BooleanField(default=False)
     justification = models.TextField()
+    request_payload = models.JSONField(default=dict, blank=True)
     decision_notes = models.TextField(blank=True)
     password_hash = models.CharField(max_length=255, blank=True, default="")
     decided_at = models.DateTimeField(null=True, blank=True)

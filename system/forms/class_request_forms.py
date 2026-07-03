@@ -5,10 +5,16 @@ from system.models import (
     ClassCatalogRequestType,
     ClassCategory,
     ClassGroup,
+    PixKeyType,
     TrainingStyle,
     WeekdayCode,
 )
 from system.utils import ensure_formatted_cpf
+
+
+PAYOUT_METHOD_NONE = "none"
+PAYOUT_METHOD_PIX = "pix"
+PAYOUT_METHOD_BANK_ACCOUNT = "bank_account"
 
 
 class ExistingTeacherClassCatalogRequestForm(forms.Form):
@@ -131,6 +137,36 @@ class NewTeacherClassCatalogRequestForm(forms.Form):
         initial=0,
         label="Capacidade",
     )
+    payout_method = forms.ChoiceField(
+        choices=(
+            (PAYOUT_METHOD_NONE, "Informar depois"),
+            (PAYOUT_METHOD_PIX, "PIX"),
+            (PAYOUT_METHOD_BANK_ACCOUNT, "Conta bancária"),
+        ),
+        initial=PAYOUT_METHOD_NONE,
+        label="Como quer receber?",
+    )
+    pix_key_type = forms.ChoiceField(
+        choices=(("", "Selecione"),) + tuple(PixKeyType.choices),
+        required=False,
+        label="Tipo da chave PIX",
+    )
+    pix_key = forms.CharField(required=False, max_length=140, label="Chave PIX")
+    bank_account_details = forms.CharField(
+        required=False,
+        label="Dados bancários",
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    payout_holder_name = forms.CharField(
+        required=False,
+        max_length=140,
+        label="Titular da conta",
+    )
+    payout_holder_document = forms.CharField(
+        required=False,
+        max_length=32,
+        label="CPF/CNPJ do titular",
+    )
     justification = forms.CharField(
         label="Justificativa",
         widget=forms.Textarea(attrs={"rows": 4}),
@@ -154,7 +190,31 @@ class NewTeacherClassCatalogRequestForm(forms.Form):
         password_confirm = cleaned_data.get("password_confirm") or ""
         if password and password_confirm and password != password_confirm:
             self.add_error("password_confirm", "As senhas não coincidem.")
+        payout_method = cleaned_data.get("payout_method")
+        if payout_method == PAYOUT_METHOD_PIX:
+            if not cleaned_data.get("pix_key_type"):
+                self.add_error("pix_key_type", "Selecione o tipo da chave PIX.")
+            if not (cleaned_data.get("pix_key") or "").strip():
+                self.add_error("pix_key", "Informe a chave PIX.")
+        if payout_method == PAYOUT_METHOD_BANK_ACCOUNT and not (
+            cleaned_data.get("bank_account_details") or ""
+        ).strip():
+            self.add_error("bank_account_details", "Informe os dados bancários.")
         return cleaned_data
+
+    def get_payout_payload(self):
+        return {
+            "method": self.cleaned_data.get("payout_method") or PAYOUT_METHOD_NONE,
+            "pix_key_type": self.cleaned_data.get("pix_key_type") or "",
+            "pix_key": (self.cleaned_data.get("pix_key") or "").strip(),
+            "bank_account_details": (
+                self.cleaned_data.get("bank_account_details") or ""
+            ).strip(),
+            "holder_name": (self.cleaned_data.get("payout_holder_name") or "").strip(),
+            "holder_document": (
+                self.cleaned_data.get("payout_holder_document") or ""
+            ).strip(),
+        }
 
 
 class ClassCatalogDecisionForm(forms.Form):

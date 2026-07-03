@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dependente adicionado — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=3">
+  <script src="{% static 'system/js/dependents/dependent_registration_done.js' %}?v=1" defer></script>
+</head>
+<body class="dependent-page dependent-page--modal dependent-page--done">
+  <main class="dependent-shell dependent-shell--done" id="main-content">
+    <section class="dependent-modal-done" data-dependent-modal-done role="status" aria-live="polite">
+      <span class="dependent-modal-done__icon" aria-hidden="true">OK</span>
+      <h1>Dependente atualizado</h1>
+      <p>{{ message }}</p>
+    </section>
+  </main>
+</body>
+</html>

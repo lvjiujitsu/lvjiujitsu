@@ -38,6 +38,7 @@ from system.services.plan_change import (
     build_membership_summary,
     build_plan_catalog,
     build_plan_catalog_filters,
+    get_plan_change_lock,
 )
 from system.services.payroll_rules import calculate_monthly_payroll
 from system.services.access_requests import (
@@ -87,10 +88,15 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         context["is_administrative"] = is_administrative
         context["is_instructor"] = is_instructor
         context["is_student"] = is_student
+        context["client_person"] = person
         context["can_support_classes"] = can_support_classes
         context["show_staff_area"] = is_admin or is_administrative
         context["show_instructor_area"] = (
             is_admin or is_administrative or is_instructor or can_support_classes
+        )
+        context["can_create_special_classes"] = context["show_instructor_area"]
+        context["today_classes_toolbar"] = (
+            "full" if context["show_instructor_area"] else "overview"
         )
         context["can_access_people"] = _can_access_people(request)
         context["can_manage_class_requests"] = _can_manage_class_requests(request)
@@ -125,10 +131,16 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
 
         enrolled = person.class_enrollments.filter(status="active").exists()
         trains = bool(is_instructor or is_student or person.jiu_jitsu_belt or enrolled)
+        person_has_dependents = has_dependents(person)
         context["has_personal_area"] = trains
-        context["needs_split"] = bool(
-            trains and (has_dependents(person) or context["show_staff_area"])
+        context["show_dependents_area"] = bool(is_student or person_has_dependents)
+        context["dependent_add_url"] = reverse("system:dependent-add")
+        context["dependent_add_modal_url"] = (
+            f"{context['dependent_add_url']}?modal=1"
         )
+        context["dependent_modal_open"] = request.GET.get("dependent_modal") == "1"
+        context["needs_split"] = bool(trains and context["show_staff_area"])
+        context["show_billing_area"] = bool(trains or person_has_dependents)
 
         if trains:
             context["my_classes"] = get_today_classes_for_person(person)
@@ -187,10 +199,10 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             )
             context["instructor_attendance_count"] = len(regular_dates | special_dates)
 
-        if is_student or has_dependents(person):
-            context.update(_build_billing_context(person, is_student))
+        if context["show_billing_area"]:
+            context.update(_build_billing_context(person))
 
-        if has_dependents(person):
+        if person_has_dependents:
             context["dependents"] = _build_dependents(person)
 
         return context
@@ -241,13 +253,7 @@ def _build_belt_context(graduation_progress):
     }
 
 
-def _build_billing_context(person, is_student):
-    if not is_student:
-        return {
-            "active_trial_access": None,
-            "billing_tabs": [],
-        }
-
+def _build_billing_context(person):
     active_trial_access = get_active_trial_for_person(person)
     if has_dependents(person):
         billing_tabs = get_guardian_billing_tabs(person)
@@ -271,7 +277,8 @@ def _build_billing_context(person, is_student):
         }]
 
     own_membership = get_active_membership(person)
-    plan_change_locked = bool(own_membership and own_membership.stripe_subscription_id)
+    plan_change_lock = get_plan_change_lock(own_membership)
+    plan_change_locked = plan_change_lock["is_locked"]
     plan_change_catalog = (
         build_plan_catalog(person, own_membership)
         if own_membership and not plan_change_locked
@@ -281,11 +288,14 @@ def _build_billing_context(person, is_student):
     return {
         "active_trial_access": active_trial_access,
         "billing_tabs": billing_tabs,
+        "client_billing_tab": billing_tabs[0] if billing_tabs else None,
         "plan_change_membership": own_membership,
         "plan_change_summary": build_membership_summary(own_membership),
         "plan_change_catalog": plan_change_catalog,
         "plan_change_filters": plan_change_filters,
         "plan_change_locked": plan_change_locked,
+        "plan_change_available_on": plan_change_lock["available_on"],
+        "plan_change_lock_message": plan_change_lock["message"],
     }
 
 
@@ -333,8 +343,12 @@ def _build_dependents(guardian):
         dependents.append({
             "person": dependent,
             "graduation_progress": progress,
+            "graduation_history": get_graduation_history(dependent),
             "today_classes": get_today_classes_for_person(dependent),
             "active_membership": get_active_membership(dependent),
+            "billing_owner": get_membership_owner(dependent),
+            "edit_url": reverse("system:dependent-edit", args=[dependent.pk]),
+            "remove_url": reverse("system:dependent-remove", args=[dependent.pk]),
         })
     return dependents
 
@@ -385,12 +399,20 @@ def _empty_context():
         "belt_stripes": [],
         "active_trial_access": None,
         "billing_tabs": [],
+        "client_billing_tab": None,
         "plan_change_membership": None,
         "plan_change_summary": None,
         "plan_change_catalog": [],
         "plan_change_filters": {"frequencies": [], "cycles": [], "methods": []},
         "plan_change_locked": False,
+        "plan_change_available_on": None,
+        "plan_change_lock_message": "",
         "dependents": [],
+        "show_dependents_area": False,
+        "show_billing_area": False,
+        "dependent_add_url": "",
+        "dependent_add_modal_url": "",
+        "dependent_modal_open": False,
         "financial_dashboard": None,
         "pending_administrative_access_request_count": 0,
         "pending_class_catalog_request_count": 0,
@@ -405,6 +427,8 @@ def _empty_context():
         "payroll_bank": None,
         "instructor_attendance_count": 0,
         "instructor_choices": [],
+        "today_classes_toolbar": "overview",
+        "can_create_special_classes": False,
     }
 
 

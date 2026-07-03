@@ -56,6 +56,21 @@
         </section>
 
         <section class="form-group">
+          <h2 class="form-group__title">Intenção no cadastro</h2>
+          <div class="form-grid">
+            {% for field in form %}
+              {% if field.name in "training_intent,compensation_preference,pix_key_type,pix_key" %}
+              <div class="form-field">
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="form-group">
           <h2 class="form-group__title">Acesso solicitado</h2>
           <div class="form-grid">
             <div class="form-field form-field--full">

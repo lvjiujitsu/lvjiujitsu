@@ -90,6 +90,11 @@ from system.views.home_views import (
     DashboardRedirectView,
     HomeView,
 )
+from system.views.dependent_views import (
+    DependentRegistrationView,
+    DependentRemoveView,
+    DependentUpdateView,
+)
 from system.views.person_views import (
     PersonCreateView,
     PersonDeleteView,
@@ -196,6 +201,9 @@ urlpatterns = [
     # Redirecionamento pós-login e home unificada
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
     path("home/", HomeView.as_view(), name="home"),
+    path("dependents/add/", DependentRegistrationView.as_view(), name="dependent-add"),
+    path("dependents/<int:pk>/edit/", DependentUpdateView.as_view(), name="dependent-edit"),
+    path("dependents/<int:pk>/remove/", DependentRemoveView.as_view(), name="dependent-remove"),
     path("requests/admin-access/create/", PortalAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-request-create"),
     path("requests/admin-access/", AdministrativeAccessRequestQueueView.as_view(), name="administrative-access-request-list"),
     path("requests/admin-access/<int:pk>/", AdministrativeAccessRequestDetailView.as_view(), name="administrative-access-request-detail"),

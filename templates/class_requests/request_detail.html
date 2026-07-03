@@ -49,6 +49,24 @@
           <div><dt>Horário</dt><dd>{{ class_request.start_time|time:"H:i" }}</dd></div>
           <div><dt>Estilo</dt><dd>{{ class_request.get_training_style_display }}</dd></div>
           <div><dt>Duração</dt><dd>{{ class_request.duration_minutes }} min</dd></div>
+          {% if class_request.payload.payout %}
+          <div class="request-summary__full">
+            <dt>Recebimento</dt>
+            <dd>
+              {% if class_request.payload.payout.method == "pix" %}
+                PIX · {{ class_request.payload.payout.pix_key_type }} · {{ class_request.payload.payout.pix_key }}
+                {% if class_request.payload.payout.holder_name %}<br>Titular: {{ class_request.payload.payout.holder_name }}{% endif %}
+                {% if class_request.payload.payout.holder_document %}<br>Documento: {{ class_request.payload.payout.holder_document }}{% endif %}
+              {% elif class_request.payload.payout.method == "bank_account" %}
+                Conta bancária<br>{{ class_request.payload.payout.bank_account_details|linebreaksbr }}
+                {% if class_request.payload.payout.holder_name %}<br>Titular: {{ class_request.payload.payout.holder_name }}{% endif %}
+                {% if class_request.payload.payout.holder_document %}<br>Documento: {{ class_request.payload.payout.holder_document }}{% endif %}
+              {% else %}
+                Informar depois
+              {% endif %}
+            </dd>
+          </div>
+          {% endif %}
           {% if class_request.extra_schedules %}
           <div class="request-summary__full">
             <dt>Horários adicionais</dt>

@@ -144,3 +144,18 @@ class AdministrativeAccessRequestViewPermissionTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(self.request, list(response.context["access_requests"]))
+
+    def test_public_create_redirects_to_main_registration_wizard(self):
+        response = self.client.get(
+            reverse("system:administrative-access-public-create"),
+            data={
+                "training_intent": "student",
+                "compensation_preference": "barter",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('system:register')}?profile=administrative_request",
+            fetch_redirect_response=False,
+        )

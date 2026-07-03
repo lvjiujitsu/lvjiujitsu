@@ -3,6 +3,8 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -39,6 +41,7 @@ from system.services.class_calendar import (
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
 
 
+@method_decorator(xframe_options_sameorigin, name="dispatch")
 class CalendarView(PortalRoleRequiredMixin, TemplateView):
     allowed_codes = STUDENT_PORTAL_PERSON_TYPE_CODES + CLASS_STAFF_PERSON_TYPE_CODES
     required_capabilities = (
@@ -64,6 +67,9 @@ class CalendarView(PortalRoleRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         year, month = self._resolve_month()
         context["calendar"] = get_calendar_month_data(year, month)
+        is_embedded = self.request.GET.get("embedded") == "1"
+        context["is_embedded"] = is_embedded
+        context["calendar_query_suffix"] = "?embedded=1" if is_embedded else ""
 
         person = getattr(self.request, "portal_person", None)
         is_instructor = bool(

@@ -15,7 +15,7 @@ from system.forms import (
     PortalRegistrationForm,
     PortalSetPasswordForm,
 )
-from system.constants import CheckoutAction
+from system.constants import CheckoutAction, PersonTypeCode, RegistrationProfile
 from system.models import Person
 from system.models import PreRegistration
 from system.services import asaas_client
@@ -119,6 +119,13 @@ class PortalRegisterView(FormView):
 
         checkout_action = form.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
         if checkout_action == CheckoutAction.PAY_LATER:
+            if self._is_operational_pre_registration_without_plan(form.cleaned_data):
+                self.request.session.pop("pending_pre_registration_id", None)
+                messages.success(
+                    self.request,
+                    "Cadastro enviado para análise. A gestão vai aprovar o perfil solicitado.",
+                )
+                return redirect("system:login")
             mark_pre_registration_trial_requested(pre_registration)
             self.request.session["post_plan_payment_complete"] = True
             self.request.session["plan_is_trial"] = True
@@ -144,6 +151,16 @@ class PortalRegisterView(FormView):
 
     def _get_pending_person_summary(self):
         return get_pending_person_summary(self.request.session)
+
+    def _is_operational_pre_registration_without_plan(self, cleaned_data):
+        if cleaned_data.get("registration_profile") != RegistrationProfile.OTHER:
+            return False
+        if cleaned_data.get("other_type_code") not in {
+            PersonTypeCode.INSTRUCTOR,
+            PersonTypeCode.ADMINISTRATIVE_ASSISTANT,
+        }:
+            return False
+        return not cleaned_data.get("selected_plan")
 
     def _get_initial_step(self, form):
         if not form.is_bound or not form.errors:
@@ -177,6 +194,15 @@ class PortalRegisterView(FormView):
             "student_martial_art_graduation",
             "student_jiu_jitsu_belt",
             "student_jiu_jitsu_stripes",
+            "other_blood_type",
+            "other_allergies",
+            "other_injuries",
+            "other_emergency_contact",
+            "other_has_martial_art",
+            "other_martial_art",
+            "other_martial_art_graduation",
+            "other_jiu_jitsu_belt",
+            "other_jiu_jitsu_stripes",
         }
         class_fields = {
             "holder_class_groups",

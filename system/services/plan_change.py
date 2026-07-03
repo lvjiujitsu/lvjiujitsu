@@ -2,6 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from system.models.membership import (
     Membership,
@@ -47,9 +48,64 @@ _CYCLE_INSTALLMENTS = {
     "annual": 12,
 }
 
+_STRIPE_RECURRING_GATEWAY_CODE = "stripe_card"
+_PLAN_CHANGE_LOCKED_STATUSES = (
+    MembershipStatus.ACTIVE,
+    MembershipStatus.EXEMPTED,
+)
+
 
 def _quantize(value):
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def is_plan_change_locked(membership):
+    if (
+        membership is None
+        or membership.status not in _PLAN_CHANGE_LOCKED_STATUSES
+        or membership.plan_id is None
+    ):
+        return False
+    return bool(
+        membership.stripe_subscription_id
+        or getattr(membership.plan, "gateway_code", "") == _STRIPE_RECURRING_GATEWAY_CODE
+    )
+
+
+def get_plan_change_lock(membership):
+    if not is_plan_change_locked(membership):
+        return {
+            "is_locked": False,
+            "available_on": None,
+            "message": "",
+        }
+
+    available_on = _membership_period_end_date(membership)
+    if available_on:
+        message = (
+            "Troca e cancelamento liberados em "
+            f"{date_format(available_on, 'SHORT_DATE_FORMAT')}, "
+            "após a carência da assinatura recorrente."
+        )
+    else:
+        message = (
+            "Troca e cancelamento bloqueados durante a carência da assinatura recorrente. "
+            "Fale com a academia para consultar a data de liberação."
+        )
+    return {
+        "is_locked": True,
+        "available_on": available_on,
+        "message": message,
+    }
+
+
+def _membership_period_end_date(membership):
+    period_end = getattr(membership, "current_period_end", None)
+    if period_end is None:
+        return None
+    if timezone.is_aware(period_end):
+        return timezone.localtime(period_end).date()
+    return period_end.date()
 
 
 def get_last_paid_order(membership):
@@ -180,6 +236,8 @@ def build_plan_catalog(person, membership):
         MembershipStatus.ACTIVE,
         MembershipStatus.EXEMPTED,
     ):
+        return []
+    if is_plan_change_locked(membership):
         return []
     billing_owner = get_membership_owner(person) or person
     eligibility = build_eligibility_context_for_person(billing_owner)

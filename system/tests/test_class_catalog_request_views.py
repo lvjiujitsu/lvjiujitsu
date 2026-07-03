@@ -140,3 +140,12 @@ class ClassCatalogRequestViewPermissionTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.request.refresh_from_db()
         self.assertEqual(self.request.status, ClassCatalogRequestStatus.PENDING)
+
+    def test_public_new_teacher_create_redirects_to_main_registration_wizard(self):
+        response = self.client.get(reverse("system:class-catalog-request-public-teacher-create"))
+
+        self.assertRedirects(
+            response,
+            f"{reverse('system:register')}?profile=teacher_request",
+            fetch_redirect_response=False,
+        )

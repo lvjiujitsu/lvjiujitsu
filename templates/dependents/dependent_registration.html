@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Adicionar dependente — LV Jiu Jitsu</title>
+  {% load static %}
+  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=3">
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=2" defer></script>
+</head>
+<body class="dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
+  <main class="dependent-shell" id="main-content">
+    <header class="dependent-header">
+      {% if is_modal %}
+      <button class="dependent-back" type="button" data-dependent-frame-close>
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Fechar
+      </button>
+      {% else %}
+      <a class="dependent-back" href="{% url 'system:home' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Voltar
+      </a>
+      {% endif %}
+      <img class="dependent-header__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="100">
+      <span class="dependent-progress">Etapas sequenciais</span>
+    </header>
+
+    {% if messages %}
+    <div class="system-messages" role="alert" aria-live="assertive">
+      {% for message in messages %}
+      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <section class="dependent-hero" aria-labelledby="dependent-title">
+      <p class="dependent-hero__eyebrow">Dependente de {{ owner.full_name }}</p>
+      <h1 class="dependent-hero__title" id="dependent-title">Adicionar dependente</h1>
+      <p class="dependent-hero__subtitle">Preencha os dados pessoais, turma, histórico marcial e condição financeira antes de finalizar.</p>
+    </section>
+
+    {% if payment_confirmed %}
+    <div class="payment-banner" role="status">
+      Pagamento confirmado. Confira os dados e informe a senha do dependente para finalizar.
+    </div>
+    {% endif %}
+
+    <form class="dependent-form" method="post" action="{% url 'system:dependent-add' %}{% if is_modal %}?modal=1{% endif %}" novalidate>
+      {% csrf_token %}
+      {% if is_modal %}<input type="hidden" name="_modal" value="1">{% endif %}
+
+      {% if form.non_field_errors %}
+      <div class="form-errors" role="alert">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+      {% endif %}
+
+      <section class="dependent-step" aria-labelledby="step-personal-title">
+        <div class="dependent-step__heading">
+          <span class="dependent-step__number">1</span>
+          <div>
+            <h2 id="step-personal-title">Dados pessoais</h2>
+            <p>Identificação e acesso individual do dependente.</p>
+          </div>
+        </div>
+        <div class="field-grid field-grid--three">
+          <label class="field field--wide">
+            <span>Nome completo</span>
+            {{ form.dependent_name }}
+            {% for error in form.dependent_name.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>CPF</span>
+            {{ form.dependent_cpf }}
+            {% for error in form.dependent_cpf.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Data de nascimento</span>
+            {{ form.dependent_birthdate }}
+            {% for error in form.dependent_birthdate.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Sexo biológico</span>
+            {{ form.dependent_biological_sex }}
+            {% for error in form.dependent_biological_sex.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>E-mail</span>
+            {{ form.dependent_email }}
+            {% for error in form.dependent_email.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Telefone</span>
+            {{ form.dependent_phone }}
+            {% for error in form.dependent_phone.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Senha</span>
+            {{ form.dependent_password }}
+            {% for error in form.dependent_password.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Confirmar senha</span>
+            {{ form.dependent_password_confirm }}
+            {% for error in form.dependent_password_confirm.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Parentesco</span>
+            {{ form.dependent_kinship_type }}
+            {% for error in form.dependent_kinship_type.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Se outro, descreva</span>
+            {{ form.dependent_kinship_other_label }}
+            {% for error in form.dependent_kinship_other_label.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+        </div>
+      </section>
+
+      <section class="dependent-step" aria-labelledby="step-health-title">
+        <div class="dependent-step__heading">
+          <span class="dependent-step__number">2</span>
+          <div>
+            <h2 id="step-health-title">Saúde e turma</h2>
+            <p>Dados usados para segurança e compatibilidade da turma.</p>
+          </div>
+        </div>
+        <div class="field-grid field-grid--two">
+          <label class="field">
+            <span>Turmas</span>
+            {{ form.dependent_class_groups }}
+            {% for error in form.dependent_class_groups.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Tipo sanguíneo</span>
+            {{ form.dependent_blood_type }}
+            {% for error in form.dependent_blood_type.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Alergias</span>
+            {{ form.dependent_allergies }}
+            {% for error in form.dependent_allergies.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Lesões</span>
+            {{ form.dependent_injuries }}
+            {% for error in form.dependent_injuries.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field field--wide">
+            <span>Contato de emergência</span>
+            {{ form.dependent_emergency_contact }}
+            {% for error in form.dependent_emergency_contact.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+        </div>
+      </section>
+
+      <section class="dependent-step" aria-labelledby="step-martial-title">
+        <div class="dependent-step__heading">
+          <span class="dependent-step__number">3</span>
+          <div>
+            <h2 id="step-martial-title">Histórico marcial</h2>
+            <p>Informe modalidade, faixa e datas fictícias ou reais para validar graduação.</p>
+          </div>
+        </div>
+        <div class="field-grid field-grid--three">
+          <label class="field">
+            <span>Já treinou?</span>
+            {{ form.dependent_has_martial_art }}
+            {% for error in form.dependent_has_martial_art.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Arte marcial</span>
+            {{ form.dependent_martial_art }}
+            {% for error in form.dependent_martial_art.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Graduação</span>
+            {{ form.dependent_martial_art_graduation }}
+            {% for error in form.dependent_martial_art_graduation.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Faixa de Jiu Jitsu</span>
+            {{ form.dependent_jiu_jitsu_belt }}
+            {% for error in form.dependent_jiu_jitsu_belt.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Graus</span>
+            {{ form.dependent_jiu_jitsu_stripes }}
+            {% for error in form.dependent_jiu_jitsu_stripes.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Início no treino</span>
+            {{ form.dependent_martial_art_started_at }}
+            {% for error in form.dependent_martial_art_started_at.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Última graduação</span>
+            {{ form.dependent_martial_art_last_graduation_at }}
+            {% for error in form.dependent_martial_art_last_graduation_at.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field field--wide">
+            <span>Academia anterior</span>
+            {{ form.dependent_previous_academy }}
+            {% for error in form.dependent_previous_academy.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+        </div>
+      </section>
+
+      <section class="dependent-step" aria-labelledby="step-financial-title">
+        <div class="dependent-step__heading">
+          <span class="dependent-step__number">4</span>
+          <div>
+            <h2 id="step-financial-title">Condição financeira</h2>
+            <p>Use plano familiar ativo ou selecione uma mensalidade própria.</p>
+          </div>
+        </div>
+        <div class="financial-options">
+          <label class="option-card">
+            {{ form.use_family_plan }}
+            <span>
+              <strong>Usar plano familiar ativo</strong>
+              <small>{% if form.family_plan_available %}Disponível para este titular/responsável.{% else %}Disponível somente quando já existe plano familiar ativo.{% endif %}</small>
+            </span>
+          </label>
+          {% for error in form.use_family_plan.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          <label class="field">
+            <span>Plano do dependente</span>
+            {{ form.selected_plan }}
+            {% for error in form.selected_plan.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+          <label class="field">
+            <span>Pagamento</span>
+            {{ form.checkout_action }}
+            {% for error in form.checkout_action.errors %}<small>{{ error }}</small>{% endfor %}
+          </label>
+        </div>
+      </section>
+
+      <section class="dependent-step" aria-labelledby="step-materials-title">
+        <div class="dependent-step__heading">
+          <span class="dependent-step__number">5</span>
+          <div>
+            <h2 id="step-materials-title">Materiais opcionais</h2>
+            <p>Selecione materiais para o dependente ou deixe tudo zerado para comprar depois.</p>
+          </div>
+        </div>
+        {% if materials_confirmed %}
+        <div class="payment-banner" role="status">
+          Pagamento dos materiais confirmado. Revise os dados e finalize o dependente.
+        </div>
+        {% endif %}
+        {% if material_groups %}
+        <div class="materials-catalog">
+          {% for group in material_groups %}
+          <div class="materials-group">
+            <h3>{{ group.category.display_name }}</h3>
+            <div class="materials-list">
+              {% for product_row in group.products %}
+              <div class="material-item">
+                <div class="material-item__header">
+                  <strong>{{ product_row.product.display_name }}</strong>
+                  <span>R$ {{ product_row.product.unit_price|floatformat:2 }}</span>
+                </div>
+                <div class="material-variants">
+                  {% for variant_row in product_row.variants %}
+                  <label class="material-variant">
+                    <span class="material-variant__label">
+                      {{ variant_row.variant.size|default:"Padrão" }}{% if variant_row.variant.color %} · {{ variant_row.variant.color }}{% endif %}
+                      <small>{{ variant_row.variant.stock_quantity }} em estoque</small>
+                    </span>
+                    {{ variant_row.field }}
+                    {% for error in variant_row.field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <label class="field">
+          <span>Pagamento dos materiais</span>
+          {{ form.materials_checkout_action }}
+          {% for error in form.materials_checkout_action.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        {% else %}
+        <div class="materials-empty" role="status">
+          Nenhum material disponível em estoque para compra no momento.
+        </div>
+        {{ form.materials_checkout_action.as_hidden }}
+        {% endif %}
+      </section>
+
+      <div class="dependent-actions">
+        {% if is_modal %}
+        <button class="btn btn--secondary" type="button" data-dependent-frame-close>Cancelar</button>
+        {% else %}
+        <a class="btn btn--secondary" href="{% url 'system:home' %}">Cancelar</a>
+        {% endif %}
+        <button class="btn btn--primary" type="submit">
+          {% if payment_confirmed or family_plan_selected %}Continuar{% else %}Ir para pagamento{% endif %}
+        </button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

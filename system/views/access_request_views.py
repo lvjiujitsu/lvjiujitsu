@@ -22,35 +22,9 @@ from system.services.access_requests import (
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
 
 
-class PublicAdministrativeAccessRequestCreateView(FormView):
-    form_class = AdministrativeAccessRequestForm
-    template_name = "access_requests/request_form.html"
-    success_url = reverse_lazy("system:login")
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["origin"] = AdministrativeAccessRequestOrigin.PUBLIC_REGISTRATION
-        kwargs["require_password"] = True
-        return kwargs
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["form_title"] = "Solicitar acesso administrativo"
-        context["form_subtitle"] = "A solicitação fica pendente até aprovação da gestão."
-        context["back_url"] = reverse("system:register")
-        return context
-
-    def form_valid(self, form):
-        try:
-            form.save()
-        except ValidationError as error:
-            _add_validation_error(form, error)
-            return self.form_invalid(form)
-        messages.success(
-            self.request,
-            "Solicitação administrativa enviada. Aguarde a aprovação para acessar.",
-        )
-        return super().form_valid(form)
+class PublicAdministrativeAccessRequestCreateView(View):
+    def dispatch(self, request, *args, **kwargs):
+        return redirect(f"{reverse('system:register')}?profile=administrative_request")
 
 
 class PortalAdministrativeAccessRequestCreateView(PortalLoginRequiredMixin, FormView):

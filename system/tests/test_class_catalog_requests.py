@@ -15,6 +15,7 @@ from system.models import (
     ClassSchedule,
     Person,
     PersonType,
+    TeacherBankAccount,
 )
 from system.services.class_requests import (
     approve_class_catalog_request,
@@ -92,6 +93,7 @@ class ClassCatalogRequestServiceTestCase(TestCase):
         )
 
         self.assertEqual(request.status, ClassCatalogRequestStatus.PENDING)
+        self.assertNotIn("payout", request.payload)
         self.assertFalse(
             ClassSchedule.objects.filter(
                 class_group=self.class_group,
@@ -218,6 +220,39 @@ class ClassCatalogRequestServiceTestCase(TestCase):
         self.assertTrue(teacher.access_account.check_password("SenhaForte123"))
         self.assertEqual(request.created_teacher, teacher)
         self.assertEqual(request.created_class_group.main_teacher, teacher)
+
+    def test_new_teacher_request_stores_pix_and_approval_creates_bank_account(self):
+        request = create_new_teacher_class_request(
+            full_name="Professor PIX",
+            cpf="93541134780",
+            email="professor.pix@example.com",
+            phone="11955554445",
+            password="SenhaForte123",
+            class_category=self.category,
+            display_name="Jiu Jitsu PIX",
+            weekday="saturday",
+            training_style="mixed",
+            start_time=time(9, 0),
+            duration_minutes=60,
+            default_capacity=12,
+            justification="Proposta com recebimento por PIX.",
+            payout_data={
+                "method": "pix",
+                "pix_key_type": "CPF",
+                "pix_key": "935.411.347-80",
+                "holder_name": "Professor PIX",
+                "holder_document": "935.411.347-80",
+            },
+        )
+
+        self.assertEqual(request.payload["payout"]["method"], "pix")
+        approve_class_catalog_request(request.pk, approved_by=self.approver)
+
+        teacher = Person.objects.get(cpf="935.411.347-80")
+        bank_account = TeacherBankAccount.objects.get(person=teacher)
+        self.assertEqual(bank_account.pix_key_type, "CPF")
+        self.assertEqual(bank_account.pix_key, "935.411.347-80")
+        self.assertEqual(bank_account.holder_name, "Professor PIX")
 
     def test_reject_request_creates_no_catalog_records(self):
         request = create_existing_teacher_class_request(

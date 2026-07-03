@@ -5,6 +5,12 @@
 
   var PROFILE_HOLDER   = 'holder';
   var PROFILE_GUARDIAN = 'guardian';
+  var PROFILE_TEACHER_REQUEST = 'teacher_request';
+  var PROFILE_ADMINISTRATIVE_REQUEST = 'administrative_request';
+  var OPERATIONAL_TYPE_CODES = {
+    teacher_request: 'instructor',
+    administrative_request: 'administrative-assistant',
+  };
   var MAX_DEPENDENTS   = 5;
 
   // Etapas fixas que seguem após seleção de turmas
@@ -21,6 +27,8 @@
     deps:                 [],   // [{name,cpf,birthdate,sex,phone,email,password,pwConfirm,kinship,kinshipOther,classGroups}]
     classSelections:      [],   // [{ids:[]}] — 1 por pessoa que precisa de turma (holder/deps ou só deps)
     planSelections:       [],   // [{personIndex, label, planId}]
+    teacherProposedSchedule: null,
+    teacherExistingClassSelections: [],
   };
 
   var productCart = []; // [{variantId, variantLabel, variantColor, variantSize, productId, productName, qty, unitPrice}]
@@ -133,7 +141,34 @@
 
   // ── Sequência de etapas ───────────────────────────────────────────────────────
 
+  function isOperationalProfile(profile) {
+    return profile === PROFILE_TEACHER_REQUEST || profile === PROFILE_ADMINISTRATIVE_REQUEST;
+  }
+
+  function isWizardRegistrationProfile(profile) {
+    return profile === PROFILE_HOLDER || profile === PROFILE_GUARDIAN || isOperationalProfile(profile);
+  }
+
+  function getOperationalTypeCode(profile) {
+    return OPERATIONAL_TYPE_CODES[profile] || '';
+  }
+
   function buildStepSequence() {
+    if (isOperationalProfile(state.profile)) {
+      var operationalSeq = ['step-profile', 'step-principal', 'step-health', 'step-martial'];
+      operationalSeq.push(
+        state.profile === PROFILE_TEACHER_REQUEST
+          ? 'step-teacher-schedule'
+          : 'step-administrative-access'
+      );
+      operationalSeq.push('step-operational-finance');
+      state.stepSequence = operationalSeq;
+      state.deps.length = 0;
+      state.classSelections.length = 0;
+      state.planSelections.length = 0;
+      return;
+    }
+
     var numDeps = (state.profile === PROFILE_HOLDER)
       ? state.holderDepCount
       : state.guardianStudentCount;
@@ -252,6 +287,10 @@
     return state.profile === PROFILE_GUARDIAN && personIdx === 0;
   }
 
+  function isOtherPrincipal(personIdx) {
+    return isOperationalProfile(state.profile) && personIdx === 0;
+  }
+
   // Retorna índice no state.deps para um personIdx (personIdx=0 é sempre o principal)
   function getDepIdxForPerson(personIdx) {
     return personIdx - 1;
@@ -259,6 +298,13 @@
 
   // Retorna nome e dados da pessoa correspondente a um classPersonIdx
   function getPersonForClass(classPersonIdx) {
+    if (isOperationalProfile(state.profile)) {
+      return {
+        name: getHidden('id_other_name') || 'Você',
+        sex: getHidden('id_other_biological_sex'),
+        birthdate: getHidden('id_other_birthdate'),
+      };
+    }
     if (state.profile === PROFILE_HOLDER) {
       if (classPersonIdx === 0) {
         return { name: getHidden('id_holder_name') || 'Você', sex: getHidden('id_holder_biological_sex'), birthdate: getHidden('id_holder_birthdate') };
@@ -381,6 +427,9 @@
     if (stepId === 'step-dep')       onEnterDep(depIndexAt(seqIdx));
     if (stepId === 'step-health')    onEnterHealth(healthPersonIndexAt(seqIdx));
     if (stepId === 'step-martial')   onEnterMartial(martialPersonIndexAt(seqIdx));
+    if (stepId === 'step-teacher-schedule') onEnterTeacherSchedule();
+    if (stepId === 'step-administrative-access') onEnterAdministrativeAccess();
+    if (stepId === 'step-operational-finance') onEnterOperationalFinance();
     if (stepId === 'step-classes')   onEnterClasses(classPersonIndexAt(seqIdx));
     if (stepId === 'step-plan')      onEnterPlan();
   }
@@ -389,6 +438,9 @@
 
   var elProfileHolder   = document.getElementById('profile-card-holder');
   var elProfileGuardian = document.getElementById('profile-card-guardian');
+  var elProfileTeacherRequest = document.getElementById('profile-card-teacher-request');
+  var elProfileAdministrativeRequest = document.getElementById('profile-card-administrative-request');
+  var elProfileOptions  = document.querySelector('.profile-options');
   var elHolderSub       = document.getElementById('holder-suboption');
   var elHolderDepChk    = document.getElementById('include-dependent-checkbox');
   var elHolderCountArea = document.getElementById('holder-count-area');
@@ -396,6 +448,8 @@
   var elHolderDepDec    = document.getElementById('holder-dep-dec');
   var elHolderDepInc    = document.getElementById('holder-dep-inc');
   var elGuardianSub     = document.getElementById('guardian-suboption');
+  var elTeacherRequestSub = document.getElementById('teacher-request-suboption');
+  var elAdministrativeRequestSub = document.getElementById('administrative-request-suboption');
   var elStudentCountVal = document.getElementById('student-count-value');
   var elStudentDec      = document.getElementById('student-count-dec');
   var elStudentInc      = document.getElementById('student-count-inc');
@@ -436,28 +490,85 @@
 
   function selectProfile(profile) {
     state.profile = profile;
-    [elProfileHolder, elProfileGuardian].forEach(function (el) {
-      el.setAttribute('aria-pressed', el.getAttribute('data-profile') === profile ? 'true' : 'false');
+    [
+      elProfileHolder,
+      elProfileGuardian,
+      elProfileTeacherRequest,
+      elProfileAdministrativeRequest,
+    ].forEach(function (el) {
+      if (!el) return;
+      el.setAttribute(
+        'aria-pressed',
+        el.getAttribute('data-profile') === profile ? 'true' : 'false'
+      );
     });
-    elHolderSub.hidden   = (profile !== PROFILE_HOLDER);
-    elGuardianSub.hidden = (profile !== PROFILE_GUARDIAN);
+    if (elHolderSub) elHolderSub.hidden = (profile !== PROFILE_HOLDER);
+    if (elGuardianSub) elGuardianSub.hidden = (profile !== PROFILE_GUARDIAN);
+    if (elTeacherRequestSub) {
+      elTeacherRequestSub.hidden = (profile !== PROFILE_TEACHER_REQUEST);
+    }
+    if (elAdministrativeRequestSub) {
+      elAdministrativeRequestSub.hidden = (profile !== PROFILE_ADMINISTRATIVE_REQUEST);
+    }
     if (profile === PROFILE_HOLDER) {
       state.holderDepCount = 0;
       if (elHolderDepChk)    elHolderDepChk.checked  = false;
       if (elHolderCountArea) elHolderCountArea.hidden = true;
       renderHolderDepCount();
       syncHolderDeps();
-    } else {
+    } else if (profile === PROFILE_GUARDIAN) {
       state.guardianStudentCount = 1;
       renderGuardianStudentCount();
       syncGuardianStudents();
+    } else if (isOperationalProfile(profile)) {
+      state.holderDepCount = 0;
+      state.guardianStudentCount = 1;
+      if (elIncludeDepInput) elIncludeDepInput.value = '';
+      if (elExtraDepInput) elExtraDepInput.value = '[]';
+      state.deps.length = 0;
+      state.classSelections.length = 0;
+      state.planSelections.length = 0;
+      if (profile !== PROFILE_TEACHER_REQUEST) {
+        state.teacherExistingClassSelections = [];
+        state.teacherProposedSchedule = null;
+      }
+      syncOperationalProfileToHiddenFields(profile);
+    } else {
+      state.holderDepCount = 0;
+      state.guardianStudentCount = 1;
+      if (elIncludeDepInput) elIncludeDepInput.value = '';
+      if (elExtraDepInput) elExtraDepInput.value = '[]';
+      state.teacherExistingClassSelections = [];
+      state.teacherProposedSchedule = null;
     }
-    elProfileInput.value = profile;
+    if (!isOperationalProfile(profile)) {
+      elProfileInput.value = isWizardRegistrationProfile(profile) ? profile : '';
+      setHidden('id_other_type_code', '');
+    }
     elStep1Next.disabled = false;
     elStep1Next.setAttribute('aria-disabled', 'false');
     buildStepSequence();
     updateProgress();
     saveWizardState();
+  }
+
+  function getCheckedValue(name, fallback) {
+    var checked = document.querySelector('input[name="' + name + '"]:checked');
+    return checked ? checked.value : fallback;
+  }
+
+  function getCheckedValues(name) {
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="' + name + '"]:checked'))
+      .map(function (input) { return input.value; })
+      .filter(Boolean);
+  }
+
+  function syncOperationalProfileToHiddenFields(profile) {
+    if (!isOperationalProfile(profile)) return;
+    setHidden('id_registration_profile', 'other');
+    setHidden('id_other_type_code', getOperationalTypeCode(profile));
+    setHidden('id_include_dependent', '');
+    setHidden('id_extra_dependents_payload', '[]');
   }
 
   // ── Elementos — Etapa principal (step-2) ─────────────────────────────────────
@@ -488,13 +599,25 @@
   var s2Subtitle      = document.getElementById('s2-subtitle');
   var elStep2Next     = document.getElementById('step-2-next');
 
+  function getPrincipalPrefix() {
+    if (state.profile === PROFILE_HOLDER) return 'holder';
+    if (state.profile === PROFILE_GUARDIAN) return 'guardian';
+    if (isOperationalProfile(state.profile)) return 'other';
+    return 'holder';
+  }
+
   function onEnterPrincipal() {
     var isHolder = (state.profile === PROFILE_HOLDER);
-    if (s2BirthdateWrap) s2BirthdateWrap.hidden = !isHolder;
-    if (s2Subtitle) s2Subtitle.textContent = isHolder
-      ? 'Preencha suas informações de cadastro'
-      : 'Seus dados como responsável pelo aluno';
-    var prefix = isHolder ? 'holder' : 'guardian';
+    var isGuardian = (state.profile === PROFILE_GUARDIAN);
+    var isOperational = isOperationalProfile(state.profile);
+    var requiresBirthdate = !isGuardian;
+    if (s2BirthdateWrap) s2BirthdateWrap.hidden = !requiresBirthdate;
+    if (s2Subtitle) {
+      s2Subtitle.textContent = isHolder
+        ? 'Preencha suas informações de cadastro'
+        : (isOperational ? 'Dados pessoais do perfil solicitado' : 'Seus dados como responsável pelo aluno');
+    }
+    var prefix = getPrincipalPrefix();
     var fields  = [
       [s2Name,                  'id_' + prefix + '_name'],
       [s2Cpf,                   'id_' + prefix + '_cpf'],
@@ -512,15 +635,15 @@
       var v = getHidden(pair[1]);
       if (pair[0] && v) pair[0].value = v;
     });
-    if (isHolder && s2Birthdate) {
-      var bd = getHidden('id_holder_birthdate');
+    if (requiresBirthdate && s2Birthdate) {
+      var bd = getHidden('id_' + prefix + '_birthdate');
       if (bd) s2Birthdate.value = bd;
     }
   }
 
   function validatePrincipal() {
     var valid    = true;
-    var isHolder = (state.profile === PROFILE_HOLDER);
+    var requiresBirthdate = (state.profile !== PROFILE_GUARDIAN);
 
     if (!s2Name.value.trim()) {
       showErr(s2Name, s2NameError, 'Campo obrigatório.'); valid = false;
@@ -535,7 +658,7 @@
       showErr(s2Cpf, s2CpfError, s2CpfAvailability.error || 'CPF já cadastrado no sistema.'); valid = false;
     } else clearErr(s2Cpf, s2CpfError);
 
-    if (isHolder) {
+    if (requiresBirthdate) {
       var bv = s2Birthdate.value.trim();
       if (!bv) {
         showErr(s2Birthdate, s2BirthdateErr, 'Campo obrigatório.'); valid = false;
@@ -571,8 +694,8 @@
   }
 
   function collectPrincipal() {
-    var isHolder = (state.profile === PROFILE_HOLDER);
-    var prefix   = isHolder ? 'holder' : 'guardian';
+    var prefix = getPrincipalPrefix();
+    var requiresBirthdate = (state.profile !== PROFILE_GUARDIAN);
     setHidden('id_' + prefix + '_name',                 s2Name.value.trim());
     setHidden('id_' + prefix + '_cpf',                  s2Cpf.value);
     setHidden('id_' + prefix + '_biological_sex',       s2Sex.value);
@@ -586,7 +709,8 @@
     if (s2AddressComplement)     setHidden('id_' + prefix + '_address_complement',     s2AddressComplement.value.trim());
     if (s2AddressNeighborhood)   setHidden('id_' + prefix + '_address_neighborhood',   s2AddressNeighborhood.value.trim());
     if (s2City)                  setHidden('id_' + prefix + '_city',                   s2City.value.trim());
-    if (isHolder) setHidden('id_holder_birthdate', s2Birthdate.value);
+    if (requiresBirthdate) setHidden('id_' + prefix + '_birthdate', s2Birthdate.value);
+    syncOperationalProfileToHiddenFields(state.profile);
   }
 
   function checkCpfAvailability(input, errorEl, stateRef) {
@@ -883,6 +1007,8 @@
       label = getHidden('id_holder_name') || 'Você';
     } else if (isGuardianPrincipal(personIdx)) {
       label = getHidden('id_guardian_name') || 'Responsável';
+    } else if (isOtherPrincipal(personIdx)) {
+      label = getHidden('id_other_name') || 'Você';
     } else {
       var p = getPersonForClass(personIdx);
       label = p.name || 'Dependente';
@@ -904,6 +1030,13 @@
         allergies:        getHidden('id_guardian_allergies'),
         injuries:         getHidden('id_guardian_injuries'),
         emergencyContact: getHidden('id_guardian_emergency_contact'),
+      };
+    } else if (isOtherPrincipal(personIdx)) {
+      data = {
+        bloodType:        getHidden('id_other_blood_type'),
+        allergies:        getHidden('id_other_allergies'),
+        injuries:         getHidden('id_other_injuries'),
+        emergencyContact: getHidden('id_other_emergency_contact'),
       };
     } else {
       var dep = state.deps[getDepIdxForPerson(personIdx)] || {};
@@ -930,6 +1063,11 @@
       setHidden('id_guardian_allergies',         data.allergies);
       setHidden('id_guardian_injuries',          data.injuries);
       setHidden('id_guardian_emergency_contact', data.emergencyContact);
+    } else if (isOtherPrincipal(personIdx)) {
+      setHidden('id_other_blood_type',        data.bloodType);
+      setHidden('id_other_allergies',         data.allergies);
+      setHidden('id_other_injuries',          data.injuries);
+      setHidden('id_other_emergency_contact', data.emergencyContact);
     } else {
       var di = getDepIdxForPerson(personIdx);
       if (di >= 0 && di < state.deps.length) {
@@ -1003,6 +1141,8 @@
       label = getHidden('id_holder_name') || 'Você';
     } else if (isGuardianPrincipal(personIdx)) {
       label = getHidden('id_guardian_name') || 'Responsável';
+    } else if (isOtherPrincipal(personIdx)) {
+      label = getHidden('id_other_name') || 'Você';
     } else {
       var p = getPersonForClass(personIdx);
       label = p.name || 'Dependente';
@@ -1031,6 +1171,17 @@
         martialArtStartedAt:        getHidden('id_guardian_martial_art_started_at'),
         martialArtLastGraduationAt: getHidden('id_guardian_martial_art_last_graduation_at'),
         previousAcademy:            getHidden('id_guardian_previous_academy'),
+      };
+    } else if (isOtherPrincipal(personIdx)) {
+      data = {
+        hasMartialArt:              getHidden('id_other_has_martial_art'),
+        martialArt:                 getHidden('id_other_martial_art'),
+        martialArtGraduation:       getHidden('id_other_martial_art_graduation'),
+        jiuJitsuBelt:               getHidden('id_other_jiu_jitsu_belt'),
+        jiuJitsuStripes:            getHidden('id_other_jiu_jitsu_stripes') || '0',
+        martialArtStartedAt:        getHidden('id_other_martial_art_started_at'),
+        martialArtLastGraduationAt: getHidden('id_other_martial_art_last_graduation_at'),
+        previousAcademy:            getHidden('id_other_previous_academy'),
       };
     } else {
       var dep = state.deps[getDepIdxForPerson(personIdx)] || {};
@@ -1120,6 +1271,15 @@
       setHidden('id_guardian_martial_art_started_at',         data.martialArtStartedAt);
       setHidden('id_guardian_martial_art_last_graduation_at', data.martialArtLastGraduationAt);
       setHidden('id_guardian_previous_academy',               data.previousAcademy);
+    } else if (isOtherPrincipal(personIdx)) {
+      setHidden('id_other_has_martial_art',                data.hasMartialArt);
+      setHidden('id_other_martial_art',                    data.martialArt);
+      setHidden('id_other_martial_art_graduation',         data.martialArtGraduation);
+      setHidden('id_other_jiu_jitsu_belt',                 data.jiuJitsuBelt);
+      setHidden('id_other_jiu_jitsu_stripes',              data.jiuJitsuStripes);
+      setHidden('id_other_martial_art_started_at',         data.martialArtStartedAt);
+      setHidden('id_other_martial_art_last_graduation_at', data.martialArtLastGraduationAt);
+      setHidden('id_other_previous_academy',               data.previousAcademy);
     } else {
       var di = getDepIdxForPerson(personIdx);
       if (di >= 0 && di < state.deps.length) {
@@ -1611,6 +1771,451 @@
     'Quinta-feira': 'Qui', 'Sexta-feira': 'Sex', 'Sábado': 'Sáb', 'Domingo': 'Dom',
   };
 
+  var WEEKDAY_LABELS = {
+    monday: 'Segunda-feira',
+    tuesday: 'Terça-feira',
+    wednesday: 'Quarta-feira',
+    thursday: 'Quinta-feira',
+    friday: 'Sexta-feira',
+    saturday: 'Sábado',
+    sunday: 'Domingo',
+  };
+
+  var STYLE_LABELS = {
+    kimono: 'Kimono',
+    no_gi: 'No-Gi',
+    mixed: 'Misto',
+  };
+
+  var teacherExistingField = document.getElementById('teacher-existing-schedule-field');
+  var teacherExistingClassList = document.getElementById('teacher-existing-class-list');
+  var teacherExistingError = document.getElementById('teacher-existing-class-error');
+  var teacherProposedField = document.getElementById('teacher-proposed-schedule-field');
+  var teacherProposedSummary = document.getElementById('teacher-proposed-schedule-summary');
+  var teacherProposedError = document.getElementById('teacher-proposed-schedule-error');
+  var elStepTeacherScheduleNext = document.getElementById('step-teacher-schedule-next');
+  var adminRoleError = document.getElementById('admin-role-error');
+  var elStepAdministrativeAccessNext = document.getElementById('step-administrative-access-next');
+  var operationalPayoutMethodField = document.getElementById('operational-payout-method-field');
+  var operationalMoneyFields = document.getElementById('operational-money-fields');
+  var operationalFixedAmountField = document.getElementById('operational-fixed-amount-field');
+  var operationalStudentPercentageField = document.getElementById('operational-student-percentage-field');
+  var operationalFixedAmount = document.getElementById('ui-operational-fixed-amount');
+  var operationalStudentPercentage = document.getElementById('ui-operational-student-percentage');
+  var operationalFinanceError = document.getElementById('operational-finance-error');
+  var operationalFinanceNote = document.getElementById('operational-finance-note');
+  var operationalPixFields = document.getElementById('operational-pix-fields');
+  var operationalBankFields = document.getElementById('operational-bank-fields');
+  var operationalPixKeyType = document.getElementById('ui-operational-pix-key-type');
+  var operationalPixKey = document.getElementById('ui-operational-pix-key');
+  var operationalBankDetails = document.getElementById('ui-operational-bank-details');
+  var elStepOperationalFinanceNext = document.getElementById('step-operational-finance-next');
+  var teacherScheduleModal = document.getElementById('teacher-schedule-modal');
+  var teacherOpenScheduleModal = document.getElementById('teacher-open-schedule-modal');
+  var teacherCancelScheduleModal = document.getElementById('teacher-cancel-schedule-modal');
+  var teacherSaveScheduleModal = document.getElementById('teacher-save-schedule-modal');
+  var teacherScheduleModalError = document.getElementById('teacher-schedule-modal-error');
+  var teacherScheduleCategory = document.getElementById('ui-teacher-schedule-category');
+  var teacherScheduleName = document.getElementById('ui-teacher-schedule-name');
+  var teacherScheduleStyle = document.getElementById('ui-teacher-schedule-style');
+  var teacherScheduleStart = document.getElementById('ui-teacher-schedule-start');
+  var teacherScheduleDuration = document.getElementById('ui-teacher-schedule-duration');
+  var teacherScheduleCapacity = document.getElementById('ui-teacher-schedule-capacity');
+  var teacherScheduleJustification = document.getElementById('ui-teacher-schedule-justification');
+
+  function getTeacherMode() {
+    return getCheckedValue('teacher-assignment-mode', 'existing');
+  }
+
+  function buildClassGroupScheduleLabel(group) {
+    var schedules = Array.isArray(group.schedules) ? group.schedules : [];
+    var scheduleLabel = schedules.map(function (schedule) {
+      return (schedule.weekday_display || schedule.weekday || '') + ' ' + (schedule.start_time || '');
+    }).filter(Boolean).join(', ');
+    return group.category_name + ' · ' + group.display_name + (scheduleLabel ? ' · ' + scheduleLabel : '');
+  }
+
+  function buildTeacherExistingClassPayload(group) {
+    var teacherNames = Array.isArray(group.teacher_names) ? group.teacher_names : [];
+    if (!teacherNames.length && group.teacher_name) teacherNames = [group.teacher_name];
+    var schedules = Array.isArray(group.schedules) ? group.schedules : [];
+    return {
+      id: group.id,
+      label: buildClassGroupScheduleLabel(group),
+      category_name: group.category_name || '',
+      display_name: group.display_name || '',
+      teacher_names: teacherNames,
+      teacher_label: teacherNames.length ? teacherNames.join(', ') : 'Sem professor vinculado',
+      schedules: schedules,
+      approval_scope: teacherNames.length ? 'admin_and_current_teacher' : 'admin_only',
+    };
+  }
+
+  function renderTeacherExistingClassList() {
+    if (!teacherExistingClassList) return;
+    clearChildren(teacherExistingClassList);
+    if (!catalogGroups.length) {
+      teacherExistingClassList.appendChild(el('p', {
+        className: 'teacher-class-list__empty',
+        text: 'Nenhuma turma ativa disponível. Crie uma proposta de horário.',
+      }));
+      return;
+    }
+
+    catalogGroups.forEach(function (group) {
+      var payload = buildTeacherExistingClassPayload(group);
+      var selected = state.teacherExistingClassSelections.some(function (item) {
+        return String(item.id) === String(group.id);
+      });
+      var input = el('input', {
+        attrs: {
+          type: 'checkbox',
+          name: 'teacher-existing-class-group',
+          value: String(group.id),
+        },
+      });
+      input.checked = selected;
+      var currentTeacherLabel = payload.teacher_names.length
+        ? 'Professor atual: ' + payload.teacher_label
+        : 'Sem professor vinculado';
+      var reviewLabel = payload.teacher_names.length
+        ? 'Aprovação: gestão e professor atual'
+        : 'Aprovação: gestão';
+      var card = el('label', {
+        className: 'teacher-class-card' + (selected ? ' teacher-class-card--selected' : ''),
+      }, [
+        input,
+        el('span', { className: 'teacher-class-card__body' }, [
+          el('strong', { text: payload.category_name + (payload.display_name ? ' · ' + payload.display_name : '') }),
+          el('small', { text: payload.label }),
+          el('small', { text: currentTeacherLabel }),
+          el('small', { text: reviewLabel }),
+        ]),
+      ]);
+      input.addEventListener('change', function () {
+        toggleTeacherExistingClassSelection(group, input.checked);
+      });
+      teacherExistingClassList.appendChild(card);
+    });
+  }
+
+  function toggleTeacherExistingClassSelection(group, checked) {
+    state.teacherExistingClassSelections = state.teacherExistingClassSelections.filter(function (item) {
+      return String(item.id) !== String(group.id);
+    });
+    if (checked) {
+      state.teacherExistingClassSelections.push(buildTeacherExistingClassPayload(group));
+    }
+    clearErr(null, teacherExistingError);
+    renderTeacherExistingClassList();
+    syncTeacherScheduleToHiddenFields();
+    saveWizardState();
+  }
+
+  function populateTeacherScheduleCategories() {
+    if (!teacherScheduleCategory) return;
+    var current = teacherScheduleCategory.value;
+    var seen = {};
+    teacherScheduleCategory.innerHTML = '<option value="">Selecione</option>';
+    catalogGroups.forEach(function (group) {
+      if (!group.category_id || seen[group.category_id]) return;
+      seen[group.category_id] = true;
+      var option = document.createElement('option');
+      option.value = String(group.category_id);
+      option.textContent = group.category_name || ('Categoria ' + group.category_id);
+      teacherScheduleCategory.appendChild(option);
+    });
+    teacherScheduleCategory.value = current;
+  }
+
+  function updateTeacherScheduleMode() {
+    var mode = getTeacherMode();
+    if (teacherExistingField) teacherExistingField.hidden = mode !== 'existing';
+    if (teacherProposedField) teacherProposedField.hidden = mode !== 'propose';
+    clearErr(null, teacherExistingError);
+    clearErr(null, teacherProposedError);
+  }
+
+  function onEnterTeacherSchedule() {
+    renderTeacherExistingClassList();
+    populateTeacherScheduleCategories();
+    updateTeacherScheduleMode();
+    syncOperationalProfileToHiddenFields(state.profile);
+  }
+
+  function validateTeacherSchedule() {
+    if (getTeacherMode() === 'existing') {
+      if (!state.teacherExistingClassSelections.length) {
+        showErr(null, teacherExistingError, 'Selecione ao menos uma turma ativa ou crie uma proposta.');
+        return false;
+      }
+      clearErr(null, teacherExistingError);
+      return true;
+    }
+    if (!state.teacherProposedSchedule) {
+      showErr(null, teacherProposedError, 'Crie o horário proposto antes de avançar.');
+      return false;
+    }
+    clearErr(null, teacherProposedError);
+    return true;
+  }
+
+  function syncTeacherScheduleToHiddenFields() {
+    var mode = getTeacherMode();
+    setHidden('id_teacher_assignment_mode', mode);
+    setHidden(
+      'id_teacher_existing_class_group',
+      mode === 'existing' && state.teacherExistingClassSelections.length
+        ? String(state.teacherExistingClassSelections[0].id)
+        : ''
+    );
+    setHidden(
+      'id_teacher_existing_class_groups_payload',
+      mode === 'existing' ? JSON.stringify(state.teacherExistingClassSelections) : ''
+    );
+    setHidden(
+      'id_teacher_proposed_schedule_payload',
+      mode === 'propose' && state.teacherProposedSchedule
+        ? JSON.stringify(state.teacherProposedSchedule)
+        : ''
+    );
+  }
+
+  function clearScheduleModalError() {
+    clearErr(null, teacherScheduleModalError);
+  }
+
+  function readTeacherScheduleModalData() {
+    var selectedWeekdays = getCheckedValues('teacher-schedule-weekdays');
+    var selectedWeekdayLabels = selectedWeekdays.map(function (weekday) {
+      return WEEKDAY_LABELS[weekday] || weekday;
+    });
+    return {
+      category_id: teacherScheduleCategory ? teacherScheduleCategory.value : '',
+      category_label: teacherScheduleCategory && teacherScheduleCategory.selectedOptions[0]
+        ? teacherScheduleCategory.selectedOptions[0].textContent
+        : '',
+      display_name: teacherScheduleName ? teacherScheduleName.value.trim() : '',
+      weekdays: selectedWeekdays,
+      weekdays_label: selectedWeekdayLabels.join(', '),
+      training_style: teacherScheduleStyle ? teacherScheduleStyle.value : '',
+      training_style_label: teacherScheduleStyle ? (STYLE_LABELS[teacherScheduleStyle.value] || teacherScheduleStyle.value) : '',
+      start_time: teacherScheduleStart ? teacherScheduleStart.value : '',
+      duration_minutes: teacherScheduleDuration ? teacherScheduleDuration.value : '',
+      default_capacity: teacherScheduleCapacity ? teacherScheduleCapacity.value : '',
+      justification: teacherScheduleJustification ? teacherScheduleJustification.value.trim() : '',
+    };
+  }
+
+  function validateTeacherScheduleModal(data) {
+    if (!data.category_id || !data.display_name || !data.weekdays.length || !data.start_time) {
+      showErr(null, teacherScheduleModalError, 'Informe categoria, nome, dias da semana e horário de início.');
+      return false;
+    }
+    clearScheduleModalError();
+    return true;
+  }
+
+  function renderTeacherProposedScheduleSummary() {
+    if (!teacherProposedSummary) return;
+    var data = state.teacherProposedSchedule;
+    if (!data) {
+      teacherProposedSummary.textContent = 'Nenhum horário proposto.';
+      return;
+    }
+    teacherProposedSummary.textContent = [
+      data.category_label,
+      data.display_name,
+      data.weekdays_label,
+      data.start_time,
+      data.training_style_label,
+    ].filter(Boolean).join(' · ');
+  }
+
+  function openTeacherScheduleModal() {
+    populateTeacherScheduleCategories();
+    clearScheduleModalError();
+    if (teacherScheduleModal && typeof teacherScheduleModal.showModal === 'function') {
+      teacherScheduleModal.showModal();
+    }
+  }
+
+  function saveTeacherScheduleModal() {
+    var data = readTeacherScheduleModalData();
+    if (!validateTeacherScheduleModal(data)) return;
+    state.teacherProposedSchedule = data;
+    renderTeacherProposedScheduleSummary();
+    syncTeacherScheduleToHiddenFields();
+    if (teacherScheduleModal) teacherScheduleModal.close();
+    saveWizardState();
+  }
+
+  function onEnterAdministrativeAccess() {
+    clearErr(null, adminRoleError);
+    syncOperationalProfileToHiddenFields(state.profile);
+  }
+
+  function validateAdministrativeAccess() {
+    var roles = getCheckedValues('admin-role');
+    if (!roles.length) {
+      showErr(null, adminRoleError, 'Selecione ao menos uma área administrativa.');
+      return false;
+    }
+    clearErr(null, adminRoleError);
+    return true;
+  }
+
+  function syncAdministrativeAccessToHiddenFields() {
+    setHidden('id_operational_requested_roles_payload', JSON.stringify(getCheckedValues('admin-role')));
+  }
+
+  function getOperationalFinancialArrangement() {
+    return getCheckedValue('operational-financial-arrangement', 'pays_monthly');
+  }
+
+  function isPaidOperationalArrangement(arrangement) {
+    return ['paid_fixed', 'paid_per_student', 'paid_mixed'].indexOf(arrangement) !== -1;
+  }
+
+  function setRadioValue(name, value) {
+    document.querySelectorAll('input[name="' + name + '"]').forEach(function (input) {
+      input.checked = input.value === value;
+    });
+  }
+
+  function updateOperationalFinanceFields() {
+    var arrangement = getOperationalFinancialArrangement();
+    var paid = isPaidOperationalArrangement(arrangement);
+    var needsFixed = arrangement === 'paid_fixed' || arrangement === 'paid_mixed';
+    var needsPercentage = arrangement === 'paid_per_student' || arrangement === 'paid_mixed';
+
+    if (!paid) setRadioValue('operational-payout-method', 'none');
+    if (operationalPayoutMethodField) operationalPayoutMethodField.hidden = !paid;
+    if (operationalMoneyFields) operationalMoneyFields.hidden = !paid;
+    if (operationalFixedAmountField) operationalFixedAmountField.hidden = !needsFixed;
+    if (operationalStudentPercentageField) operationalStudentPercentageField.hidden = !needsPercentage;
+
+    var method = paid ? getCheckedValue('operational-payout-method', 'none') : 'none';
+    if (operationalPixFields) operationalPixFields.hidden = !paid || method !== 'pix';
+    if (operationalBankFields) operationalBankFields.hidden = !paid || method !== 'bank';
+
+    if (operationalFinanceNote) {
+      var note = '';
+      if (arrangement === 'barter') {
+        note = 'Permuta representa abatimento de plano e não registra dados de recebimento.';
+      } else if (arrangement === 'pays_monthly') {
+        note = 'Este perfil segue como pagante. Quando também treinar, o plano será tratado no cadastro de aluno.';
+      } else if (arrangement === 'volunteer') {
+        note = 'Sem mensalidade e sem repasse financeiro.';
+      } else if (paid) {
+        note = 'Recebimentos ficam pendentes de aprovação da gestão antes de qualquer repasse.';
+      }
+      operationalFinanceNote.textContent = note;
+      operationalFinanceNote.hidden = !note;
+    }
+    clearErr(null, operationalFinanceError);
+    syncOperationalFinanceToHiddenFields();
+  }
+
+  function onEnterOperationalFinance() {
+    updateOperationalFinanceFields();
+    syncOperationalProfileToHiddenFields(state.profile);
+  }
+
+  function validatePositiveDecimalInput(input) {
+    if (!input) return false;
+    var normalized = input.value.trim().replace(',', '.');
+    if (!normalized) return false;
+    var value = Number(normalized);
+    return Number.isFinite(value) && value > 0;
+  }
+
+  function validateOperationalFinance() {
+    var arrangement = getOperationalFinancialArrangement();
+    var paid = isPaidOperationalArrangement(arrangement);
+    if (!paid) {
+      clearErr(null, operationalFinanceError);
+      return true;
+    }
+    if ((arrangement === 'paid_fixed' || arrangement === 'paid_mixed') && !validatePositiveDecimalInput(operationalFixedAmount)) {
+      showErr(null, operationalFinanceError, 'Informe o valor fixo combinado.');
+      return false;
+    }
+    if ((arrangement === 'paid_per_student' || arrangement === 'paid_mixed') && !validatePositiveDecimalInput(operationalStudentPercentage)) {
+      showErr(null, operationalFinanceError, 'Informe o percentual por aluno.');
+      return false;
+    }
+    var payoutMethod = getCheckedValue('operational-payout-method', 'none');
+    if (payoutMethod === 'none') {
+      showErr(null, operationalFinanceError, 'Selecione PIX ou conta bancária para recebimento.');
+      return false;
+    }
+    if (payoutMethod === 'pix') {
+      if (!operationalPixKeyType || !operationalPixKeyType.value || !operationalPixKey || !operationalPixKey.value.trim()) {
+        showErr(null, operationalFinanceError, 'Informe tipo e chave PIX.');
+        return false;
+      }
+    }
+    if (payoutMethod === 'bank') {
+      if (!operationalBankDetails || !operationalBankDetails.value.trim()) {
+        showErr(null, operationalFinanceError, 'Informe os dados bancários.');
+        return false;
+      }
+    }
+    clearErr(null, operationalFinanceError);
+    return true;
+  }
+
+  function syncOperationalFinanceToHiddenFields() {
+    var arrangement = getOperationalFinancialArrangement();
+    var payoutMethod = isPaidOperationalArrangement(arrangement)
+      ? getCheckedValue('operational-payout-method', 'none')
+      : 'none';
+    var legacyPaymentCondition = arrangement === 'pays_monthly'
+      ? 'pay_monthly'
+      : (arrangement === 'barter' ? 'barter' : 'no_monthly_fee');
+    var legacyCompensation = arrangement === 'barter'
+      ? 'barter'
+      : (isPaidOperationalArrangement(arrangement) ? payoutMethod : 'none');
+    setHidden('id_operational_training_intent', getCheckedValue('admin-training-intent', 'none'));
+    setHidden('id_operational_financial_arrangement', arrangement);
+    setHidden('id_operational_payment_condition', legacyPaymentCondition);
+    setHidden('id_operational_compensation_preference', legacyCompensation);
+    setHidden('id_operational_payout_method', payoutMethod);
+    setHidden('id_operational_pix_key_type', payoutMethod === 'pix' && operationalPixKeyType ? operationalPixKeyType.value : '');
+    setHidden('id_operational_pix_key', payoutMethod === 'pix' && operationalPixKey ? operationalPixKey.value.trim() : '');
+    setHidden('id_operational_bank_details', payoutMethod === 'bank' && operationalBankDetails ? operationalBankDetails.value.trim() : '');
+    setHidden(
+      'id_operational_fixed_amount',
+      (arrangement === 'paid_fixed' || arrangement === 'paid_mixed') && operationalFixedAmount
+        ? operationalFixedAmount.value.trim()
+        : ''
+    );
+    setHidden(
+      'id_operational_student_percentage',
+      (arrangement === 'paid_per_student' || arrangement === 'paid_mixed') && operationalStudentPercentage
+        ? operationalStudentPercentage.value.trim()
+        : ''
+    );
+  }
+
+  function submitOperationalRegistration() {
+    syncOperationalProfileToHiddenFields(state.profile);
+    syncOperationalFinanceToHiddenFields();
+    if (state.profile === PROFILE_TEACHER_REQUEST) syncTeacherScheduleToHiddenFields();
+    if (state.profile === PROFILE_ADMINISTRATIVE_REQUEST) syncAdministrativeAccessToHiddenFields();
+    setHidden('id_selected_plan', '');
+    setHidden('id_selected_plans_payload', '[]');
+    setHidden('id_checkout_action', 'pay_later');
+    clearWizardState();
+    var form = document.getElementById('wizard-form');
+    if (form && form.requestSubmit) {
+      form.requestSubmit();
+    } else if (form) {
+      form.submit();
+    }
+  }
+
   function calcAgeYears(birthdateStr) {
     if (!birthdateStr) return null;
     var parts = birthdateStr.split('/');
@@ -1871,12 +2476,18 @@
     });
   }
 
-  if (elProfileHolder)   elProfileHolder.addEventListener('click',   function () { selectProfile(PROFILE_HOLDER); });
-  if (elProfileGuardian) elProfileGuardian.addEventListener('click', function () { selectProfile(PROFILE_GUARDIAN); });
+  if (elProfileOptions) {
+    elProfileOptions.addEventListener('click', function (event) {
+      var card = event.target.closest('.profile-card[data-profile]');
+      if (!card || !elProfileOptions.contains(card)) return;
+      selectProfile(card.getAttribute('data-profile'));
+    });
+  }
 
   if (elStep1Next) {
     elStep1Next.addEventListener('click', function () {
-      if (state.profile) goTo(1); // step-principal
+      if (!state.profile) return;
+      goTo(1); // step-principal
     });
   }
 
@@ -1979,6 +2590,59 @@
       var pi = martialPersonIndexAt(state.stepIndex);
       collectMartial(pi);
       goTo(state.stepIndex + 1);
+    });
+  }
+
+  // ── Eventos — Etapas operacionais ───────────────────────────────────────────
+
+  document.querySelectorAll('input[name="teacher-assignment-mode"]').forEach(function (input) {
+    input.addEventListener('change', updateTeacherScheduleMode);
+  });
+  if (teacherOpenScheduleModal) teacherOpenScheduleModal.addEventListener('click', openTeacherScheduleModal);
+  if (teacherCancelScheduleModal) {
+    teacherCancelScheduleModal.addEventListener('click', function () {
+      if (teacherScheduleModal) teacherScheduleModal.close();
+    });
+  }
+  if (teacherSaveScheduleModal) teacherSaveScheduleModal.addEventListener('click', saveTeacherScheduleModal);
+  if (elStepTeacherScheduleNext) {
+    elStepTeacherScheduleNext.addEventListener('click', function () {
+      if (!validateTeacherSchedule()) return;
+      syncTeacherScheduleToHiddenFields();
+      goTo(state.stepIndex + 1);
+    });
+  }
+
+  document.querySelectorAll('input[name="admin-role"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      syncAdministrativeAccessToHiddenFields();
+      clearErr(null, adminRoleError);
+    });
+  });
+  if (elStepAdministrativeAccessNext) {
+    elStepAdministrativeAccessNext.addEventListener('click', function () {
+      if (!validateAdministrativeAccess()) return;
+      syncAdministrativeAccessToHiddenFields();
+      goTo(state.stepIndex + 1);
+    });
+  }
+
+  document.querySelectorAll('input[name="operational-payout-method"]').forEach(function (input) {
+    input.addEventListener('change', updateOperationalFinanceFields);
+  });
+  document.querySelectorAll('input[name="operational-financial-arrangement"]').forEach(function (input) {
+    input.addEventListener('change', updateOperationalFinanceFields);
+  });
+  [operationalFixedAmount, operationalStudentPercentage, operationalPixKeyType, operationalPixKey, operationalBankDetails].forEach(function (input) {
+    if (!input) return;
+    input.addEventListener('input', syncOperationalFinanceToHiddenFields);
+    input.addEventListener('change', syncOperationalFinanceToHiddenFields);
+  });
+  if (elStepOperationalFinanceNext) {
+    elStepOperationalFinanceNext.addEventListener('click', function () {
+      if (!validateOperationalFinance()) return;
+      syncOperationalFinanceToHiddenFields();
+      submitOperationalRegistration();
     });
   }
 
@@ -2855,6 +3519,8 @@
         deps: state.deps,
         classSelections: state.classSelections,
         planSelections: state.planSelections,
+        teacherProposedSchedule: state.teacherProposedSchedule,
+        teacherExistingClassSelections: state.teacherExistingClassSelections,
         fields: _collectHiddenFields(),
       }));
     } catch (e) {}
@@ -2981,6 +3647,8 @@
       state.deps              = saved.deps              || [];
       state.classSelections   = saved.classSelections   || [];
       state.planSelections    = saved.planSelections     || [];
+      state.teacherProposedSchedule = saved.teacherProposedSchedule || null;
+      state.teacherExistingClassSelections = saved.teacherExistingClassSelections || [];
       state.holderDepCount    = saved.holderDepCount     || 0;
       state.guardianStudentCount = saved.guardianStudentCount || 1;
 
@@ -2993,6 +3661,8 @@
       state.deps                 = saved.deps              || [];
       state.classSelections      = saved.classSelections   || [];
       state.planSelections       = saved.planSelections    || [];
+      state.teacherProposedSchedule = saved.teacherProposedSchedule || null;
+      state.teacherExistingClassSelections = saved.teacherExistingClassSelections || [];
 
       // 5. Restaura UI de checkbox de dependentes (holder)
       if (saved.profile === PROFILE_HOLDER && state.holderDepCount > 0) {
@@ -3035,22 +3705,36 @@
     clearWizardState();
     showPlanPaidMode();
   } else {
-    var _restored = tryRestoreWizard();
-    if (!_restored) {
-      var initialProfile = elProfileInput ? elProfileInput.value : '';
-      if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {
-        var initialIncludeDependent = elIncludeDepInput ? elIncludeDepInput.value : '';
-        var initialExtraDependents = elExtraDepInput ? elExtraDepInput.value : '[]';
-        selectProfile(initialProfile);
-        if (elIncludeDepInput) elIncludeDepInput.value = initialIncludeDependent;
-        if (elExtraDepInput) elExtraDepInput.value = initialExtraDependents;
-        rehydrateInitialWizardStateFromForm(initialProfile);
-      } else {
-        buildStepSequence();
-      }
+    var queryProfile = '';
+    try {
+      queryProfile = new URLSearchParams(window.location.search).get('profile') || '';
+    } catch (e) {
+      queryProfile = '';
+    }
+    if (isOperationalProfile(queryProfile)) {
+      clearWizardState();
+      selectProfile(queryProfile);
       renderGuardianStudentCount();
       renderHolderDepCount();
       updateProgress();
+    } else {
+      var _restored = tryRestoreWizard();
+      if (!_restored) {
+        var initialProfile = elProfileInput ? elProfileInput.value : '';
+        if (initialProfile === PROFILE_HOLDER || initialProfile === PROFILE_GUARDIAN) {
+          var initialIncludeDependent = elIncludeDepInput ? elIncludeDepInput.value : '';
+          var initialExtraDependents = elExtraDepInput ? elExtraDepInput.value : '[]';
+          selectProfile(initialProfile);
+          if (elIncludeDepInput) elIncludeDepInput.value = initialIncludeDependent;
+          if (elExtraDepInput) elExtraDepInput.value = initialExtraDependents;
+          rehydrateInitialWizardStateFromForm(initialProfile);
+        } else {
+          buildStepSequence();
+        }
+        renderGuardianStudentCount();
+        renderHolderDepCount();
+        updateProgress();
+      }
     }
   }
 

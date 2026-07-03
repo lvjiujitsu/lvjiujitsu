@@ -1,6 +1,7 @@
 import json
 
 from django.db import transaction
+from django.db.models import Q
 
 from system.constants import (
     CLASS_ENROLLMENT_PERSON_TYPE_CODES,
@@ -282,6 +283,17 @@ def _create_other_registration(cleaned_data, person_types):
         phone=cleaned_data.get("other_phone", ""),
         birth_date=cleaned_data.get("other_birthdate"),
         biological_sex=cleaned_data.get("other_biological_sex", ""),
+        blood_type=cleaned_data.get("other_blood_type", ""),
+        allergies=cleaned_data.get("other_allergies", ""),
+        previous_injuries=cleaned_data.get("other_injuries", ""),
+        emergency_contact=cleaned_data.get("other_emergency_contact", ""),
+        martial_art=cleaned_data.get("other_martial_art", ""),
+        martial_art_graduation=cleaned_data.get("other_martial_art_graduation", ""),
+        jiu_jitsu_belt=cleaned_data.get("other_jiu_jitsu_belt", ""),
+        jiu_jitsu_stripes=cleaned_data.get("other_jiu_jitsu_stripes"),
+        martial_art_started_at=cleaned_data.get("other_martial_art_started_at"),
+        martial_art_last_graduation_at=cleaned_data.get("other_martial_art_last_graduation_at"),
+        previous_academy=cleaned_data.get("other_previous_academy", ""),
         password=cleaned_data["other_password"],
         person_type=person_types[other_type_code],
     )
@@ -364,9 +376,7 @@ def _seed_initial_graduation_from_history(person):
         return None
     if Graduation.objects.filter(person=person).exists():
         return None
-    belt = BeltRank.objects.filter(code__contains=person.jiu_jitsu_belt).order_by(
-        "-display_order"
-    ).first()
+    belt = _resolve_belt_rank_from_history(person, BeltRank)
     if belt is None:
         return None
     grade_number = person.jiu_jitsu_stripes or 0
@@ -392,6 +402,36 @@ def _seed_initial_graduation_from_history(person):
         awarded_at=awarded_at,
         notes=notes,
     )
+
+
+def _resolve_belt_rank_from_history(person, belt_rank_model):
+    legacy_code = (person.jiu_jitsu_belt or "").strip()
+    if not legacy_code:
+        return None
+    normalized = legacy_code.replace("_", "-")
+    compact = normalized.replace("-", "")
+    suffixes = [f"-{normalized}"]
+    if compact != normalized:
+        suffixes.append(f"-{compact}")
+
+    queryset = belt_rank_model.objects.filter(is_active=True)
+    age = person.get_age()
+    if age is not None:
+        age_queryset = queryset.filter(
+            Q(min_age__isnull=True) | Q(min_age__lte=age),
+            Q(max_age__isnull=True) | Q(max_age__gte=age),
+        )
+        if age_queryset.exists():
+            queryset = age_queryset
+
+    exact = queryset.filter(code=legacy_code).first()
+    if exact is not None:
+        return exact
+
+    suffix_query = Q()
+    for suffix in suffixes:
+        suffix_query |= Q(code__endswith=suffix)
+    return queryset.filter(suffix_query).order_by("display_order", "display_name").first()
 
 
 def _seed_initial_graduation_for_beginner(person):

@@ -51,6 +51,7 @@ STEP_REQUIRED_FIELDS = {
         "other_name",
         "other_cpf",
         "other_birthdate",
+        "other_biological_sex",
         "other_password",
         "other_password_confirm",
     ),
@@ -78,6 +79,7 @@ STEP_PREFIX = {
     "student_medical": "student",
     "student_classes": "student",
     "other": "other",
+    "other_medical": "other",
 }
 
 
@@ -139,7 +141,7 @@ def _validate_kinship(data, step_key, errors):
 
 def _validate_martial_background(data, step_key, errors):
     prefix = STEP_PREFIX.get(step_key)
-    if step_key not in ("holder_medical", "dependent_medical", "student_medical"):
+    if step_key not in ("holder_medical", "dependent_medical", "student_medical", "other_medical"):
         return
     has_martial_art = _normalize_martial_art_answer(
         _get(data, f"{prefix}_has_martial_art"),

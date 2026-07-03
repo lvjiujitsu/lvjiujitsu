@@ -29,6 +29,7 @@ def create_administrative_access_request(
     requester=None,
     grant_full_administrative=False,
     password="",
+    request_payload=None,
 ):
     formatted_cpf = ensure_formatted_cpf(cpf)
     existing_person = requester or Person.objects.filter(cpf=formatted_cpf).first()
@@ -50,6 +51,7 @@ def create_administrative_access_request(
         requested_role_codes=requested_codes,
         grant_full_administrative=bool(grant_full_administrative),
         justification=(justification or "").strip(),
+        request_payload=_normalize_request_payload(request_payload),
         password_hash=password_hash,
     )
 
@@ -247,6 +249,28 @@ def _normalize_requested_role_codes(role_codes):
         if code in valid_codes and code not in codes:
             codes.append(code)
     return codes
+
+
+def _normalize_request_payload(payload):
+    payload = payload or {}
+    training_intent = payload.get("training_intent") or "none"
+    compensation_preference = payload.get("compensation_preference") or "none"
+    allowed_training = {"none", "student"}
+    allowed_compensation = {"none", "barter", "pix"}
+    pix_key_type = (payload.get("pix_key_type") or "").strip()
+    pix_key = (payload.get("pix_key") or "").strip()
+    if compensation_preference == "pix" and (not pix_key_type or not pix_key):
+        raise ValidationError("Informe tipo e chave PIX para solicitacao com recebimento por PIX.")
+    return {
+        "training_intent": training_intent if training_intent in allowed_training else "none",
+        "compensation_preference": (
+            compensation_preference
+            if compensation_preference in allowed_compensation
+            else "none"
+        ),
+        "pix_key_type": pix_key_type,
+        "pix_key": pix_key,
+    }
 
 
 def _has_pending_request(cpf):

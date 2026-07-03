@@ -16,7 +16,35 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         script = (root / "static" / "system" / "js" / "auth" / "register.js").read_text(encoding="utf-8")
 
         self.assertNotIn("SENTINEL_TEST_XZ99", template)
-        self.assertIn("register.js' %}?v=42", template)
+        self.assertIn("register.css' %}?v=24", template)
+        self.assertIn("register.js' %}?v=47", template)
+        self.assertIn('id="profile-card-teacher-request"', template)
+        self.assertIn('id="profile-card-administrative-request"', template)
+        self.assertIn('id="administrative-request-suboption"', template)
+        self.assertIn('id="step-teacher-schedule"', template)
+        self.assertIn('id="step-administrative-access"', template)
+        self.assertIn('id="step-operational-finance"', template)
+        self.assertIn('id="teacher-schedule-modal"', template)
+        self.assertIn('id="teacher-existing-class-list"', template)
+        self.assertIn('name="teacher-schedule-weekdays"', template)
+        self.assertIn('name="operational-financial-arrangement"', template)
+        self.assertIn('class="profile-segmented"', template)
+        self.assertNotIn('id="ui-teacher-schedule-weekday"', template)
+        self.assertNotIn("profile-card--link", template)
+        self.assertNotIn("profile-suboption__fieldset", template)
+        self.assertNotIn("data-destination-url", template)
+        self.assertIn("PROFILE_TEACHER_REQUEST", script)
+        self.assertIn("PROFILE_ADMINISTRATIVE_REQUEST", script)
+        self.assertIn("function isOperationalProfile", script)
+        self.assertIn("function syncOperationalProfileToHiddenFields", script)
+        self.assertIn("step-teacher-schedule", script)
+        self.assertIn("step-administrative-access", script)
+        self.assertIn("step-operational-finance", script)
+        self.assertIn("function renderTeacherExistingClassList", script)
+        self.assertIn("function isPaidOperationalArrangement", script)
+        self.assertIn("teacher_existing_class_groups_payload", script)
+        self.assertNotIn("window.location.href", script)
+        self.assertNotIn("goToSelectedRequestProfile", script)
         self.assertIn("function showOnlyWizardStep", script)
         self.assertIn("function rehydratePendingWizardState", script)
         self.assertIn("document.querySelectorAll('.wizard-step')", script)
@@ -47,6 +75,11 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertNotIn(".innerHTML", confirm_body)
         self.assertIn("el(", review_body)
         self.assertIn("el(", confirm_body)
+
+    def test_public_request_wizard_is_not_part_of_registration_contract(self):
+        root = Path(__file__).resolve().parents[2]
+        self.assertFalse((root / "templates" / "request_wizard").exists())
+        self.assertFalse((root / "static" / "system" / "js" / "auth" / "request_wizard.js").exists())
 
 
 class CalendarTemplateStaticContractTestCase(SimpleTestCase):

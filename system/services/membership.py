@@ -546,6 +546,7 @@ def get_guardian_billing_tabs(guardian_person):
 
 
 def _build_billing_tab(person, *, is_active=False):
+    billing_owner = get_membership_owner(person)
     active_membership = get_active_membership(person)
     pending_order = get_latest_open_order(person)
     recent_invoices = []
@@ -560,6 +561,7 @@ def _build_billing_tab(person, *, is_active=False):
         "pending_order": pending_order,
         "recent_invoices": recent_invoices,
         "is_active_tab": is_active,
+        "billing_owner": billing_owner,
     }
 
 

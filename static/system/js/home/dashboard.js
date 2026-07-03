@@ -218,6 +218,178 @@
     });
   }
 
+  function bindCalendarModal() {
+    var overlay = document.getElementById('calendar-modal');
+    if (!overlay) return;
+
+    var frame = overlay.querySelector('.js-calendar-frame');
+    var closeButtons = overlay.querySelectorAll('.js-close-calendar-modal');
+
+    function openModal(url) {
+      if (frame && url && frame.getAttribute('src') !== url) {
+        frame.setAttribute('src', url);
+      }
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('click', function (e) {
+      var button = e.target.closest('.js-open-calendar-modal');
+      if (!button) return;
+      e.preventDefault();
+      openModal(button.getAttribute('data-calendar-url') || '/calendar/?embedded=1');
+    });
+
+    closeButtons.forEach(function (btn) {
+      btn.addEventListener('click', closeModal);
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
+  function bindDependentRegistrationModal() {
+    var dialog = document.getElementById('dependent-registration-modal');
+    if (!dialog) return;
+
+    var frame = dialog.querySelector('.js-dependent-registration-frame');
+    var modalTitle = dialog.querySelector('.dependent-modal__title');
+    var closeButtons = dialog.querySelectorAll('.js-close-dependent-modal');
+    var defaultTitle = modalTitle ? modalTitle.textContent : 'Adicionar dependente';
+
+    function cleanUrlState() {
+      var url = new URL(window.location.href);
+      if (!url.searchParams.has('dependent_modal')) return;
+      url.searchParams.delete('dependent_modal');
+      url.searchParams.delete('dependent_modal_url');
+      var next = url.pathname + (url.search ? url.search : '') + url.hash;
+      window.history.replaceState({}, '', next);
+    }
+
+    function openModal(url, title) {
+      var frameUrl = url || (frame && frame.getAttribute('data-src')) || '/dependents/add/?modal=1';
+      var nextTitle = title || defaultTitle;
+      if (modalTitle) modalTitle.textContent = nextTitle;
+      if (frame) frame.setAttribute('title', nextTitle);
+      if (frame && frame.getAttribute('src') !== frameUrl) {
+        frame.setAttribute('src', frameUrl);
+      }
+      if (typeof dialog.showModal === 'function') {
+        if (!dialog.open) dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+      if (typeof dialog.close === 'function' && dialog.open) {
+        dialog.close();
+      } else {
+        dialog.removeAttribute('open');
+      }
+      document.body.classList.remove('modal-open');
+      cleanUrlState();
+    }
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('.js-open-dependent-modal');
+      if (!trigger) return;
+      e.preventDefault();
+      openModal(
+        trigger.getAttribute('data-dependent-modal-url') || trigger.getAttribute('href'),
+        trigger.getAttribute('data-dependent-modal-title')
+      );
+    });
+
+    closeButtons.forEach(function (button) {
+      button.addEventListener('click', closeModal);
+    });
+
+    dialog.addEventListener('click', function (e) {
+      if (e.target === dialog) closeModal();
+    });
+
+    dialog.addEventListener('cancel', function () {
+      document.body.classList.remove('modal-open');
+      cleanUrlState();
+    });
+
+    window.addEventListener('message', function (event) {
+      if (event.origin !== window.location.origin) return;
+      var data = event.data || {};
+      if (data.type === 'dependent-modal-close') {
+        closeModal();
+      }
+      if (data.type === 'dependent-modal-done') {
+        closeModal();
+        window.location.href = window.location.pathname;
+      }
+    });
+
+    if (dialog.getAttribute('data-open-on-load') === 'true') {
+      var params = new URL(window.location.href).searchParams;
+      openModal(params.get('dependent_modal_url') || (frame ? frame.getAttribute('data-src') : null));
+    }
+  }
+
+  function bindClientProfileModal() {
+    var overlay = document.getElementById('client-profile-modal');
+    if (!overlay) return;
+
+    function openModal() {
+      overlay.removeAttribute('hidden');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.classList.remove('modal-open');
+    }
+
+    document.addEventListener('click', function (e) {
+      var openBtn = e.target.closest('.js-open-client-profile');
+      if (!openBtn) return;
+      e.preventDefault();
+      openModal();
+    });
+
+    document.addEventListener('click', function (e) {
+      var closeBtn = e.target.closest('.js-close-client-profile');
+      if (!closeBtn || !overlay.contains(closeBtn)) return;
+      closeModal();
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
+  function bindDependentRemoveConfirm() {
+    document.addEventListener('submit', function (e) {
+      var form = e.target.closest('.js-dependent-remove-form');
+      if (!form) return;
+      var message = form.getAttribute('data-confirm-message') || 'Remover dependente?';
+      if (!window.confirm(message)) {
+        e.preventDefault();
+      }
+    });
+  }
+
   function bindSpecialClassModal() {
     var config = readConfig();
     var csrfToken = getCsrfToken();
@@ -970,6 +1142,10 @@
   bindTabs();
   bindCheckins();
   bindApproveCheckins();
+  bindCalendarModal();
+  bindClientProfileModal();
+  bindDependentRegistrationModal();
+  bindDependentRemoveConfirm();
   bindSpecialClassModal();
   bindPresenceModal();
   bindAttendanceHistoryModal();

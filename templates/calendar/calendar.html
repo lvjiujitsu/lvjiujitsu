@@ -6,11 +6,12 @@
   <title>Cronograma — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=13">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=18">
 </head>
-<body>
+<body{% if is_embedded %} class="calendar-embedded"{% endif %}>
 
   <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
+  {% if not is_embedded %}
   <header class="topbar" role="banner">
     <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
       <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
@@ -32,6 +33,7 @@
       </a>
     </nav>
   </header>
+  {% endif %}
 
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page page--calendar" id="main-content">
@@ -49,16 +51,18 @@
 
     <!-- Cabeçalho -->
     <div class="page-header">
+      {% if not is_embedded %}
       <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      {% endif %}
       <h1 class="page-header__title">Cronograma</h1>
     </div>
 
     <!-- Navegação do mês -->
     <section class="section calendar-board" aria-labelledby="calendar-title">
       <div class="cal-nav">
-        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.prev_year month=calendar.prev_month %}">← Mês anterior</a>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.prev_year month=calendar.prev_month %}{{ calendar_query_suffix }}">← Mês anterior</a>
         <span class="cal-nav__title" id="calendar-title">{{ calendar.month_name }} {{ calendar.year }}</span>
-        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.next_year month=calendar.next_month %}">Próximo mês →</a>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.next_year month=calendar.next_month %}{{ calendar_query_suffix }}">Próximo mês →</a>
         {% if show_instructor_area %}
         <button class="btn btn--primary btn--sm js-open-special-modal" type="button">Criar aulão</button>
         <a class="btn btn--secondary btn--sm" href="{% url 'system:class-catalog-request-create' %}">Solicitar novo horário</a>

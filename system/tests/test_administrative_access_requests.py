@@ -66,6 +66,30 @@ class AdministrativeAccessRequestServiceTestCase(TestCase):
         self.assertEqual(request.status, AdministrativeAccessRequestStatus.PENDING)
         self.assertIsNone(request.person)
 
+    def test_public_request_stores_training_and_compensation_payload(self):
+        create_administrative_access_request(
+            origin=AdministrativeAccessRequestOrigin.PUBLIC_REGISTRATION,
+            full_name="Aluno Administrativo",
+            cpf="11144477735",
+            email="aluno.admin@example.com",
+            phone="11999990001",
+            requested_role_codes=[OperationalRoleCode.PEOPLE_SUPPORT],
+            justification="Vou apoiar a recepção e treinar.",
+            password="SenhaForte123",
+            request_payload={
+                "training_intent": "student",
+                "compensation_preference": "pix",
+                "pix_key_type": "CPF",
+                "pix_key": "111.444.777-35",
+            },
+        )
+
+        request = AdministrativeAccessRequest.objects.get(cpf="111.444.777-35")
+        self.assertEqual(request.request_payload["training_intent"], "student")
+        self.assertEqual(request.request_payload["compensation_preference"], "pix")
+        self.assertEqual(request.request_payload["pix_key_type"], "CPF")
+        self.assertEqual(request.request_payload["pix_key"], "111.444.777-35")
+
     def test_duplicate_pending_request_for_same_cpf_is_rejected(self):
         create_administrative_access_request(
             origin=AdministrativeAccessRequestOrigin.PUBLIC_REGISTRATION,

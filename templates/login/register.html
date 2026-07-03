@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=20">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
 
   {# Dados de contexto do servidor — lidos pelo JS #}
   <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
@@ -210,17 +210,19 @@
             </div>
           </div>
 
-          <a
-            class="profile-card profile-card--link"
-            href="{% url 'system:class-catalog-request-public-teacher-create' %}"
-            aria-label="Propor cadastro como professor"
+          {# ── Card: Professor ── #}
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-teacher-request"
+            data-profile="teacher_request"
+            aria-pressed="false"
           >
             <div class="profile-card__icon" aria-hidden="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19V5"/>
-                <path d="M4 5h16"/>
-                <path d="M4 12h12"/>
-                <path d="M4 19h10"/>
+                <path d="M3 8 12 3l9 5-9 5-9-5Z"/>
+                <path d="M7 11v4c0 1.7 2.2 3 5 3s5-1.3 5-3v-4"/>
+                <path d="M21 8v6"/>
               </svg>
             </div>
             <div class="profile-card__body">
@@ -228,9 +230,75 @@
               <span class="profile-card__desc">Quero propor uma turma ou horário inicial</span>
             </div>
             <div class="profile-card__check" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-          </a>
+          </button>
+
+          <div class="profile-suboption" id="teacher-request-suboption" hidden>
+            <div class="profile-suboption__label">
+              <span class="profile-suboption__text">
+                Você segue pelo cadastro de pessoa e informa turma, horário e recebimento nas próximas etapas.
+              </span>
+            </div>
+          </div>
+
+          {# ── Card: Administrativo ── #}
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-administrative-request"
+            data-profile="administrative_request"
+            aria-pressed="false"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="7" width="18" height="13" rx="2"/>
+                <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <path d="M3 12h18"/>
+                <path d="M12 11v3"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Administrativo</span>
+              <span class="profile-card__desc">Quero solicitar acesso operacional</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+          <div class="profile-suboption" id="administrative-request-suboption" hidden>
+            <div class="profile-suboption__section">
+              <span class="profile-suboption__counter-label">Você também vai treinar?</span>
+              <div class="profile-segmented" role="radiogroup" aria-label="Intenção de treino do administrativo">
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-training-intent" value="none" checked>
+                  <span>Somente administrativo</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-training-intent" value="student">
+                  <span>Administrativo e aluno</span>
+                </label>
+              </div>
+            </div>
+            <div class="profile-suboption__section">
+              <span class="profile-suboption__counter-label">Compensação prevista</span>
+              <div class="profile-segmented" role="radiogroup" aria-label="Compensação prevista do administrativo">
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="none" checked>
+                  <span>Sem recebimento</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="barter">
+                  <span>Permuta</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="pix">
+                  <span>PIX</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
         </div>{# /profile-options #}
 
@@ -635,6 +703,205 @@
         </div>
       </section>{# /step-martial #}
 
+      {# ── Etapa operacional — professor ───────────────────────────────────── #}
+      <section class="wizard-step" id="step-teacher-schedule" data-step="teacher-schedule" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Vínculo com horário</h1>
+          <p class="wizard-step__subtitle">Selecione uma turma ativa ou proponha um novo horário</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="operational-option-group" role="radiogroup" aria-label="Tipo de vínculo do professor">
+            <label class="operational-choice">
+              <input type="radio" name="teacher-assignment-mode" value="existing" checked>
+              <span class="operational-choice__body">
+                <strong>Selecionar horário existente</strong>
+                <small>Turmas com professor atual ficam pendentes de troca; turmas sem professor seguem para aprovação da gestão.</small>
+              </span>
+            </label>
+            <label class="operational-choice">
+              <input type="radio" name="teacher-assignment-mode" value="propose">
+              <span class="operational-choice__body">
+                <strong>Criar proposta de horário</strong>
+                <small>Informar os dados para aprovação da gestão.</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="form-field" id="teacher-existing-schedule-field">
+            <label class="form-label">Turmas ativas</label>
+            <div class="teacher-class-list" id="teacher-existing-class-list"></div>
+            <p class="form-field__hint">
+              A solicitação registra o vínculo desejado. Quando já houver professor vinculado, a troca fica sujeita à aprovação da gestão e do professor atual.
+            </p>
+            <p class="form-field__error" id="teacher-existing-class-error" hidden></p>
+          </div>
+
+          <div class="teacher-proposed-schedule" id="teacher-proposed-schedule-field" hidden>
+            <button type="button" class="btn-checkout-later" id="teacher-open-schedule-modal">Criar horário</button>
+            <div class="teacher-proposed-schedule__summary" id="teacher-proposed-schedule-summary">
+              Nenhum horário proposto.
+            </div>
+            <p class="form-field__error" id="teacher-proposed-schedule-error" hidden></p>
+          </div>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-teacher-schedule-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>{# /step-teacher-schedule #}
+
+      {# ── Etapa operacional — administrativo ──────────────────────────────── #}
+      <section class="wizard-step" id="step-administrative-access" data-step="administrative-access" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Áreas administrativas</h1>
+          <p class="wizard-step__subtitle">Selecione as áreas que deseja solicitar para aprovação</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="admin-role-grid" aria-label="Áreas solicitadas">
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="people-support">
+              <span class="operational-choice__body"><strong>Apoio de pessoas</strong><small>Cadastro e suporte a alunos.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="class-assistant">
+              <span class="operational-choice__body"><strong>Apoio de turma</strong><small>Presença, aulas e rotina de turma.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="academy-manager">
+              <span class="operational-choice__body"><strong>Gestor da academia</strong><small>Acesso operacional amplo.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="financial-operator">
+              <span class="operational-choice__body"><strong>Operador financeiro</strong><small>Rotinas financeiras.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="stock-operator">
+              <span class="operational-choice__body"><strong>Operador de estoque</strong><small>Materiais e pedidos.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="graduation-operator">
+              <span class="operational-choice__body"><strong>Operador de graduação</strong><small>Histórico e graduações.</small></span>
+            </label>
+          </div>
+          <p class="form-field__error" id="admin-role-error" hidden></p>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-administrative-access-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>{# /step-administrative-access #}
+
+      {# ── Etapa operacional — financeiro ──────────────────────────────────── #}
+      <section class="wizard-step" id="step-operational-finance" data-step="operational-finance" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Condição financeira</h1>
+          <p class="wizard-step__subtitle">Informe como esse perfil se enquadra em mensalidade ou recebimento</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="form-field">
+            <label class="form-label">Condição do perfil</label>
+            <div class="operational-option-group" role="radiogroup" aria-label="Condição financeira do perfil">
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="pays_monthly" checked>
+                <span class="operational-choice__body"><strong>Paga mensalidade</strong><small>Seleciona plano como aluno quando também treina.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="barter">
+                <span class="operational-choice__body"><strong>Permuta</strong><small>Abatimento de plano anual, sem recebimento financeiro.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="volunteer">
+                <span class="operational-choice__body"><strong>Sem mensalidade e sem recebimento</strong><small>Somente solicitação operacional.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_fixed">
+                <span class="operational-choice__body"><strong>Recebe valor fixo</strong><small>Exemplo: valor fechado por uma aula ou rotina.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_per_student">
+                <span class="operational-choice__body"><strong>Recebe por aluno</strong><small>Percentual por aluno vinculado à turma.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_mixed">
+                <span class="operational-choice__body"><strong>Recebe fixo e por aluno</strong><small>Combina valor fixo e percentual por aluno.</small></span>
+              </label>
+            </div>
+            <p class="form-field__error" id="operational-finance-error" hidden></p>
+          </div>
+
+          <div class="operational-money-fields" id="operational-money-fields" hidden>
+            <div class="form-field" id="operational-fixed-amount-field" hidden>
+              <label class="form-label" for="ui-operational-fixed-amount">Valor fixo combinado</label>
+              <input type="text" class="form-input" id="ui-operational-fixed-amount" inputmode="decimal" placeholder="Ex: 300,00">
+            </div>
+            <div class="form-field" id="operational-student-percentage-field" hidden>
+              <label class="form-label" for="ui-operational-student-percentage">Percentual por aluno</label>
+              <input type="text" class="form-input" id="ui-operational-student-percentage" inputmode="decimal" placeholder="Ex: 20">
+            </div>
+          </div>
+
+          <div class="form-field" id="operational-payout-method-field" hidden>
+            <label class="form-label">Dados para recebimento</label>
+            <div class="operational-option-group" role="radiogroup" aria-label="Meio de recebimento do perfil">
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="none" checked>
+                <span class="operational-choice__body"><strong>Sem recebimento</strong><small>Nenhum dado de pagamento.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="pix">
+                <span class="operational-choice__body"><strong>Receber por PIX</strong><small>Informar chave PIX.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="bank">
+                <span class="operational-choice__body"><strong>Conta bancária</strong><small>Informar dados bancários.</small></span>
+              </label>
+            </div>
+          </div>
+
+          <p class="operational-finance-note" id="operational-finance-note"></p>
+
+          <div class="operational-payout-fields" id="operational-pix-fields" hidden>
+            <div class="form-field">
+              <label class="form-label" for="ui-operational-pix-key-type">Tipo da chave PIX</label>
+              <div class="form-select-wrapper">
+                <select class="form-input form-select" id="ui-operational-pix-key-type">
+                  <option value="">Selecione</option>
+                  <option value="cpf">CPF</option>
+                  <option value="email">E-mail</option>
+                  <option value="phone">Telefone</option>
+                  <option value="random">Chave aleatória</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-operational-pix-key">Chave PIX</label>
+              <input type="text" class="form-input" id="ui-operational-pix-key" placeholder="Informe a chave PIX">
+            </div>
+          </div>
+
+          <div class="form-field" id="operational-bank-fields" hidden>
+            <label class="form-label" for="ui-operational-bank-details">Dados bancários</label>
+            <textarea class="form-input form-textarea" id="ui-operational-bank-details" rows="4" placeholder="Banco, agência, conta, tipo de conta e titular"></textarea>
+          </div>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-operational-finance-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>{# /step-operational-finance #}
+
       {# ── Etapa de turma — reutilizada para cada pessoa ── #}
       <section class="wizard-step" id="step-classes" data-step="classes" hidden>
         <div class="wizard-step__heading">
@@ -797,8 +1064,97 @@
       </form>
     </section>
 
+    <dialog class="schedule-dialog" id="teacher-schedule-modal" aria-labelledby="teacher-schedule-modal-title">
+      <div class="schedule-dialog__body">
+        <div class="wizard-step__heading">
+          <h2 class="wizard-step__title" id="teacher-schedule-modal-title">Criar horário</h2>
+          <p class="wizard-step__subtitle">Informe os dados da proposta para aprovação</p>
+        </div>
+
+        <div class="wizard-form__fields">
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-category">Categoria</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-teacher-schedule-category">
+                <option value="">Selecione</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-name">Nome da turma</label>
+            <input type="text" class="form-input" id="ui-teacher-schedule-name" placeholder="Ex: Adulto Noite">
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label">Dias da semana</label>
+            <div class="weekday-checklist" id="teacher-schedule-weekdays" aria-label="Dias da semana">
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="monday">
+                <span>Segunda</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="tuesday">
+                <span>Terça</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="wednesday">
+                <span>Quarta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="thursday">
+                <span>Quinta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="friday">
+                <span>Sexta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="saturday">
+                <span>Sábado</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="sunday">
+                <span>Domingo</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-style">Estilo</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-teacher-schedule-style">
+                <option value="kimono">Kimono</option>
+                <option value="no_gi">No-Gi</option>
+                <option value="mixed">Misto</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-start">Horário de início</label>
+            <input type="time" class="form-input" id="ui-teacher-schedule-start">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-duration">Duração em minutos</label>
+            <input type="number" class="form-input" id="ui-teacher-schedule-duration" min="30" step="5" value="60">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-capacity">Capacidade</label>
+            <input type="number" class="form-input" id="ui-teacher-schedule-capacity" min="0" step="1" value="0">
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="ui-teacher-schedule-justification">Justificativa</label>
+            <textarea class="form-input form-textarea" id="ui-teacher-schedule-justification" rows="3" placeholder="Explique a proposta de turma ou horário"></textarea>
+          </div>
+        </div>
+
+        <p class="form-field__error" id="teacher-schedule-modal-error" hidden></p>
+        <div class="schedule-dialog__actions">
+          <button type="button" class="btn-checkout-later" id="teacher-cancel-schedule-modal">Cancelar</button>
+          <button type="button" class="btn-next" id="teacher-save-schedule-modal">Salvar horário</button>
+        </div>
+      </div>
+    </dialog>
+
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=42" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=47" defer></script>
 </body>
 </html>

@@ -9,7 +9,6 @@ from system.constants import PortalCapability
 from system.forms import (
     ClassCatalogDecisionForm,
     ExistingTeacherClassCatalogRequestForm,
-    NewTeacherClassCatalogRequestForm,
 )
 from system.forms.class_request_forms import (
     ClassCatalogExtraScheduleFormSet,
@@ -26,7 +25,6 @@ from system.services.class_requests import (
     can_cancel_class_catalog_request,
     cancel_class_catalog_request,
     create_existing_teacher_class_request,
-    create_new_teacher_class_request,
     reject_class_catalog_request,
 )
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
@@ -90,65 +88,9 @@ class ExistingTeacherClassCatalogRequestCreateView(PortalRoleRequiredMixin, Form
         return redirect(self.success_url)
 
 
-class PublicNewTeacherClassCatalogRequestCreateView(FormView):
-    form_class = NewTeacherClassCatalogRequestForm
-    template_name = "class_requests/new_teacher_form.html"
-    success_url = reverse_lazy("system:login")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["form_title"] = "Propor cadastro de professor"
-        context["form_subtitle"] = "A proposta cria professor e horário somente após aprovação."
-        context["back_url"] = reverse("system:register")
-        context["extra_schedule_formset"] = kwargs.get(
-            "extra_schedule_formset"
-        ) or ClassCatalogExtraScheduleFormSet(prefix="extra_schedules")
-        return context
-
-    def post(self, request, *args, **kwargs):
-        form = self.get_form()
-        extra_schedule_formset = ClassCatalogExtraScheduleFormSet(
-            request.POST, prefix="extra_schedules"
-        )
-        if form.is_valid() and extra_schedule_formset.is_valid():
-            return self._save(form, extra_schedule_formset)
-        return self.render_to_response(
-            self.get_context_data(form=form, extra_schedule_formset=extra_schedule_formset)
-        )
-
-    def _save(self, form, extra_schedule_formset):
-        extra_schedules = extract_extra_schedules(extra_schedule_formset)
-        try:
-            create_new_teacher_class_request(
-                full_name=form.cleaned_data["full_name"],
-                cpf=form.cleaned_data["cpf"],
-                email=form.cleaned_data.get("email", ""),
-                phone=form.cleaned_data.get("phone", ""),
-                password=form.cleaned_data["password"],
-                martial_art=form.cleaned_data.get("martial_art", ""),
-                martial_art_graduation=form.cleaned_data.get("martial_art_graduation", ""),
-                jiu_jitsu_belt=form.cleaned_data.get("jiu_jitsu_belt", ""),
-                jiu_jitsu_stripes=form.cleaned_data.get("jiu_jitsu_stripes"),
-                class_category=form.cleaned_data["class_category"],
-                display_name=form.cleaned_data["display_name"],
-                weekday=form.cleaned_data["weekday"],
-                training_style=form.cleaned_data["training_style"],
-                start_time=form.cleaned_data["start_time"],
-                duration_minutes=form.cleaned_data["duration_minutes"],
-                default_capacity=form.cleaned_data.get("default_capacity") or 0,
-                justification=form.cleaned_data["justification"],
-                extra_schedules=extra_schedules,
-            )
-        except ValidationError as error:
-            _add_validation_error(form, error)
-            return self.render_to_response(
-                self.get_context_data(form=form, extra_schedule_formset=extra_schedule_formset)
-            )
-        messages.success(
-            self.request,
-            "Proposta de professor enviada. Aguarde aprovação da gestão.",
-        )
-        return redirect(self.success_url)
+class PublicNewTeacherClassCatalogRequestCreateView(View):
+    def dispatch(self, request, *args, **kwargs):
+        return redirect(f"{reverse('system:register')}?profile=teacher_request")
 
 
 class ClassCatalogRequestQueueView(PortalRoleRequiredMixin, ListView):
