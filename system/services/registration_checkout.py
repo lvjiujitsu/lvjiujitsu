@@ -8,7 +8,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from system.constants import CheckoutAction
+from system.constants import CheckoutAction, DependentCardStrategy
 from system.models.plan import PlanPaymentMethod, SubscriptionPlan
 from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
 from system.models.product import Product, ProductVariant
@@ -597,7 +597,24 @@ def parse_selected_plan_payload(snapshot):
     return [{"plan_id": plan_id, "label": ""}] if plan_id else []
 
 
-def create_pre_registration_plan_payment(pre_registration, checkout_action):
+CARD_STAGGER_OFFSET_HOURS = 4
+
+
+def compute_staggered_billing_cycle_anchor(owner_membership, plan):
+    from system.services.membership import add_billing_cycle
+
+    now = timezone.now()
+    reference = None
+    if owner_membership is not None and owner_membership.current_period_end:
+        if owner_membership.current_period_end > now:
+            reference = owner_membership.current_period_end
+    if reference is None:
+        reference = add_billing_cycle(now, plan.billing_cycle)
+    anchor = reference + timedelta(hours=CARD_STAGGER_OFFSET_HOURS)
+    return int(anchor.timestamp())
+
+
+def create_pre_registration_plan_payment(pre_registration, checkout_action, *, card_strategy=None, owner=None):
     """
     Cria o pagamento da mensalidade do pré-cadastro (Asaas PIX/cartão ou Stripe assinatura)
     e retorna a invoice_url/checkout_url para redirecionamento.
@@ -609,6 +626,7 @@ def create_pre_registration_plan_payment(pre_registration, checkout_action):
     from system.services.stripe_checkout import (
         StripeCheckoutError,
         create_subscription_session_for_pre_registration,
+        merge_plan_into_existing_subscription,
     )
 
     snapshot = pre_registration.form_snapshot or {}
@@ -640,15 +658,60 @@ def create_pre_registration_plan_payment(pre_registration, checkout_action):
         except CouponError as exc:
             raise ValueError(str(exc))
 
+    if checkout_action == CheckoutAction.STRIPE_CARD and card_strategy == DependentCardStrategy.SAME_CARD_MERGED:
+        if owner is None or len(selected_plans) != 1:
+            raise ValueError("Fusão de cobrança exige um responsável com assinatura ativa e um único plano.")
+        from system.services.membership import get_active_membership
+
+        owner_membership = get_active_membership(owner)
+        plan = plans_by_id[selected_plans[0]["plan_id"]]
+        try:
+            merge_result = merge_plan_into_existing_subscription(owner_membership, plan)
+        except StripeCheckoutError as exc:
+            raise ValueError(str(exc))
+        if coupon:
+            mark_coupon_used(coupon)
+        snapshot["plan_payment"] = {
+            "total": str(total),
+            "merged_into_owner_subscription": True,
+            "stripe_subscription_id": merge_result["stripe_subscription_id"],
+            "stripe_subscription_item_id": merge_result["stripe_subscription_item_id"],
+            "items": [
+                {
+                    "label": selected_plans[0].get("label", ""),
+                    "plan_id": plan.pk,
+                    "plan_name": plan.display_name,
+                    "price": str(plan.price),
+                }
+            ],
+        }
+        pre_registration.form_snapshot = snapshot
+        pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+        return (
+            reverse("system:payment-success")
+            + f"?pre_registration_id={pre_registration.pk}&stage=plan"
+        )
+
     if checkout_action == CheckoutAction.STRIPE_CARD:
         coupon_info = (
             {"coupon_code": coupon.code, "discount_amount": str(discount_amount)}
             if coupon else None
         )
+        billing_cycle_anchor = None
+        if card_strategy == DependentCardStrategy.SAME_CARD_STAGGERED and owner is not None:
+            from system.services.membership import get_active_membership
+
+            owner_membership = get_active_membership(owner)
+            plan = plans_by_id[selected_plans[0]["plan_id"]] if len(selected_plans) == 1 else None
+            if plan is not None:
+                billing_cycle_anchor = compute_staggered_billing_cycle_anchor(
+                    owner_membership, plan
+                )
         try:
             session = create_subscription_session_for_pre_registration(
                 pre_registration, plans_by_id, selected_plans,
                 final_total=total, coupon_info=coupon_info,
+                billing_cycle_anchor=billing_cycle_anchor,
             )
         except StripeCheckoutError as exc:
             raise ValueError(str(exc))

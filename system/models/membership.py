@@ -53,6 +53,12 @@ class Membership(TimeStampedModel):
         blank=True,
         default="",
     )
+    stripe_subscription_item_id = models.CharField(
+        "Stripe Subscription Item ID",
+        max_length=255,
+        blank=True,
+        default="",
+    )
     stripe_customer_id = models.CharField(
         "Stripe Customer ID",
         max_length=120,

@@ -1,7 +1,12 @@
 from django.db import transaction
 from django.utils import timezone
 
-from system.constants import CheckoutAction, DependentFinancialMode, PersonTypeCode
+from system.constants import (
+    CheckoutAction,
+    DependentCardStrategy,
+    DependentFinancialMode,
+    PersonTypeCode,
+)
 from system.models import (
     Membership,
     MembershipStatus,
@@ -147,6 +152,8 @@ def build_dependent_snapshot(owner, cleaned_data):
         "dependent_previous_academy": cleaned_data.get("dependent_previous_academy") or "",
         "financial_mode": cleaned_data.get("financial_mode")
         or DependentFinancialMode.DEPENDENT_OWN,
+        "card_strategy": cleaned_data.get("card_strategy")
+        or DependentCardStrategy.NEW_CARD,
         "selected_plan": cleaned_data.get("selected_plan") or "",
         "selected_plans_payload": _selected_plans_payload(owner, cleaned_data),
         "checkout_action": cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER,
@@ -235,10 +242,17 @@ def finalize_dependent_registration(owner, cleaned_data, *, pre_registration=Non
         financial_mode == DependentFinancialMode.DEPENDENT_OWN
         and cleaned_data.get("selected_plan_obj")
     ):
+        plan_payment = (
+            (pre_registration.form_snapshot or {}).get("plan_payment") or {}
+            if pre_registration is not None
+            else {}
+        )
         order = _create_paid_plan_order(
             dependent,
             cleaned_data["selected_plan_obj"],
             checkout_action=cleaned_data.get("checkout_action") or "",
+            stripe_subscription_id=plan_payment.get("stripe_subscription_id", ""),
+            stripe_subscription_item_id=plan_payment.get("stripe_subscription_item_id", ""),
         )
     elif (
         financial_mode == DependentFinancialMode.FAMILY_UPGRADE
@@ -301,6 +315,7 @@ def initial_from_pre_registration(pre_registration):
         if key.startswith("dependent_")
         or key in {
             "financial_mode",
+            "card_strategy",
             "selected_plan",
             "checkout_action",
             "materials_checkout_action",
@@ -322,7 +337,10 @@ def save_checkout_url(pre_registration, stage, checkout_url):
     return pre_registration
 
 
-def _create_paid_plan_order(dependent, plan, *, checkout_action=""):
+def _create_paid_plan_order(
+    dependent, plan, *, checkout_action="",
+    stripe_subscription_id="", stripe_subscription_item_id="",
+):
     order = RegistrationOrder.objects.create(
         person=dependent,
         plan=plan,
@@ -345,6 +363,8 @@ def _create_paid_plan_order(dependent, plan, *, checkout_action=""):
     activate_membership_from_paid_order(
         order,
         notes="Dependente ativado após pagamento do pré-cadastro.",
+        stripe_subscription_id=stripe_subscription_id,
+        stripe_subscription_item_id=stripe_subscription_item_id,
     )
     return order
 

@@ -362,6 +362,14 @@
           </button>
           <h2 class="section__title" id="billing-title">Mensalidade</h2>
         </div>
+        {% if payment_history_items %}
+        <div class="section__actions">
+          <button class="btn btn--secondary btn--sm section-action js-open-payment-history-modal" type="button" aria-haspopup="dialog" aria-label="Abrir histórico de pagamentos" title="Histórico de pagamentos">
+            <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+            <span class="section-action__text">Histórico de pagamentos</span>
+          </button>
+        </div>
+        {% endif %}
       </div>
       <div class="section__body" id="section-billing">
         <div class="panel">
@@ -375,6 +383,7 @@
               aria-controls="billing-tab-panel-{{ forloop.counter }}"
               id="billing-tab-{{ forloop.counter }}"
               data-tab="{{ forloop.counter }}"
+              data-person-id="{{ tab.person.pk }}"
               type="button"
             >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
             {% endfor %}
@@ -996,6 +1005,39 @@
   </div>
   {% endif %}
 
+  <!-- ─── Modal: histórico de pagamentos ───────────────────────────────────── -->
+  {% if payment_history_items %}
+  <div class="modal-overlay" id="payment-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="payment-history-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="payment-history-title">Histórico de pagamentos</h2>
+        <button class="modal__close js-close-payment-history-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <ul class="attendance-history-list" aria-label="Histórico de pagamentos">
+        {% for entry in payment_history_items %}
+        <li class="attendance-history-item" data-payment-history-item data-person-filter="{{ entry.person_id }}">
+          <div class="attendance-history-item__date">
+            <span class="attendance-history-item__day">{{ entry.paid_at|date:"d/m/Y"|default:"—" }}</span>
+          </div>
+          <div class="attendance-history-item__info">
+            <span class="attendance-history-item__class">{{ entry.plan_name }}</span>
+            <span class="attendance-history-item__meta">R$ {{ entry.amount_paid|floatformat:2 }}</span>
+          </div>
+          {% if entry.amount_refunded > 0 %}
+          <span class="status-pill status-pill--warning" aria-label="Estornado">Estornado</span>
+          {% else %}
+          <span class="status-pill status-pill--success" aria-label="Pago">Pago</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="modal-empty js-payment-history-empty" hidden>Nenhum pagamento encontrado.</p>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ─── Modal: presenças da aula (instrutor) ─────────────────────────────── -->
   {% if show_instructor_area %}
   <div class="modal-overlay" id="class-presence-modal" hidden role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
@@ -1186,7 +1228,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=22" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=23" defer></script>
 
 </body>
 </html>

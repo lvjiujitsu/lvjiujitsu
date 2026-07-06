@@ -140,3 +140,4 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-123-modal-conta-cliente-editar-excluir.md](PRD-123-modal-conta-cliente-editar-excluir.md) | Modal da conta do cliente com edição e exclusão |
 | [PRD-124-dependente-upgrade-plano-familiar.md](PRD-124-dependente-upgrade-plano-familiar.md) | Dependente com upgrade para plano familiar |
 | [PRD-125-sincronizacao-upgrade-familiar-stripe.md](PRD-125-sincronizacao-upgrade-familiar-stripe.md) | Sincronizacao remota do upgrade familiar Stripe |
+| [PRD-126-prevenir-cobranca-duplicada-mesmo-cartao-dependente.md](PRD-126-prevenir-cobranca-duplicada-mesmo-cartao-dependente.md) | Prevenir cobrança Stripe duplicada no mesmo cartão entre titular e dependente |

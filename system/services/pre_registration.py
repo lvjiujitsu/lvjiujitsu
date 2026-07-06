@@ -564,6 +564,8 @@ def finalize_pre_registration(pre_registration):
         activate_membership_from_paid_order(
             order,
             notes="Pagamento confirmado via pré-cadastro.",
+            stripe_subscription_id=plan_payment.get("stripe_subscription_id", ""),
+            stripe_subscription_item_id=plan_payment.get("stripe_subscription_item_id", ""),
         )
 
     # Aula experimental: criar RegistrationOrder pendente e TrialAccessGrant

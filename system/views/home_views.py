@@ -222,6 +222,9 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
 
         if context["show_billing_area"]:
             context.update(_build_billing_context(person))
+            context["payment_history_items"] = _build_payment_history_items(
+                context.get("billing_tabs")
+            )
 
         context["profile_tabs"] = _build_profile_tabs(context)
 
@@ -508,6 +511,31 @@ def _build_billing_context(person):
     }
 
 
+def _build_payment_history_items(billing_tabs):
+    items = []
+    for tab in billing_tabs or []:
+        membership = tab.get("active_membership")
+        if membership is None:
+            continue
+        invoices = (
+            MembershipInvoice.objects.filter(membership=membership)
+            .select_related("membership__plan")
+            .order_by("-paid_at", "-created_at")
+        )
+        for invoice in invoices:
+            items.append({
+                "person_id": tab["person"].pk,
+                "person_name": tab["person"].full_name,
+                "plan_name": membership.plan.display_name,
+                "amount_paid": invoice.amount_paid,
+                "amount_refunded": invoice.amount_refunded,
+                "paid_at": invoice.paid_at,
+                "status": invoice.status,
+            })
+    items.sort(key=lambda entry: entry["paid_at"] or timezone.now(), reverse=True)
+    return items
+
+
 def _build_instructor_payroll_context(person):
     calculation = calculate_monthly_payroll(person)
     available, base, committed = compute_available_balance(person)
@@ -612,6 +640,7 @@ def _empty_context():
         "belt_stripes": [],
         "active_trial_access": None,
         "billing_tabs": [],
+        "payment_history_items": [],
         "client_billing_tab": None,
         "plan_change_membership": None,
         "plan_change_summary": None,

@@ -273,8 +273,24 @@
           <p class="plan-mode-hint" id="dep-plan-mode-hint">Escolha frequência e período para liberar os planos.</p>
           <div id="dep-plan-filters-area"></div>
           <div id="dep-plan-cards-area"></div>
-          <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}</div>
+          <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}{{ form.card_strategy }}</div>
           {% for error in form.selected_plan.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          {% for error in form.card_strategy.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          <div id="dep-card-strategy-area" class="card-strategy-section" hidden>
+            <p class="card-strategy-section__title">Como cobrar o cartão do dependente?</p>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="new_card" checked>
+              <span>Novo cartão</span>
+            </label>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="same_card_merged">
+              <span>Mesmo cartão do responsável — fundir em 1 cobrança</span>
+            </label>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="same_card_staggered">
+              <span>Mesmo cartão do responsável — manter separado, escalonar horário</span>
+            </label>
+          </div>
         </div>
       </section>
 

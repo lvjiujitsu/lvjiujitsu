@@ -578,6 +578,43 @@
           selectPlan(parseInt(card.getAttribute('data-plan-id'), 10));
         });
       });
+      renderCardStrategyArea();
+    }
+
+    function renderCardStrategyArea() {
+      var area = document.getElementById('dep-card-strategy-area');
+      var cardStrategyField = document.getElementById('id_card_strategy');
+      if (!area || !cardStrategyField) return;
+      var eligible = checkoutSelect.value === 'stripe_card' && currentFinancialMode() === FINANCIAL_MODE_DEPENDENT_OWN;
+      if (!eligible) {
+        area.hidden = true;
+        cardStrategyField.value = 'new_card';
+        var newCardInput = area.querySelector('input[value="new_card"]');
+        if (newCardInput) newCardInput.checked = true;
+        return;
+      }
+      area.hidden = false;
+      var mergedInput = area.querySelector('input[value="same_card_merged"]');
+      if (mergedInput) {
+        mergedInput.disabled = !ownerContext.owner_has_stripe_subscription;
+        if (mergedInput.disabled && mergedInput.checked) {
+          mergedInput.checked = false;
+          var fallbackInput = area.querySelector('input[value="new_card"]');
+          if (fallbackInput) fallbackInput.checked = true;
+          cardStrategyField.value = 'new_card';
+        }
+      }
+    }
+
+    function bindCardStrategyRadios() {
+      var area = document.getElementById('dep-card-strategy-area');
+      var cardStrategyField = document.getElementById('id_card_strategy');
+      if (!area || !cardStrategyField) return;
+      area.querySelectorAll('input[name="dep_card_strategy_choice"]').forEach(function (input) {
+        input.addEventListener('change', function () {
+          if (input.checked) cardStrategyField.value = input.value;
+        });
+      });
     }
 
     function bindHiddenFinancialFields() {
@@ -666,6 +703,7 @@
     };
 
     bindHiddenFinancialFields();
+    bindCardStrategyRadios();
     refresh();
     return refresh;
   }

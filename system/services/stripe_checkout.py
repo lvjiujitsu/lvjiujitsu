@@ -168,7 +168,8 @@ def _create_one_time_session(client, order, has_plan, customer_id, success_url, 
 
 
 def create_subscription_session_for_pre_registration(
-    pre_registration, plans_by_id, selected_plans, *, final_total=None, coupon_info=None
+    pre_registration, plans_by_id, selected_plans, *,
+    final_total=None, coupon_info=None, billing_cycle_anchor=None,
 ):
     client = _get_client()
 
@@ -200,6 +201,15 @@ def create_subscription_session_for_pre_registration(
     )
     cancel_url = settings.SITE_BASE_URL.rstrip("/") + reverse("system:payment-cancel")
 
+    subscription_data = {
+        "metadata": {
+            "pre_registration_id": str(pre_registration.pk),
+            "stage": "plan",
+        },
+    }
+    if billing_cycle_anchor is not None:
+        subscription_data["billing_cycle_anchor"] = int(billing_cycle_anchor)
+
     session = client.checkout.Session.create(
         mode="subscription",
         payment_method_types=["card"],
@@ -218,6 +228,7 @@ def create_subscription_session_for_pre_registration(
         cancel_url=cancel_url,
         client_reference_id=f"pre-registration:{pre_registration.pk}:plan",
         customer_email=customer_email,
+        subscription_data=subscription_data,
         metadata={
             "pre_registration_id": str(pre_registration.pk),
             "stage": "plan",
@@ -244,6 +255,28 @@ def create_subscription_session_for_pre_registration(
     pre_registration.save(update_fields=["form_snapshot", "updated_at"])
 
     return session
+
+
+def merge_plan_into_existing_subscription(owner_membership, plan):
+    client = _get_client()
+
+    if not owner_membership or not owner_membership.stripe_subscription_id:
+        raise StripeCheckoutError(
+            "Titular não possui assinatura Stripe ativa para receber a cobrança fundida."
+        )
+    if not plan.stripe_price_id:
+        raise StripeCheckoutError(
+            f"Plano '{plan.display_name}' sem Stripe Price sincronizado."
+        )
+
+    subscription_item = client.SubscriptionItem.create(
+        subscription=owner_membership.stripe_subscription_id,
+        price=plan.stripe_price_id,
+    )
+    return {
+        "stripe_subscription_id": owner_membership.stripe_subscription_id,
+        "stripe_subscription_item_id": subscription_item["id"],
+    }
 
 
 def resolve_order_from_session(session):

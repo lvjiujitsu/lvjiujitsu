@@ -212,3 +212,9 @@ class DependentFinancialMode:
     DEPENDENT_OWN = "dependent_own"
     FAMILY_EXISTING = "family_existing"
     FAMILY_UPGRADE = "family_upgrade"
+
+
+class DependentCardStrategy:
+    NEW_CARD = "new_card"
+    SAME_CARD_MERGED = "same_card_merged"
+    SAME_CARD_STAGGERED = "same_card_staggered"

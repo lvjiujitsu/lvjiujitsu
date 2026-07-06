@@ -729,6 +729,60 @@
     });
   }
 
+  function bindPaymentHistoryModal() {
+    var overlay = document.getElementById('payment-history-modal');
+    if (!overlay) return;
+    var items = Array.prototype.slice.call(overlay.querySelectorAll('[data-payment-history-item]'));
+    var emptyEl = overlay.querySelector('.js-payment-history-empty');
+
+    function getActivePersonId() {
+      var activeTab = document.querySelector('.tabs[data-tab-group="billing"] .tab-btn--active');
+      return activeTab ? activeTab.getAttribute('data-person-id') : null;
+    }
+
+    function applyFilter() {
+      var personId = getActivePersonId();
+      var visibleCount = 0;
+      items.forEach(function (item) {
+        var matches = !personId || item.getAttribute('data-person-filter') === personId;
+        item.hidden = !matches;
+        if (matches) visibleCount += 1;
+      });
+      if (emptyEl) emptyEl.hidden = visibleCount !== 0;
+    }
+
+    function openModal() {
+      applyFilter();
+      overlay.removeAttribute('hidden');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.classList.remove('modal-open');
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.js-open-payment-history-modal')) {
+        e.preventDefault();
+        openModal();
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      var closeBtn = e.target.closest('.js-close-payment-history-modal');
+      if (closeBtn && overlay.contains(closeBtn)) closeModal();
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
   function bindDependentRemoveConfirm() {
     document.addEventListener('submit', function (e) {
       var form = e.target.closest('.js-dependent-remove-form');
@@ -1538,6 +1592,7 @@
   bindSpecialClassModal();
   bindPresenceModal();
   bindAttendanceHistoryModal();
+  bindPaymentHistoryModal();
   bindGradHistoryModal();
   bindGradDetailsToggle();
   bindBillingDetailsToggle();

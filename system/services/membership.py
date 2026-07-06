@@ -137,7 +137,13 @@ def activate_membership_from_session(order, stripe_session, stripe_subscription=
 
 
 @transaction.atomic
-def activate_membership_from_paid_order(order, *, notes=""):
+def activate_membership_from_paid_order(
+    order,
+    *,
+    notes="",
+    stripe_subscription_id="",
+    stripe_subscription_item_id="",
+):
     plan = order.plan
     if plan is None:
         return None
@@ -153,6 +159,10 @@ def activate_membership_from_paid_order(order, *, notes=""):
         "activated_at": now,
         "notes": notes or "",
     }
+    if stripe_subscription_id:
+        defaults["stripe_subscription_id"] = stripe_subscription_id
+    if stripe_subscription_item_id:
+        defaults["stripe_subscription_item_id"] = stripe_subscription_item_id
 
     membership = (
         Membership.objects.filter(
@@ -175,10 +185,10 @@ def activate_membership_from_paid_order(order, *, notes=""):
 @transaction.atomic
 def upsert_membership_from_stripe_subscription(stripe_subscription):
     subscription_id = stripe_subscription["id"]
-    membership = Membership.objects.filter(
-        stripe_subscription_id=subscription_id
-    ).first()
-    if membership is None:
+    memberships = list(
+        Membership.objects.filter(stripe_subscription_id=subscription_id)
+    )
+    if not memberships:
         return None
 
     status_map = {
@@ -192,38 +202,37 @@ def upsert_membership_from_stripe_subscription(stripe_subscription):
     }
     stripe_status = _sget(stripe_subscription, "status", "") or ""
     mapped_status = status_map.get(stripe_status)
-    previous_status = membership.status
-    if mapped_status:
-        membership.status = mapped_status
-
-    membership.current_period_start = _from_unix(
-        _sget(stripe_subscription, "current_period_start")
-    )
-    membership.current_period_end = _from_unix(
-        _sget(stripe_subscription, "current_period_end")
-    )
-    membership.cancel_at_period_end = bool(
-        _sget(stripe_subscription, "cancel_at_period_end")
-    )
+    current_period_start = _from_unix(_sget(stripe_subscription, "current_period_start"))
+    current_period_end = _from_unix(_sget(stripe_subscription, "current_period_end"))
+    cancel_at_period_end = bool(_sget(stripe_subscription, "cancel_at_period_end"))
     canceled_at = _sget(stripe_subscription, "canceled_at")
-    if canceled_at:
-        membership.canceled_at = _from_unix(canceled_at)
-    membership.save()
+    canceled_at_value = _from_unix(canceled_at) if canceled_at else None
 
-    if (
-        mapped_status == MembershipStatus.PAST_DUE
-        and previous_status not in (MembershipStatus.PAST_DUE, MembershipStatus.EXEMPTED)
-    ):
-        try:
-            from system.services.stripe_notifications import notify_subscription_past_due
-            notify_subscription_past_due(membership)
-        except Exception:
-            logger.exception(
-                "upsert_membership_from_stripe_subscription: erro ao enviar notificação (membership=%s).",
-                membership.pk,
-            )
+    for membership in memberships:
+        previous_status = membership.status
+        if mapped_status:
+            membership.status = mapped_status
+        membership.current_period_start = current_period_start
+        membership.current_period_end = current_period_end
+        membership.cancel_at_period_end = cancel_at_period_end
+        if canceled_at_value:
+            membership.canceled_at = canceled_at_value
+        membership.save()
 
-    return membership
+        if (
+            mapped_status == MembershipStatus.PAST_DUE
+            and previous_status not in (MembershipStatus.PAST_DUE, MembershipStatus.EXEMPTED)
+        ):
+            try:
+                from system.services.stripe_notifications import notify_subscription_past_due
+                notify_subscription_past_due(membership)
+            except Exception:
+                logger.exception(
+                    "upsert_membership_from_stripe_subscription: erro ao enviar notificação (membership=%s).",
+                    membership.pk,
+                )
+
+    return memberships[0]
 
 
 @transaction.atomic
@@ -231,45 +240,80 @@ def record_invoice_from_stripe(stripe_invoice):
     subscription_id = _sget(stripe_invoice, "subscription")
     if not subscription_id:
         return None
-    membership = Membership.objects.filter(
-        stripe_subscription_id=str(subscription_id)
-    ).first()
-    if membership is None:
+    memberships = list(
+        Membership.objects.filter(stripe_subscription_id=str(subscription_id))
+    )
+    if not memberships:
         return None
 
     invoice_id = stripe_invoice["id"]
-    amount_paid = Decimal(_sget(stripe_invoice, "amount_paid", 0) or 0) / Decimal("100")
     lines = _sget(stripe_invoice, "lines")
-    period_start = None
-    period_end = None
     line_data = _sget(lines, "data") if lines is not None else None
-    if line_data:
-        first_line = line_data[0]
-        period = _sget(first_line, "period")
-        if period is not None:
-            period_start = _from_unix(_sget(period, "start"))
-            period_end = _from_unix(_sget(period, "end"))
 
     status_transitions = _sget(stripe_invoice, "status_transitions")
     paid_at_unix = _sget(status_transitions, "paid_at") if status_transitions is not None else None
-
-    defaults = {
-        "membership": membership,
-        "amount_paid": amount_paid,
+    common = {
         "currency": _sget(stripe_invoice, "currency", payment_currency()) or payment_currency(),
         "status": _sget(stripe_invoice, "status", "paid") or "paid",
-        "period_start": period_start,
-        "period_end": period_end,
         "hosted_invoice_url": _sget(stripe_invoice, "hosted_invoice_url", "") or "",
         "stripe_payment_intent_id": str(_sget(stripe_invoice, "payment_intent", "") or ""),
         "paid_at": _from_unix(paid_at_unix) or timezone.now(),
         "description": (_sget(stripe_invoice, "description", "") or "")[:255],
     }
 
-    invoice, _ = MembershipInvoice.objects.update_or_create(
-        stripe_invoice_id=invoice_id,
-        defaults=defaults,
-    )
+    if len(memberships) == 1 or not line_data:
+        membership = memberships[0]
+        amount_paid = Decimal(_sget(stripe_invoice, "amount_paid", 0) or 0) / Decimal("100")
+        period_start = None
+        period_end = None
+        if line_data:
+            period = _sget(line_data[0], "period")
+            if period is not None:
+                period_start = _from_unix(_sget(period, "start"))
+                period_end = _from_unix(_sget(period, "end"))
+        invoice, _ = MembershipInvoice.objects.update_or_create(
+            stripe_invoice_id=invoice_id,
+            defaults={
+                "membership": membership,
+                "amount_paid": amount_paid,
+                "period_start": period_start,
+                "period_end": period_end,
+                **common,
+            },
+        )
+        _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end)
+        return invoice
+
+    memberships_by_item_id = {
+        m.stripe_subscription_item_id: m for m in memberships if m.stripe_subscription_item_id
+    }
+    first_invoice = None
+    for line in line_data:
+        item_id = str(_sget(line, "subscription_item", "") or "")
+        membership = memberships_by_item_id.get(item_id)
+        if membership is None:
+            continue
+        line_amount = Decimal(_sget(line, "amount", 0) or 0) / Decimal("100")
+        period = _sget(line, "period")
+        period_start = _from_unix(_sget(period, "start")) if period is not None else None
+        period_end = _from_unix(_sget(period, "end")) if period is not None else None
+        invoice, _ = MembershipInvoice.objects.update_or_create(
+            stripe_invoice_id=f"{invoice_id}::{item_id}",
+            defaults={
+                "membership": membership,
+                "amount_paid": line_amount,
+                "period_start": period_start,
+                "period_end": period_end,
+                **common,
+            },
+        )
+        _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end)
+        if first_invoice is None:
+            first_invoice = invoice
+    return first_invoice
+
+
+def _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end):
     if period_end:
         membership.current_period_end = period_end
     if period_start:
@@ -286,7 +330,6 @@ def record_invoice_from_stripe(stripe_invoice):
             "updated_at",
         ]
     )
-    return invoice
 
 
 @transaction.atomic
@@ -294,37 +337,40 @@ def mark_invoice_failed(stripe_invoice):
     subscription_id = _sget(stripe_invoice, "subscription")
     if not subscription_id:
         return None
-    membership = Membership.objects.filter(
-        stripe_subscription_id=str(subscription_id)
-    ).first()
-    if membership is None:
+    memberships = list(
+        Membership.objects.filter(stripe_subscription_id=str(subscription_id))
+    )
+    if not memberships:
         return None
-    if membership.status == MembershipStatus.EXEMPTED:
-        return membership
-    membership.status = MembershipStatus.PAST_DUE
-    membership.save(update_fields=["status", "updated_at"])
-    try:
-        from system.services.stripe_notifications import notify_payment_failed
-        notify_payment_failed(membership, stripe_invoice=stripe_invoice)
-    except Exception:
-        logger.exception("mark_invoice_failed: erro ao enviar notificação (membership=%s).", membership.pk)
-    return membership
+    for membership in memberships:
+        if membership.status == MembershipStatus.EXEMPTED:
+            continue
+        membership.status = MembershipStatus.PAST_DUE
+        membership.save(update_fields=["status", "updated_at"])
+        try:
+            from system.services.stripe_notifications import notify_payment_failed
+            notify_payment_failed(membership, stripe_invoice=stripe_invoice)
+        except Exception:
+            logger.exception("mark_invoice_failed: erro ao enviar notificação (membership=%s).", membership.pk)
+    return memberships[0]
 
 
 @transaction.atomic
 def mark_membership_canceled(stripe_subscription):
-    membership = Membership.objects.filter(
-        stripe_subscription_id=stripe_subscription["id"]
-    ).first()
-    if membership is None:
-        return None
-    membership.status = MembershipStatus.CANCELED
-    membership.cancel_at_period_end = False
-    membership.canceled_at = _from_unix(_sget(stripe_subscription, "canceled_at")) or timezone.now()
-    membership.save(
-        update_fields=["status", "cancel_at_period_end", "canceled_at", "updated_at"]
+    memberships = list(
+        Membership.objects.filter(stripe_subscription_id=stripe_subscription["id"])
     )
-    return membership
+    if not memberships:
+        return None
+    canceled_at = _from_unix(_sget(stripe_subscription, "canceled_at")) or timezone.now()
+    for membership in memberships:
+        membership.status = MembershipStatus.CANCELED
+        membership.cancel_at_period_end = False
+        membership.canceled_at = canceled_at
+        membership.save(
+            update_fields=["status", "cancel_at_period_end", "canceled_at", "updated_at"]
+        )
+    return memberships[0]
 
 
 @transaction.atomic

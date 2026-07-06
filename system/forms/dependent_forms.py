@@ -1,6 +1,6 @@
 from django import forms
 
-from system.constants import CheckoutAction, DependentFinancialMode
+from system.constants import CheckoutAction, DependentCardStrategy, DependentFinancialMode
 from system.forms.registration_forms import (
     MARTIAL_ART_EXPERIENCE_CHOICES,
     MARTIAL_ART_EXPERIENCE_YES,
@@ -163,6 +163,15 @@ class DependentRegistrationForm(forms.Form):
         initial=DependentFinancialMode.DEPENDENT_OWN,
     )
     selected_plan = forms.ChoiceField(required=False, label="Plano")
+    card_strategy = forms.ChoiceField(
+        required=False,
+        choices=(
+            (DependentCardStrategy.NEW_CARD, "Novo cartão"),
+            (DependentCardStrategy.SAME_CARD_MERGED, "Mesmo cartão — fundir em 1 cobrança"),
+            (DependentCardStrategy.SAME_CARD_STAGGERED, "Mesmo cartão — manter separado, escalonar horário"),
+        ),
+        initial=DependentCardStrategy.NEW_CARD,
+    )
     checkout_action = forms.ChoiceField(
         required=False,
         choices=(
@@ -248,6 +257,7 @@ class DependentRegistrationForm(forms.Form):
         self._clean_classes(cleaned_data)
         self._clean_martial_art(cleaned_data)
         self._clean_financial_choice(cleaned_data)
+        self._clean_card_strategy(cleaned_data)
         self._clean_materials(cleaned_data)
         return cleaned_data
 
@@ -402,6 +412,23 @@ class DependentRegistrationForm(forms.Form):
         cleaned_data["selected_plan_obj"] = plan
         if not cleaned_data.get("checkout_action"):
             cleaned_data["checkout_action"] = CheckoutAction.PAY_LATER
+
+    def _clean_card_strategy(self, cleaned_data):
+        strategy = cleaned_data.get("card_strategy") or DependentCardStrategy.NEW_CARD
+        mode = cleaned_data.get("financial_mode")
+        checkout_action = cleaned_data.get("checkout_action")
+        if mode != DependentFinancialMode.DEPENDENT_OWN or checkout_action != CheckoutAction.STRIPE_CARD:
+            cleaned_data["card_strategy"] = DependentCardStrategy.NEW_CARD
+            return
+        if strategy == DependentCardStrategy.SAME_CARD_MERGED:
+            owner_membership = get_active_membership(self.owner) if self.owner else None
+            if not owner_membership or not owner_membership.stripe_subscription_id:
+                self.add_error(
+                    "card_strategy",
+                    "O responsável não possui assinatura Stripe ativa para fundir a cobrança.",
+                )
+                strategy = DependentCardStrategy.NEW_CARD
+        cleaned_data["card_strategy"] = strategy
 
     def _clean_materials(self, cleaned_data):
         selected = []

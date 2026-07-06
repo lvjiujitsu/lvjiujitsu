@@ -27,6 +27,7 @@ from system.services.dependent_registration import (
 from system.services.class_catalog import get_ibjjf_age_category_payload
 from system.services.class_overview import get_registration_catalog_payload
 from system.services.financial_transactions import resolve_checkout_action_for_plan
+from system.services.membership import get_active_membership
 from system.services.registration_checkout import (
     create_pre_registration_materials_payment,
     create_pre_registration_plan_payment,
@@ -166,6 +167,8 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         checkout_url = create_pre_registration_plan_payment(
             pre_registration,
             checkout_action,
+            card_strategy=form.cleaned_data.get("card_strategy"),
+            owner=owner,
         )
         save_checkout_url(pre_registration, "plan", checkout_url)
         pre_registration.mark_awaiting_payment()
@@ -231,11 +234,15 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
 
     def _build_owner_plan_context(self, owner):
         eligibility = build_eligibility_context_for_person(owner)
+        owner_membership = get_active_membership(owner)
         return {
             "adult_active": eligibility.adult_active,
             "adult_active_count": eligibility.resolved_adult_active_count,
             "kids_juvenile_active_count": eligibility.kids_juvenile_active_count,
             "veteran_eligible": eligibility.veteran_eligible,
+            "owner_has_stripe_subscription": bool(
+                owner_membership and owner_membership.stripe_subscription_id
+            ),
         }
 
     def _is_modal_request(self):

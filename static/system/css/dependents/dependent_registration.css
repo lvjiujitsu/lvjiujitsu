@@ -196,3 +196,37 @@
   padding: 1rem;
   color: var(--muted);
 }
+
+/* ─── Estratégia de cartão do dependente ────────────────────────────────────── */
+.card-strategy-section {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--input-bg);
+}
+
+.card-strategy-section__title {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0 0 0.25rem;
+}
+
+.card-strategy-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.card-strategy-option input:disabled + span {
+  color: var(--muted);
+  cursor: not-allowed;
+}

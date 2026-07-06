@@ -6,7 +6,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from system.constants import CheckoutAction, PersonTypeCode
+from system.constants import CheckoutAction, DependentCardStrategy, DependentFinancialMode, PersonTypeCode
+from system.forms.dependent_forms import DependentRegistrationForm
+from system.services.dependent_registration import finalize_dependent_registration
+from system.services.registration_checkout import create_pre_registration_plan_payment
 from system.models import (
     BiologicalSex,
     CategoryAudience,
@@ -759,3 +762,208 @@ class DependentRegistrationFlowTestCase(TestCase):
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = self.account.pk
         session.save()
+
+
+class DependentCardStrategyTestCase(TestCase):
+    def setUp(self):
+        self.person_type = PersonType.objects.create(
+            code=PersonTypeCode.STUDENT,
+            display_name="Aluno",
+        )
+        self.owner = Person.objects.create(
+            full_name="Titular Estrategia Cartao",
+            cpf="390.533.447-05",
+            person_type=self.person_type,
+            birth_date=date(1990, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+            email="titular.cartao@example.com",
+        )
+        self.dependent_plan = SubscriptionPlan.objects.create(
+            code="plan-dependent-card-strategy",
+            display_name="Plano Dependente Estrategia",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=2,
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            price=Decimal("120.00"),
+            gateway_code="stripe_card",
+            stripe_price_id="price_dependent_card_strategy",
+        )
+
+    def _base_form_data(self, **overrides):
+        data = {
+            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
+            "checkout_action": CheckoutAction.STRIPE_CARD,
+            "selected_plan": str(self.dependent_plan.pk),
+            "card_strategy": DependentCardStrategy.SAME_CARD_MERGED,
+        }
+        data.update(overrides)
+        return data
+
+    def test_card_strategy_merged_rejected_without_owner_stripe_subscription(self):
+        form = DependentRegistrationForm(owner=self.owner)
+        form.cleaned_data = {}
+        cleaned_data = {
+            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
+            "checkout_action": CheckoutAction.STRIPE_CARD,
+            "card_strategy": DependentCardStrategy.SAME_CARD_MERGED,
+        }
+
+        form._clean_card_strategy(cleaned_data)
+
+        self.assertIn("card_strategy", form.errors)
+        self.assertEqual(cleaned_data["card_strategy"], DependentCardStrategy.NEW_CARD)
+
+    def test_card_strategy_merged_accepted_with_owner_stripe_subscription(self):
+        Membership.objects.create(
+            person=self.owner,
+            plan=self.dependent_plan,
+            status=MembershipStatus.ACTIVE,
+            stripe_subscription_id="sub_owner_active_1",
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        form = DependentRegistrationForm(owner=self.owner)
+        cleaned_data = {
+            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
+            "checkout_action": CheckoutAction.STRIPE_CARD,
+            "card_strategy": DependentCardStrategy.SAME_CARD_MERGED,
+        }
+
+        form._clean_card_strategy(cleaned_data)
+
+        self.assertEqual(form.errors, {})
+        self.assertEqual(cleaned_data["card_strategy"], DependentCardStrategy.SAME_CARD_MERGED)
+
+    def test_card_strategy_defaults_to_new_card_outside_dependent_own_stripe_flow(self):
+        form = DependentRegistrationForm(owner=self.owner)
+        cleaned_data = {
+            "financial_mode": DependentFinancialMode.FAMILY_EXISTING,
+            "checkout_action": CheckoutAction.PAY_LATER,
+            "card_strategy": DependentCardStrategy.SAME_CARD_MERGED,
+        }
+
+        form._clean_card_strategy(cleaned_data)
+
+        self.assertEqual(form.errors, {})
+        self.assertEqual(cleaned_data["card_strategy"], DependentCardStrategy.NEW_CARD)
+
+    def test_create_pre_registration_plan_payment_merges_into_owner_subscription(self):
+        Membership.objects.create(
+            person=self.owner,
+            plan=self.dependent_plan,
+            status=MembershipStatus.ACTIVE,
+            stripe_subscription_id="sub_owner_merge_1",
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        pre_registration = PreRegistration.objects.create(
+            registration_profile="dependent",
+            holder_cpf=self.owner.cpf,
+            holder_email=self.owner.email,
+            form_snapshot={
+                "flow_kind": "dependent_addition",
+                "owner_person_id": self.owner.pk,
+                "selected_plans_payload": [
+                    {"person": "dependent", "label": "Dependente", "plan_id": self.dependent_plan.pk}
+                ],
+            },
+        )
+
+        with patch(
+            "system.services.stripe_checkout.merge_plan_into_existing_subscription"
+        ) as mocked_merge:
+            mocked_merge.return_value = {
+                "stripe_subscription_id": "sub_owner_merge_1",
+                "stripe_subscription_item_id": "si_new_dependent_item",
+            }
+            checkout_url = create_pre_registration_plan_payment(
+                pre_registration,
+                CheckoutAction.STRIPE_CARD,
+                card_strategy=DependentCardStrategy.SAME_CARD_MERGED,
+                owner=self.owner,
+            )
+
+        mocked_merge.assert_called_once()
+        self.assertIn("stage=plan", checkout_url)
+        self.assertIn(f"pre_registration_id={pre_registration.pk}", checkout_url)
+        pre_registration.refresh_from_db()
+        plan_payment = pre_registration.form_snapshot["plan_payment"]
+        self.assertTrue(plan_payment["merged_into_owner_subscription"])
+        self.assertEqual(plan_payment["stripe_subscription_id"], "sub_owner_merge_1")
+        self.assertEqual(plan_payment["stripe_subscription_item_id"], "si_new_dependent_item")
+
+    def test_finalize_dependent_registration_syncs_stripe_ids_from_snapshot(self):
+        pre_registration = PreRegistration.objects.create(
+            registration_profile="dependent",
+            holder_cpf=self.owner.cpf,
+            holder_email=self.owner.email,
+            selected_plan=self.dependent_plan,
+            checkout_action=CheckoutAction.STRIPE_CARD,
+            form_snapshot={
+                "flow_kind": "dependent_addition",
+                "owner_person_id": self.owner.pk,
+                "plan_payment": {
+                    "stripe_subscription_id": "sub_owner_merge_1",
+                    "stripe_subscription_item_id": "si_new_dependent_item",
+                },
+            },
+        )
+        cleaned_data = {
+            "dependent_name": "Dependente Sincronizado",
+            "dependent_cpf": "153.509.460-56",
+            "dependent_password": "12345678",
+            "dependent_biological_sex": BiologicalSex.MALE,
+            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
+            "selected_plan_obj": self.dependent_plan,
+            "checkout_action": CheckoutAction.STRIPE_CARD,
+        }
+
+        result = finalize_dependent_registration(
+            self.owner, cleaned_data, pre_registration=pre_registration
+        )
+
+        dependent = result["dependent"]
+        membership = Membership.objects.get(person=dependent)
+        self.assertEqual(membership.stripe_subscription_id, "sub_owner_merge_1")
+        self.assertEqual(membership.stripe_subscription_item_id, "si_new_dependent_item")
+
+    def test_create_pre_registration_plan_payment_staggers_billing_cycle_anchor(self):
+        owner_period_end = timezone.now() + timezone.timedelta(days=10)
+        Membership.objects.create(
+            person=self.owner,
+            plan=self.dependent_plan,
+            status=MembershipStatus.ACTIVE,
+            stripe_subscription_id="sub_owner_stagger_1",
+            current_period_start=timezone.now(),
+            current_period_end=owner_period_end,
+        )
+        pre_registration = PreRegistration.objects.create(
+            registration_profile="dependent",
+            holder_cpf=self.owner.cpf,
+            holder_email=self.owner.email,
+            form_snapshot={
+                "flow_kind": "dependent_addition",
+                "owner_person_id": self.owner.pk,
+                "selected_plans_payload": [
+                    {"person": "dependent", "label": "Dependente", "plan_id": self.dependent_plan.pk}
+                ],
+            },
+        )
+
+        with patch(
+            "system.services.stripe_checkout.create_subscription_session_for_pre_registration"
+        ) as mocked_session:
+            mocked_session.return_value = {"url": "https://checkout.stripe.test/staggered"}
+            checkout_url = create_pre_registration_plan_payment(
+                pre_registration,
+                CheckoutAction.STRIPE_CARD,
+                card_strategy=DependentCardStrategy.SAME_CARD_STAGGERED,
+                owner=self.owner,
+            )
+
+        self.assertEqual(checkout_url, "https://checkout.stripe.test/staggered")
+        mocked_session.assert_called_once()
+        _, kwargs = mocked_session.call_args
+        expected_anchor = int((owner_period_end + timezone.timedelta(hours=4)).timestamp())
+        self.assertEqual(kwargs["billing_cycle_anchor"], expected_anchor)
