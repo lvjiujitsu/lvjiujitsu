@@ -41,6 +41,15 @@ class PlanEligibilityContextTestCase(TestCase):
         self.assertTrue(context.adult_family_group_eligible)
         self.assertFalse(context.kids_family_group_eligible)
 
+    def test_two_adults_unlock_adult_family(self):
+        context = PlanEligibilityContext(
+            adult_active=True,
+            adult_active_count=2,
+            kids_juvenile_active_count=0,
+        )
+        self.assertTrue(context.adult_family_group_eligible)
+        self.assertFalse(context.kids_family_group_eligible)
+
     def test_two_kids_dependents_unlocks_kids_family(self):
         context = PlanEligibilityContext(adult_active=False, kids_juvenile_active_count=2)
         self.assertFalse(context.adult_family_group_eligible)
@@ -73,6 +82,20 @@ class BuildEligibilityContextForRegistrationTestCase(TestCase):
         context = build_eligibility_context_for_registration(cleaned_data)
         self.assertTrue(context.adult_active)
         self.assertEqual(context.kids_juvenile_active_count, 1)
+        self.assertTrue(context.adult_family_group_eligible)
+
+    def test_holder_adult_with_adult_dependent_unlocks_adult_family(self):
+        cleaned_data = {
+            "registration_profile": RegistrationProfile.HOLDER,
+            "include_dependent": True,
+            "holder_birthdate": date(1990, 1, 1),
+            "holder_class_groups": [],
+            "dependent_birthdate": date(2001, 1, 1),
+            "dependent_class_groups": [],
+            "extra_dependents": [],
+        }
+        context = build_eligibility_context_for_registration(cleaned_data)
+        self.assertEqual(context.adult_active_count, 2)
         self.assertTrue(context.adult_family_group_eligible)
 
     def test_guardian_with_two_kids(self):

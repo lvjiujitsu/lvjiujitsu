@@ -11,7 +11,7 @@ from system.constants import (
     PortalCapability,
     STUDENT_PORTAL_PERSON_TYPE_CODES,
 )
-from system.forms import ClientProfileForm
+from system.forms import ClientProfileForm, DependentProfileForm
 from system.models import AuditAction, AuditModule, Person
 from system.models.asaas import TeacherBankAccount, TeacherPayrollConfig, TeacherPayout
 from system.models.calendar import ClassSession, SpecialClass as SpecialClassModel
@@ -153,12 +153,15 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         context["needs_split"] = bool(trains and context["show_staff_area"])
         context["show_billing_area"] = bool(trains or person_has_dependents)
 
+        context["dependents"] = _build_dependents(person) if person_has_dependents else []
+
         if trains:
             context["my_classes"] = get_today_classes_for_person(person)
             context["graduation_progress"] = compute_graduation_progress(person)
             context["graduation_history"] = get_graduation_history(person)
             context.update(_build_belt_context(context["graduation_progress"]))
 
+        is_pure_student = False
         if is_instructor or (can_support_classes and not is_administrative):
             support_classes = get_today_classes_for_instructor(person)
             context["attendance_history"] = get_instructor_checkin_history(person)
@@ -174,6 +177,13 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         elif trains:
             context["today_classes"] = context["my_classes"]
             context["attendance_history"] = get_student_checkin_history(person)
+            is_pure_student = True
+
+        context["graduation_tabs"] = _build_graduation_tabs(context)
+        context["today_classes_tabs"] = (
+            _build_today_classes_tabs(context) if is_pure_student else []
+        )
+        context["attendance_history_items"] = _build_attendance_history_items(context)
 
         if context["show_staff_area"] and not trains:
             context["staff_today_classes"] = get_today_classes_staff_overview()
@@ -213,8 +223,7 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
         if context["show_billing_area"]:
             context.update(_build_billing_context(person))
 
-        if person_has_dependents:
-            context["dependents"] = _build_dependents(person)
+        context["profile_tabs"] = _build_profile_tabs(context)
 
         return context
 
@@ -320,6 +329,7 @@ def _client_profile_payload(person):
     return {
         "full_name": person.full_name,
         "initial": (person.full_name[:1] or "").upper(),
+        "cpf": person.cpf or "",
         "email": person.email or "",
         "phone": person.phone or "",
         "birth_date": date_format(person.birth_date, "SHORT_DATE_FORMAT") if person.birth_date else "",
@@ -353,6 +363,103 @@ def _build_belt_context(graduation_progress):
         "belt_grade_number": 0,
         "belt_stripes": [],
     }
+
+
+def _build_graduation_tabs(context):
+    tabs = []
+    if context.get("has_personal_area"):
+        progress = context.get("graduation_progress")
+        tab = {
+            "person": context["client_person"],
+            "graduation_progress": progress,
+            "graduation_history": context.get("graduation_history") or [],
+            "is_active_tab": True,
+        }
+        tab.update(_build_belt_context(progress))
+        tabs.append(tab)
+    for dependent in context.get("dependents") or []:
+        progress = dependent["graduation_progress"]
+        tab = {
+            "person": dependent["person"],
+            "graduation_progress": progress,
+            "graduation_history": dependent["graduation_history"],
+            "is_active_tab": False,
+        }
+        tab.update(_build_belt_context(progress))
+        tabs.append(tab)
+    return tabs
+
+
+def _build_today_classes_tabs(context):
+    tabs = [{
+        "person": context["client_person"],
+        "class_items": context.get("my_classes") or [],
+        "attendance_history": context.get("attendance_history") or [],
+        "is_active_tab": True,
+    }]
+    for dependent in context.get("dependents") or []:
+        tabs.append({
+            "person": dependent["person"],
+            "class_items": dependent["today_classes"],
+            "attendance_history": get_student_checkin_history(dependent["person"]),
+            "is_active_tab": False,
+        })
+    for index, tab in enumerate(tabs, start=1):
+        tab["slug"] = f"turmas-{index}"
+    return tabs
+
+
+def _build_attendance_history_items(context):
+    tabs = context.get("today_classes_tabs") or []
+    if len(tabs) > 1:
+        items = []
+        for tab in tabs:
+            for entry in tab.get("attendance_history") or []:
+                entry.person_id = tab["person"].pk
+                items.append(entry)
+        return items
+    entries = context.get("attendance_history") or []
+    for entry in entries:
+        entry.person_id = None
+    return entries
+
+
+def _build_profile_tabs(context):
+    person = context.get("client_person")
+    if person is None:
+        return []
+    billing_by_person_id = {
+        tab["person"].pk: tab for tab in context.get("billing_tabs") or []
+    }
+    owner_billing = billing_by_person_id.get(person.pk, {})
+    owner_form = context.get("client_profile_form")
+    if owner_form is not None:
+        owner_form.auto_id = "id_profile_1_%s"
+    tabs = [{
+        "person": person,
+        "is_owner": True,
+        "form": owner_form,
+        "update_url": context.get("client_profile_update_url"),
+        "active_membership": owner_billing.get("active_membership"),
+        "pending_order": owner_billing.get("pending_order"),
+        "billing_owner": None,
+        "is_active_tab": True,
+    }]
+    for index, dependent in enumerate(context.get("dependents") or [], start=2):
+        dep_person = dependent["person"]
+        dep_billing = billing_by_person_id.get(dep_person.pk, {})
+        tabs.append({
+            "person": dep_person,
+            "is_owner": False,
+            "form": DependentProfileForm(instance=dep_person, auto_id=f"id_profile_{index}_%s"),
+            "update_url": reverse("system:dependent-profile-update", args=[dep_person.pk]),
+            "remove_url": dependent.get("remove_url"),
+            "active_membership": dep_billing.get("active_membership", dependent.get("active_membership")),
+            "pending_order": dep_billing.get("pending_order"),
+            "billing_owner": dep_billing.get("billing_owner", dependent.get("billing_owner")),
+            "is_active_tab": False,
+        })
+    return tabs
 
 
 def _build_billing_context(person):
@@ -450,7 +557,6 @@ def _build_dependents(guardian):
             "attendance_history": get_student_checkin_history(dependent, limit=5),
             "active_membership": get_active_membership(dependent),
             "billing_owner": get_membership_owner(dependent),
-            "edit_url": reverse("system:dependent-edit", args=[dependent.pk]),
             "remove_url": reverse("system:dependent-remove", args=[dependent.pk]),
         })
     return dependents
@@ -497,6 +603,10 @@ def _empty_context():
         "attendance_history": [],
         "graduation_progress": None,
         "graduation_history": [],
+        "graduation_tabs": [],
+        "today_classes_tabs": [],
+        "attendance_history_items": [],
+        "profile_tabs": [],
         "belt_rank": None,
         "belt_grade_number": 0,
         "belt_stripes": [],

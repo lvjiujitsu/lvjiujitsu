@@ -102,43 +102,6 @@
     sync();
   }
 
-  function bindMaterialsToggle() {
-    document.querySelectorAll('.material-item').forEach(function (item) {
-      var header = item.querySelector('[data-material-toggle]');
-      var variants = item.querySelector('.material-variants');
-      var countEl = item.querySelector('.material-item__count');
-      if (!header || !variants) return;
-
-      function selectedQty() {
-        var total = 0;
-        item.querySelectorAll('.material-variant input').forEach(function (input) {
-          total += parseInt(input.value, 10) || 0;
-        });
-        return total;
-      }
-
-      function syncCount() {
-        var qty = selectedQty();
-        if (countEl) {
-          countEl.hidden = qty === 0;
-          countEl.textContent = qty + (qty === 1 ? ' selecionado' : ' selecionados');
-        }
-      }
-
-      header.addEventListener('click', function () {
-        var expanded = header.getAttribute('aria-expanded') === 'true';
-        header.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        variants.hidden = expanded;
-      });
-
-      item.querySelectorAll('.material-variant input').forEach(function (input) {
-        input.addEventListener('input', syncCount);
-      });
-
-      syncCount();
-    });
-  }
-
   function bindMartialToggle() {
     var hasSelect = document.getElementById('id_dependent_has_martial_art');
     var toggleNo = document.querySelector('[data-martial-toggle="no"]');
@@ -176,6 +139,9 @@
   };
 
   var ibjjfCategories = readJson('dep-ibjjf-json') || [];
+  var depProductCatalog = readJson('dep-product-catalog-json') || [];
+
+  var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
 
   function calcAgeYears(birthdateStr) {
     if (!birthdateStr) return null;
@@ -329,25 +295,81 @@
     return 'asaas_card';
   }
 
+  var FINANCIAL_MODE_DEPENDENT_OWN = 'dependent_own';
+  var FINANCIAL_MODE_FAMILY_EXISTING = 'family_existing';
+  var FINANCIAL_MODE_FAMILY_UPGRADE = 'family_upgrade';
+
   function bindPlanCatalog() {
     var filtersArea = document.getElementById('dep-plan-filters-area');
     var cardsArea = document.getElementById('dep-plan-cards-area');
     var planSelect = document.getElementById('id_selected_plan');
     var checkoutSelect = document.getElementById('id_checkout_action');
+    var financialModeSelect = document.getElementById('id_financial_mode');
+    var familyCheckbox = document.getElementById('id_use_family_plan');
+    var modeHint = document.getElementById('dep-plan-mode-hint');
+    var form = document.getElementById('dep-wizard-form');
+    var ownerContext = readJson('dep-owner-plan-context-json') || {};
     var catalog = readJson('dep-plan-catalog-json');
     if (!filtersArea || !cardsArea || !planSelect || !checkoutSelect || !catalog) return null;
 
     var filter = { frequency: null, cycle: null, method: null };
     var selectedPlanId = planSelect.value ? parseInt(planSelect.value, 10) : null;
+    var familyPlanAvailable = form && form.getAttribute('data-family-plan-available') === 'true';
+
+    function currentFinancialMode() {
+      var mode = financialModeSelect ? financialModeSelect.value : '';
+      if (!mode && familyCheckbox && familyCheckbox.checked) {
+        mode = FINANCIAL_MODE_FAMILY_EXISTING;
+      }
+      if (mode === FINANCIAL_MODE_FAMILY_EXISTING && !familyPlanAvailable) {
+        mode = FINANCIAL_MODE_DEPENDENT_OWN;
+      }
+      if (
+        mode !== FINANCIAL_MODE_FAMILY_EXISTING &&
+        mode !== FINANCIAL_MODE_FAMILY_UPGRADE &&
+        mode !== FINANCIAL_MODE_DEPENDENT_OWN
+      ) {
+        return FINANCIAL_MODE_DEPENDENT_OWN;
+      }
+      return mode;
+    }
+
+    function hasMinimumFilters() {
+      return filter.frequency !== null && !!filter.cycle;
+    }
+
+    function familyUpgradePlanEligible(plan, audience) {
+      if (plan.is_loyalty_plan && !ownerContext.veteran_eligible) return false;
+      var adultCount = parseInt(ownerContext.adult_active_count || 0, 10) || 0;
+      if (!adultCount && ownerContext.adult_active) adultCount = 1;
+      var kidsCount = parseInt(ownerContext.kids_juvenile_active_count || 0, 10) || 0;
+      if (!audience) return true;
+      if (audience === 'adult') adultCount += 1;
+      if (audience === 'kids' || audience === 'juvenile') kidsCount += 1;
+      var total = adultCount + kidsCount;
+      if (plan.audience === 'adult') return adultCount > 0 && total >= 2;
+      if (plan.audience === 'kids_juvenile') return kidsCount >= 2;
+      return false;
+    }
+
+    function dependentOwnPlanEligible(plan, audience) {
+      if (plan.is_family_plan) return false;
+      if (plan.is_loyalty_plan) return false;
+      if (!audience) return true;
+      if (plan.audience === 'adult') return audience === 'adult';
+      if (plan.audience === 'kids_juvenile') {
+        return audience === 'kids' || audience === 'juvenile';
+      }
+      return false;
+    }
 
     function eligiblePlans() {
       var audience = resolveAudience(getVal('id_dependent_birthdate'));
       return catalog.filter(function (p) {
-        if (p.is_family_plan) return false; // plano familiar é reaproveitado via "Usar plano familiar ativo"
-        if (!audience) return true;
-        if (p.audience === 'adult' && audience !== 'adult') return false;
-        if (p.audience === 'kids_juvenile' && audience !== 'kids' && audience !== 'juvenile') return false;
-        return true;
+        if (p.is_family_plan) {
+          return p.is_family_plan && familyUpgradePlanEligible(p, audience);
+        }
+        return dependentOwnPlanEligible(p, audience);
       });
     }
 
@@ -358,17 +380,48 @@
     }
 
     function getFiltered() {
+      if (!hasMinimumFilters()) return [];
       return eligiblePlans().filter(function (p) {
-        if (filter.frequency !== null && p.weekly_frequency !== filter.frequency) return false;
-        var isStripe = p.gateway_code === 'stripe_card';
-        if (!isStripe && filter.cycle && p.billing_cycle !== filter.cycle) return false;
+        if (p.weekly_frequency !== filter.frequency) return false;
+        if (p.billing_cycle !== filter.cycle) return false;
         if (filter.method && p.payment_method !== filter.method) return false;
         return true;
       }).sort(function (a, b) {
+        if (a.is_family_plan !== b.is_family_plan) return a.is_family_plan ? 1 : -1;
         var aStripe = a.gateway_code === 'stripe_card' ? 1 : 0;
         var bStripe = b.gateway_code === 'stripe_card' ? 1 : 0;
-        return aStripe - bStripe;
+        if (aStripe !== bStripe) return aStripe - bStripe;
+        return parseFloat(a.price || '0') - parseFloat(b.price || '0');
       });
+    }
+
+    function syncFinancialMode(mode) {
+      if (financialModeSelect) financialModeSelect.value = mode;
+      if (familyCheckbox) familyCheckbox.checked = mode === FINANCIAL_MODE_FAMILY_EXISTING;
+    }
+
+    function syncHint(message, isError) {
+      if (modeHint) {
+        modeHint.textContent = message;
+        modeHint.classList.toggle('plan-mode-hint--error', !!isError);
+      }
+    }
+
+    function resetInvalidSelectedPlan() {
+      if (currentFinancialMode() === FINANCIAL_MODE_FAMILY_EXISTING) {
+        selectedPlanId = null;
+        planSelect.value = '';
+        checkoutSelect.value = 'pay_later';
+        return;
+      }
+      if (!selectedPlanId) return;
+      var allowed = getFiltered().some(function (plan) { return plan.id === selectedPlanId; });
+      if (!allowed) {
+        selectedPlanId = null;
+        planSelect.value = '';
+        checkoutSelect.value = 'pay_later';
+        syncFinancialMode(FINANCIAL_MODE_DEPENDENT_OWN);
+      }
     }
 
     function renderFilters() {
@@ -376,11 +429,8 @@
       var cycles = uniqueValues(function (p) { return p.billing_cycle; });
       var methods = uniqueValues(function (p) { return p.payment_method; });
 
-      if (freqs.length === 1 && filter.frequency === null) filter.frequency = freqs[0];
-      if (methods.length === 1 && filter.method === null) filter.method = methods[0];
-
       var html = '';
-      if (freqs.length > 1) {
+      if (freqs.length > 0) {
         html += '<div class="plan-filter-section"><p class="plan-filter-label">Frequência semanal</p><div class="plan-filter-row">';
         freqs.forEach(function (f) {
           var active = filter.frequency === f ? ' plan-filter-pill--active' : '';
@@ -414,6 +464,7 @@
           if (key === 'frequency') filter.frequency = parseInt(val, 10);
           else if (key === 'cycle') filter.cycle = val;
           else if (key === 'method') filter.method = val;
+          resetInvalidSelectedPlan();
           renderFilters();
           renderCards();
         });
@@ -423,25 +474,37 @@
     function selectPlan(planId) {
       selectedPlanId = planId;
       var plan = catalog.filter(function (p) { return p.id === planId; })[0];
+      if (!plan) return;
       planSelect.value = String(planId);
       checkoutSelect.value = resolvePlanCheckoutAction(plan);
+      syncFinancialMode(
+        plan.is_family_plan
+          ? FINANCIAL_MODE_FAMILY_UPGRADE
+          : FINANCIAL_MODE_DEPENDENT_OWN
+      );
       planSelect.dispatchEvent(new Event('change', { bubbles: true }));
       renderCards();
     }
 
-    function renderCards() {
-      var plans = getFiltered();
-      if (!plans.length) {
-        cardsArea.innerHTML = '<p class="plan-cards--empty">Nenhum plano disponível para os filtros selecionados.</p>';
-        return;
-      }
-      var html = '<div class="plan-cards">';
-      plans.forEach(function (plan) {
+    function selectExistingFamilyPlan() {
+      if (!familyPlanAvailable) return;
+      selectedPlanId = null;
+      planSelect.value = '';
+      checkoutSelect.value = 'pay_later';
+      syncFinancialMode(FINANCIAL_MODE_FAMILY_EXISTING);
+      renderCards();
+    }
+
+    function renderPlanCard(plan) {
         var isSelected = plan.id === selectedPlanId;
         var price = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
         var isStripe = plan.gateway_code === 'stripe_card';
         var tierLabel = plan.commercial_tier_label || plan.name || plan.code;
         var cycleLabel = isStripe ? 'mês' : (plan.cycle || '');
+        var modeLabel = plan.is_family_plan
+          ? 'Troca o plano do titular para familiar e inclui o dependente.'
+          : 'Mensalidade própria do dependente.';
+        var html = '';
 
         html += '<button type="button" class="plan-card' + (isSelected ? ' plan-card--selected' : '') + '" data-plan-id="' + plan.id + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">';
         html += '<div class="plan-card__radio"><div class="plan-card__radio-dot"></div></div>';
@@ -457,34 +520,563 @@
         if (plan.weekly_frequency_label) {
           html += '<p class="plan-card__meta">' + escHtml(plan.weekly_frequency_label) + '</p>';
         }
+        html += '<p class="plan-card__auth-note">' + escHtml(modeLabel) + '</p>';
         html += '</div></button>';
+        return html;
+    }
+
+    function renderExistingFamilyCard() {
+      var selected = currentFinancialMode() === FINANCIAL_MODE_FAMILY_EXISTING;
+      return '<button type="button" class="plan-card' + (selected ? ' plan-card--selected' : '') + '" data-family-existing="true" aria-pressed="' + (selected ? 'true' : 'false') + '">' +
+        '<div class="plan-card__radio"><div class="plan-card__radio-dot"></div></div>' +
+        '<div class="plan-card__body">' +
+        '<div class="plan-card__header"><p class="plan-card__tier">Plano familiar ativo</p></div>' +
+        '<p class="plan-card__auth-note">Usar a cobertura familiar já ativa do titular.</p>' +
+        '</div></button>';
+    }
+
+    function renderCards() {
+      if (!hasMinimumFilters()) {
+        selectedPlanId = null;
+        planSelect.value = '';
+        checkoutSelect.value = 'pay_later';
+        syncFinancialMode(FINANCIAL_MODE_DEPENDENT_OWN);
+        syncHint('Escolha frequência e período para ver os planos.', false);
+        cardsArea.innerHTML = '<p class="plan-cards--empty plan-cards--empty-prominent">Escolha frequência e período para ver os planos disponíveis.</p>';
+        return;
+      }
+
+      var plans = getFiltered();
+      syncHint(
+        familyPlanAvailable
+          ? 'Escolha o plano familiar ativo ou uma nova mensalidade para o dependente.'
+          : 'Escolha uma mensalidade própria ou um plano família para migrar o titular.',
+        false
+      );
+
+      if (!plans.length && !familyPlanAvailable) {
+        cardsArea.innerHTML = '<p class="plan-cards--empty">Nenhum plano disponível para os filtros selecionados.</p>';
+        return;
+      }
+
+      var html = '<div class="plan-cards">';
+      if (familyPlanAvailable) {
+        html += renderExistingFamilyCard();
+      }
+      plans.forEach(function (plan) {
+        html += renderPlanCard(plan);
       });
       html += '</div>';
       cardsArea.innerHTML = html;
+      var existingCard = cardsArea.querySelector('[data-family-existing="true"]');
+      if (existingCard) {
+        existingCard.addEventListener('click', selectExistingFamilyPlan);
+      }
       cardsArea.querySelectorAll('.plan-card').forEach(function (card) {
+        if (card.getAttribute('data-family-existing') === 'true') return;
         card.addEventListener('click', function () {
           selectPlan(parseInt(card.getAttribute('data-plan-id'), 10));
         });
       });
     }
 
-    function bindFamilyPlanToggle() {
-      var checkbox = document.getElementById('id_use_family_plan');
-      var planSection = document.getElementById('dep-plan-section');
-      if (!checkbox || !planSection) return;
-      function sync() { planSection.hidden = checkbox.checked; }
-      checkbox.addEventListener('change', sync);
-      sync();
+    function bindHiddenFinancialFields() {
+      if (financialModeSelect) {
+        financialModeSelect.addEventListener('change', function () {
+          if (financialModeSelect.value === FINANCIAL_MODE_FAMILY_EXISTING) {
+            selectExistingFamilyPlan();
+            return;
+          }
+          syncFinancialMode(currentFinancialMode());
+          renderCards();
+        });
+      }
+      if (familyCheckbox) {
+        familyCheckbox.addEventListener('change', function () {
+          if (familyCheckbox.checked) selectExistingFamilyPlan();
+          else syncFinancialMode(FINANCIAL_MODE_DEPENDENT_OWN);
+          renderCards();
+        });
+      }
+    }
+
+    function isPaymentConfirmed() {
+      return form && form.getAttribute('data-payment-confirmed') === 'true';
+    }
+
+    function renderPlanPaidBanner() {
+      if (modeHint) modeHint.textContent = '';
+      var plan = selectedPlanId
+        ? catalog.filter(function (p) { return p.id === selectedPlanId; })[0]
+        : null;
+      var html = '<div class="checkout-confirmed-banner">';
+      html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+      html += '<span class="checkout-confirmed-banner__text">Pagamento confirmado</span>';
+      html += '</div>';
+      if (plan) {
+        var price = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
+        var cycle = plan.gateway_code === 'stripe_card' ? 'mês' : (plan.cycle || '');
+        var tierLabel = plan.commercial_tier_label || plan.name || plan.code;
+        html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+        html += '<p class="checkout-summary__label">Plano contratado</p>';
+        html += '<p class="checkout-summary__value">' + escHtml(tierLabel) + '</p>';
+        html += '<p class="checkout-summary__plan-meta">Total: ' + fmtPrice(price) + '/' + escHtml(cycle) + '</p>';
+        html += '</div></div>';
+      }
+      if (filtersArea) filtersArea.innerHTML = html;
+      if (cardsArea) cardsArea.innerHTML = '';
     }
 
     function refresh() {
-      filter = { frequency: null, cycle: null, method: null };
+      if (isPaymentConfirmed()) {
+        renderPlanPaidBanner();
+        return;
+      }
+      if (!filter.frequency) {
+        var freqs = uniqueValues(function (p) { return p.weekly_frequency; }).map(Number).sort(function (a, b) { return a - b; });
+        if (freqs.length) filter.frequency = freqs[0];
+      }
+      if (!filter.cycle) {
+        var cycles = uniqueValues(function (p) { return p.billing_cycle; });
+        if (cycles.length) filter.cycle = cycles[0];
+      }
+      if (!filter.method) {
+        var methods = uniqueValues(function (p) { return p.payment_method; });
+        if (methods.length) filter.method = methods[0];
+      }
+      resetInvalidSelectedPlan();
+      syncFinancialMode(currentFinancialMode());
       renderFilters();
       renderCards();
     }
 
+    refresh.validate = function () {
+      if (isPaymentConfirmed()) return true;
+      if (currentFinancialMode() === FINANCIAL_MODE_FAMILY_EXISTING) return true;
+      if (!hasMinimumFilters()) {
+        syncHint('Escolha frequência e período antes de continuar.', true);
+        cardsArea.innerHTML = '<p class="plan-cards--empty plan-cards--empty-prominent">Escolha frequência e período para ver os planos disponíveis.</p>';
+        return false;
+      }
+      if (!selectedPlanId) {
+        syncHint('Selecione um plano para continuar.', true);
+        return false;
+      }
+      return true;
+    };
+
+    bindHiddenFinancialFields();
     refresh();
-    bindFamilyPlanToggle();
+    return refresh;
+  }
+
+  function bindDepProductsSection() {
+    var catalogArea    = document.getElementById('dep-products-catalog-area');
+    var viewCartBtn     = document.getElementById('dep-products-btn-view-cart');
+    var skipCatalogBtn  = document.getElementById('dep-products-btn-skip-catalog');
+    var backCatalogBtn  = document.getElementById('dep-products-btn-back-catalog');
+    var cancelCfgBtn    = document.getElementById('dep-products-btn-cancel-configure');
+    var addToCartBtn    = document.getElementById('dep-products-btn-add-to-cart');
+    var backToCatalogBtn = document.getElementById('dep-products-btn-back-to-catalog');
+    var payCardBtn      = document.getElementById('dep-products-btn-pay-card');
+    var payPixBtn       = document.getElementById('dep-products-btn-pay-pix');
+    var skipCartBtn     = document.getElementById('dep-products-btn-skip-cart');
+    var configureArea   = document.getElementById('dep-products-configure-area');
+    var cartArea        = document.getElementById('dep-products-cart-area');
+    var confirmArea     = document.getElementById('dep-products-confirm-area');
+    var checkoutActionSelect = document.getElementById('id_materials_checkout_action');
+    var form = document.getElementById('dep-wizard-form');
+    var hasProductsUi = !!catalogArea;
+
+    var cart = [];
+    var configureProduct = null, configureColor = null, configureVariantId = null, configureQty = 1;
+
+    function isMaterialsConfirmed() {
+      return form && form.getAttribute('data-materials-confirmed') === 'true';
+    }
+
+    function fmtCurrency(val) {
+      var n = parseFloat(val);
+      return isNaN(n) ? 'R$ —' : 'R$ ' + n.toFixed(2).replace('.', ',');
+    }
+
+    function getVariantInput(variantId) {
+      return document.getElementById('id_material_variant_' + variantId);
+    }
+
+    // Reconstrói o carrinho a partir dos campos ocultos já preenchidos (retomada pós-pagamento/voltar)
+    function rebuildCartFromFields() {
+      cart = [];
+      depProductCatalog.forEach(function (product) {
+        product.variants.forEach(function (variant) {
+          var input = getVariantInput(variant.id);
+          var qty = input ? parseInt(input.value, 10) || 0 : 0;
+          if (!qty) return;
+          cart.push({
+            variantId: variant.id,
+            variantLabel: [variant.color, variant.size].filter(Boolean).join(' · ') || 'Padrão',
+            productId: product.id,
+            productName: product.name,
+            qty: qty,
+            unitPrice: parseFloat(product.price) || 0,
+          });
+        });
+      });
+    }
+
+    function syncCartToFields() {
+      depProductCatalog.forEach(function (product) {
+        product.variants.forEach(function (variant) {
+          var input = getVariantInput(variant.id);
+          if (!input) return;
+          var inCart = cart.filter(function (c) { return c.variantId === variant.id; })[0];
+          input.value = inCart ? inCart.qty : 0;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+    }
+
+    function showSubview(name) {
+      var catalog = document.getElementById('dep-products-subview-catalog');
+      var configure = document.getElementById('dep-products-subview-configure');
+      var cartEl = document.getElementById('dep-products-subview-cart');
+      if (catalog) catalog.hidden = (name !== 'catalog');
+      if (configure) configure.hidden = (name !== 'configure');
+      if (cartEl) cartEl.hidden = (name !== 'cart');
+    }
+
+    function getCartTotal() {
+      return cart.reduce(function (sum, item) { return sum + item.unitPrice * item.qty; }, 0);
+    }
+
+    function getCartCount() {
+      return cart.reduce(function (sum, item) { return sum + item.qty; }, 0);
+    }
+
+    function renderCatalog() {
+      if (!catalogArea) return;
+      if (!depProductCatalog.length) {
+        catalogArea.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:2rem 0">Nenhum produto disponível no momento.</p>';
+        if (viewCartBtn) viewCartBtn.hidden = true;
+        return;
+      }
+      var html = '';
+      depProductCatalog.forEach(function (product) {
+        var hasStock = product.total_stock > 0;
+        var inCart = cart.some(function (c) { return c.productId === product.id; });
+        html += '<div class="prod-card' + (hasStock ? '' : ' prod-card--unavailable') + '">';
+        html += '<div class="prod-card__body">';
+        html += '<div class="prod-card__header">';
+        html += '<p class="prod-card__name">' + escHtml(product.name) + '</p>';
+        if (inCart) html += '<span class="prod-card__badge prod-card__badge--cart">✓ No carrinho</span>';
+        html += '</div>';
+        html += '<p class="prod-card__category">' + escHtml(product.category) + '</p>';
+        if (product.description) {
+          html += '<p class="prod-card__desc">' + escHtml(product.description) + '</p>';
+        }
+        html += '<div class="prod-card__price-row">';
+        html += '<span class="prod-card__price">' + fmtCurrency(product.price) + '</span>';
+        if (!hasStock) {
+          html += '<span class="prod-card__stock-badge prod-card__stock-badge--out">Sem estoque</span>';
+        } else {
+          html += '<span class="prod-card__stock-badge">' + product.total_stock + ' un.</span>';
+        }
+        html += '</div>';
+        if (hasStock) {
+          html += '<div class="prod-card__footer">';
+          html += '<button type="button" class="prod-card__add-btn" data-product-id="' + product.id + '">' + (inCart ? 'Alterar seleção' : 'Adicionar') + '</button>';
+          html += '</div>';
+        }
+        html += '</div></div>';
+      });
+      catalogArea.innerHTML = html;
+
+      catalogArea.querySelectorAll('.prod-card__add-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pid = parseInt(this.getAttribute('data-product-id'), 10);
+          var product = depProductCatalog.filter(function (p) { return p.id === pid; })[0];
+          if (product) startConfigureProduct(product);
+        });
+      });
+
+      var cartCount = getCartCount();
+      if (viewCartBtn) {
+        viewCartBtn.hidden = cartCount === 0;
+        if (cartCount > 0) {
+          viewCartBtn.innerHTML = 'Ver carrinho (' + cartCount + ' item' + (cartCount !== 1 ? 'ns' : '') + ')' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        }
+      }
+    }
+
+    function getUniqueColors(product) {
+      var seen = {}, colors = [];
+      product.variants.forEach(function (v) {
+        if (v.color && !seen[v.color]) { seen[v.color] = true; colors.push(v.color); }
+      });
+      return colors;
+    }
+
+    function getVariantsForColor(product, color) {
+      if (!color) return product.variants;
+      return product.variants.filter(function (v) { return v.color === color; });
+    }
+
+    function startConfigureProduct(product) {
+      configureProduct = product;
+      configureColor = null;
+      configureVariantId = null;
+      configureQty = 1;
+
+      var existing = cart.filter(function (c) { return c.productId === product.id; })[0];
+      if (existing) {
+        var variant = product.variants.filter(function (v) { return v.id === existing.variantId; })[0];
+        configureVariantId = existing.variantId;
+        configureColor = variant ? (variant.color || null) : null;
+        configureQty = existing.qty;
+      }
+
+      if (configureColor === null) {
+        var uniqueColors = getUniqueColors(product);
+        if (uniqueColors.length === 1) configureColor = uniqueColors[0];
+      }
+
+      renderConfigure();
+      showSubview('configure');
+    }
+
+    function renderConfigure() {
+      if (!configureArea || !configureProduct) return;
+      var product = configureProduct;
+      var uniqueColors = getUniqueColors(product);
+      var showColorPicker = uniqueColors.length > 1;
+
+      if (!configureColor && uniqueColors.length === 1) configureColor = uniqueColors[0];
+
+      var variantsForColor = getVariantsForColor(product, configureColor);
+      var uniqueSizes = [], seenSizes = {};
+      variantsForColor.forEach(function (v) {
+        if (v.size && !seenSizes[v.size]) { seenSizes[v.size] = true; uniqueSizes.push(v.size); }
+      });
+      var showSizePicker = uniqueSizes.length > 0;
+
+      if (!configureVariantId && !showColorPicker && !showSizePicker && product.variants.length > 0) {
+        for (var k = 0; k < product.variants.length; k++) {
+          if (product.variants[k].is_in_stock) { configureVariantId = product.variants[k].id; break; }
+        }
+      }
+      if (!configureVariantId && variantsForColor.length === 1 && !showSizePicker) {
+        if (variantsForColor[0].is_in_stock) configureVariantId = variantsForColor[0].id;
+      }
+
+      var html = '';
+
+      if (showColorPicker) {
+        html += '<div class="prod-configure__section">';
+        html += '<p class="prod-configure__section-label">Cor</p><div class="color-pills">';
+        uniqueColors.forEach(function (color) {
+          var isSelected = color === configureColor;
+          var hasStock = product.variants.some(function (v) { return v.color === color && v.is_in_stock; });
+          html += '<button type="button" class="color-pill' +
+            (isSelected ? ' color-pill--selected' : '') +
+            (!hasStock ? ' color-pill--disabled' : '') +
+            '" data-color="' + escHtml(color) + '">' + escHtml(color) + '</button>';
+        });
+        html += '</div></div>';
+      }
+
+      if (showSizePicker && (configureColor !== null || !showColorPicker)) {
+        html += '<div class="prod-configure__section">';
+        html += '<p class="prod-configure__section-label">Tamanho</p><div class="size-pills">';
+        variantsForColor.forEach(function (v) {
+          if (!v.size) return;
+          var isSelected = v.id === configureVariantId;
+          var stockText = v.is_in_stock ? v.stock_quantity + ' un.' : 'Esgotado';
+          html += '<button type="button" class="size-pill' +
+            (isSelected ? ' size-pill--selected' : '') +
+            (!v.is_in_stock ? ' size-pill--disabled' : '') +
+            '" data-variant-id="' + v.id + '">';
+          html += '<span class="size-pill__size">' + escHtml(v.size) + '</span>';
+          html += '<span class="size-pill__stock">' + escHtml(stockText) + '</span>';
+          html += '</button>';
+        });
+        html += '</div></div>';
+      }
+
+      var selectedVariant = product.variants.filter(function (v) { return v.id === configureVariantId; })[0] || null;
+      var maxQty = selectedVariant ? Math.min(selectedVariant.stock_quantity, 10) : 1;
+      configureQty = Math.max(1, Math.min(configureQty, maxQty));
+      var stepperDisabled = !configureVariantId;
+
+      html += '<div class="prod-configure__section">';
+      html += '<div class="configure-qty-row">';
+      html += '<span class="configure-qty-label">Quantidade</span>';
+      html += '<div class="configure-qty-stepper">';
+      html += '<button type="button" class="configure-qty-stepper__btn" id="dep-cfg-qty-dec" aria-label="Diminuir"' +
+        (configureQty <= 1 || stepperDisabled ? ' disabled' : '') + '>−</button>';
+      html += '<span class="configure-qty-stepper__value" id="dep-cfg-qty-val">' + configureQty + '</span>';
+      html += '<button type="button" class="configure-qty-stepper__btn" id="dep-cfg-qty-inc" aria-label="Aumentar"' +
+        (configureQty >= maxQty || stepperDisabled ? ' disabled' : '') + '>+</button>';
+      html += '</div></div>';
+      if (selectedVariant) {
+        html += '<p class="prod-configure__stock-hint">' + selectedVariant.stock_quantity + ' unidade' +
+          (selectedVariant.stock_quantity !== 1 ? 's' : '') + ' disponível' +
+          (selectedVariant.stock_quantity !== 1 ? 'is' : '') + '</p>';
+      }
+      html += '</div>';
+
+      configureArea.innerHTML = html;
+
+      configureArea.querySelectorAll('.color-pill[data-color]').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          configureColor = this.getAttribute('data-color');
+          configureVariantId = null;
+          configureQty = 1;
+          renderConfigure();
+        });
+      });
+      configureArea.querySelectorAll('.size-pill[data-variant-id]').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          configureVariantId = parseInt(this.getAttribute('data-variant-id'), 10);
+          configureQty = 1;
+          renderConfigure();
+        });
+      });
+
+      var dec = document.getElementById('dep-cfg-qty-dec');
+      var inc = document.getElementById('dep-cfg-qty-inc');
+      var valEl = document.getElementById('dep-cfg-qty-val');
+      function refreshStepper() {
+        if (valEl) valEl.textContent = configureQty;
+        if (dec) dec.disabled = configureQty <= 1 || !configureVariantId;
+        if (inc) inc.disabled = configureQty >= maxQty || !configureVariantId;
+      }
+      if (dec) dec.addEventListener('click', function () { if (configureQty > 1) { configureQty--; refreshStepper(); } });
+      if (inc) inc.addEventListener('click', function () { if (configureQty < maxQty) { configureQty++; refreshStepper(); } });
+
+      if (addToCartBtn) addToCartBtn.disabled = !configureVariantId;
+    }
+
+    function renderCart() {
+      if (!cartArea) return;
+      if (!cart.length) {
+        cartArea.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:1.5rem 0">Carrinho vazio.</p>';
+        return;
+      }
+      var html = '<div class="cart-item-list">';
+      cart.forEach(function (item) {
+        html += '<div class="cart-item">';
+        html += '<div class="cart-item__info">';
+        html += '<p class="cart-item__name">' + escHtml(item.productName) + '</p>';
+        html += '<p class="cart-item__meta">' + escHtml(item.variantLabel) + ' · Qtd: ' + item.qty + '</p>';
+        html += '</div>';
+        html += '<span class="cart-item__subtotal">' + fmtCurrency(item.unitPrice * item.qty) + '</span>';
+        html += '<button type="button" class="cart-item__remove" data-variant-id="' + item.variantId + '" aria-label="Remover">×</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="cart-total-row"><span>Total</span><strong>' + fmtCurrency(getCartTotal()) + '</strong></div>';
+      cartArea.innerHTML = html;
+
+      cartArea.querySelectorAll('.cart-item__remove').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var vid = parseInt(this.getAttribute('data-variant-id'), 10);
+          cart = cart.filter(function (c) { return c.variantId !== vid; });
+          if (!cart.length) { showSubview('catalog'); renderCatalog(); } else { renderCart(); }
+        });
+      });
+    }
+
+    function advanceWizard() {
+      var nextBtn = document.getElementById('dep-wizard-next-btn');
+      if (nextBtn) nextBtn.click();
+    }
+
+    function submitMaterials(checkoutAction) {
+      syncCartToFields();
+      if (checkoutActionSelect) {
+        checkoutActionSelect.value = checkoutAction;
+        checkoutActionSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      advanceWizard();
+    }
+
+    function renderConfirmedBanner() {
+      if (!confirmArea) return;
+      var html = '<div class="checkout-confirmed-banner">';
+      html += '<span class="checkout-confirmed-banner__icon" aria-hidden="true">' + CHECK_CIRCLE + '</span>';
+      html += '<span class="checkout-confirmed-banner__text">Materiais confirmados</span>';
+      html += '</div>';
+
+      if (cart.length) {
+        html += '<div class="checkout-summary"><div class="checkout-summary__section">';
+        html += '<p class="checkout-summary__label">Materiais adquiridos</p>';
+        cart.forEach(function (item) {
+          html += '<div class="order-review-item"><span>' + escHtml(item.productName) + ' (' + escHtml(item.variantLabel) + ') × ' + item.qty + '</span>';
+          html += '<span>' + fmtCurrency(item.unitPrice * item.qty) + '</span></div>';
+        });
+        html += '<p class="checkout-summary__plan-meta" style="margin-top:.5rem">Total: ' + fmtCurrency(getCartTotal()) + '</p>';
+        html += '</div></div>';
+      }
+      confirmArea.innerHTML = html;
+    }
+
+    function bindButtons() {
+      if (viewCartBtn) viewCartBtn.addEventListener('click', function () { renderCart(); showSubview('cart'); });
+      if (skipCatalogBtn) skipCatalogBtn.addEventListener('click', function () { submitMaterials('pay_later'); });
+      if (backCatalogBtn) backCatalogBtn.addEventListener('click', function () { showSubview('catalog'); renderCatalog(); });
+      if (cancelCfgBtn) cancelCfgBtn.addEventListener('click', function () { showSubview('catalog'); renderCatalog(); });
+      if (addToCartBtn) addToCartBtn.addEventListener('click', function () {
+        if (!configureProduct || !configureVariantId) return;
+        var variant = configureProduct.variants.filter(function (v) { return v.id === configureVariantId; })[0];
+        var variantLabel = variant ? ([variant.color, variant.size].filter(Boolean).join(' · ') || 'Padrão') : 'Padrão';
+        var newItem = {
+          variantId: configureVariantId,
+          variantLabel: variantLabel,
+          productId: configureProduct.id,
+          productName: configureProduct.name,
+          qty: configureQty,
+          unitPrice: parseFloat(configureProduct.price) || 0,
+        };
+        var replaced = false;
+        for (var j = 0; j < cart.length; j++) {
+          if (cart[j].productId === configureProduct.id) { cart[j] = newItem; replaced = true; break; }
+        }
+        if (!replaced) cart.push(newItem);
+        showSubview('catalog');
+        renderCatalog();
+      });
+      if (backToCatalogBtn) backToCatalogBtn.addEventListener('click', function () { showSubview('catalog'); renderCatalog(); });
+      if (payCardBtn) payCardBtn.addEventListener('click', function () { submitMaterials('asaas_card'); });
+      if (payPixBtn) payPixBtn.addEventListener('click', function () { submitMaterials('pix'); });
+      if (skipCartBtn) skipCartBtn.addEventListener('click', function () { submitMaterials('pay_later'); });
+    }
+
+    function refresh() {
+      var nextBtn = document.getElementById('dep-wizard-next-btn');
+      rebuildCartFromFields();
+
+      if (isMaterialsConfirmed()) {
+        var subCatalog = document.getElementById('dep-products-subview-catalog');
+        var subConfigure = document.getElementById('dep-products-subview-configure');
+        var subCart = document.getElementById('dep-products-subview-cart');
+        if (subCatalog) subCatalog.hidden = true;
+        if (subConfigure) subConfigure.hidden = true;
+        if (subCart) subCart.hidden = true;
+        renderConfirmedBanner();
+        if (nextBtn) nextBtn.hidden = false;
+        return;
+      }
+
+      if (confirmArea) confirmArea.innerHTML = '';
+      if (!hasProductsUi) return;
+      showSubview('catalog');
+      renderCatalog();
+      if (nextBtn) nextBtn.hidden = true;
+    }
+
+    if (hasProductsUi) bindButtons();
     return refresh;
   }
 
@@ -512,8 +1104,14 @@
     }
 
     function planSummary() {
+      var mode = getVal('id_financial_mode');
       var useFamilyPlan = document.getElementById('id_use_family_plan');
-      if (useFamilyPlan && useFamilyPlan.checked) return 'Plano familiar do titular/responsável';
+      if (!mode && useFamilyPlan && useFamilyPlan.checked) {
+        mode = FINANCIAL_MODE_FAMILY_EXISTING;
+      }
+      if (mode === FINANCIAL_MODE_FAMILY_EXISTING) {
+        return 'Plano familiar ativo do titular/responsável';
+      }
       var planId = getVal('id_selected_plan');
       if (!planId) return '';
       var catalog = readJson('dep-plan-catalog-json') || [];
@@ -522,21 +1120,21 @@
       var price = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
       var cycle = plan.gateway_code === 'stripe_card' ? 'mês' : (plan.cycle || '');
       var tierLabel = plan.commercial_tier_label || plan.name || plan.code;
+      if (mode === FINANCIAL_MODE_FAMILY_UPGRADE) {
+        return 'Upgrade familiar do titular — ' + tierLabel + ' — ' + fmtPrice(price) + '/' + cycle;
+      }
       return tierLabel + ' — ' + fmtPrice(price) + '/' + cycle;
     }
 
     function materialsSummary() {
       var parts = [];
-      document.querySelectorAll('.material-item').forEach(function (item) {
-        var nameEl = item.querySelector('.material-item__header strong');
-        var productName = nameEl ? nameEl.textContent.trim() : '';
-        item.querySelectorAll('.material-variant').forEach(function (row) {
-          var input = row.querySelector('input');
-          var qty = input ? parseInt(input.value, 10) : 0;
+      depProductCatalog.forEach(function (product) {
+        product.variants.forEach(function (variant) {
+          var input = document.getElementById('id_material_variant_' + variant.id);
+          var qty = input ? parseInt(input.value, 10) || 0 : 0;
           if (!qty) return;
-          var labelEl = row.querySelector('.material-variant__label');
-          var variantLabel = labelEl ? labelEl.textContent.trim().split('\n')[0].trim() : '';
-          parts.push(productName + (variantLabel ? ' (' + variantLabel + ')' : '') + ' x' + qty);
+          var variantLabel = [variant.color, variant.size].filter(Boolean).join(' · ');
+          parts.push(product.name + (variantLabel ? ' (' + variantLabel + ')' : '') + ' x' + qty);
         });
       });
       return parts.join(', ');
@@ -567,7 +1165,7 @@
     return refresh;
   }
 
-  function bindStepNavigation(refreshClasses, refreshPlans, refreshReview) {
+  function bindStepNavigation(refreshClasses, refreshPlans, refreshMaterials, refreshReview) {
     var form = document.querySelector('.wizard-form');
     if (!form) return;
 
@@ -583,7 +1181,7 @@
     var total = steps.length;
     var current = 0;
 
-    var REFRESH_BY_KEY = { classes: refreshClasses, plan: refreshPlans, review: refreshReview };
+    var REFRESH_BY_KEY = { classes: refreshClasses, plan: refreshPlans, materials: refreshMaterials, review: refreshReview };
 
     function keyIndex(key) {
       for (var i = 0; i < steps.length; i++) {
@@ -613,6 +1211,12 @@
     var actionLabelEl = actionBtn ? actionBtn.querySelector('[data-btn-label]') : null;
     var finalLabel = actionBtn ? (actionBtn.getAttribute('data-final-label') || (actionLabelEl ? actionLabelEl.textContent.trim() : '')) : '';
 
+    function currentFinalLabel() {
+      var paymentConfirmed = form.getAttribute('data-payment-confirmed') === 'true';
+      var familyMode = getVal('id_financial_mode') === FINANCIAL_MODE_FAMILY_EXISTING;
+      return (paymentConfirmed || familyMode) ? 'Continuar' : finalLabel;
+    }
+
     function render() {
       steps.forEach(function (step, index) { step.hidden = index !== current; });
       if (stepCurrentEl) stepCurrentEl.textContent = String(current + 1);
@@ -622,7 +1226,8 @@
       if (actionBtn) {
         var isLast = current === total - 1;
         actionBtn.type = isLast ? 'submit' : 'button';
-        if (actionLabelEl) actionLabelEl.textContent = isLast ? finalLabel : 'Próximo';
+        actionBtn.hidden = false;
+        if (actionLabelEl) actionLabelEl.textContent = isLast ? currentFinalLabel() : 'Próximo';
       }
       var key = steps[current].getAttribute('data-step-key');
       var refresh = REFRESH_BY_KEY[key];
@@ -637,6 +1242,10 @@
           controls[i].reportValidity();
           return false;
         }
+      }
+      var key = steps[current].getAttribute('data-step-key');
+      if (key === 'plan' && refreshPlans && typeof refreshPlans.validate === 'function') {
+        return refreshPlans.validate();
       }
       return true;
     }
@@ -673,13 +1282,13 @@
   bindSubmitState();
   bindKinshipOtherToggle();
   bindMartialToggle();
-  bindMaterialsToggle();
   bindMask(document.getElementById('id_dependent_cpf'), maskCpf);
   bindMask(document.getElementById('id_dependent_phone'), maskPhone);
   setupPasswordToggle('id_dependent_password', 'dep-pw-toggle');
   setupPasswordToggle('id_dependent_password_confirm', 'dep-pwc-toggle');
   var refreshClasses = bindClassCatalog();
   var refreshPlans = bindPlanCatalog();
+  var refreshMaterials = bindDepProductsSection();
   var refreshReview = bindReviewSummary();
-  bindStepNavigation(refreshClasses, refreshPlans, refreshReview);
+  bindStepNavigation(refreshClasses, refreshPlans, refreshMaterials, refreshReview);
 })();

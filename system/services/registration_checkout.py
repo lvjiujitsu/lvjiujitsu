@@ -573,10 +573,13 @@ def parse_selected_plan_payload(snapshot):
     raw = snapshot.get("selected_plans_payload") or ""
     result = []
     if raw:
-        try:
-            payload = json.loads(raw)
-        except (TypeError, ValueError):
-            payload = []
+        if isinstance(raw, list):
+            payload = raw
+        else:
+            try:
+                payload = json.loads(raw)
+            except (TypeError, ValueError):
+                payload = []
         if isinstance(payload, list):
             for item in payload:
                 try:

@@ -147,6 +147,8 @@
     {% if not needs_split %}
       {% if staff_today_classes %}
       {% include "home/partials/today_classes_section.html" with class_items=staff_today_classes section_slug="turmas" instructor_toolbar="overview" attendance_history=attendance_history only %}
+      {% elif today_classes_tabs|length > 1 %}
+      {% include "home/partials/today_classes_tabs_section.html" with today_classes_tabs=today_classes_tabs attendance_history=attendance_history only %}
       {% elif today_classes %}
       {% include "home/partials/today_classes_section.html" with class_items=today_classes section_slug="turmas" instructor_toolbar=today_classes_toolbar attendance_history=attendance_history only %}
       {% endif %}
@@ -364,14 +366,14 @@
       <div class="section__body" id="section-billing">
         <div class="panel">
           {% if billing_tabs|length > 1 %}
-          <div class="tabs" role="tablist" aria-label="Dependentes">
+          <div class="tabs" role="tablist" aria-label="Dependentes" data-tab-group="billing">
             {% for tab in billing_tabs %}
             <button
               class="tab-btn {% if tab.is_active_tab %}tab-btn--active{% endif %}"
               role="tab"
               aria-selected="{% if tab.is_active_tab %}true{% else %}false{% endif %}"
-              aria-controls="tab-panel-{{ forloop.counter }}"
-              id="tab-{{ forloop.counter }}"
+              aria-controls="billing-tab-panel-{{ forloop.counter }}"
+              id="billing-tab-{{ forloop.counter }}"
               data-tab="{{ forloop.counter }}"
               type="button"
             >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
@@ -382,9 +384,11 @@
           {% for tab in billing_tabs %}
           <div
             class="tab-panel {% if tab.is_active_tab %}tab-panel--active{% endif %}"
-            id="tab-panel-{{ forloop.counter }}"
+            id="billing-tab-panel-{{ forloop.counter }}"
             role="tabpanel"
-            aria-labelledby="tab-{{ forloop.counter }}"
+            aria-labelledby="billing-tab-{{ forloop.counter }}"
+            data-tab-group="billing"
+            data-tab="{{ forloop.counter }}"
           >
             <div class="billing-card">
               {% if tab.active_membership %}
@@ -461,7 +465,7 @@
                     {% if m.status == "past_due" and tab.pending_order %}
                     <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
                     {% endif %}
-                    {% if tab.is_active_tab and plan_change_locked and plan_change_lock_message and m.status == "active" %}
+                    {% if tab.active_membership and plan_change_membership and tab.active_membership.pk == plan_change_membership.pk and plan_change_locked and plan_change_lock_message and m.status == "active" %}
                     <p class="billing-lock-notice" role="status">{{ plan_change_lock_message }}</p>
                     {% endif %}
                     {% if tab.is_active_tab and not plan_change_locked and plan_change_catalog %}
@@ -578,46 +582,9 @@
                   <span class="avatar-circle" aria-hidden="true">{{ dep.person.full_name|first|upper }}</span>
                   <div>
                     <div class="entity-card__name">{{ dep.person.full_name }}</div>
-                    <div class="entity-card__badges">
-                      {% if dep.active_membership.status == "active" %}
-                      <span class="badge badge--success">Em dia</span>
-                      {% elif dep.active_membership.status == "past_due" %}
-                      <span class="badge badge--danger">Em atraso</span>
-                      {% elif dep.active_membership.status == "exempted" %}
-                      <span class="badge badge--success">Isento</span>
-                      {% elif dep.active_membership %}
-                      <span class="badge badge--warning">{{ dep.active_membership.get_status_display }}</span>
-                      {% else %}
-                      <span class="badge badge--neutral">Sem plano</span>
-                      {% endif %}
-                      {% if dep.graduation_progress.current_belt_rank %}
-                      <span class="badge badge--neutral">{{ dep.graduation_progress.current_belt_rank }}</span>
-                      {% endif %}
-                    </div>
                   </div>
                 </div>
                 <div class="entity-card__actions entity-card__actions--icons">
-                  <button
-                    class="icon-action js-open-dependent-profile"
-                    type="button"
-                    data-target="dependent-profile-modal-{{ forloop.counter }}"
-                    aria-label="Ver detalhes de {{ dep.person.full_name }}"
-                    title="Ver detalhes"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <span class="section-action__text">Ver detalhes</span>
-                  </button>
-                  <a
-                    class="icon-action icon-action--edit js-open-dependent-modal"
-                    href="{{ dep.edit_url }}?modal=1"
-                    data-dependent-modal-url="{{ dep.edit_url }}?modal=1"
-                    data-dependent-modal-title="Editar dependente"
-                    aria-label="Editar dependente"
-                    title="Editar dependente"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                    <span class="section-action__text">Editar dependente</span>
-                  </a>
                   <form class="entity-action-form js-dependent-remove-form" method="post" action="{{ dep.remove_url }}" data-confirm-message="Remover {{ dep.person.full_name }} dos seus dependentes? O histórico da pessoa será preservado.">
                     {% csrf_token %}
                     <button class="icon-action icon-action--delete" type="submit" aria-label="Remover dependente" title="Remover dependente">
@@ -705,13 +672,13 @@
           <div>
             <p class="client-profile-modal__eyebrow">Dados do cliente</p>
             <h2 class="modal__title" id="client-profile-modal-title" data-client-profile-name>{{ client_person.full_name }}</h2>
-            {% if role_labels %}
-            <div class="role-badges" aria-label="Perfis ativos">
+            <div class="role-badges" aria-label="Perfis ativos" data-client-profile-role-badges>
+              {% if role_labels %}
               {% for label in role_labels %}
               <span class="role-badge{% if label == 'Aluno' %} role-badge--primary{% endif %}">{{ label }}</span>
               {% endfor %}
+              {% endif %}
             </div>
-            {% endif %}
           </div>
         </div>
         <button class="modal__close js-close-client-profile" type="button" aria-label="Fechar">
@@ -719,86 +686,111 @@
         </button>
       </div>
       <div class="client-profile">
-        <div class="client-profile__view" data-client-profile-view>
-          <dl class="client-profile__grid">
-            <div>
-              <dt>CPF</dt>
-              <dd data-client-profile-cpf>{{ client_person.cpf|default:"—" }}</dd>
-            </div>
-            <div>
-              <dt>E-mail</dt>
-              <dd data-client-profile-email>{{ client_person.email|default:"—" }}</dd>
-            </div>
-            <div>
-              <dt>Telefone</dt>
-              <dd data-client-profile-phone>{{ client_person.phone|default:"—" }}</dd>
-            </div>
-            <div>
-              <dt>Nascimento</dt>
-              <dd data-client-profile-birth-date>{{ client_person.birth_date|date:"d/m/Y"|default:"—" }}</dd>
-            </div>
-            <div class="client-profile__grid-wide">
-              <dt>Endereço</dt>
-              <dd data-client-profile-address>{% if client_person.address or client_person.city %}{{ client_person.address }}{% if client_person.address_number %}, {{ client_person.address_number }}{% endif %}{% if client_person.address_complement %}, {{ client_person.address_complement }}{% endif %}{% if client_person.address_neighborhood %} · {{ client_person.address_neighborhood }}{% endif %}{% if client_person.city %} · {{ client_person.city }}{% endif %}{% else %}—{% endif %}</dd>
-            </div>
-          </dl>
-          <div class="client-profile__actions">
-            <button class="btn btn--secondary btn--sm js-client-profile-edit" type="button">Editar cadastro</button>
-            <button class="btn btn--danger-outline btn--sm js-client-profile-delete-open" type="button">Excluir cadastro</button>
-          </div>
-          <section class="client-profile__section" aria-label="Plano do titular">
-            <span class="client-profile__label">Plano do titular</span>
-            {% if client_billing_tab.active_membership %}
-            <strong>{{ client_billing_tab.active_membership.plan.display_name }}</strong>
-            <small>{{ client_billing_tab.active_membership.get_status_display }}{% if client_billing_tab.active_membership.current_period_end %} · até {{ client_billing_tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
-            {% elif client_billing_tab.pending_order %}
-            <strong>Pagamento pendente</strong>
-            <small>Conclua o pagamento para ativar a mensalidade.</small>
-            {% else %}
-            <strong>Nenhum plano ativo</strong>
-            <small>Sem mensalidade registrada para o titular.</small>
-            {% endif %}
-          </section>
-          {% if show_dependents_area %}
-          <section class="client-profile__section" aria-label="Dependentes">
-            <span class="client-profile__label">Dependentes</span>
-            <strong>{{ dependents|length }} cadastrado{{ dependents|length|pluralize }}</strong>
-            <a
-              class="btn btn--secondary btn--sm section-action js-open-dependent-modal js-close-client-profile"
-              href="{{ dependent_add_modal_url }}"
-              data-dependent-modal-url="{{ dependent_add_modal_url }}"
-              data-dependent-modal-title="Adicionar dependente"
-              aria-label="Adicionar dependente"
-              title="Adicionar dependente"
-            >
-              <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
-              <span class="section-action__text">Adicionar dependente</span>
-            </a>
-          </section>
-          {% endif %}
+        {% if profile_tabs|length > 1 %}
+        <div class="tabs" role="tablist" aria-label="Dependentes" data-tab-group="client-profile">
+          {% for tab in profile_tabs %}
+          <button
+            class="tab-btn {% if tab.is_active_tab %}tab-btn--active{% endif %}"
+            role="tab"
+            aria-selected="{% if tab.is_active_tab %}true{% else %}false{% endif %}"
+            aria-controls="client-profile-tab-panel-{{ forloop.counter }}"
+            id="client-profile-tab-{{ forloop.counter }}"
+            data-tab="{{ forloop.counter }}"
+            data-person-id="{{ tab.person.pk }}"
+            type="button"
+          >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
+          {% endfor %}
         </div>
+        {% endif %}
 
-        <form class="client-profile-form js-client-profile-form" method="post" action="{{ client_profile_update_url }}" hidden novalidate>
-          {% csrf_token %}
-          <div class="client-profile-form__message" role="status" aria-live="polite" hidden></div>
-          <div class="client-profile-form__grid">
-            {% for field in client_profile_form %}
-            <div class="form-field{% if field.name == 'allergies' or field.name == 'previous_injuries' or field.name == 'emergency_contact' or field.name == 'address' or field.name == 'martial_art_graduation' or field.name == 'previous_academy' %} client-profile-form__wide{% endif %}">
-              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-              {% if field.field.widget.input_type == "select" %}
-              <div class="form-select-wrapper">{{ field }}</div>
-              {% else %}
-              {{ field }}
+        {% for tab in profile_tabs %}
+        <div
+          class="tab-panel {% if tab.is_active_tab %}tab-panel--active{% endif %}"
+          id="client-profile-tab-panel-{{ forloop.counter }}"
+          role="tabpanel"
+          aria-labelledby="client-profile-tab-{{ forloop.counter }}"
+          data-tab-group="client-profile"
+          data-tab="{{ forloop.counter }}"
+          data-person-full-name="{{ tab.person.full_name }}"
+          data-person-role="{% if tab.is_owner %}Titular{% else %}Dependente{% endif %}"
+        >
+          <div class="client-profile__view" data-client-profile-view>
+            <dl class="client-profile__grid">
+              <div>
+                <dt>CPF</dt>
+                <dd data-client-profile-cpf>{{ tab.person.cpf|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>E-mail</dt>
+                <dd data-client-profile-email>{{ tab.person.email|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>Telefone</dt>
+                <dd data-client-profile-phone>{{ tab.person.phone|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>Nascimento</dt>
+                <dd data-client-profile-birth-date>{{ tab.person.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+              </div>
+              {% if tab.is_owner %}
+              <div class="client-profile__grid-wide">
+                <dt>Endereço</dt>
+                <dd data-client-profile-address>{% if tab.person.address or tab.person.city %}{{ tab.person.address }}{% if tab.person.address_number %}, {{ tab.person.address_number }}{% endif %}{% if tab.person.address_complement %}, {{ tab.person.address_complement }}{% endif %}{% if tab.person.address_neighborhood %} · {{ tab.person.address_neighborhood }}{% endif %}{% if tab.person.city %} · {{ tab.person.city }}{% endif %}{% else %}—{% endif %}</dd>
+              </div>
               {% endif %}
-              <p class="form-field__error" data-client-profile-error="{{ field.name }}"></p>
+            </dl>
+            <div class="client-profile__actions">
+              <button class="btn btn--secondary btn--sm js-client-profile-edit" type="button">Editar cadastro</button>
+              {% if tab.is_owner %}
+              <button class="btn btn--danger-outline btn--sm js-client-profile-delete-open" type="button">Excluir cadastro</button>
+              {% else %}
+              <form class="entity-action-form js-dependent-remove-form" method="post" action="{{ tab.remove_url }}" data-confirm-message="Remover {{ tab.person.full_name }} dos seus dependentes? O histórico da pessoa será preservado.">
+                {% csrf_token %}
+                <button class="btn btn--danger-outline btn--sm" type="submit">Excluir dependente</button>
+              </form>
+              {% endif %}
             </div>
-            {% endfor %}
+            <section class="client-profile__section" aria-label="{% if tab.is_owner %}Plano do titular{% else %}Mensalidade do dependente{% endif %}">
+              <span class="client-profile__label">{% if tab.is_owner %}Plano do titular{% else %}Mensalidade{% endif %}</span>
+              {% if tab.active_membership %}
+              <strong>{{ tab.active_membership.plan.display_name }}</strong>
+              <small>{{ tab.active_membership.get_status_display }}{% if tab.active_membership.current_period_end %} · até {{ tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
+              {% if not tab.is_owner and tab.billing_owner and tab.billing_owner != tab.person %}
+              <small>Vinculada ao responsável {{ tab.billing_owner.full_name }}.</small>
+              {% endif %}
+              {% elif tab.pending_order %}
+              <strong>Pagamento pendente</strong>
+              <small>Conclua o pagamento para ativar a mensalidade.</small>
+              {% else %}
+              <strong>Nenhum plano ativo</strong>
+              <small>Sem mensalidade registrada{% if tab.is_owner %} para o titular{% endif %}.</small>
+              {% endif %}
+            </section>
           </div>
-          <div class="client-profile__actions client-profile__actions--form">
-            <button class="btn btn--primary btn--sm" type="submit">Salvar alterações</button>
-            <button class="btn btn--secondary btn--sm js-client-profile-cancel" type="button">Cancelar</button>
-          </div>
-        </form>
+
+          <form class="client-profile-form js-client-profile-form" method="post" action="{{ tab.update_url }}" hidden novalidate>
+            {% csrf_token %}
+            <div class="client-profile-form__message" role="status" aria-live="polite" hidden></div>
+            <div class="client-profile-form__grid">
+              {% for field in tab.form %}
+              <div class="form-field{% if field.name == 'allergies' or field.name == 'previous_injuries' or field.name == 'emergency_contact' or field.name == 'address' or field.name == 'martial_art_graduation' or field.name == 'previous_academy' %} client-profile-form__wide{% endif %}">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.field.widget.input_type == "select" %}
+                <div class="form-select-wrapper">{{ field }}</div>
+                {% else %}
+                {{ field }}
+                {% endif %}
+                <p class="form-field__error" data-client-profile-error="{{ field.name }}"></p>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="client-profile__actions client-profile__actions--form">
+              <button class="btn btn--primary btn--sm" type="submit">Salvar alterações</button>
+              <button class="btn btn--secondary btn--sm js-client-profile-cancel" type="button">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        {% endfor %}
 
         <form class="client-profile-delete js-client-profile-delete" method="post" action="{{ client_profile_deactivate_url }}" hidden novalidate>
           {% csrf_token %}
@@ -844,103 +836,6 @@
       ></iframe>
     </div>
   </div>
-  {% endif %}
-
-  {% if dependents %}
-  <!-- ─── Modais: detalhes do dependente (mensalidade, presença, histórico) ──── -->
-  {% for dep in dependents %}
-  <div class="modal-overlay dependent-profile-modal-overlay" id="dependent-profile-modal-{{ forloop.counter }}" hidden role="dialog" aria-modal="true" aria-labelledby="dependent-profile-modal-title-{{ forloop.counter }}">
-    <div class="modal client-profile-modal">
-      <div class="modal__header profile-modal__header">
-        <div class="profile-modal__identity">
-          <span class="avatar-circle avatar-circle--lg" aria-hidden="true">{{ dep.person.full_name|first|upper }}</span>
-          <div>
-            <p class="client-profile-modal__eyebrow">Dependente</p>
-            <h2 class="modal__title" id="dependent-profile-modal-title-{{ forloop.counter }}">{{ dep.person.full_name }}</h2>
-          </div>
-        </div>
-        <button class="modal__close js-close-dependent-profile" type="button" aria-label="Fechar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="client-profile">
-
-        <!-- Mensalidade -->
-        <section class="client-profile__section" aria-label="Mensalidade do dependente">
-          <span class="client-profile__label">Mensalidade</span>
-          {% if dep.active_membership %}
-          <strong>{{ dep.active_membership.plan.display_name }}</strong>
-          <div class="entity-card__badges">
-            {% if dep.active_membership.status == "active" %}
-            <span class="badge badge--success">Em dia</span>
-            {% elif dep.active_membership.status == "past_due" %}
-            <span class="badge badge--danger">Em atraso</span>
-            {% elif dep.active_membership.status == "exempted" %}
-            <span class="badge badge--success">Isento</span>
-            {% else %}
-            <span class="badge badge--warning">{{ dep.active_membership.get_status_display }}</span>
-            {% endif %}
-          </div>
-          {% if dep.billing_owner and dep.billing_owner != dep.person %}
-          <small>Vinculada ao responsável {{ dep.billing_owner.full_name }}.</small>
-          {% elif dep.active_membership.current_period_end %}
-          <small>Vigência até {{ dep.active_membership.current_period_end|date:"d/m/Y" }}.</small>
-          {% endif %}
-          {% else %}
-          <strong>Nenhum plano ativo</strong>
-          <small>Sem mensalidade registrada para este dependente.</small>
-          {% endif %}
-        </section>
-
-        <!-- Presença -->
-        <section class="client-profile__section" aria-label="Presença do dependente">
-          <span class="client-profile__label">Presença recente</span>
-          {% if dep.attendance_history %}
-          <ul class="presence-list" aria-label="Últimas presenças">
-            {% for entry in dep.attendance_history %}
-            <li class="presence-list__item">
-              <span class="presence-list__date">{{ entry.date|date:"d/m" }}</span>
-              <span class="presence-list__info">{{ entry.group_name|default:"Aula" }}{% if entry.category_name %} · {{ entry.category_name }}{% endif %}</span>
-              <span class="status-pill status-pill--success" aria-label="Presença registrada">✓</span>
-            </li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <strong>Sem presenças registradas</strong>
-          <small>Nenhum check-in encontrado para este dependente.</small>
-          {% endif %}
-        </section>
-
-        <!-- Graduação e histórico -->
-        <section class="client-profile__section" aria-label="Graduação do dependente">
-          <span class="client-profile__label">Graduação</span>
-          {% if dep.graduation_progress.current_belt_rank %}
-          <strong>{{ dep.graduation_progress.current_belt_rank }}{% if dep.graduation_progress.current_grade_number %} · {{ dep.graduation_progress.current_grade_number }}º grau{% endif %}</strong>
-          {% if dep.graduation_progress.progress_pct %}
-          <small>{{ dep.graduation_progress.progress_pct|floatformat:0 }}% do próximo grau.</small>
-          {% endif %}
-          {% else %}
-          <strong>Sem graduação registrada</strong>
-          {% endif %}
-          {% if dep.graduation_history %}
-          <p class="dependent-history-list__title">Histórico de graduação</p>
-          <ul class="dependent-history-list">
-            {% for history in dep.graduation_history %}
-            <li>
-              <span>{{ history.awarded_at|date:"d/m/Y" }}</span>
-              <strong>{{ history.belt_rank }}{% if history.grade_number %} · {{ history.grade_number }}º grau{% endif %}</strong>
-            </li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <small>Sem histórico de graduação.</small>
-          {% endif %}
-        </section>
-
-      </div>
-    </div>
-  </div>
-  {% endfor %}
   {% endif %}
 
   <!-- ─── Modal: cronograma ────────────────────────────────────────────────── -->
@@ -1028,7 +923,7 @@
   {% endif %}
 
   <!-- ─── Modal: histórico de presença ────────────────────────────────────── -->
-  {% if attendance_history %}
+  {% if attendance_history_items %}
   <div class="modal-overlay" id="attendance-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="attendance-history-title">
     <div class="modal modal--wide">
       <div class="modal__header">
@@ -1065,9 +960,10 @@
         <button class="btn btn--secondary btn--sm js-attendance-history-clear" type="button">Limpar</button>
       </div>
       <ul class="attendance-history-list" aria-label="Histórico de presenças">
-        {% for entry in attendance_history %}
+        {% for entry in attendance_history_items %}
         <li class="attendance-history-item"
             data-attendance-history-item
+            data-person-filter="{{ entry.person_id|default:'' }}"
             data-class-filter="{{ entry.group_name|default:'Aula' }}{% if entry.category_name %} · {{ entry.category_name }}{% endif %}"
             data-teacher-filter="{% if entry.teacher_name %}{{ entry.teacher_name }}{% elif show_instructor_area and request.portal_person %}{{ request.portal_person.full_name }}{% endif %}"
             data-month-filter="{{ entry.date|date:'m' }}"
@@ -1118,7 +1014,7 @@
   {% endif %}
 
   <!-- ─── Modal: histórico de graduações ──────────────────────────────────── -->
-  {% if graduation_history %}
+  {% if graduation_tabs %}
   <div class="modal-overlay" id="grad-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-grad-title">
     <div class="modal modal--grad-history">
       <div class="modal__header">
@@ -1127,8 +1023,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="grad-history-list">
-        {% for entry in graduation_history %}
+      {% for tab in graduation_tabs %}
+      {% if tab.graduation_history %}
+      <div class="grad-history-list" data-history-for="{{ forloop.counter }}" {% if not tab.is_active_tab %}hidden{% endif %}>
+        {% for entry in tab.graduation_history %}
         <div class="grad-history-entry{% if entry.is_current %} grad-history-entry--current{% endif %}">
           <!-- Indicador de atual -->
           <span class="grad-history-entry__dot{% if entry.is_current %} grad-history-entry__dot--active{% endif %}" aria-hidden="true"></span>
@@ -1136,8 +1034,8 @@
           {% if entry.belt_rank %}
           <div class="grad-history-entry__belt" aria-hidden="true">
             <svg class="grad-history-entry__belt-svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-              <defs><clipPath id="hbc-{{ forloop.counter }}"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
-              <g clip-path="url(#hbc-{{ forloop.counter }})">
+              <defs><clipPath id="hbc-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
+              <g clip-path="url(#hbc-{{ forloop.parentloop.counter }}-{{ forloop.counter }})">
                 <rect x="0" y="0" width="320" height="36" fill="{{ entry.belt_rank.color_hex }}"/>
                 <rect x="232" y="0" width="88" height="36" fill="{{ entry.belt_rank.tip_color_hex }}"/>
                 {% for stripe in entry.belt_stripes %}{% if stripe.filled %}
@@ -1168,6 +1066,8 @@
         </div>
         {% endfor %}
       </div>
+      {% endif %}
+      {% endfor %}
     </div>
   </div>
   {% endif %}
@@ -1286,7 +1186,7 @@
   {% endif %}
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=19" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=22" defer></script>
 
 </body>
 </html>

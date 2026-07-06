@@ -1,8 +1,10 @@
 from django.db import transaction
 from django.utils import timezone
 
-from system.constants import CheckoutAction, PersonTypeCode
+from system.constants import CheckoutAction, DependentFinancialMode, PersonTypeCode
 from system.models import (
+    Membership,
+    MembershipStatus,
     PaymentProvider,
     PaymentStatus,
     Person,
@@ -143,8 +145,10 @@ def build_dependent_snapshot(owner, cleaned_data):
             cleaned_data.get("dependent_martial_art_last_graduation_at")
         ),
         "dependent_previous_academy": cleaned_data.get("dependent_previous_academy") or "",
+        "financial_mode": cleaned_data.get("financial_mode")
+        or DependentFinancialMode.DEPENDENT_OWN,
         "selected_plan": cleaned_data.get("selected_plan") or "",
-        "selected_plans_payload": _selected_plans_payload(cleaned_data),
+        "selected_plans_payload": _selected_plans_payload(owner, cleaned_data),
         "checkout_action": cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER,
         "selected_products_payload": list(
             cleaned_data.get("selected_products_payload") or []
@@ -222,8 +226,26 @@ def finalize_dependent_registration(owner, cleaned_data, *, pre_registration=Non
     account.save(update_fields=["is_active", "updated_at"])
 
     order = None
-    if not cleaned_data.get("use_family_plan") and cleaned_data.get("selected_plan_obj"):
+    financial_mode = cleaned_data.get("financial_mode") or (
+        DependentFinancialMode.FAMILY_EXISTING
+        if cleaned_data.get("use_family_plan")
+        else DependentFinancialMode.DEPENDENT_OWN
+    )
+    if (
+        financial_mode == DependentFinancialMode.DEPENDENT_OWN
+        and cleaned_data.get("selected_plan_obj")
+    ):
         order = _create_paid_plan_order(
+            dependent,
+            cleaned_data["selected_plan_obj"],
+            checkout_action=cleaned_data.get("checkout_action") or "",
+        )
+    elif (
+        financial_mode == DependentFinancialMode.FAMILY_UPGRADE
+        and cleaned_data.get("selected_plan_obj")
+    ):
+        order = _create_paid_family_upgrade_order(
+            owner,
             dependent,
             cleaned_data["selected_plan_obj"],
             checkout_action=cleaned_data.get("checkout_action") or "",
@@ -277,7 +299,12 @@ def initial_from_pre_registration(pre_registration):
         key: value
         for key, value in snapshot.items()
         if key.startswith("dependent_")
-        or key in {"selected_plan", "checkout_action", "materials_checkout_action"}
+        or key in {
+            "financial_mode",
+            "selected_plan",
+            "checkout_action",
+            "materials_checkout_action",
+        }
     }
     for item in _material_payload_from_snapshot(snapshot):
         variant_id = item.get("variant_id")
@@ -320,6 +347,66 @@ def _create_paid_plan_order(dependent, plan, *, checkout_action=""):
         notes="Dependente ativado após pagamento do pré-cadastro.",
     )
     return order
+
+
+def _create_paid_family_upgrade_order(owner, dependent, plan, *, checkout_action=""):
+    order = RegistrationOrder.objects.create(
+        person=owner,
+        plan=plan,
+        plan_price=plan.price,
+        total=plan.price,
+        payment_status=PaymentStatus.PAID,
+        paid_at=timezone.now(),
+        payment_provider=(
+            PaymentProvider.STRIPE
+            if checkout_action == CheckoutAction.STRIPE_CARD
+            else PaymentProvider.ASAAS
+        ),
+        notes=(
+            "Upgrade familiar confirmado no pré-cadastro de dependente: "
+            f"{dependent.full_name}."
+        ),
+    )
+    apply_order_financials(
+        order,
+        payment_provider=order.payment_provider,
+        mark_available=True,
+    )
+    membership = activate_membership_from_paid_order(
+        order,
+        notes="Titular migrado para plano familiar após pagamento do dependente.",
+    )
+    _retire_previous_owner_memberships(owner, keep_membership=membership)
+    return order
+
+
+def _retire_previous_owner_memberships(owner, *, keep_membership):
+    if keep_membership is None:
+        return
+    now = timezone.now()
+    memberships = (
+        Membership.objects.filter(
+            person=owner,
+            status__in=(
+                MembershipStatus.PENDING,
+                MembershipStatus.ACTIVE,
+                MembershipStatus.PAST_DUE,
+                MembershipStatus.EXEMPTED,
+            ),
+        )
+        .exclude(pk=keep_membership.pk)
+        .order_by("pk")
+    )
+    for membership in memberships:
+        membership.status = MembershipStatus.CANCELED
+        membership.canceled_at = membership.canceled_at or now
+        membership.notes = (
+            (membership.notes or "")
+            + f"\nSubstituída pelo plano familiar #{keep_membership.pk}."
+        ).strip()
+        membership.save(
+            update_fields=("status", "canceled_at", "notes", "updated_at")
+        )
 
 
 def _create_paid_materials_order_if_needed(dependent, pre_registration):
@@ -393,10 +480,24 @@ def _date_to_string(value):
     return value.isoformat()
 
 
-def _selected_plans_payload(cleaned_data):
+def _selected_plans_payload(owner, cleaned_data):
     plan = cleaned_data.get("selected_plan_obj")
     if plan is None:
         return []
+    financial_mode = (
+        cleaned_data.get("financial_mode") or DependentFinancialMode.DEPENDENT_OWN
+    )
+    if financial_mode == DependentFinancialMode.FAMILY_UPGRADE:
+        return [
+            {
+                "person": "owner",
+                "label": (
+                    f"{owner.full_name} + "
+                    f"{cleaned_data.get('dependent_name') or 'Dependente'}"
+                ),
+                "plan_id": plan.pk,
+            }
+        ]
     return [
         {
             "person": "dependent",

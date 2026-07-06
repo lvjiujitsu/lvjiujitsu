@@ -1,17 +1,21 @@
 import json
-from urllib.parse import quote
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.utils.formats import date_format
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views import View
 from django.views.generic import TemplateView
 
+from system.constants import DependentFinancialMode
 from system.forms import DependentProfileForm, DependentRegistrationForm
+from system.models import AuditAction, AuditModule
 from system.models.person import PersonRelationship, PersonRelationshipKind
+from system.services.audit import record_audit_event
 from system.services.dependent_registration import (
     create_dependent_pre_registration,
     finalize_dependent_registration,
@@ -27,7 +31,9 @@ from system.services.registration_checkout import (
     create_pre_registration_materials_payment,
     create_pre_registration_plan_payment,
     get_plan_catalog_payload,
+    get_product_catalog_payload,
 )
+from system.selectors.plan_eligibility import build_eligibility_context_for_person
 from system.views.portal_mixins import PortalLoginRequiredMixin
 
 
@@ -52,8 +58,12 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         owner = self._get_owner()
         pending = get_pending_dependent_pre_registration(request.session, owner)
+        post_data = request.POST
+        if self._payment_confirmed(pending):
+            post_data = request.POST.copy()
+            self._restore_confirmed_payment_post_data(post_data, pending)
         form = DependentRegistrationForm(
-            request.POST,
+            post_data,
             owner=owner,
             pending=pending,
         )
@@ -72,7 +82,15 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         payment_confirmed = self._payment_confirmed(pending)
         materials_confirmed = self._materials_confirmed(pending)
         if payment_confirmed:
-            form.cleaned_data["use_family_plan"] = False
+            pending_snapshot = (pending.form_snapshot or {}) if pending else {}
+            financial_mode = (
+                pending_snapshot.get("financial_mode")
+                or DependentFinancialMode.DEPENDENT_OWN
+            )
+            form.cleaned_data["financial_mode"] = financial_mode
+            form.cleaned_data["use_family_plan"] = (
+                financial_mode == DependentFinancialMode.FAMILY_EXISTING
+            )
             if pending and pending.selected_plan_id:
                 form.cleaned_data["selected_plan"] = str(pending.selected_plan_id)
                 form.cleaned_data["selected_plan_obj"] = pending.selected_plan
@@ -161,6 +179,9 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         context["payment_confirmed"] = self._payment_confirmed(pending)
         context["materials_confirmed"] = self._materials_confirmed(pending)
         context["family_plan_selected"] = self._family_plan_selected(context["form"])
+        context["family_plan_available"] = getattr(
+            context["form"], "family_plan_available", False
+        )
         context["material_groups"] = self._build_material_groups(context["form"])
         context["is_modal"] = self._is_modal_request()
         context["class_catalog_json"] = json.dumps(
@@ -169,10 +190,53 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         context["plan_catalog_json"] = json.dumps(
             get_plan_catalog_payload(), ensure_ascii=False
         )
+        context["product_catalog_json"] = json.dumps(
+            get_product_catalog_payload(), ensure_ascii=False
+        )
+        context["owner_plan_context_json"] = json.dumps(
+            self._build_owner_plan_context(context["owner"]),
+            ensure_ascii=False,
+        )
         context["ibjjf_categories_json"] = json.dumps(
             get_ibjjf_age_category_payload(), ensure_ascii=False
         )
         return context
+
+    def _restore_confirmed_payment_post_data(self, post_data, pending):
+        snapshot = (pending.form_snapshot or {}) if pending else {}
+        financial_mode = (
+            snapshot.get("financial_mode") or DependentFinancialMode.DEPENDENT_OWN
+        )
+        post_data["financial_mode"] = financial_mode
+        if financial_mode == DependentFinancialMode.FAMILY_EXISTING:
+            post_data["use_family_plan"] = "on"
+        elif "use_family_plan" in post_data:
+            del post_data["use_family_plan"]
+
+        selected_plan_id = ""
+        if pending and pending.selected_plan_id:
+            selected_plan_id = str(pending.selected_plan_id)
+        elif snapshot.get("selected_plan"):
+            selected_plan_id = str(snapshot.get("selected_plan"))
+        if selected_plan_id:
+            post_data["selected_plan"] = selected_plan_id
+
+        checkout_action = ""
+        if pending and pending.checkout_action:
+            checkout_action = pending.checkout_action
+        elif snapshot.get("checkout_action"):
+            checkout_action = snapshot.get("checkout_action")
+        if checkout_action:
+            post_data["checkout_action"] = checkout_action
+
+    def _build_owner_plan_context(self, owner):
+        eligibility = build_eligibility_context_for_person(owner)
+        return {
+            "adult_active": eligibility.adult_active,
+            "adult_active_count": eligibility.resolved_adult_active_count,
+            "kids_juvenile_active_count": eligibility.kids_juvenile_active_count,
+            "veteran_eligible": eligibility.veteran_eligible,
+        }
 
     def _is_modal_request(self):
         return (
@@ -246,75 +310,57 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         return groups
 
 
-@method_decorator(xframe_options_sameorigin, name="dispatch")
-class DependentUpdateView(PortalLoginRequiredMixin, TemplateView):
-    template_name = "dependents/dependent_edit.html"
-    done_template_name = "dependents/dependent_registration_done.html"
-
-    def get(self, request, *args, **kwargs):
-        if not self._is_modal_request():
-            return redirect(self._home_modal_url())
-        relationship = self._get_relationship()
-        form = DependentProfileForm(instance=relationship.target_person)
-        return self.render_to_response(
-            self.get_context_data(form=form, dependent=relationship.target_person)
-        )
-
+class DependentProfileUpdateView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        relationship = self._get_relationship()
-        form = DependentProfileForm(request.POST, instance=relationship.target_person)
-        if not form.is_valid():
-            return self.render_to_response(
-                self.get_context_data(form=form, dependent=relationship.target_person)
-            )
-        form.save()
-        messages.success(request, "Dependente atualizado com sucesso.")
-        if self._is_modal_request():
-            return self._render_modal_done("Dependente atualizado com sucesso.")
-        return redirect("system:home")
+        owner = getattr(request, "portal_person", None)
+        if owner is None:
+            return JsonResponse({"success": False, "error": "Não autenticado."}, status=403)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["owner"] = self._get_owner()
-        context["is_modal"] = self._is_modal_request()
-        return context
-
-    def _get_relationship(self):
-        owner = self._get_owner()
-        return get_object_or_404(
+        relationship = get_object_or_404(
             PersonRelationship.objects.select_related("target_person"),
             source_person=owner,
-            target_person_id=self.kwargs["pk"],
+            target_person_id=kwargs["pk"],
             relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
         )
+        dependent = relationship.target_person
+        form = DependentProfileForm(request.POST, instance=dependent)
+        if not form.is_valid():
+            return JsonResponse(
+                {"success": False, "errors": _dependent_form_errors(form)},
+                status=400,
+            )
 
-    def _get_owner(self):
-        owner = getattr(self.request, "portal_person", None)
-        if owner is None:
-            raise PermissionDenied("Edição de dependente exige uma pessoa de portal.")
-        return owner
-
-    def _is_modal_request(self):
-        return (
-            self.request.GET.get("modal") == "1"
-            or self.request.POST.get("_modal") == "1"
+        updated_dependent = form.save()
+        record_audit_event(
+            module=AuditModule.PERSON,
+            action=AuditAction.UPDATE,
+            actor_label=owner.full_name,
+            entity_label=updated_dependent.full_name,
+            summary=f"Cadastro do dependente atualizado por {owner.full_name}.",
         )
+        return JsonResponse({
+            "success": True,
+            "message": "Cadastro atualizado.",
+            "person": _dependent_profile_payload(updated_dependent),
+        })
 
-    def _home_modal_url(self):
-        edit_url = f"{reverse('system:dependent-edit', args=[self.kwargs['pk']])}?modal=1"
-        return (
-            f"{reverse('system:home')}?dependent_modal=1"
-            f"&dependent_modal_url={quote(edit_url, safe='')}"
-        )
 
-    def _render_modal_done(self, message):
-        return render(
-            self.request,
-            self.done_template_name,
-            {
-                "message": message,
-            },
-        )
+def _dependent_form_errors(form):
+    errors = {}
+    for field_name, error_list in form.errors.items():
+        errors[field_name] = [str(error) for error in error_list]
+    return errors
+
+
+def _dependent_profile_payload(person):
+    return {
+        "full_name": person.full_name,
+        "initial": (person.full_name[:1] or "").upper(),
+        "cpf": person.cpf or "",
+        "email": person.email or "",
+        "phone": person.phone or "",
+        "birth_date": date_format(person.birth_date, "SHORT_DATE_FORMAT") if person.birth_date else "",
+    }
 
 
 class DependentRemoveView(PortalLoginRequiredMixin, View):

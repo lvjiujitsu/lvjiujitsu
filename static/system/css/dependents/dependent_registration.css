@@ -116,124 +116,35 @@
   color: var(--muted);
 }
 
-/* ─── Materiais opcionais ────────────────────────────────────────────────────── */
-.materials-catalog {
+/* ─── Plano do dependente ───────────────────────────────────────────────────── */
+.financial-plan-section {
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
-.materials-group {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.materials-group h3 {
+.plan-mode-hint {
   margin: 0;
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
-.materials-list {
-  display: grid;
-  gap: 0.75rem;
+.plan-mode-hint--error {
+  color: var(--danger);
+  font-weight: 700;
 }
 
-.material-item {
-  display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
+.plan-cards--empty-prominent {
+  border: 1px dashed var(--border);
   border-radius: 0.75rem;
   background: var(--input-bg);
 }
 
-.material-item__header,
-.material-variant {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+.financial-plan-section[hidden] {
+  display: none;
 }
 
-.material-item__header {
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  color: var(--text);
-  text-align: left;
-}
-
-.material-item__header strong {
-  font-size: 0.98rem;
-}
-
-.material-item__header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: var(--brand-red);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.material-item__count {
-  background: var(--brand-red);
-  color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-}
-
-.material-item__chevron {
-  color: var(--muted);
-  transition: transform 0.15s;
-  flex-shrink: 0;
-}
-
-.material-item__header[aria-expanded="true"] .material-item__chevron {
-  transform: rotate(180deg);
-}
-
-.material-variants {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.material-variant {
-  min-height: 48px;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 0.65rem;
-  background: var(--panel);
-}
-
-.material-variant__label {
-  display: grid;
-  gap: 0.1rem;
-  color: var(--text);
-  font-weight: 700;
-}
-
-.material-variant__label small {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-
-.material-variant input {
-  width: 5rem;
-  min-height: 40px;
-  text-align: center;
-  padding: 0.55rem;
-}
-
+/* ─── Materiais opcionais ────────────────────────────────────────────────────── */
 .materials-empty {
   padding: 1rem;
   border: 1px dashed var(--border);
@@ -284,16 +195,4 @@
 .review-empty {
   padding: 1rem;
   color: var(--muted);
-}
-
-@media (max-width: 640px) {
-  .material-item__header,
-  .material-variant {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .material-variant input {
-    width: 100%;
-  }
 }

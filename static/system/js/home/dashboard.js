@@ -87,21 +87,29 @@
   }
 
   function bindTabs() {
-    var tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(function (button) {
-      button.addEventListener('click', function () {
-        var index = button.getAttribute('data-tab');
-        tabButtons.forEach(function (item) {
-          item.classList.remove('tab-btn--active');
-          item.setAttribute('aria-selected', 'false');
+    // Cada .tabs[role=tablist] é um grupo independente (identificado por data-tab-group),
+    // permitindo várias seções com abas Bruno/Lucas na mesma página sem conflito de ID.
+    document.querySelectorAll('.tabs[role="tablist"]').forEach(function (tabList) {
+      var group = tabList.getAttribute('data-tab-group') || '';
+      var tabButtons = tabList.querySelectorAll('.tab-btn');
+      var panels = document.querySelectorAll('.tab-panel[data-tab-group="' + group + '"]');
+      tabButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          var index = button.getAttribute('data-tab');
+          tabButtons.forEach(function (item) {
+            item.classList.remove('tab-btn--active');
+            item.setAttribute('aria-selected', 'false');
+          });
+          panels.forEach(function (panel) {
+            panel.classList.remove('tab-panel--active');
+          });
+          button.classList.add('tab-btn--active');
+          button.setAttribute('aria-selected', 'true');
+          var panel = document.querySelector(
+            '.tab-panel[data-tab-group="' + group + '"][data-tab="' + index + '"]'
+          );
+          if (panel) panel.classList.add('tab-panel--active');
         });
-        document.querySelectorAll('.tab-panel').forEach(function (panel) {
-          panel.classList.remove('tab-panel--active');
-        });
-        button.classList.add('tab-btn--active');
-        button.setAttribute('aria-selected', 'true');
-        var panel = document.getElementById('tab-panel-' + index);
-        if (panel) panel.classList.add('tab-panel--active');
       });
     });
   }
@@ -110,10 +118,11 @@
     var kind = button.getAttribute('data-checkin-kind') || 'regular';
     var isSpecial = kind === 'special';
     var id = isSpecial ? button.getAttribute('data-special-id') : button.getAttribute('data-schedule-id');
-    return { kind: kind, isSpecial: isSpecial, id: id };
+    var personId = button.getAttribute('data-person-id') || '';
+    return { kind: kind, isSpecial: isSpecial, id: id, personId: personId };
   }
 
-  function createCheckinButton(kind, id) {
+  function createCheckinButton(kind, id, personId) {
     var button = document.createElement('button');
     button.className = 'btn btn--secondary btn--sm js-checkin';
     button.type = 'button';
@@ -123,6 +132,7 @@
     } else {
       button.setAttribute('data-schedule-id', id);
     }
+    if (personId) button.setAttribute('data-person-id', personId);
     button.textContent = 'Check-in';
     return button;
   }
@@ -150,7 +160,7 @@
     return svg;
   }
 
-  function createPendingCheckinGroup(kind, id) {
+  function createPendingCheckinGroup(kind, id, personId) {
     var group = document.createElement('div');
     group.className = 'pending-checkin';
     group.appendChild(createStatusPill('Aguardando aprovação', 'warning'));
@@ -164,6 +174,7 @@
     } else {
       button.setAttribute('data-schedule-id', id);
     }
+    if (personId) button.setAttribute('data-person-id', personId);
     button.setAttribute('aria-label', 'Desfazer check-in');
     button.appendChild(createUndoIcon());
 
@@ -200,6 +211,7 @@
     }
 
     payload[meta.isSpecial ? 'special_id' : 'schedule_id'] = meta.id;
+    if (meta.personId) payload.person_id = meta.personId;
     button.disabled = true;
     button.textContent = 'Aguardando...';
 
@@ -211,7 +223,7 @@
           showCheckinError(button, result.data.error);
           return;
         }
-        button.replaceWith(createPendingCheckinGroup(meta.kind, meta.id));
+        button.replaceWith(createPendingCheckinGroup(meta.kind, meta.id, meta.personId));
       })
       .catch(function () {
         button.disabled = false;
@@ -232,6 +244,7 @@
     }
 
     payload[meta.isSpecial ? 'special_id' : 'schedule_id'] = meta.id;
+    if (meta.personId) payload.person_id = meta.personId;
     button.disabled = true;
     if (label) label.textContent = 'Desfazendo...';
 
@@ -245,7 +258,7 @@
         }
 
         var group = button.closest('.pending-checkin');
-        var replacement = createCheckinButton(meta.kind, meta.id);
+        var replacement = createCheckinButton(meta.kind, meta.id, meta.personId);
         if (group) {
           group.replaceWith(replacement);
         } else {
@@ -452,11 +465,17 @@
   function bindClientProfileModal() {
     var overlay = document.getElementById('client-profile-modal');
     if (!overlay) return;
-    var viewPanel = overlay.querySelector('[data-client-profile-view]');
-    var editForm = overlay.querySelector('.js-client-profile-form');
     var deleteForm = overlay.querySelector('.js-client-profile-delete');
-    var messageEl = overlay.querySelector('.client-profile-form__message');
     var deleteError = overlay.querySelector('[data-client-profile-delete-error]');
+    var nameEl = overlay.querySelector('[data-client-profile-name]');
+    var avatarEl = overlay.querySelector('[data-client-profile-avatar]');
+    var roleBadgesEl = overlay.querySelector('[data-client-profile-role-badges]');
+    var ownerRoleBadgesHtml = roleBadgesEl ? roleBadgesEl.innerHTML : '';
+
+    function getActivePanel() {
+      return overlay.querySelector('.tab-panel[data-tab-group="client-profile"].tab-panel--active')
+        || overlay.querySelector('.tab-panel[data-tab-group="client-profile"]');
+    }
 
     function openModal() {
       overlay.removeAttribute('hidden');
@@ -466,69 +485,105 @@
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.classList.remove('modal-open');
-      showView();
+      resetAllPanelsToView();
     }
 
-    function showView() {
-      if (viewPanel) viewPanel.removeAttribute('hidden');
-      if (editForm) editForm.setAttribute('hidden', '');
+    function resetAllPanelsToView() {
+      overlay.querySelectorAll('.tab-panel[data-tab-group="client-profile"]').forEach(function (panel) {
+        showView(panel);
+      });
       if (deleteForm) deleteForm.setAttribute('hidden', '');
-      clearClientProfileErrors();
-      if (messageEl) messageEl.setAttribute('hidden', '');
       if (deleteError) deleteError.textContent = '';
     }
 
-    function showEdit() {
+    function showView(panel) {
+      var viewPanel = panel.querySelector('[data-client-profile-view]');
+      var editForm = panel.querySelector('.js-client-profile-form');
+      var messageEl = panel.querySelector('.client-profile-form__message');
+      if (viewPanel) viewPanel.removeAttribute('hidden');
+      if (editForm) editForm.setAttribute('hidden', '');
+      clearClientProfileErrors(panel);
+      if (messageEl) messageEl.setAttribute('hidden', '');
+      if (deleteForm) deleteForm.setAttribute('hidden', '');
+      if (deleteError) deleteError.textContent = '';
+    }
+
+    function showEdit(panel) {
+      var viewPanel = panel.querySelector('[data-client-profile-view]');
+      var editForm = panel.querySelector('.js-client-profile-form');
+      var messageEl = panel.querySelector('.client-profile-form__message');
       if (viewPanel) viewPanel.setAttribute('hidden', '');
       if (deleteForm) deleteForm.setAttribute('hidden', '');
       if (editForm) editForm.removeAttribute('hidden');
-      clearClientProfileErrors();
+      clearClientProfileErrors(panel);
       if (messageEl) messageEl.setAttribute('hidden', '');
     }
 
-    function showDelete() {
+    function showDelete(panel) {
+      var viewPanel = panel.querySelector('[data-client-profile-view]');
+      var editForm = panel.querySelector('.js-client-profile-form');
       if (viewPanel) viewPanel.setAttribute('hidden', '');
       if (editForm) editForm.setAttribute('hidden', '');
       if (deleteForm) deleteForm.removeAttribute('hidden');
       if (deleteError) deleteError.textContent = '';
     }
 
-    function clearClientProfileErrors() {
-      overlay.querySelectorAll('[data-client-profile-error]').forEach(function (node) {
+    function clearClientProfileErrors(panel) {
+      panel.querySelectorAll('[data-client-profile-error]').forEach(function (node) {
         node.textContent = '';
       });
+      var messageEl = panel.querySelector('.client-profile-form__message');
       if (messageEl) {
         messageEl.textContent = '';
         messageEl.setAttribute('hidden', '');
       }
     }
 
-    function setClientProfileErrors(errors) {
-      clearClientProfileErrors();
+    function setClientProfileErrors(panel, errors) {
+      clearClientProfileErrors(panel);
+      var messageEl = panel.querySelector('.client-profile-form__message');
       if (errors && errors.__all__ && messageEl) {
         messageEl.textContent = errors.__all__.join(' ');
         messageEl.removeAttribute('hidden');
       }
       Object.keys(errors || {}).forEach(function (fieldName) {
         if (fieldName === '__all__') return;
-        var node = overlay.querySelector('[data-client-profile-error="' + fieldName + '"]');
+        var node = panel.querySelector('[data-client-profile-error="' + fieldName + '"]');
         if (node) node.textContent = (errors[fieldName] || []).join(' ');
       });
     }
 
-    function setText(selector, value) {
-      var node = overlay.querySelector(selector);
+    function setText(panel, selector, value) {
+      var node = panel.querySelector(selector);
       if (node) node.textContent = value || '—';
     }
 
-    function updateClientProfileDisplay(person) {
+    function updateHeader(panel, person) {
+      if (nameEl) nameEl.textContent = (person && person.full_name) || panel.getAttribute('data-person-full-name') || '';
+      if (avatarEl) {
+        var initial = (person && person.initial)
+          || (panel.getAttribute('data-person-full-name') || '').slice(0, 1).toUpperCase();
+        avatarEl.textContent = initial;
+      }
+      if (roleBadgesEl) {
+        var role = panel.getAttribute('data-person-role');
+        if (role === 'Titular') {
+          roleBadgesEl.innerHTML = ownerRoleBadgesHtml;
+        } else {
+          roleBadgesEl.innerHTML = '<span class="role-badge">Dependente</span>';
+        }
+      }
+    }
+
+    function updateClientProfileDisplay(panel, person) {
       if (!person) return;
-      setText('[data-client-profile-name]', person.full_name);
-      setText('[data-client-profile-email]', person.email);
-      setText('[data-client-profile-phone]', person.phone);
-      setText('[data-client-profile-birth-date]', person.birth_date);
-      setText('[data-client-profile-address]', person.address);
-      setText('[data-client-profile-avatar]', person.initial);
+      setText(panel, '[data-client-profile-cpf]', person.cpf);
+      setText(panel, '[data-client-profile-email]', person.email);
+      setText(panel, '[data-client-profile-phone]', person.phone);
+      setText(panel, '[data-client-profile-birth-date]', person.birth_date);
+      setText(panel, '[data-client-profile-address]', person.address);
+      if (person.full_name) panel.setAttribute('data-person-full-name', person.full_name);
+      updateHeader(panel, person);
     }
 
     document.addEventListener('click', function (e) {
@@ -536,6 +591,8 @@
       if (!openBtn) return;
       e.preventDefault();
       openModal();
+      var activePanel = getActivePanel();
+      if (activePanel) updateHeader(activePanel, null);
     });
 
     document.addEventListener('click', function (e) {
@@ -544,30 +601,43 @@
       closeModal();
     });
 
+    var tabList = overlay.querySelector('.tabs[data-tab-group="client-profile"]');
+    if (tabList) {
+      tabList.querySelectorAll('.tab-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+          resetAllPanelsToView();
+          var activePanel = getActivePanel();
+          if (activePanel) updateHeader(activePanel, null);
+        });
+      });
+    }
+
     document.addEventListener('click', function (e) {
       if (!overlay.contains(e.target)) return;
+      var panel = e.target.closest('.tab-panel[data-tab-group="client-profile"]') || getActivePanel();
+      if (!panel) return;
       if (e.target.closest('.js-client-profile-edit')) {
-        showEdit();
+        showEdit(panel);
         return;
       }
       if (e.target.closest('.js-client-profile-cancel')) {
-        showView();
+        showView(panel);
         return;
       }
       if (e.target.closest('.js-client-profile-delete-open')) {
-        showDelete();
+        showDelete(panel);
         return;
       }
       if (e.target.closest('.js-client-profile-delete-cancel')) {
-        showView();
+        showView(panel);
       }
     });
 
-    if (editForm) {
+    overlay.querySelectorAll('.js-client-profile-form').forEach(function (editForm) {
       editForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        clearClientProfileErrors();
-        if (messageEl) messageEl.setAttribute('hidden', '');
+        var panel = editForm.closest('.tab-panel[data-tab-group="client-profile"]');
+        clearClientProfileErrors(panel);
         var submit = editForm.querySelector('button[type="submit"]');
         if (submit) {
           submit.disabled = true;
@@ -589,25 +659,26 @@
               submit.textContent = 'Salvar alterações';
             }
             if (!result.ok || !result.data.success) {
-              setClientProfileErrors(result.data.errors || {});
+              setClientProfileErrors(panel, result.data.errors || {});
               return;
             }
-            updateClientProfileDisplay(result.data.person);
+            updateClientProfileDisplay(panel, result.data.person);
+            var messageEl = panel.querySelector('.client-profile-form__message');
             if (messageEl) {
               messageEl.textContent = result.data.message || 'Cadastro atualizado.';
               messageEl.removeAttribute('hidden');
             }
-            showView();
+            showView(panel);
           })
           .catch(function () {
             if (submit) {
               submit.disabled = false;
               submit.textContent = 'Salvar alterações';
             }
-            setClientProfileErrors({ __all__: ['Falha de conexão ao salvar.'] });
+            setClientProfileErrors(panel, { __all__: ['Falha de conexão ao salvar.'] });
           });
       });
-    }
+    });
 
     if (deleteForm) {
       deleteForm.addEventListener('submit', function (e) {
@@ -655,46 +726,6 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
-    });
-  }
-
-  function bindDependentProfileModals() {
-    var overlays = document.querySelectorAll('.dependent-profile-modal-overlay');
-    if (!overlays.length) return;
-
-    function closeModal(overlay) {
-      overlay.setAttribute('hidden', '');
-      document.body.classList.remove('modal-open');
-    }
-
-    document.addEventListener('click', function (e) {
-      var openBtn = e.target.closest('.js-open-dependent-profile');
-      if (openBtn) {
-        var target = document.getElementById(openBtn.getAttribute('data-target'));
-        if (target) {
-          target.removeAttribute('hidden');
-          document.body.classList.add('modal-open');
-        }
-        return;
-      }
-      var closeBtn = e.target.closest('.js-close-dependent-profile');
-      if (closeBtn) {
-        var overlay = closeBtn.closest('.dependent-profile-modal-overlay');
-        if (overlay) closeModal(overlay);
-      }
-    });
-
-    overlays.forEach(function (overlay) {
-      overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) closeModal(overlay);
-      });
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape') return;
-      overlays.forEach(function (overlay) {
-        if (!overlay.hasAttribute('hidden')) closeModal(overlay);
-      });
     });
   }
 
@@ -865,6 +896,22 @@
     var currentPage = 1;
     var filteredItems = items.slice();
 
+    var activePersonId = '';
+
+    function getActivePersonId() {
+      var tabList = document.querySelector('.tabs[data-tab-group="classes"]');
+      if (!tabList) return '';
+      var activeBtn = tabList.querySelector('.tab-btn--active');
+      return activeBtn ? (activeBtn.getAttribute('data-person-id') || '') : '';
+    }
+
+    function personScopedItems() {
+      if (!activePersonId) return items;
+      return items.filter(function (item) {
+        return item.getAttribute('data-person-filter') === activePersonId;
+      });
+    }
+
     function addOption(select, value, label) {
       if (!select || !value) return;
       var option = document.createElement('option');
@@ -873,10 +920,15 @@
       select.appendChild(option);
     }
 
-    function uniqueOptions(attribute, labelAttribute) {
+    function clearOptions(select) {
+      if (!select) return;
+      while (select.options.length > 1) select.remove(1);
+    }
+
+    function uniqueOptions(source, attribute, labelAttribute) {
       var values = [];
       var seen = {};
-      items.forEach(function (item) {
+      source.forEach(function (item) {
         var value = item.getAttribute(attribute) || '';
         if (!value || seen[value]) return;
         seen[value] = true;
@@ -891,16 +943,21 @@
     }
 
     function populateFilters() {
-      uniqueOptions('data-class-filter').forEach(function (option) {
+      var source = personScopedItems();
+      clearOptions(classFilter);
+      clearOptions(teacherFilter);
+      clearOptions(monthFilter);
+      clearOptions(yearFilter);
+      uniqueOptions(source, 'data-class-filter').forEach(function (option) {
         addOption(classFilter, option.value, option.label);
       });
-      uniqueOptions('data-teacher-filter').forEach(function (option) {
+      uniqueOptions(source, 'data-teacher-filter').forEach(function (option) {
         addOption(teacherFilter, option.value, option.label);
       });
-      uniqueOptions('data-month-filter', 'data-month-label').forEach(function (option) {
+      uniqueOptions(source, 'data-month-filter', 'data-month-label').forEach(function (option) {
         addOption(monthFilter, option.value, option.label);
       });
-      uniqueOptions('data-year-filter').forEach(function (option) {
+      uniqueOptions(source, 'data-year-filter').forEach(function (option) {
         addOption(yearFilter, option.value, option.label);
       });
     }
@@ -935,7 +992,7 @@
       var selectedTeacher = teacherFilter ? teacherFilter.value : '';
       var selectedMonth = monthFilter ? monthFilter.value : '';
       var selectedYear = yearFilter ? yearFilter.value : '';
-      filteredItems = items.filter(function (item) {
+      filteredItems = personScopedItems().filter(function (item) {
         return (!selectedClass || item.getAttribute('data-class-filter') === selectedClass)
           && (!selectedTeacher || item.getAttribute('data-teacher-filter') === selectedTeacher)
           && (!selectedMonth || item.getAttribute('data-month-filter') === selectedMonth)
@@ -954,9 +1011,15 @@
     }
 
     function openModal() {
+      activePersonId = getActivePersonId();
       overlay.removeAttribute('hidden');
       document.body.style.overflow = 'hidden';
       currentPage = 1;
+      if (classFilter) classFilter.value = '';
+      if (teacherFilter) teacherFilter.value = '';
+      if (monthFilter) monthFilter.value = '';
+      if (yearFilter) yearFilter.value = '';
+      populateFilters();
       applyFilter();
       if (classFilter) classFilter.focus();
     }
@@ -996,27 +1059,34 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
     });
-
-    populateFilters();
-    updateList();
   }
 
   function bindGradHistoryModal() {
     var overlay = document.getElementById('grad-history-modal');
     if (!overlay) return;
 
+    var titleEl = document.getElementById('modal-grad-title');
+    var defaultTitle = titleEl ? titleEl.textContent : 'Histórico de graduações';
+
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.style.overflow = '';
     }
 
-    var openBtn = document.querySelector('.js-open-grad-modal');
-    if (openBtn) {
-      openBtn.addEventListener('click', function () {
-        overlay.removeAttribute('hidden');
-        document.body.style.overflow = 'hidden';
+    document.addEventListener('click', function (e) {
+      var openBtn = e.target.closest('.js-open-grad-modal');
+      if (!openBtn) return;
+      var historyFor = openBtn.getAttribute('data-history-for');
+      var personName = openBtn.getAttribute('data-person-name');
+      overlay.querySelectorAll('.grad-history-list').forEach(function (list) {
+        list.hidden = list.getAttribute('data-history-for') !== historyFor;
       });
-    }
+      if (titleEl) {
+        titleEl.textContent = personName ? defaultTitle + ' — ' + personName : defaultTitle;
+      }
+      overlay.removeAttribute('hidden');
+      document.body.style.overflow = 'hidden';
+    });
 
     var closeBtn = overlay.querySelector('.js-close-grad-modal');
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -1464,7 +1534,6 @@
   bindCalendarModal();
   bindClientProfileModal();
   bindDependentRegistrationModal();
-  bindDependentProfileModals();
   bindDependentRemoveConfirm();
   bindSpecialClassModal();
   bindPresenceModal();

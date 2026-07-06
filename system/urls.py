@@ -93,9 +93,9 @@ from system.views.home_views import (
     HomeView,
 )
 from system.views.dependent_views import (
+    DependentProfileUpdateView,
     DependentRegistrationView,
     DependentRemoveView,
-    DependentUpdateView,
 )
 from system.views.person_views import (
     PersonCreateView,
@@ -208,7 +208,7 @@ urlpatterns = [
     path("account/profile/update/", ClientProfileUpdateView.as_view(), name="client-profile-update"),
     path("account/profile/deactivate/", ClientProfileDeactivateView.as_view(), name="client-profile-deactivate"),
     path("dependents/add/", DependentRegistrationView.as_view(), name="dependent-add"),
-    path("dependents/<int:pk>/edit/", DependentUpdateView.as_view(), name="dependent-edit"),
+    path("dependents/<int:pk>/profile/update/", DependentProfileUpdateView.as_view(), name="dependent-profile-update"),
     path("dependents/<int:pk>/remove/", DependentRemoveView.as_view(), name="dependent-remove"),
     path("requests/admin-access/create/", PortalAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-request-create"),
     path("requests/admin-access/", AdministrativeAccessRequestQueueView.as_view(), name="administrative-access-request-list"),

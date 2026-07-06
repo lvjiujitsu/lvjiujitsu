@@ -138,3 +138,5 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-121-home-cliente-dependentes-mensalidades-crud.md](PRD-121-home-cliente-dependentes-mensalidades-crud.md) | Home do cliente com dependentes, mensalidades e CRUD modal |
 | [PRD-122-desfazer-checkin-pendente-aluno.md](PRD-122-desfazer-checkin-pendente-aluno.md) | Desfazer check-in pendente do aluno |
 | [PRD-123-modal-conta-cliente-editar-excluir.md](PRD-123-modal-conta-cliente-editar-excluir.md) | Modal da conta do cliente com edição e exclusão |
+| [PRD-124-dependente-upgrade-plano-familiar.md](PRD-124-dependente-upgrade-plano-familiar.md) | Dependente com upgrade para plano familiar |
+| [PRD-125-sincronizacao-upgrade-familiar-stripe.md](PRD-125-sincronizacao-upgrade-familiar-stripe.md) | Sincronizacao remota do upgrade familiar Stripe |

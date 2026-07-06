@@ -1,4 +1,4 @@
-{% if graduation_progress or belt_rank %}
+{% if graduation_tabs %}
 <section class="section" aria-labelledby="grad-title">
   <div class="section__header">
     <div class="section__title-row">
@@ -15,113 +15,142 @@
   </div>
   <div class="section__body" id="section-grad">
     <div class="panel">
-      {% if belt_rank %}
-      <div class="grad-card">
-        <div class="belt-visual" aria-label="{{ belt_rank.display_name }}{% if belt_grade_number %}, {{ belt_grade_number }}º grau{% endif %}">
-          <svg class="belt-visual__svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" role="img" aria-hidden="true">
-            <defs><clipPath id="belt-clip"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
-            <g clip-path="url(#belt-clip)">
-              <rect x="0" y="0" width="320" height="36" fill="{{ belt_rank.color_hex }}"/>
-              <rect x="232" y="0" width="88" height="36" fill="{{ belt_rank.tip_color_hex }}"/>
-              {% for stripe in belt_stripes %}{% if stripe.filled %}
-              <rect x="{{ stripe.x }}" y="5" width="12" height="26" fill="{{ belt_rank.stripe_color_hex }}" rx="2" ry="2"/>
-              {% endif %}{% endfor %}
-            </g>
-          </svg>
-        </div>
-        <div class="grad-compact-header">
-          <div class="grad-compact-info">
-            <span class="grad-compact-info__label">Minha faixa</span>
-            <span class="grad-compact-info__rank">
-              {{ belt_rank.display_name }}{% if belt_grade_number %} grau {{ belt_grade_number }}{% endif %}
-            </span>
+      {% if graduation_tabs|length > 1 %}
+      <div class="tabs" role="tablist" aria-label="Dependentes" data-tab-group="grad">
+        {% for tab in graduation_tabs %}
+        <button
+          class="tab-btn {% if tab.is_active_tab %}tab-btn--active{% endif %}"
+          role="tab"
+          aria-selected="{% if tab.is_active_tab %}true{% else %}false{% endif %}"
+          aria-controls="grad-tab-panel-{{ forloop.counter }}"
+          id="grad-tab-{{ forloop.counter }}"
+          data-tab="{{ forloop.counter }}"
+          type="button"
+        >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% for tab in graduation_tabs %}
+      <div
+        class="tab-panel {% if tab.is_active_tab %}tab-panel--active{% endif %}"
+        id="grad-tab-panel-{{ forloop.counter }}"
+        role="tabpanel"
+        aria-labelledby="grad-tab-{{ forloop.counter }}"
+        data-tab-group="grad"
+        data-tab="{{ forloop.counter }}"
+      >
+        {% if tab.belt_rank %}
+        <div class="grad-card">
+          <div class="belt-visual" aria-label="{{ tab.belt_rank.display_name }}{% if tab.belt_grade_number %}, {{ tab.belt_grade_number }}º grau{% endif %}">
+            <svg class="belt-visual__svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" role="img" aria-hidden="true">
+              <defs><clipPath id="belt-clip-{{ forloop.counter }}"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
+              <g clip-path="url(#belt-clip-{{ forloop.counter }})">
+                <rect x="0" y="0" width="320" height="36" fill="{{ tab.belt_rank.color_hex }}"/>
+                <rect x="232" y="0" width="88" height="36" fill="{{ tab.belt_rank.tip_color_hex }}"/>
+                {% for stripe in tab.belt_stripes %}{% if stripe.filled %}
+                <rect x="{{ stripe.x }}" y="5" width="12" height="26" fill="{{ tab.belt_rank.stripe_color_hex }}" rx="2" ry="2"/>
+                {% endif %}{% endfor %}
+              </g>
+            </svg>
           </div>
-          {% if graduation_progress %}
-          <button class="btn btn--secondary btn--sm js-grad-details-toggle"
-                  type="button"
-                  aria-expanded="false"
-                  aria-controls="grad-details-panel">
-            Mais sobre a graduação <span class="js-grad-toggle-icon" aria-hidden="true">+</span>
-          </button>
-          {% endif %}
-        </div>
-        {% if graduation_progress %}
-        <div class="grad-details" id="grad-details-panel" hidden>
-          {% if graduation_progress.current_graduation_date %}
-          <p class="grad-awarded">Faixa atual desde {{ graduation_progress.current_graduation_date|date:"d/m/Y" }}</p>
-          {% endif %}
-          {% if graduation_progress.applicable_rule %}
-          <div class="grad-stats">
-            <div class="grad-stat">
-              <div class="grad-stat__label">Tempo na faixa atual</div>
-              <div class="grad-stat__value">{{ graduation_progress.months_in_current_grade }}<small> {% if graduation_progress.months_in_current_grade == 1 %}mês{% else %}meses{% endif %}</small></div>
-              {% if graduation_progress.required_months > 0 %}
-              <div class="grad-stat__rule">(regra IBJJF tempo mínimo: {{ graduation_progress.required_months }} meses)</div>
-              {% if graduation_progress.months_remaining > 0 %}
-              <div class="grad-stat__detail">faltam {{ graduation_progress.months_remaining }} {% if graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} para habilitar a graduação por tempo mínimo</div>
-              {% endif %}
-              {% endif %}
+          <div class="grad-compact-header">
+            <div class="grad-compact-info">
+              <span class="grad-compact-info__label">{% if tab.is_active_tab %}Minha faixa{% else %}Faixa do dependente{% endif %}</span>
+              <span class="grad-compact-info__rank">
+                {{ tab.belt_rank.display_name }}{% if tab.belt_grade_number %} grau {{ tab.belt_grade_number }}{% endif %}
+              </span>
             </div>
-            {% if is_instructor %}
-            <div class="grad-stat">
-              <div class="grad-stat__label">Aulas presentes</div>
-              <div class="grad-stat__value">{{ instructor_attendance_count }}<small> aulas</small></div>
-              <div class="grad-stat__detail">presenças registradas pelo professor</div>
-            </div>
-            {% else %}
-            <div class="grad-stat">
-              <div class="grad-stat__label">Aulas aprovadas</div>
-              <div class="grad-stat__value">{{ graduation_progress.approved_classes_in_window }}<small> aulas</small></div>
-              {% if graduation_progress.required_classes > 0 %}
-              <div class="grad-stat__rule">(regra IBJJF mínimo: {{ graduation_progress.required_classes }} aulas)</div>
-              {% if graduation_progress.missing_classes > 0 %}
-              <div class="grad-stat__detail">faltam {{ graduation_progress.missing_classes }} {% if graduation_progress.missing_classes == 1 %}aula{% else %}aulas{% endif %} para habilitar a graduação por frequência</div>
-              {% endif %}
-              {% endif %}
-            </div>
-            {% endif %}
-          </div>
-          {% endif %}
-          <div class="progress-label">
-            <span class="progress-label__name">Próximo grau</span>
-            <span class="progress-label__pct">{{ graduation_progress.progress_pct|floatformat:0 }}%</span>
-          </div>
-          <div class="progress-bar" role="progressbar"
-               aria-valuenow="{{ graduation_progress.progress_pct|floatformat:0 }}"
-               aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar__fill{% if graduation_progress.is_eligible %} progress-bar__fill--success{% endif %}"
-                 style="width: {{ graduation_progress.progress_pct|floatformat:0 }}%"></div>
-          </div>
-          {% if graduation_progress.is_eligible %}
-          <p class="grad-message grad-message--eligible">Habilitado para a próxima graduação.</p>
-          {% elif graduation_progress.months_remaining > 0 or graduation_progress.missing_classes > 0 or graduation_progress.blocker %}
-          <p class="grad-message grad-message--blocker">
-            {% if graduation_progress.months_remaining > 0 and graduation_progress.missing_classes > 0 %}
-              Faltam {{ graduation_progress.months_remaining }} {% if graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa e {{ graduation_progress.missing_classes }} {% if graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
-            {% elif graduation_progress.months_remaining > 0 %}
-              Faltam {{ graduation_progress.months_remaining }} {% if graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa para habilitar a próxima graduação.
-            {% elif graduation_progress.missing_classes > 0 %}
-              Faltam {{ graduation_progress.missing_classes }} {% if graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
-            {% elif graduation_progress.blocker %}
-              {{ graduation_progress.blocker }}
-            {% endif %}
-          </p>
-          {% endif %}
-          {% if graduation_history %}
-          <div class="grad-details__footer">
-            <button class="btn btn--secondary btn--sm js-open-grad-modal" type="button" aria-haspopup="dialog">
-              Ver histórico
+            {% if tab.graduation_progress %}
+            <button class="btn btn--secondary btn--sm js-grad-details-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="grad-details-panel-{{ forloop.counter }}">
+              Mais sobre a graduação <span class="js-grad-toggle-icon" aria-hidden="true">+</span>
             </button>
+            {% endif %}
+          </div>
+          {% if tab.graduation_progress %}
+          <div class="grad-details" id="grad-details-panel-{{ forloop.counter }}" hidden>
+            {% if tab.graduation_progress.current_graduation_date %}
+            <p class="grad-awarded">Faixa atual desde {{ tab.graduation_progress.current_graduation_date|date:"d/m/Y" }}</p>
+            {% endif %}
+            {% if tab.graduation_progress.applicable_rule %}
+            <div class="grad-stats">
+              <div class="grad-stat">
+                <div class="grad-stat__label">Tempo na faixa atual</div>
+                <div class="grad-stat__value">{{ tab.graduation_progress.months_in_current_grade }}<small> {% if tab.graduation_progress.months_in_current_grade == 1 %}mês{% else %}meses{% endif %}</small></div>
+                {% if tab.graduation_progress.required_months > 0 %}
+                <div class="grad-stat__rule">(regra IBJJF tempo mínimo: {{ tab.graduation_progress.required_months }} meses)</div>
+                {% if tab.graduation_progress.months_remaining > 0 %}
+                <div class="grad-stat__detail">faltam {{ tab.graduation_progress.months_remaining }} {% if tab.graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} para habilitar a graduação por tempo mínimo</div>
+                {% endif %}
+                {% endif %}
+              </div>
+              {% if tab.is_active_tab and is_instructor %}
+              <div class="grad-stat">
+                <div class="grad-stat__label">Aulas presentes</div>
+                <div class="grad-stat__value">{{ instructor_attendance_count }}<small> aulas</small></div>
+                <div class="grad-stat__detail">presenças registradas pelo professor</div>
+              </div>
+              {% else %}
+              <div class="grad-stat">
+                <div class="grad-stat__label">Aulas aprovadas</div>
+                <div class="grad-stat__value">{{ tab.graduation_progress.approved_classes_in_window }}<small> aulas</small></div>
+                {% if tab.graduation_progress.required_classes > 0 %}
+                <div class="grad-stat__rule">(regra IBJJF mínimo: {{ tab.graduation_progress.required_classes }} aulas)</div>
+                {% if tab.graduation_progress.missing_classes > 0 %}
+                <div class="grad-stat__detail">faltam {{ tab.graduation_progress.missing_classes }} {% if tab.graduation_progress.missing_classes == 1 %}aula{% else %}aulas{% endif %} para habilitar a graduação por frequência</div>
+                {% endif %}
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+            <div class="progress-label">
+              <span class="progress-label__name">Próximo grau</span>
+              <span class="progress-label__pct">{{ tab.graduation_progress.progress_pct|floatformat:0 }}%</span>
+            </div>
+            <div class="progress-bar" role="progressbar"
+                 aria-valuenow="{{ tab.graduation_progress.progress_pct|floatformat:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-bar__fill{% if tab.graduation_progress.is_eligible %} progress-bar__fill--success{% endif %}"
+                   style="width: {{ tab.graduation_progress.progress_pct|floatformat:0 }}%"></div>
+            </div>
+            {% if tab.graduation_progress.is_eligible %}
+            <p class="grad-message grad-message--eligible">Habilitado para a próxima graduação.</p>
+            {% elif tab.graduation_progress.months_remaining > 0 or tab.graduation_progress.missing_classes > 0 or tab.graduation_progress.blocker %}
+            <p class="grad-message grad-message--blocker">
+              {% if tab.graduation_progress.months_remaining > 0 and tab.graduation_progress.missing_classes > 0 %}
+                Faltam {{ tab.graduation_progress.months_remaining }} {% if tab.graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa e {{ tab.graduation_progress.missing_classes }} {% if tab.graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
+              {% elif tab.graduation_progress.months_remaining > 0 %}
+                Faltam {{ tab.graduation_progress.months_remaining }} {% if tab.graduation_progress.months_remaining == 1 %}mês{% else %}meses{% endif %} na faixa para habilitar a próxima graduação.
+              {% elif tab.graduation_progress.missing_classes > 0 %}
+                Faltam {{ tab.graduation_progress.missing_classes }} {% if tab.graduation_progress.missing_classes == 1 %}aula aprovada{% else %}aulas aprovadas{% endif %} para habilitar a próxima graduação.
+              {% elif tab.graduation_progress.blocker %}
+                {{ tab.graduation_progress.blocker }}
+              {% endif %}
+            </p>
+            {% endif %}
+            {% if tab.graduation_history %}
+            <div class="grad-details__footer">
+              <button class="btn btn--secondary btn--sm js-open-grad-modal" type="button" aria-haspopup="dialog"
+                      data-history-for="{{ forloop.counter }}"
+                      data-person-name="{{ tab.person.full_name }}">
+                Ver histórico
+              </button>
+            </div>
+            {% endif %}
           </div>
           {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state" role="status">
+          <p class="empty-state__text">Sem dados de graduação disponíveis.</p>
         </div>
         {% endif %}
       </div>
-      {% else %}
-      <div class="empty-state" role="status">
-        <p class="empty-state__text">Sem dados de graduação disponíveis.</p>
-      </div>
-      {% endif %}
+      {% endfor %}
     </div>
   </div>
 </section>

@@ -16,6 +16,7 @@ from system.constants import (
 )
 from system.models import AuditAction, AuditModule, ClassSchedule, SpecialClass
 from system.models.calendar import ClassCheckin, SpecialClassCheckin
+from system.models.person import Person, PersonRelationship, PersonRelationshipKind
 from system.services.audit import record_audit_event
 from system.services.class_calendar import (
     assign_session_substitute,
@@ -103,10 +104,26 @@ class CalendarView(PortalRoleRequiredMixin, TemplateView):
 StudentScheduleView = CalendarView
 
 
+def _resolve_checkin_actor(portal_person, body):
+    """Resolve qual Person deve registrar o check-in: o titular logado ou um
+    dependente sob sua responsabilidade, conforme `person_id` opcional no payload."""
+    person_id = body.get("person_id")
+    if not person_id or int(person_id) == portal_person.pk:
+        return portal_person
+    is_dependent = PersonRelationship.objects.filter(
+        source_person=portal_person,
+        target_person_id=person_id,
+        relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+    ).exists()
+    if not is_dependent:
+        raise ValueError("Pessoa inválida para este check-in.")
+    return Person.objects.get(pk=person_id, is_active=True)
+
+
 class StudentCheckinView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        person = getattr(request, "portal_person", None)
-        if not person:
+        portal_person = getattr(request, "portal_person", None)
+        if not portal_person:
             return JsonResponse({"error": "Não autenticado."}, status=403)
 
         try:
@@ -114,6 +131,11 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
             schedule_id = int(body["schedule_id"])
         except (json.JSONDecodeError, KeyError, ValueError):
             return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            person = _resolve_checkin_actor(portal_person, body)
+        except (ValueError, Person.DoesNotExist):
+            return JsonResponse({"error": "Pessoa inválida para este check-in."}, status=403)
 
         try:
             checkin, created = perform_checkin(person, schedule_id)
@@ -131,8 +153,8 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
 
 class StudentCheckinCancelView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        person = getattr(request, "portal_person", None)
-        if not person:
+        portal_person = getattr(request, "portal_person", None)
+        if not portal_person:
             return JsonResponse({"error": "Não autenticado."}, status=403)
 
         try:
@@ -140,6 +162,11 @@ class StudentCheckinCancelView(PortalLoginRequiredMixin, View):
             schedule_id = int(body["schedule_id"])
         except (json.JSONDecodeError, KeyError, ValueError):
             return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            person = _resolve_checkin_actor(portal_person, body)
+        except (ValueError, Person.DoesNotExist):
+            return JsonResponse({"error": "Pessoa inválida para este check-in."}, status=403)
 
         try:
             _, changed = cancel_student_checkin(person, schedule_id)
@@ -157,8 +184,8 @@ class StudentCheckinCancelView(PortalLoginRequiredMixin, View):
 
 class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        person = getattr(request, "portal_person", None)
-        if not person:
+        portal_person = getattr(request, "portal_person", None)
+        if not portal_person:
             return JsonResponse({"error": "Não autenticado."}, status=403)
 
         try:
@@ -166,6 +193,11 @@ class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
             special_id = int(body["special_id"])
         except (json.JSONDecodeError, KeyError, ValueError):
             return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            person = _resolve_checkin_actor(portal_person, body)
+        except (ValueError, Person.DoesNotExist):
+            return JsonResponse({"error": "Pessoa inválida para este check-in."}, status=403)
 
         try:
             checkin, created = perform_special_class_checkin(person, special_id)
@@ -183,8 +215,8 @@ class StudentSpecialClassCheckinView(PortalLoginRequiredMixin, View):
 
 class StudentSpecialClassCheckinCancelView(PortalLoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        person = getattr(request, "portal_person", None)
-        if not person:
+        portal_person = getattr(request, "portal_person", None)
+        if not portal_person:
             return JsonResponse({"error": "Não autenticado."}, status=403)
 
         try:
@@ -192,6 +224,11 @@ class StudentSpecialClassCheckinCancelView(PortalLoginRequiredMixin, View):
             special_id = int(body["special_id"])
         except (json.JSONDecodeError, KeyError, ValueError):
             return JsonResponse({"error": "Dados inválidos."}, status=400)
+
+        try:
+            person = _resolve_checkin_actor(portal_person, body)
+        except (ValueError, Person.DoesNotExist):
+            return JsonResponse({"error": "Pessoa inválida para este check-in."}, status=403)
 
         try:
             _, changed = cancel_student_special_class_checkin(person, special_id)

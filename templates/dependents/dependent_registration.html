@@ -8,9 +8,11 @@
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
-  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=11">
+  <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=14">
   <script type="application/json" id="dep-class-catalog-json">{{ class_catalog_json|safe }}</script>
   <script type="application/json" id="dep-plan-catalog-json">{{ plan_catalog_json|safe }}</script>
+  <script type="application/json" id="dep-product-catalog-json">{{ product_catalog_json|safe }}</script>
+  <script type="application/json" id="dep-owner-plan-context-json">{{ owner_plan_context_json|safe }}</script>
   <script type="application/json" id="dep-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
 </head>
 <body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
@@ -64,6 +66,7 @@
       action="{% url 'system:dependent-add' %}{% if is_modal %}?modal=1{% endif %}"
       data-payment-confirmed="{{ payment_confirmed|yesno:'true,false' }}"
       data-materials-confirmed="{{ materials_confirmed|yesno:'true,false' }}"
+      data-family-plan-available="{{ family_plan_available|yesno:'true,false' }}"
       novalidate
     >
       {% csrf_token %}
@@ -255,23 +258,19 @@
         {% for error in form.dependent_class_groups.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
       </section>
 
-      {# ── Etapa 5 — Condição financeira ────────────────────────────────────── #}
+      {# ── Etapa 5 — Plano do dependente ────────────────────────────────────── #}
       <section class="wizard-step" data-step="5" data-step-key="plan" hidden>
         <div class="wizard-step__heading">
-          <h1 class="wizard-step__title">Escolha o plano do dependente</h1>
-          <p class="wizard-step__subtitle">Use um plano familiar já ativo ou selecione uma mensalidade própria</p>
+          <h1 class="wizard-step__title">Plano do dependente</h1>
+          <p class="wizard-step__subtitle">Escolha frequência e período para ver as opções disponíveis</p>
         </div>
 
-        <label class="option-card">
-          {{ form.use_family_plan }}
-          <span>
-            <strong>Usar plano familiar ativo</strong>
-            <small>{% if form.family_plan_available %}Disponível para este titular/responsável.{% else %}Disponível somente quando já existe plano familiar ativo.{% endif %}</small>
-          </span>
-        </label>
+        <div hidden>{{ form.use_family_plan }}{{ form.financial_mode }}</div>
         {% for error in form.use_family_plan.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+        {% for error in form.financial_mode.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
 
-        <div id="dep-plan-section">
+        <div id="dep-plan-section" class="financial-plan-section">
+          <p class="plan-mode-hint" id="dep-plan-mode-hint">Escolha frequência e período para liberar os planos.</p>
           <div id="dep-plan-filters-area"></div>
           <div id="dep-plan-cards-area"></div>
           <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}</div>
@@ -282,59 +281,76 @@
       {# ── Etapa 6 — Materiais ──────────────────────────────────────────────── #}
       <section class="wizard-step" data-step="6" data-step-key="materials" hidden>
         <div class="wizard-step__heading">
-          <h1 class="wizard-step__title">Materiais opcionais</h1>
-          <p class="wizard-step__subtitle">Selecione materiais para o dependente ou deixe tudo zerado para comprar depois</p>
+          <h1 class="wizard-step__title">Materiais e equipamentos</h1>
+          <p class="wizard-step__subtitle" id="dep-products-subtitle">Adicione kimonos ou outros itens ao pedido do dependente (opcional)</p>
         </div>
 
-        {% if materials_confirmed %}
-        <div class="wizard-system-message wizard-system-message--success">
-          Pagamento dos materiais confirmado. Revise os dados e finalize o dependente.
+        {# Painel de confirmação — preenchido por JS quando o pagamento dos materiais já foi feito #}
+        <div id="dep-products-confirm-area"></div>
+
+        {# Campos reais do Django — ocultos; a UI de cards abaixo escreve nestes campos #}
+        <div hidden>
+          {% for group in material_groups %}
+            {% for product_row in group.products %}
+              {% for variant_row in product_row.variants %}
+                {{ variant_row.field }}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+          {{ form.materials_checkout_action }}
         </div>
-        {% endif %}
 
         {% if material_groups %}
-        <div class="materials-catalog">
-          {% for group in material_groups %}
-          <div class="materials-group">
-            <h3>{{ group.category.display_name }}</h3>
-            <div class="materials-list">
-              {% for product_row in group.products %}
-              <div class="material-item">
-                <button type="button" class="material-item__header" data-material-toggle aria-expanded="false">
-                  <strong>{{ product_row.product.display_name }}</strong>
-                  <span class="material-item__header-right">
-                    <span class="material-item__count" hidden></span>
-                    <span>R$ {{ product_row.product.unit_price|floatformat:2 }}</span>
-                    <svg class="material-item__chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-                  </span>
-                </button>
-                <div class="material-variants" hidden>
-                  {% for variant_row in product_row.variants %}
-                  <label class="material-variant">
-                    <span class="material-variant__label">
-                      {{ variant_row.variant.size|default:"Padrão" }}{% if variant_row.variant.color %} · {{ variant_row.variant.color }}{% endif %}
-                      <small>{{ variant_row.variant.stock_quantity }} em estoque</small>
-                    </span>
-                    {{ variant_row.field }}
-                    {% for error in variant_row.field.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
-                  </label>
-                  {% endfor %}
-                </div>
-              </div>
-              {% endfor %}
-            </div>
+        {# Sub-view 1: catálogo de cards #}
+        <div id="dep-products-subview-catalog">
+          <div id="dep-products-catalog-area" class="prod-cards"></div>
+          <div id="dep-products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem">
+            <button type="button" id="dep-products-btn-view-cart" class="btn-next" hidden>
+              Ver carrinho
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button type="button" id="dep-products-btn-skip-catalog" class="btn-checkout-later">Pular — adicionar materiais depois</button>
           </div>
-          {% endfor %}
         </div>
-        <div class="form-field">
-          <label class="form-label" for="{{ form.materials_checkout_action.id_for_label }}">Pagamento dos materiais</label>
-          <div class="form-select-wrapper">{{ form.materials_checkout_action }}</div>
+
+        {# Sub-view 2: configurar variante e quantidade #}
+        <div id="dep-products-subview-configure" hidden>
+          <button type="button" class="prod-configure__back" id="dep-products-btn-back-catalog">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar ao catálogo
+          </button>
+          <div id="dep-products-configure-area"></div>
+          <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
+            <button type="button" id="dep-products-btn-add-to-cart" class="btn-next" disabled>
+              Adicionar ao carrinho
+            </button>
+            <button type="button" id="dep-products-btn-cancel-configure" class="btn-checkout-later">Cancelar</button>
+          </div>
+        </div>
+
+        {# Sub-view 3: carrinho com pagamento #}
+        <div id="dep-products-subview-cart" hidden>
+          <button type="button" class="prod-configure__back" id="dep-products-btn-back-to-catalog">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Continuar comprando
+          </button>
+          <div id="dep-products-cart-area"></div>
+          <div class="checkout-actions" style="margin-top:1rem">
+            <button type="button" id="dep-products-btn-pay-card" class="btn-checkout-pay">
+              <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              Pagar com Cartão
+            </button>
+            <button type="button" id="dep-products-btn-pay-pix" class="btn-checkout-pay">
+              <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Pagar com PIX
+            </button>
+            <button type="button" id="dep-products-btn-skip-cart" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+          </div>
         </div>
         {% else %}
         <div class="materials-empty" role="status">
           Nenhum material disponível em estoque para compra no momento.
         </div>
-        {{ form.materials_checkout_action.as_hidden }}
         {% endif %}
       </section>
 
@@ -366,6 +382,6 @@
     </div>
   </div>
 
-  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=11" defer></script>
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=17" defer></script>
 </body>
 </html>

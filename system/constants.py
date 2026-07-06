@@ -206,3 +206,9 @@ class CheckoutAction:
     PIX = "pix"
     PAY_LATER = "pay_later"
     STRIPE_CARD = "stripe_card"
+
+
+class DependentFinancialMode:
+    DEPENDENT_OWN = "dependent_own"
+    FAMILY_EXISTING = "family_existing"
+    FAMILY_UPGRADE = "family_upgrade"

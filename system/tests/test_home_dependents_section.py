@@ -201,12 +201,9 @@ class HomeDependentsSectionTestCase(TestCase):
         self.assertIn("Plano Titular PRD 121", content)
         self.assertIn("Mensalidade do dependente", content)
         self.assertIn("Plano Dependente PRD 121", content)
-        self.assertIn("Graduação do dependente", content)
-        self.assertIn("Histórico de graduação", content)
-        self.assertIn("Editar dependente", content)
         self.assertIn("Remover dependente", content)
         self.assertIn(
-            f'data-dependent-modal-url="{reverse("system:dependent-edit", args=[self.dependent.pk])}?modal=1"',
+            f'action="{reverse("system:dependent-profile-update", args=[self.dependent.pk])}"',
             content,
         )
         self.assertIn(
@@ -249,9 +246,8 @@ class HomeDependentsSectionTestCase(TestCase):
         self._login_as(self.guardian)
 
         response = self.client.post(
-            reverse("system:dependent-edit", args=[self.dependent.pk]),
+            reverse("system:dependent-profile-update", args=[self.dependent.pk]),
             data={
-                "_modal": "1",
                 "full_name": "Dependente Editado PRD 121",
                 "birth_date": "2012-02-03",
                 "biological_sex": BiologicalSex.FEMALE,
@@ -272,7 +268,8 @@ class HomeDependentsSectionTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Dependente atualizado")
+        data = response.json()
+        self.assertTrue(data["success"])
         self.dependent.refresh_from_db()
         self.assertEqual(self.dependent.full_name, "Dependente Editado PRD 121")
         self.assertEqual(self.dependent.email, "dependente.editado@example.com")
@@ -289,9 +286,9 @@ class HomeDependentsSectionTestCase(TestCase):
         )
         self._login_as(other)
 
-        response = self.client.get(
-            reverse("system:dependent-edit", args=[self.dependent.pk]),
-            {"modal": "1"},
+        response = self.client.post(
+            reverse("system:dependent-profile-update", args=[self.dependent.pk]),
+            data={"full_name": "Tentativa Indevida"},
         )
 
         self.assertEqual(response.status_code, 404)

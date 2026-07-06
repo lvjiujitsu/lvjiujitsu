@@ -26,10 +26,12 @@ from system.models import (
     Product,
     ProductCategory,
     ProductVariant,
+    RegistrationOrder,
     SubscriptionPlan,
 )
 from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod
 from system.services import PORTAL_ACCOUNT_SESSION_KEY
+from system.services.registration_checkout import parse_selected_plan_payload
 
 
 class DependentRegistrationFlowTestCase(TestCase):
@@ -203,6 +205,61 @@ class DependentRegistrationFlowTestCase(TestCase):
         )
         mocked_payment.assert_called_once()
 
+    def test_family_upgrade_creates_pre_registration_without_person(self):
+        self._login()
+        Membership.objects.create(
+            person=self.owner,
+            plan=self.individual_plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+            activated_at=timezone.now(),
+        )
+
+        with patch(
+            "system.views.dependent_views.create_pre_registration_plan_payment"
+        ) as mocked_payment:
+            mocked_payment.return_value = "https://checkout.stripe.test/family"
+            response = self.client.post(
+                reverse("system:dependent-add"),
+                data=self._payload(
+                    financial_mode="family_upgrade",
+                    selected_plan=str(self.family_plan.pk),
+                    checkout_action=CheckoutAction.STRIPE_CARD,
+                ),
+                follow=False,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "https://checkout.stripe.test/family")
+        self.assertFalse(Person.objects.filter(cpf="529.982.247-25").exists())
+        pre_registration = PreRegistration.objects.get()
+        self.assertEqual(pre_registration.selected_plan, self.family_plan)
+        self.assertEqual(
+            pre_registration.form_snapshot["financial_mode"],
+            "family_upgrade",
+        )
+        self.assertEqual(
+            pre_registration.form_snapshot["selected_plans_payload"],
+            [
+                {
+                    "person": "owner",
+                    "label": "Titular Dependente Posterior + Dependente Posterior",
+                    "plan_id": self.family_plan.pk,
+                }
+            ],
+        )
+        self.assertEqual(
+            parse_selected_plan_payload(pre_registration.form_snapshot),
+            [
+                {
+                    "plan_id": self.family_plan.pk,
+                    "label": "Titular Dependente Posterior + Dependente Posterior",
+                }
+            ],
+        )
+        mocked_payment.assert_called_once()
+
     def test_payment_success_returns_to_dependent_flow(self):
         self._login()
         pre_registration = PreRegistration.objects.create(
@@ -276,6 +333,128 @@ class DependentRegistrationFlowTestCase(TestCase):
         self.assertEqual(order.plan, self.individual_plan)
         self.assertEqual(order.payment_status, "paid")
 
+    def test_paid_family_upgrade_finalizes_with_owner_family_membership(self):
+        self._login()
+        Membership.objects.create(
+            person=self.owner,
+            plan=self.individual_plan,
+            status=MembershipStatus.ACTIVE,
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+            activated_at=timezone.now(),
+        )
+        pre_registration = PreRegistration.objects.create(
+            session_key=self.client.session.session_key or "",
+            registration_profile="dependent",
+            holder_cpf=self.owner.cpf,
+            holder_email=self.owner.email,
+            selected_plan=self.family_plan,
+            checkout_action=CheckoutAction.STRIPE_CARD,
+            status=PreRegistrationStatus.PAYMENT_CONFIRMED,
+            form_snapshot={
+                "flow_kind": "dependent_addition",
+                "owner_person_id": self.owner.pk,
+                "selected_plan": str(self.family_plan.pk),
+                "financial_mode": "family_upgrade",
+                "plan_paid": True,
+            },
+        )
+        session = self.client.session
+        session["pending_dependent_pre_registration_id"] = pre_registration.pk
+        session.save()
+
+        response = self.client.post(
+            reverse("system:dependent-add"),
+            data=self._payload(
+                financial_mode="family_upgrade",
+                selected_plan=str(self.family_plan.pk),
+                checkout_action=CheckoutAction.STRIPE_CARD,
+            ),
+            follow=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        dependent = Person.objects.get(cpf="529.982.247-25")
+        self.assertEqual(dependent.registration_orders.count(), 0)
+        owner_order = RegistrationOrder.objects.get(
+            person=self.owner,
+            plan=self.family_plan,
+            payment_status="paid",
+        )
+        self.assertEqual(owner_order.total, self.family_plan.price)
+        owner_membership = (
+            Membership.objects.filter(person=self.owner)
+            .exclude(status=MembershipStatus.CANCELED)
+            .order_by("-created_at")
+            .first()
+        )
+        self.assertIsNotNone(owner_membership)
+        self.assertEqual(owner_membership.plan, self.family_plan)
+        self.assertEqual(Membership.objects.filter(person=dependent).count(), 0)
+
+    def test_dependent_own_plan_rejects_family_plan(self):
+        self._login()
+
+        response = self.client.post(
+            reverse("system:dependent-add"),
+            data=self._payload(
+                financial_mode="dependent_own",
+                selected_plan=str(self.family_plan.pk),
+                checkout_action=CheckoutAction.STRIPE_CARD,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Plano familiar deve ser selecionado como upgrade do titular.",
+        )
+
+    def test_dependent_own_plan_rejects_loyalty_plan(self):
+        self._login()
+        loyalty_plan = SubscriptionPlan.objects.create(
+            code="loyalty-dependent",
+            display_name="Veterano 2x",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=2,
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            price=Decimal("149.00"),
+            is_loyalty_plan=True,
+        )
+
+        response = self.client.post(
+            reverse("system:dependent-add"),
+            data=self._payload(
+                financial_mode="dependent_own",
+                selected_plan=str(loyalty_plan.pk),
+                checkout_action=CheckoutAction.STRIPE_CARD,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Plano veterano exige elegibilidade aprovada pela gestão.",
+        )
+
+    def test_family_existing_rejects_owner_without_family_membership(self):
+        self._login()
+
+        response = self.client.post(
+            reverse("system:dependent-add"),
+            data=self._payload(
+                financial_mode="family_existing",
+                use_family_plan="on",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Não há plano familiar ativo para cobrir este dependente.",
+        )
+
     def test_product_catalog_renders_in_dependent_wizard(self):
         self._login()
 
@@ -285,9 +464,24 @@ class DependentRegistrationFlowTestCase(TestCase):
         self.assertEqual(response.headers.get("X-Frame-Options"), "SAMEORIGIN")
         self.assertContains(response, "dependent-page--modal")
         self.assertContains(response, 'action="/dependents/add/?modal=1"')
-        self.assertContains(response, "Materiais opcionais")
+        self.assertContains(response, "Materiais e equipamentos")
         self.assertContains(response, "Kimono Dependente Teste")
         self.assertContains(response, "Azul")
+
+    def test_dependent_plan_step_is_filter_first_without_financial_mode_cards(self):
+        self._login()
+
+        response = self.client.get(reverse("system:dependent-add"), {"modal": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Plano do dependente")
+        self.assertContains(response, "Escolha frequência e período")
+        self.assertContains(response, 'id="id_financial_mode"')
+        self.assertContains(response, 'id="id_selected_plan"')
+        self.assertNotContains(response, "Condição financeira")
+        self.assertNotContains(response, 'data-financial-mode="family_existing"')
+        self.assertNotContains(response, 'data-financial-mode="family_upgrade"')
+        self.assertNotContains(response, 'data-financial-mode="dependent_own"')
 
     def test_ibjjf_categories_and_review_step_render_in_dependent_wizard(self):
         self._login()

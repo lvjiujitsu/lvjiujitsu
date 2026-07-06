@@ -23,14 +23,21 @@ class PlanEligibilityContext:
     kids_juvenile_active_count: int
     allow_special_authorization: bool = False
     veteran_eligible: bool = False
+    adult_active_count: int = 0
 
     @property
     def total_active_count(self) -> int:
-        return (1 if self.adult_active else 0) + self.kids_juvenile_active_count
+        return self.resolved_adult_active_count + self.kids_juvenile_active_count
+
+    @property
+    def resolved_adult_active_count(self) -> int:
+        if self.adult_active_count > 0:
+            return self.adult_active_count
+        return 1 if self.adult_active else 0
 
     @property
     def adult_family_group_eligible(self) -> bool:
-        return self.adult_active and self.total_active_count >= 2
+        return self.resolved_adult_active_count > 0 and self.total_active_count >= 2
 
     @property
     def kids_family_group_eligible(self) -> bool:
@@ -156,7 +163,7 @@ def build_eligibility_context_for_registration(cleaned_data, *, allow_special_au
     extra_dependents = cleaned_data.get("extra_dependents") or []
     include_dependent = bool(cleaned_data.get("include_dependent"))
 
-    adult_active = False
+    adult_active_count = 0
     kids_juvenile_count = 0
 
     if profile == "holder":
@@ -165,7 +172,7 @@ def build_eligibility_context_for_registration(cleaned_data, *, allow_special_au
             cleaned_data.get("holder_birthdate"),
         )
         if holder_audience == PlanAudience.ADULT:
-            adult_active = True
+            adult_active_count += 1
         elif holder_audience == PlanAudience.KIDS_JUVENILE:
             kids_juvenile_count += 1
 
@@ -175,7 +182,7 @@ def build_eligibility_context_for_registration(cleaned_data, *, allow_special_au
                 cleaned_data.get("dependent_birthdate"),
             )
             if dependent_audience == PlanAudience.ADULT:
-                adult_active = True
+                adult_active_count += 1
             elif dependent_audience == PlanAudience.KIDS_JUVENILE:
                 kids_juvenile_count += 1
 
@@ -185,7 +192,7 @@ def build_eligibility_context_for_registration(cleaned_data, *, allow_special_au
             cleaned_data.get("student_birthdate"),
         )
         if student_audience == PlanAudience.ADULT:
-            adult_active = True
+            adult_active_count += 1
         elif student_audience == PlanAudience.KIDS_JUVENILE:
             kids_juvenile_count += 1
 
@@ -195,12 +202,13 @@ def build_eligibility_context_for_registration(cleaned_data, *, allow_special_au
             dependent.get("birth_date"),
         )
         if dep_audience == PlanAudience.ADULT:
-            adult_active = True
+            adult_active_count += 1
         elif dep_audience == PlanAudience.KIDS_JUVENILE:
             kids_juvenile_count += 1
 
     return PlanEligibilityContext(
-        adult_active=adult_active,
+        adult_active=adult_active_count > 0,
+        adult_active_count=adult_active_count,
         kids_juvenile_active_count=kids_juvenile_count,
         allow_special_authorization=allow_special_authorization,
     )
@@ -215,16 +223,17 @@ def build_eligibility_context_for_person(person, *, allow_special_authorization=
         )
 
     family_people = _get_family_group_members(person)
-    adult_active = False
+    adult_active_count = 0
     kids_juvenile_count = 0
     for member in family_people:
         member_audience = _classify_person_audience(member)
         if member_audience == PlanAudience.ADULT:
-            adult_active = True
+            adult_active_count += 1
         elif member_audience == PlanAudience.KIDS_JUVENILE:
             kids_juvenile_count += 1
     return PlanEligibilityContext(
-        adult_active=adult_active,
+        adult_active=adult_active_count > 0,
+        adult_active_count=adult_active_count,
         kids_juvenile_active_count=kids_juvenile_count,
         allow_special_authorization=allow_special_authorization,
         veteran_eligible=is_veteran_plan_eligible(person),

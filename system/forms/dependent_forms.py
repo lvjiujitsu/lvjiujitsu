@@ -1,6 +1,6 @@
 from django import forms
 
-from system.constants import CheckoutAction
+from system.constants import CheckoutAction, DependentFinancialMode
 from system.forms.registration_forms import (
     MARTIAL_ART_EXPERIENCE_CHOICES,
     MARTIAL_ART_EXPERIENCE_YES,
@@ -20,6 +20,14 @@ from system.models import (
     SubscriptionPlan,
 )
 from system.models.class_membership import get_class_group_eligibility_error
+from system.models.plan import PlanAudience
+from system.selectors.plan_eligibility import (
+    PlanEligibilityContext,
+    build_eligibility_context_for_person,
+    classify_audience_from_age,
+    classify_class_groups_audience,
+    is_plan_eligible,
+)
 from system.services.class_overview import get_public_class_group_choice_options
 from system.services.membership import get_active_membership
 from system.services.registration import get_kinship_choices, resolve_class_groups
@@ -145,6 +153,15 @@ class DependentRegistrationForm(forms.Form):
         label="Academia anterior",
     )
     use_family_plan = forms.BooleanField(required=False, label="Usar plano familiar")
+    financial_mode = forms.ChoiceField(
+        required=False,
+        choices=(
+            (DependentFinancialMode.DEPENDENT_OWN, "Mensalidade própria"),
+            (DependentFinancialMode.FAMILY_EXISTING, "Usar plano familiar ativo"),
+            (DependentFinancialMode.FAMILY_UPGRADE, "Migrar para plano familiar"),
+        ),
+        initial=DependentFinancialMode.DEPENDENT_OWN,
+    )
     selected_plan = forms.ChoiceField(required=False, label="Plano")
     checkout_action = forms.ChoiceField(
         required=False,
@@ -324,13 +341,19 @@ class DependentRegistrationForm(forms.Form):
             cleaned_data["dependent_jiu_jitsu_stripes"] = None
 
     def _clean_financial_choice(self, cleaned_data):
-        if cleaned_data.get("use_family_plan"):
+        mode = _resolve_financial_mode(cleaned_data)
+        cleaned_data["financial_mode"] = mode
+
+        if mode == DependentFinancialMode.FAMILY_EXISTING:
+            cleaned_data["use_family_plan"] = True
             if not self.family_plan_available:
                 self.add_error(
                     "use_family_plan",
                     "Não há plano familiar ativo para cobrir este dependente.",
                 )
             return
+
+        cleaned_data["use_family_plan"] = False
         plan_id = cleaned_data.get("selected_plan")
         if not plan_id:
             self.add_error("selected_plan", "Selecione um plano para o dependente.")
@@ -339,6 +362,43 @@ class DependentRegistrationForm(forms.Form):
         if plan is None:
             self.add_error("selected_plan", "Selecione um plano válido.")
             return
+        if plan.requires_special_authorization:
+            self.add_error("selected_plan", "Este plano exige autorização da gestão.")
+            return
+        if mode != DependentFinancialMode.FAMILY_UPGRADE and plan.is_loyalty_plan:
+            self.add_error(
+                "selected_plan",
+                "Plano veterano exige elegibilidade aprovada pela gestão.",
+            )
+            return
+        if mode == DependentFinancialMode.FAMILY_UPGRADE:
+            if not plan.is_family_plan:
+                self.add_error(
+                    "selected_plan",
+                    "Selecione um plano familiar para migrar o titular.",
+                )
+                return
+            context = _build_family_upgrade_context(self.owner, cleaned_data)
+            if not is_plan_eligible(plan, context):
+                self.add_error(
+                    "selected_plan",
+                    "Plano familiar não elegível para este titular e dependente.",
+                )
+                return
+        elif plan.is_family_plan:
+            self.add_error(
+                "selected_plan",
+                "Plano familiar deve ser selecionado como upgrade do titular.",
+            )
+            return
+        else:
+            dependent_audience = _classify_dependent_audience(cleaned_data)
+            if dependent_audience and plan.audience != dependent_audience:
+                self.add_error(
+                    "selected_plan",
+                    "Selecione um plano compatível com a idade/turma do dependente.",
+                )
+                return
         cleaned_data["selected_plan_obj"] = plan
         if not cleaned_data.get("checkout_action"):
             cleaned_data["checkout_action"] = CheckoutAction.PAY_LATER
@@ -461,6 +521,49 @@ class DependentProfileForm(forms.ModelForm):
 def _owner_has_family_plan(owner):
     membership = get_active_membership(owner)
     return bool(membership and membership.plan and membership.plan.is_family_plan)
+
+
+def _resolve_financial_mode(cleaned_data):
+    mode = cleaned_data.get("financial_mode") or ""
+    allowed = {
+        DependentFinancialMode.DEPENDENT_OWN,
+        DependentFinancialMode.FAMILY_EXISTING,
+        DependentFinancialMode.FAMILY_UPGRADE,
+    }
+    if mode in allowed:
+        return mode
+    if cleaned_data.get("use_family_plan"):
+        return DependentFinancialMode.FAMILY_EXISTING
+    return DependentFinancialMode.DEPENDENT_OWN
+
+
+def _build_family_upgrade_context(owner, cleaned_data):
+    base = build_eligibility_context_for_person(owner)
+    adult_active_count = base.resolved_adult_active_count
+    kids_count = base.kids_juvenile_active_count
+    dependent_audience = _classify_dependent_audience(cleaned_data)
+    if dependent_audience == PlanAudience.ADULT:
+        adult_active_count += 1
+    elif dependent_audience == PlanAudience.KIDS_JUVENILE:
+        kids_count += 1
+    return PlanEligibilityContext(
+        adult_active=adult_active_count > 0,
+        adult_active_count=adult_active_count,
+        kids_juvenile_active_count=kids_count,
+        allow_special_authorization=False,
+        veteran_eligible=base.veteran_eligible,
+    )
+
+
+def _classify_dependent_audience(cleaned_data):
+    adult_active, kids_count = classify_class_groups_audience(
+        cleaned_data.get("resolved_class_groups") or []
+    )
+    if adult_active:
+        return PlanAudience.ADULT
+    if kids_count:
+        return PlanAudience.KIDS_JUVENILE
+    return classify_audience_from_age(cleaned_data.get("dependent_birthdate"))
 
 
 def build_material_variant_field_name(variant_id):
