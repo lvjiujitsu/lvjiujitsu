@@ -12,7 +12,6 @@ from system.models import (
     MartialArt,
     Person,
     PersonType,
-    SubscriptionPlan,
 )
 from system.models.class_membership import get_class_group_eligibility_error
 from system.constants import (
@@ -35,6 +34,7 @@ from system.selectors.plan_eligibility import (
 )
 from system.services.registration_checkout import (
     parse_selected_products,
+    resolve_catalog_plan,
     resolve_selected_product_items,
 )
 from system.services.financial_transactions import resolve_checkout_action_for_plan
@@ -275,7 +275,7 @@ class PortalRegistrationForm(forms.Form):
     student_martial_art_last_graduation_at = forms.DateField(required=False, input_formats=["%d/%m/%Y", "%Y-%m-%d"])
     student_previous_academy = forms.CharField(required=False, max_length=200)
 
-    selected_plan = forms.IntegerField(required=False)
+    selected_plan = forms.CharField(required=False)
     selected_products_payload = forms.CharField(required=False, widget=forms.HiddenInput)
     coupon_code = forms.CharField(required=False, max_length=50, widget=forms.HiddenInput)
     checkout_action = forms.ChoiceField(
@@ -585,25 +585,42 @@ class PortalRegistrationForm(forms.Form):
             dependent["class_groups"] = groups
 
     def _clean_plan_selection(self, profile, include_dependent, extra_dependents):
-        plan_id = self.cleaned_data.get("selected_plan")
-        if not plan_id:
+        catalog_id = self.cleaned_data.get("selected_plan")
+        if not catalog_id:
             return
-        try:
-            plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-        except SubscriptionPlan.DoesNotExist:
+        legacy_plan, plan_price = resolve_catalog_plan(catalog_id)
+        if legacy_plan is None and plan_price is None:
             self.add_error("selected_plan", "Selecione um plano válido.")
             return
 
         context = build_eligibility_context_for_registration(self.cleaned_data)
-        if not is_plan_eligible(plan, context):
-            self.add_error(
-                "selected_plan",
-                self._build_plan_ineligible_message(plan, context),
-            )
-            return
+
+        if legacy_plan is not None:
+            if not is_plan_eligible(legacy_plan, context):
+                self.add_error(
+                    "selected_plan",
+                    self._build_plan_ineligible_message(legacy_plan, context),
+                )
+                return
+            resolved_plan = legacy_plan
+        else:
+            # PlanPrice (catálogo novo da PRD-127): sem SKU de família, veterano
+            # ou autorização especial — elegibilidade é só por audiência.
+            from system.models.plan import PlanAudience
+
+            if plan_price.audience == PlanAudience.ADULT and not context.adult_active:
+                self.add_error("selected_plan", "Plano Adulto exige aluno adulto cadastrado.")
+                return
+            if (
+                plan_price.audience == PlanAudience.KIDS_JUVENILE
+                and context.kids_juvenile_active_count < 1
+            ):
+                self.add_error("selected_plan", "Plano Kids/Juvenil exige aluno menor cadastrado.")
+                return
+            resolved_plan = plan_price
 
         checkout_action = self.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
-        expected_action = resolve_checkout_action_for_plan(plan)
+        expected_action = resolve_checkout_action_for_plan(resolved_plan)
         if checkout_action != CheckoutAction.PAY_LATER and checkout_action != expected_action:
             self.add_error(
                 "checkout_action",

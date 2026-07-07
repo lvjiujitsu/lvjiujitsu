@@ -11,7 +11,7 @@ from system.models.membership import (
     MembershipCreditStatus,
     MembershipStatus,
 )
-from system.models.plan import SubscriptionPlan
+from system.models.plan import PlanPrice, SubscriptionPlan
 from system.models.registration_order import (
     OrderKind,
     PaymentProvider,
@@ -20,6 +20,7 @@ from system.models.registration_order import (
 )
 from system.selectors.plan_eligibility import (
     build_eligibility_context_for_person,
+    get_eligible_plan_prices,
     get_eligible_plans,
 )
 from system.services.membership import (
@@ -30,11 +31,28 @@ from system.services.membership import (
 )
 from system.services.asaas_client import AsaasClientError, refund_payment
 from system.services.payroll_rules import append_order_refund_record
+from system.services.registration_checkout import (
+    CATALOG_ID_PREFIX_PLAN_PRICE,
+    CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+    build_catalog_plan_id,
+)
 from system.services.stripe_admin_actions import (
     StripeAdminActionError,
     refund_order,
 )
 from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
+
+
+def _catalog_id_for_plan(plan_obj):
+    if isinstance(plan_obj, PlanPrice):
+        return build_catalog_plan_id(CATALOG_ID_PREFIX_PLAN_PRICE, plan_obj.pk)
+    return build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, plan_obj.pk)
+
+
+def _current_plan_reference(membership):
+    if membership.plan_price_id is not None:
+        return membership.plan_price
+    return membership.plan
 
 
 class PlanChangeError(Exception):
@@ -59,17 +77,30 @@ def _quantize(value):
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def plan_requires_stripe_checkout(plan):
+    return getattr(plan, "gateway_code", "") == _STRIPE_RECURRING_GATEWAY_CODE
+
+
 def is_plan_change_locked(membership):
     if (
         membership is None
         or membership.status not in _PLAN_CHANGE_LOCKED_STATUSES
-        or membership.plan_id is None
+        or (membership.plan_id is None and membership.plan_price_id is None)
     ):
         return False
-    return bool(
+    if membership.plan_price_id is not None:
+        gateway_code = membership.plan_price.gateway_code
+    else:
+        gateway_code = getattr(membership.plan, "gateway_code", "")
+    is_stripe_recurring = bool(
         membership.stripe_subscription_id
-        or getattr(membership.plan, "gateway_code", "") == _STRIPE_RECURRING_GATEWAY_CODE
+        or gateway_code == _STRIPE_RECURRING_GATEWAY_CODE
     )
+    if not is_stripe_recurring:
+        return False
+    if membership.current_period_end is None:
+        return True
+    return membership.current_period_end > timezone.now()
 
 
 def get_plan_change_lock(membership):
@@ -109,25 +140,25 @@ def _membership_period_end_date(membership):
 
 
 def get_last_paid_order(membership):
-    return (
-        RegistrationOrder.objects.filter(
-            person=membership.person,
-            plan=membership.plan,
-            payment_status__in=(PaymentStatus.PAID, PaymentStatus.EXEMPTED),
-            total__gt=Decimal("0"),
-        )
-        .filter(refunded_at__isnull=True)
-        .order_by("-paid_at", "-created_at")
-        .first()
-    )
+    queryset = RegistrationOrder.objects.filter(
+        person=membership.person,
+        payment_status__in=(PaymentStatus.PAID, PaymentStatus.EXEMPTED),
+        total__gt=Decimal("0"),
+    ).filter(refunded_at__isnull=True)
+    if membership.plan_price_id is not None:
+        queryset = queryset.filter(plan_price_ref=membership.plan_price)
+    else:
+        queryset = queryset.filter(plan=membership.plan)
+    return queryset.order_by("-paid_at", "-created_at").first()
 
 
 def get_membership_amount_paid(membership):
     last_order = get_last_paid_order(membership)
     if last_order is not None and last_order.total:
         return _quantize(last_order.total)
-    if membership.plan and membership.plan.price:
-        return _quantize(membership.plan.price)
+    full_price = membership.effective_full_price
+    if full_price:
+        return _quantize(full_price)
     return Decimal("0.00")
 
 
@@ -143,13 +174,21 @@ def _build_installment_label(plan):
     return f"{n}x"
 
 
-def serialize_plan_with_proration(plan, proration):
+def serialize_plan_with_proration(plan, proration, *, is_current=False):
+    is_plan_price = isinstance(plan, PlanPrice)
+    is_family_plan = False if is_plan_price else plan.is_family_plan
+    is_loyalty_plan = False if is_plan_price else plan.is_loyalty_plan
     tier = resolve_commercial_tier(
-        is_family_plan=plan.is_family_plan, is_loyalty_plan=plan.is_loyalty_plan
+        is_family_plan=is_family_plan, is_loyalty_plan=is_loyalty_plan
+    )
+    code = (
+        f"{plan.tier.code}-{plan.gateway_code}-{plan.billing_cycle}"
+        if is_plan_price
+        else plan.code
     )
     return {
-        "id": plan.pk,
-        "code": plan.code,
+        "id": _catalog_id_for_plan(plan),
+        "code": code,
         "name": plan.display_name,
         "commercial_tier": tier,
         "commercial_tier_label": COMMERCIAL_TIER_LABELS.get(tier, tier),
@@ -163,27 +202,49 @@ def serialize_plan_with_proration(plan, proration):
         "billing_cycle": plan.billing_cycle,
         "payment_method": plan.payment_method,
         "payment_method_label": plan.get_payment_method_display(),
-        "is_family_plan": plan.is_family_plan,
+        "is_family_plan": is_family_plan,
         "audience": plan.audience,
-        "audience_label": plan.get_audience_display(),
+        "audience_label": (
+            plan.tier.get_audience_display() if is_plan_price else plan.get_audience_display()
+        ),
         "weekly_frequency": plan.weekly_frequency,
-        "weekly_frequency_label": plan.get_weekly_frequency_display(),
+        "weekly_frequency_label": (
+            plan.tier.get_weekly_frequency_display()
+            if is_plan_price
+            else plan.get_weekly_frequency_display()
+        ),
         "installment_label": _build_installment_label(plan),
         "installment_count": (
             _CYCLE_INSTALLMENTS.get(plan.billing_cycle, 1)
             if plan.payment_method == "credit_card"
             else 0
         ),
-        "proration": {
-            "cycles_covered": proration["cycles_covered"],
-            "extension_months": proration["extension_months"],
-            "new_period_end": proration["new_period_end"].isoformat(),
-            "leftover_credit": str(proration["leftover_credit"]),
-            "additional_charge": str(proration["additional_charge"]),
-            "is_upgrade": proration["is_upgrade"],
-            "is_extension": proration["is_extension"],
-            "has_leftover": proration["has_leftover"],
-        },
+        "gateway_code": plan.gateway_code,
+        "requires_checkout": plan.gateway_code == _STRIPE_RECURRING_GATEWAY_CODE,
+        "is_current": is_current,
+        "proration": (
+            {
+                "cycles_covered": proration["cycles_covered"],
+                "extension_months": proration["extension_months"],
+                "new_period_end": proration["new_period_end"].isoformat(),
+                "leftover_credit": str(proration["leftover_credit"]),
+                "additional_charge": str(proration["additional_charge"]),
+                "is_upgrade": proration["is_upgrade"],
+                "is_extension": proration["is_extension"],
+                "has_leftover": proration["has_leftover"],
+            }
+            if proration is not None
+            else {
+                "cycles_covered": 0,
+                "extension_months": 0,
+                "new_period_end": "",
+                "leftover_credit": "0.00",
+                "additional_charge": "0.00",
+                "is_upgrade": False,
+                "is_extension": False,
+                "has_leftover": False,
+            }
+        ),
     }
 
 
@@ -193,7 +254,7 @@ def build_membership_summary(membership):
     last_order = get_last_paid_order(membership)
     amount_paid = (
         Decimal(last_order.total) if last_order and last_order.total
-        else Decimal(membership.plan.price or 0)
+        else Decimal(membership.effective_full_price or 0)
     )
     period_start = membership.current_period_start
     period_end = membership.current_period_end
@@ -213,8 +274,8 @@ def build_membership_summary(membership):
         available = Decimal("0.00")
 
     return {
-        "plan_name": membership.plan.display_name,
-        "plan_cycle": membership.plan.get_billing_cycle_display(),
+        "plan_name": membership.effective_display_name,
+        "plan_cycle": membership.effective_billing_cycle_display,
         "amount_paid": str(amount_paid.quantize(Decimal("0.01"))),
         "amount_consumed": str(consumed),
         "available_credit": str(available),
@@ -241,13 +302,18 @@ def build_plan_catalog(person, membership):
         return []
     billing_owner = get_membership_owner(person) or person
     eligibility = build_eligibility_context_for_person(billing_owner)
-    available_plans = (
-        get_eligible_plans(eligibility)
-        .exclude(pk=membership.plan_id)
-        .exclude(gateway_code="stripe_card")
-    )
+    current_plan = _current_plan_reference(membership)
+    current_catalog_id = _catalog_id_for_plan(current_plan) if current_plan is not None else None
+
+    legacy_plans = get_eligible_plans(eligibility).exclude(pk=membership.plan_id)
+    plan_prices = get_eligible_plan_prices(eligibility).exclude(pk=membership.plan_price_id)
+
     catalog = []
-    for plan in available_plans:
+    if current_plan is not None:
+        catalog.append(serialize_plan_with_proration(current_plan, None, is_current=True))
+    for plan in list(legacy_plans) + list(plan_prices):
+        if _catalog_id_for_plan(plan) == current_catalog_id:
+            continue
         try:
             proration = calculate_plan_change(membership, plan)
         except PlanChangeError:
@@ -289,7 +355,8 @@ def calculate_plan_change(membership, new_plan):
         raise PlanChangeError("Somente assinaturas ativas podem trocar de plano.")
     if not membership.current_period_start or not membership.current_period_end:
         raise PlanChangeError("Assinatura sem período definido.")
-    if membership.plan_id == new_plan.pk:
+    current_plan = _current_plan_reference(membership)
+    if current_plan is not None and _catalog_id_for_plan(current_plan) == _catalog_id_for_plan(new_plan):
         raise PlanChangeError("Plano selecionado é o mesmo que o atual.")
 
     now = timezone.now()
@@ -303,7 +370,6 @@ def calculate_plan_change(membership, new_plan):
     days_used = max(0, min((now - period_start).days, cycle_days))
     days_remaining = cycle_days - days_used
 
-    current_plan = membership.plan
     amount_paid = get_membership_amount_paid(membership)
 
     if amount_paid <= 0:
@@ -366,6 +432,15 @@ def calculate_plan_change(membership, new_plan):
     }
 
 
+def _assign_membership_plan(membership, new_plan):
+    if isinstance(new_plan, PlanPrice):
+        membership.plan = None
+        membership.plan_price = new_plan
+    else:
+        membership.plan = new_plan
+        membership.plan_price = None
+
+
 @transaction.atomic
 def create_plan_change_order(person, membership, new_plan, proration_data):
     additional = proration_data["additional_charge"]
@@ -377,9 +452,11 @@ def create_plan_change_order(person, membership, new_plan, proration_data):
         f"Saldo aplicado: R$ {proration_data['available_credit']}, "
         f"diferença a pagar: R$ {additional}."
     )
+    is_new_plan_price = isinstance(new_plan, PlanPrice)
     order = RegistrationOrder.objects.create(
         person=person,
-        plan=new_plan,
+        plan=None if is_new_plan_price else new_plan,
+        plan_price_ref=new_plan if is_new_plan_price else None,
         plan_price=additional,
         total=additional,
         kind=OrderKind.ONE_TIME,
@@ -389,13 +466,33 @@ def create_plan_change_order(person, membership, new_plan, proration_data):
     return order
 
 
+def create_plan_change_stripe_order(person, membership, new_plan):
+    current_plan = _current_plan_reference(membership)
+    is_new_plan_price = isinstance(new_plan, PlanPrice)
+    notes = (
+        "Migração de gateway: "
+        f"{getattr(current_plan, 'display_name', '—')} → {new_plan.display_name} "
+        "(assinatura Stripe recorrente)."
+    )
+    return RegistrationOrder.objects.create(
+        person=person,
+        plan=None if is_new_plan_price else new_plan,
+        plan_price_ref=new_plan if is_new_plan_price else None,
+        plan_price=new_plan.price,
+        total=new_plan.price,
+        kind=OrderKind.SUBSCRIPTION,
+        is_plan_change=True,
+        notes=notes,
+    )
+
+
 @transaction.atomic
 def apply_plan_change(order, membership, new_plan, *, proration=None):
     now = timezone.now()
-    current_plan = membership.plan
+    current_plan = _current_plan_reference(membership)
 
     if order is not None and order.is_plan_change:
-        membership.plan = new_plan
+        _assign_membership_plan(membership, new_plan)
         membership.current_period_start = now
         membership.current_period_end = add_billing_cycle(now, new_plan.billing_cycle)
         membership.notes = (
@@ -405,18 +502,22 @@ def apply_plan_change(order, membership, new_plan, *, proration=None):
         membership.save(
             update_fields=[
                 "plan",
+                "plan_price",
                 "current_period_start",
                 "current_period_end",
                 "notes",
                 "updated_at",
             ]
         )
+        from system.services.family_pricing import recompute_family_discounts_for_person
+
+        recompute_family_discounts_for_person(membership.person)
         return membership
 
     if proration is None:
         proration = calculate_plan_change(membership, new_plan)
 
-    membership.plan = new_plan
+    _assign_membership_plan(membership, new_plan)
     membership.current_period_start = now
     membership.current_period_end = proration["new_period_end"]
     membership.notes = (
@@ -426,12 +527,17 @@ def apply_plan_change(order, membership, new_plan, *, proration=None):
     membership.save(
         update_fields=[
             "plan",
+            "plan_price",
             "current_period_start",
             "current_period_end",
             "notes",
             "updated_at",
         ]
     )
+
+    from system.services.family_pricing import recompute_family_discounts_for_person
+
+    recompute_family_discounts_for_person(membership.person)
 
     leftover = proration["leftover_credit"]
     if leftover > 0:
@@ -452,12 +558,15 @@ def apply_plan_change(order, membership, new_plan, *, proration=None):
 
 
 def get_last_paid_order_for_plan(person, plan):
+    lookup = (
+        {"plan_price_ref": plan} if isinstance(plan, PlanPrice) else {"plan": plan}
+    )
     return (
         RegistrationOrder.objects.filter(
             person=person,
-            plan=plan,
             payment_status__in=(PaymentStatus.PAID, PaymentStatus.EXEMPTED),
             total__gt=Decimal("0"),
+            **lookup,
         )
         .order_by("-paid_at", "-created_at")
         .first()
@@ -466,7 +575,7 @@ def get_last_paid_order_for_plan(person, plan):
 
 @transaction.atomic
 def refund_plan_change_leftover(membership, amount, *, source_order=None, current_plan=None):
-    plan_for_lookup = current_plan or membership.plan
+    plan_for_lookup = current_plan or _current_plan_reference(membership)
     last_order = source_order or get_last_paid_order_for_plan(
         membership.person, plan_for_lookup
     )

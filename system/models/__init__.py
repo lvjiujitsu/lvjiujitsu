@@ -36,8 +36,11 @@ from .plan import (
     CYCLE_MONTHS,
     PlanAudience,
     PlanPaymentMethod,
+    PlanPrice,
+    PlanTier,
     PlanWeeklyFrequency,
     SubscriptionPlan,
+    compute_gross_price,
 )
 from .product import Product, ProductCategory, ProductVariant
 from .product_backorder import (
@@ -52,6 +55,9 @@ from .membership import (
     MembershipCreditSource,
     MembershipCreditStatus,
     MembershipInvoice,
+    MembershipPauseRequest,
+    MembershipPauseRequestKind,
+    MembershipPauseRequestStatus,
     MembershipStatus,
 )
 from .registration_order import (
@@ -142,6 +148,9 @@ __all__ = [
     "MembershipCreditSource",
     "MembershipCreditStatus",
     "MembershipInvoice",
+    "MembershipPauseRequest",
+    "MembershipPauseRequestKind",
+    "MembershipPauseRequestStatus",
     "MembershipStatus",
     "OrderKind",
     "PaymentProvider",
@@ -166,6 +175,9 @@ __all__ = [
     "SpecialClass",
     "SpecialClassCheckin",
     "SubscriptionPlan",
+    "PlanTier",
+    "PlanPrice",
+    "compute_gross_price",
     "TimeStampedModel",
     "TrainingStyle",
     "WeekdayCode",

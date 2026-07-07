@@ -51,6 +51,26 @@ def _from_unix(value):
         return None
 
 
+def extract_stripe_subscription_period(stripe_subscription):
+    """current_period_start/end saíram do objeto Subscription para o
+    SubscriptionItem nas versões recentes da API do Stripe — cai para o
+    primeiro item quando os campos de nível superior não existem."""
+    if stripe_subscription is None:
+        return None, None
+    start = _sget(stripe_subscription, "current_period_start")
+    end = _sget(stripe_subscription, "current_period_end")
+    if start is None or end is None:
+        items = _sget(stripe_subscription, "items")
+        data = _sget(items, "data") if items is not None else None
+        if data:
+            first_item = data[0]
+            if start is None:
+                start = _sget(first_item, "current_period_start")
+            if end is None:
+                end = _sget(first_item, "current_period_end")
+    return _from_unix(start), _from_unix(end)
+
+
 MONTHS_BY_BILLING_CYCLE = {
     BillingCycle.MONTHLY: 1,
     BillingCycle.QUARTERLY: 3,
@@ -91,15 +111,9 @@ def activate_membership_from_session(order, stripe_session, stripe_subscription=
     if "customer" in stripe_session and stripe_session["customer"]:
         customer_id = str(stripe_session["customer"])
 
-    current_period_start = None
-    current_period_end = None
-    if stripe_subscription is not None:
-        current_period_start = _from_unix(
-            _sget(stripe_subscription, "current_period_start")
-        )
-        current_period_end = _from_unix(
-            _sget(stripe_subscription, "current_period_end")
-        )
+    current_period_start, current_period_end = extract_stripe_subscription_period(
+        stripe_subscription
+    )
 
     defaults = {
         "plan": plan,
@@ -143,15 +157,19 @@ def activate_membership_from_paid_order(
     notes="",
     stripe_subscription_id="",
     stripe_subscription_item_id="",
+    stripe_customer_id="",
 ):
     plan = order.plan
-    if plan is None:
+    plan_price = order.plan_price_ref
+    if plan is None and plan_price is None:
         return None
 
     now = order.paid_at or timezone.now()
-    period_end = add_billing_cycle(now, plan.billing_cycle)
+    billing_cycle = plan.billing_cycle if plan is not None else plan_price.billing_cycle
+    period_end = add_billing_cycle(now, billing_cycle)
     defaults = {
         "plan": plan,
+        "plan_price": plan_price,
         "status": MembershipStatus.ACTIVE,
         "created_via": MembershipCreatedVia.CHECKOUT,
         "current_period_start": now,
@@ -163,12 +181,16 @@ def activate_membership_from_paid_order(
         defaults["stripe_subscription_id"] = stripe_subscription_id
     if stripe_subscription_item_id:
         defaults["stripe_subscription_item_id"] = stripe_subscription_item_id
+    if stripe_customer_id:
+        defaults["stripe_customer_id"] = stripe_customer_id
 
+    lookup = {"person": order.person}
+    if plan is not None:
+        lookup["plan"] = plan
+    else:
+        lookup["plan_price"] = plan_price
     membership = (
-        Membership.objects.filter(
-            person=order.person,
-            plan=plan,
-        )
+        Membership.objects.filter(**lookup)
         .exclude(status__in=(MembershipStatus.CANCELED, MembershipStatus.EXPIRED))
         .order_by("-created_at")
         .first()
@@ -202,8 +224,9 @@ def upsert_membership_from_stripe_subscription(stripe_subscription):
     }
     stripe_status = _sget(stripe_subscription, "status", "") or ""
     mapped_status = status_map.get(stripe_status)
-    current_period_start = _from_unix(_sget(stripe_subscription, "current_period_start"))
-    current_period_end = _from_unix(_sget(stripe_subscription, "current_period_end"))
+    current_period_start, current_period_end = extract_stripe_subscription_period(
+        stripe_subscription
+    )
     cancel_at_period_end = bool(_sget(stripe_subscription, "cancel_at_period_end"))
     canceled_at = _sget(stripe_subscription, "canceled_at")
     canceled_at_value = _from_unix(canceled_at) if canceled_at else None
@@ -212,8 +235,10 @@ def upsert_membership_from_stripe_subscription(stripe_subscription):
         previous_status = membership.status
         if mapped_status:
             membership.status = mapped_status
-        membership.current_period_start = current_period_start
-        membership.current_period_end = current_period_end
+        if current_period_start is not None:
+            membership.current_period_start = current_period_start
+        if current_period_end is not None:
+            membership.current_period_end = current_period_end
         membership.cancel_at_period_end = cancel_at_period_end
         if canceled_at_value:
             membership.canceled_at = canceled_at_value
@@ -342,11 +367,29 @@ def mark_invoice_failed(stripe_invoice):
     )
     if not memberships:
         return None
+
+    invoice_id = stripe_invoice["id"]
+    amount_due = Decimal(_sget(stripe_invoice, "amount_due", 0) or 0) / Decimal("100")
+
     for membership in memberships:
         if membership.status == MembershipStatus.EXEMPTED:
             continue
         membership.status = MembershipStatus.PAST_DUE
         membership.save(update_fields=["status", "updated_at"])
+        MembershipInvoice.objects.update_or_create(
+            stripe_invoice_id=invoice_id,
+            defaults={
+                "membership": membership,
+                "amount_paid": Decimal("0"),
+                "currency": _sget(stripe_invoice, "currency", payment_currency()) or payment_currency(),
+                "status": "failed",
+                "hosted_invoice_url": _sget(stripe_invoice, "hosted_invoice_url", "") or "",
+                "paid_at": None,
+                "description": (
+                    f"Cobrança falhou — R$ {amount_due} — atualize o cartão para regularizar."
+                )[:255],
+            },
+        )
         try:
             from system.services.stripe_notifications import notify_payment_failed
             notify_payment_failed(membership, stripe_invoice=stripe_invoice)
@@ -357,6 +400,8 @@ def mark_invoice_failed(stripe_invoice):
 
 @transaction.atomic
 def mark_membership_canceled(stripe_subscription):
+    from system.services.family_pricing import recompute_family_discounts_for_person
+
     memberships = list(
         Membership.objects.filter(stripe_subscription_id=stripe_subscription["id"])
     )
@@ -370,6 +415,8 @@ def mark_membership_canceled(stripe_subscription):
         membership.save(
             update_fields=["status", "cancel_at_period_end", "canceled_at", "updated_at"]
         )
+    for membership in memberships:
+        recompute_family_discounts_for_person(membership.person)
     return memberships[0]
 
 

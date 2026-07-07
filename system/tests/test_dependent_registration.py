@@ -9,7 +9,11 @@ from django.utils import timezone
 from system.constants import CheckoutAction, DependentCardStrategy, DependentFinancialMode, PersonTypeCode
 from system.forms.dependent_forms import DependentRegistrationForm
 from system.services.dependent_registration import finalize_dependent_registration
-from system.services.registration_checkout import create_pre_registration_plan_payment
+from system.services.registration_checkout import (
+    CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+    build_catalog_plan_id,
+    create_pre_registration_plan_payment,
+)
 from system.models import (
     BiologicalSex,
     CategoryAudience,
@@ -23,6 +27,8 @@ from system.models import (
     PersonRelationship,
     PersonRelationshipKind,
     PersonType,
+    PlanPrice,
+    PlanTier,
     PortalAccount,
     PreRegistration,
     PreRegistrationStatus,
@@ -35,6 +41,10 @@ from system.models import (
 from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod
 from system.services import PORTAL_ACCOUNT_SESSION_KEY
 from system.services.registration_checkout import parse_selected_plan_payload
+
+
+def sp_id(plan_pk):
+    return build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, plan_pk)
 
 
 class DependentRegistrationFlowTestCase(TestCase):
@@ -187,7 +197,7 @@ class DependentRegistrationFlowTestCase(TestCase):
                 reverse("system:dependent-add"),
                 data=self._payload(
                     use_family_plan="",
-                    selected_plan=str(self.individual_plan.pk),
+                    selected_plan=sp_id(self.individual_plan.pk),
                     checkout_action=CheckoutAction.STRIPE_CARD,
                 ),
                 follow=False,
@@ -227,7 +237,7 @@ class DependentRegistrationFlowTestCase(TestCase):
                 reverse("system:dependent-add"),
                 data=self._payload(
                     financial_mode="family_upgrade",
-                    selected_plan=str(self.family_plan.pk),
+                    selected_plan=sp_id(self.family_plan.pk),
                     checkout_action=CheckoutAction.STRIPE_CARD,
                 ),
                 follow=False,
@@ -248,7 +258,7 @@ class DependentRegistrationFlowTestCase(TestCase):
                 {
                     "person": "owner",
                     "label": "Titular Dependente Posterior + Dependente Posterior",
-                    "plan_id": self.family_plan.pk,
+                    "plan_id": sp_id(self.family_plan.pk),
                 }
             ],
         )
@@ -256,7 +266,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             parse_selected_plan_payload(pre_registration.form_snapshot),
             [
                 {
-                    "plan_id": self.family_plan.pk,
+                    "plan_id": sp_id(self.family_plan.pk),
                     "label": "Titular Dependente Posterior + Dependente Posterior",
                 }
             ],
@@ -276,7 +286,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
                 "plan_payment": {"stripe_session_id": "cs_test_dependent"},
             },
         )
@@ -313,7 +323,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
                 "plan_paid": True,
             },
         )
@@ -324,7 +334,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         response = self.client.post(
             reverse("system:dependent-add"),
             data=self._payload(
-                selected_plan=str(self.family_plan.pk),
+                selected_plan=sp_id(self.family_plan.pk),
                 checkout_action=CheckoutAction.PAY_LATER,
             ),
             follow=False,
@@ -357,7 +367,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.family_plan.pk),
+                "selected_plan": sp_id(self.family_plan.pk),
                 "financial_mode": "family_upgrade",
                 "plan_paid": True,
             },
@@ -370,7 +380,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             reverse("system:dependent-add"),
             data=self._payload(
                 financial_mode="family_upgrade",
-                selected_plan=str(self.family_plan.pk),
+                selected_plan=sp_id(self.family_plan.pk),
                 checkout_action=CheckoutAction.STRIPE_CARD,
             ),
             follow=False,
@@ -402,7 +412,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             reverse("system:dependent-add"),
             data=self._payload(
                 financial_mode="dependent_own",
-                selected_plan=str(self.family_plan.pk),
+                selected_plan=sp_id(self.family_plan.pk),
                 checkout_action=CheckoutAction.STRIPE_CARD,
             ),
         )
@@ -430,7 +440,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             reverse("system:dependent-add"),
             data=self._payload(
                 financial_mode="dependent_own",
-                selected_plan=str(loyalty_plan.pk),
+                selected_plan=sp_id(loyalty_plan.pk),
                 checkout_action=CheckoutAction.STRIPE_CARD,
             ),
         )
@@ -523,7 +533,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
                 "plan_paid": True,
             },
         )
@@ -538,7 +548,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             response = self.client.post(
                 reverse("system:dependent-add"),
                 data=self._payload(
-                    selected_plan=str(self.individual_plan.pk),
+                    selected_plan=sp_id(self.individual_plan.pk),
                     checkout_action=CheckoutAction.STRIPE_CARD,
                     materials_checkout_action=CheckoutAction.PIX,
                     **{f"material_variant_{self.product_variant.pk}": "2"},
@@ -569,7 +579,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
                 "plan_paid": True,
                 "materials_payment": {"asaas_payment_id": "pay_dep_materials"},
             },
@@ -630,7 +640,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             form_snapshot={
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
                 "plan_paid": True,
                 "materials_paid": True,
             },
@@ -639,7 +649,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         session["pending_dependent_pre_registration_id"] = pre_registration.pk
         session.save()
         payload = self._payload(
-            selected_plan=str(self.individual_plan.pk),
+            selected_plan=sp_id(self.individual_plan.pk),
             checkout_action=CheckoutAction.STRIPE_CARD,
         )
 
@@ -672,7 +682,7 @@ class DependentRegistrationFlowTestCase(TestCase):
                 "flow_kind": "dependent_addition",
                 "owner_person_id": self.owner.pk,
                 "dependent_cpf": "529.982.247-25",
-                "selected_plan": str(self.individual_plan.pk),
+                "selected_plan": sp_id(self.individual_plan.pk),
             },
         )
 
@@ -680,7 +690,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             response = self.client.post(
                 reverse("system:dependent-add"),
                 data=self._payload(
-                    selected_plan=str(self.individual_plan.pk),
+                    selected_plan=sp_id(self.individual_plan.pk),
                     checkout_action=CheckoutAction.STRIPE_CARD,
                 ),
             )
@@ -715,7 +725,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         response = self.client.post(
             reverse("system:dependent-add"),
             data=self._payload(
-                selected_plan=str(self.individual_plan.pk),
+                selected_plan=sp_id(self.individual_plan.pk),
                 checkout_action=CheckoutAction.STRIPE_CARD,
             ),
             follow=False,
@@ -789,16 +799,6 @@ class DependentCardStrategyTestCase(TestCase):
             gateway_code="stripe_card",
             stripe_price_id="price_dependent_card_strategy",
         )
-
-    def _base_form_data(self, **overrides):
-        data = {
-            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
-            "checkout_action": CheckoutAction.STRIPE_CARD,
-            "selected_plan": str(self.dependent_plan.pk),
-            "card_strategy": DependentCardStrategy.SAME_CARD_MERGED,
-        }
-        data.update(overrides)
-        return data
 
     def test_card_strategy_merged_rejected_without_owner_stripe_subscription(self):
         form = DependentRegistrationForm(owner=self.owner)
@@ -967,3 +967,170 @@ class DependentCardStrategyTestCase(TestCase):
         _, kwargs = mocked_session.call_args
         expected_anchor = int((owner_period_end + timezone.timedelta(hours=4)).timestamp())
         self.assertEqual(kwargs["billing_cycle_anchor"], expected_anchor)
+
+
+class PlanPriceDependentRegistrationTestCase(TestCase):
+    """PRD-127: dependente escolhe um plano do novo catálogo PlanTier/PlanPrice
+    (sem card 'Família' separado) e o desconto familiar é aplicado
+    automaticamente quando o titular compartilha o mesmo tier."""
+
+    def setUp(self):
+        self.student_type = PersonType.objects.create(
+            code=PersonTypeCode.STUDENT,
+            display_name="Aluno",
+        )
+        PersonType.objects.create(
+            code=PersonTypeCode.DEPENDENT,
+            display_name="Dependente",
+        )
+        self.owner = Person.objects.create(
+            full_name="Titular Plan Price E2E",
+            cpf="390.533.447-05",
+            person_type=self.student_type,
+            birth_date=date(1990, 1, 1),
+            biological_sex=BiologicalSex.MALE,
+            email="titular.pp@example.com",
+        )
+        self.account = PortalAccount(person=self.owner)
+        self.account.set_password("123456")
+        self.account.save()
+        self.category = ClassCategory.objects.create(
+            code="adult-pp-e2e",
+            display_name="Adulto PP E2E",
+            audience=CategoryAudience.ADULT,
+        )
+        IbjjfAgeCategory.objects.create(
+            code="adult-pp-e2e",
+            display_name="Adulto",
+            audience=CategoryAudience.ADULT,
+            minimum_age=18,
+            display_order=1,
+        )
+        self.class_group = ClassGroup.objects.create(
+            display_name="Jiu Jitsu Noite PP",
+            class_category=self.category,
+        )
+        BeltRank.objects.create(
+            code="adult-white-pp-e2e",
+            display_name="Branca Adulto PP E2E",
+            audience=CategoryAudience.ADULT,
+            color_hex="#ffffff",
+            display_order=1,
+        )
+        self.tier = PlanTier.objects.create(
+            code="adult-2x-e2e",
+            display_name="Adulto 2x por semana",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=2,
+            family_discount_percentage=Decimal("0.18"),
+        )
+        self.price = PlanPrice.objects.create(
+            tier=self.tier,
+            payment_method=PlanPaymentMethod.PIX,
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("200.00"),
+        )
+        self.owner_membership = Membership.objects.create(
+            person=self.owner,
+            plan_price=self.price,
+            status=MembershipStatus.ACTIVE,
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+
+    def _payload(self, **overrides):
+        payload = {
+            "dependent_name": "Dependente Plan Price",
+            "dependent_cpf": "529.982.247-25",
+            "dependent_birthdate": "01/01/2000",
+            "dependent_biological_sex": BiologicalSex.MALE,
+            "dependent_email": "dependente.pp@example.com",
+            "dependent_phone": "(11) 99999-0000",
+            "dependent_password": "12345678",
+            "dependent_password_confirm": "12345678",
+            "dependent_kinship_type": "other",
+            "dependent_kinship_other_label": "Familiar",
+            "dependent_class_groups": [str(self.class_group.pk)],
+            "dependent_blood_type": "",
+            "dependent_allergies": "",
+            "dependent_injuries": "",
+            "dependent_emergency_contact": "Contato Emergencia",
+            "dependent_has_martial_art": "yes",
+            "dependent_martial_art": "jiu_jitsu",
+            "dependent_martial_art_graduation": "",
+            "dependent_jiu_jitsu_belt": "white",
+            "dependent_jiu_jitsu_stripes": "0",
+            "dependent_martial_art_started_at": "01/01/2024",
+            "dependent_martial_art_last_graduation_at": "",
+            "dependent_previous_academy": "Academia Exemplo",
+            "use_family_plan": "",
+            "selected_plan": "",
+            "checkout_action": CheckoutAction.PAY_LATER,
+            "materials_checkout_action": CheckoutAction.PAY_LATER,
+        }
+        payload.update(overrides)
+        return payload
+
+    def _login(self):
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = self.account.pk
+        session.save()
+
+    def test_dependent_selecting_plan_price_resolves_dependent_own(self):
+        self._login()
+
+        with patch(
+            "system.views.dependent_views.create_pre_registration_plan_payment"
+        ) as mocked_payment:
+            mocked_payment.return_value = "https://checkout.asaas.test/pp-session"
+            response = self.client.post(
+                reverse("system:dependent-add"),
+                data=self._payload(
+                    selected_plan=f"pp:{self.price.pk}",
+                    checkout_action=CheckoutAction.PIX,
+                ),
+                follow=False,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        pre_registration = PreRegistration.objects.get()
+        self.assertEqual(
+            pre_registration.form_snapshot["financial_mode"],
+            DependentFinancialMode.DEPENDENT_OWN,
+        )
+        self.assertIsNone(pre_registration.selected_plan)
+
+    def test_dependent_own_plan_price_finalization_triggers_family_discount(self):
+        pre_registration = PreRegistration.objects.create(
+            registration_profile="dependent",
+            holder_cpf=self.owner.cpf,
+            holder_email=self.owner.email,
+            form_snapshot={
+                "flow_kind": "dependent_addition",
+                "owner_person_id": self.owner.pk,
+            },
+        )
+        cleaned_data = {
+            "dependent_name": "Dependente Plan Price Final",
+            "dependent_cpf": "153.509.460-56",
+            "dependent_password": "12345678",
+            "dependent_biological_sex": BiologicalSex.MALE,
+            "financial_mode": DependentFinancialMode.DEPENDENT_OWN,
+            "selected_plan_obj": self.price,
+            "checkout_action": CheckoutAction.PIX,
+        }
+
+        result = finalize_dependent_registration(
+            self.owner, cleaned_data, pre_registration=pre_registration
+        )
+
+        dependent = result["dependent"]
+        dependent_membership = Membership.objects.get(person=dependent)
+        self.assertEqual(dependent_membership.plan_price_id, self.price.pk)
+
+        self.owner_membership.refresh_from_db()
+        dependent_membership.refresh_from_db()
+        self.assertTrue(self.owner_membership.family_discount_applied)
+        self.assertTrue(dependent_membership.family_discount_applied)
+        self.assertEqual(self.owner_membership.billed_price, self.price.family_price())
+        self.assertEqual(dependent_membership.billed_price, self.price.family_price())

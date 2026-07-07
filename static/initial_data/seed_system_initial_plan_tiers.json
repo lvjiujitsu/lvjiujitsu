@@ -1,0 +1,38 @@
+[
+  {
+    "code": "adult-2x",
+    "display_name": "Adulto 2x por semana",
+    "audience": "adult",
+    "weekly_frequency": 2,
+    "family_discount_percentage": "18.00",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "adult-5x",
+    "display_name": "Adulto 5x por semana",
+    "audience": "adult",
+    "weekly_frequency": 5,
+    "family_discount_percentage": "18.00",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "kids-2x",
+    "display_name": "Kids / Juvenil 2x por semana",
+    "audience": "kids_juvenile",
+    "weekly_frequency": 2,
+    "family_discount_percentage": "18.00",
+    "display_order": 3,
+    "is_active": true
+  },
+  {
+    "code": "kids-5x",
+    "display_name": "Kids / Juvenil 5x por semana",
+    "audience": "kids_juvenile",
+    "weekly_frequency": 5,
+    "family_discount_percentage": "18.00",
+    "display_order": 4,
+    "is_active": true
+  }
+]

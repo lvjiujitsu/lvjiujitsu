@@ -1435,6 +1435,80 @@
     }
   }
 
+  function bindPauseModal() {
+    var config = readConfig();
+    var csrfToken = getCsrfToken();
+    var openBtns = document.querySelectorAll('.js-open-pause-modal');
+    var overlay = document.getElementById('pause-modal');
+    if (!openBtns.length || !overlay) return;
+
+    var closeButtons = overlay.querySelectorAll('.js-close-pause-modal');
+    var form = overlay.querySelector('.js-pause-form');
+    var errorEl = form ? form.querySelector('.modal__error') : null;
+    var submitBtn = form ? form.querySelector('[type="submit"]') : null;
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+
+    openBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (form) form.reset();
+        if (errorEl) errorEl.textContent = '';
+        overlay.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+      });
+    });
+
+    closeButtons.forEach(function (btn) {
+      btn.addEventListener('click', closeModal);
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var url = config.membershipPauseCreateUrl;
+        if (!url) return;
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (errorEl) errorEl.textContent = '';
+
+        var body = new URLSearchParams(new FormData(form));
+
+        fetch(url, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: body
+        })
+          .then(function (response) {
+            return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+          })
+          .then(function (result) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (!result.ok || !result.data.success) {
+              if (errorEl) errorEl.textContent = (result.data && result.data.error) || 'Erro ao solicitar pausa.';
+              return;
+            }
+            closeModal();
+            location.reload();
+          })
+          .catch(function () {
+            if (submitBtn) submitBtn.disabled = false;
+            if (errorEl) errorEl.textContent = 'Falha de conexão.';
+          });
+      });
+    }
+  }
+
   function bindSubstituteTeacherModal() {
     var cfg = readConfig();
     var overlay = document.getElementById('substitute-teacher-modal');
@@ -1597,6 +1671,7 @@
   bindGradDetailsToggle();
   bindBillingDetailsToggle();
   bindPlanChangeModal();
+  bindPauseModal();
   bindInstructorSelfCheckin();
   bindInstructorSelfCheckinCancel();
   bindSubstituteTeacherModal();

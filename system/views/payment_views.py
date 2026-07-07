@@ -51,9 +51,9 @@ class PaymentMethodChoiceView(View):
 
     def get(self, request, order_id, *args, **kwargs):
         try:
-            order = RegistrationOrder.objects.select_related("plan", "person").get(
-                pk=order_id
-            )
+            order = RegistrationOrder.objects.select_related(
+                "plan", "plan_price_ref", "person"
+            ).get(pk=order_id)
         except RegistrationOrder.DoesNotExist:
             return _redirect_missing_order(request)
         if not _is_authorized_for_order(request, order):
@@ -65,9 +65,31 @@ class PaymentMethodChoiceView(View):
         ):
             messages.info(request, "Este pedido já foi processado.")
             return redirect("system:dashboard-redirect")
-        if order.plan and order.plan.payment_method == "credit_card":
+        gateway_code = _resolve_order_gateway_code(order)
+        if gateway_code == "stripe_card":
+            from system.services.plan_change import create_plan_change_stripe_order
+            from system.services.stripe_checkout import (
+                StripeCheckoutError,
+                create_subscription_session_for_plan_change,
+            )
+
+            try:
+                session = create_subscription_session_for_plan_change(order, request)
+            except StripeCheckoutError as exc:
+                messages.error(request, str(exc))
+                return redirect("system:dashboard-redirect")
+            return redirect(session["url"])
+        if gateway_code == "asaas_card":
             return redirect("system:asaas-card-create", order_id=order.pk)
         return redirect("system:asaas-pix-create", order_id=order.pk)
+
+
+def _resolve_order_gateway_code(order):
+    if order.plan_price_ref_id:
+        return order.plan_price_ref.gateway_code
+    if order.plan_id and order.plan:
+        return order.plan.gateway_code
+    return "asaas_pix"
 
 
 class DeferPaymentView(View):

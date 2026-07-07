@@ -102,6 +102,18 @@ def resolve_primary_email(cleaned_data):
     )
 
 
+def _legacy_plan_pk_from_catalog_id(catalog_id):
+    """`PreRegistration.selected_plan` é FK a `SubscriptionPlan`; uma seleção
+    `PlanPrice` (catálogo novo da PRD-127) não pode ser atribuída a esse campo
+    — o id de catálogo (string) continua disponível no snapshot bruto."""
+    if not catalog_id:
+        return None
+    from system.services.registration_checkout import resolve_catalog_plan
+
+    legacy_plan, _ = resolve_catalog_plan(catalog_id)
+    return legacy_plan.pk if legacy_plan is not None else None
+
+
 def save_pre_registration_from_form(session, post_data, cleaned_data):
     """
     Cria ou atualiza o PreRegistration ativo da sessão a partir do form do wizard.
@@ -124,7 +136,7 @@ def save_pre_registration_from_form(session, post_data, cleaned_data):
         "holder_cpf": resolve_primary_cpf(cleaned_data),
         "holder_email": resolve_primary_email(cleaned_data),
         "form_snapshot": snapshot,
-        "selected_plan_id": cleaned_data.get("selected_plan"),
+        "selected_plan_id": _legacy_plan_pk_from_catalog_id(cleaned_data.get("selected_plan")),
         "checkout_action": cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER,
         "status": PreRegistrationStatus.DRAFT,
     }
@@ -566,6 +578,7 @@ def finalize_pre_registration(pre_registration):
             notes="Pagamento confirmado via pré-cadastro.",
             stripe_subscription_id=plan_payment.get("stripe_subscription_id", ""),
             stripe_subscription_item_id=plan_payment.get("stripe_subscription_item_id", ""),
+            stripe_customer_id=plan_payment.get("stripe_customer_id", ""),
         )
 
     # Aula experimental: criar RegistrationOrder pendente e TrialAccessGrant

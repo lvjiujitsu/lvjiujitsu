@@ -26,6 +26,7 @@ from system.models.calendar import (
     SpecialClass,
     SpecialClassCheckin,
 )
+from system.services.membership import get_active_membership
 from system.services.trial_access import consume_trial_for_person
 
 
@@ -263,6 +264,10 @@ def get_today_classes_for_person(person):
     }
     holiday = Holiday.objects.filter(date=today, is_active=True).first()
 
+    membership = get_active_membership(person)
+    membership_pause = membership.current_pause if membership is not None else None
+    membership_paused_until = membership_pause.requested_end_date if membership_pause else None
+
     def _special_entries():
         entries = []
         for sc in specials:
@@ -290,6 +295,8 @@ def get_today_classes_for_person(person):
                 checkin_status=checkin.status if checkin else "",
                 is_checkin_approved=bool(checkin and checkin.is_approved),
                 can_cancel_checkin=bool(checkin and not checkin.is_approved),
+                membership_paused=membership_pause is not None,
+                membership_paused_until=membership_paused_until,
             ))
         return entries
 
@@ -356,6 +363,8 @@ def get_today_classes_for_person(person):
             checkin_status=checkin.status if checkin else "",
             is_checkin_approved=bool(checkin and checkin.is_approved),
             can_cancel_checkin=bool(checkin and not checkin.is_approved),
+            membership_paused=membership_pause is not None,
+            membership_paused_until=membership_paused_until,
         ))
     result.extend(_special_entries())
     return result
@@ -1027,9 +1036,9 @@ def cancel_class_without_instructor(instructor, schedule_id, reason="Sem profess
     today = timezone.localdate()
     schedule = assert_instructor_owns_schedule(instructor, schedule_id)
     session = ClassSession.objects.filter(schedule=schedule, date=today).first()
-    if session and session.instructor_present:
+    if session and not session.is_cancelled and session.instructor_present:
         raise ValueError("Cancele a confirmação antes de cancelar a aula.")
-    if session and session.substitute_teacher_id:
+    if session and not session.is_cancelled and session.substitute_teacher_id:
         raise ValueError("Há um substituto indicado para esta aula.")
     return toggle_session_cancel(schedule_id, today, reason)
 
@@ -1244,6 +1253,14 @@ def perform_checkin(person, schedule_id):
     if holiday:
         raise ValueError(f"Hoje é feriado: {holiday.name}")
 
+    membership = get_active_membership(person)
+    if membership is not None and membership.is_currently_paused:
+        pause = membership.current_pause
+        raise ValueError(
+            "Matrícula pausada até "
+            f"{pause.requested_end_date.strftime('%d/%m/%Y')} — check-in indisponível."
+        )
+
     checkin, created = ClassCheckin.objects.get_or_create(
         session=session,
         person=person,
@@ -1434,7 +1451,7 @@ def toggle_session_cancel(schedule_id, session_date, reason=""):
     session, created = ClassSession.objects.get_or_create(
         schedule=schedule,
         date=session_date,
-        defaults={"status": SessionStatus.SCHEDULED},
+        defaults=_session_creation_defaults(),
     )
     if session.is_cancelled:
         session.status = SessionStatus.SCHEDULED

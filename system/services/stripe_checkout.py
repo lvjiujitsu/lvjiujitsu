@@ -70,18 +70,25 @@ def create_checkout_session_for_order(order, request):
     return session
 
 
-def _create_subscription_session(client, order, customer_id, success_url, cancel_url):
-    plan = order.plan
-    if not plan.stripe_price_id:
-        raise StripeCheckoutError(
-            f"Plano '{plan.display_name}' sem Stripe Price sincronizado. "
-            "Salve o plano para disparar a sincronização."
-        )
+def _create_subscription_session(client, order, plan, customer_id, success_url, cancel_url):
+    price_to_charge = order.total if order.total else plan.price
+    if not price_to_charge or Decimal(str(price_to_charge)) <= Decimal("0"):
+        raise StripeCheckoutError("Plano sem valor cobrável.")
     return client.checkout.Session.create(
         mode="subscription",
         payment_method_types=["card"],
         customer=customer_id,
-        line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
+        line_items=[{
+            "price_data": {
+                "currency": payment_currency(),
+                "unit_amount": _to_cents(price_to_charge),
+                "recurring": {"interval": "month"},
+                "product_data": {
+                    "name": f"Mensalidade LV Jiu Jitsu — {plan.display_name}",
+                },
+            },
+            "quantity": 1,
+        }],
         success_url=success_url,
         cancel_url=cancel_url,
         client_reference_id=str(order.pk),
@@ -98,6 +105,38 @@ def _create_subscription_session(client, order, customer_id, success_url, cancel
             },
         },
     )
+
+
+def create_billing_portal_session(membership, request):
+    client = _get_client()
+    if not membership.stripe_customer_id:
+        raise StripeCheckoutError("Assinatura sem cliente Stripe vinculado.")
+
+    return_url = request.build_absolute_uri(reverse("system:home")) + "?card_update=done"
+    return client.billing_portal.Session.create(
+        customer=membership.stripe_customer_id,
+        return_url=return_url,
+        flow_data={"type": "payment_method_update"},
+    )
+
+
+def create_subscription_session_for_plan_change(order, request):
+    client = _get_client()
+    plan = order.plan_price_ref if order.plan_price_ref_id else order.plan
+    if plan is None:
+        raise StripeCheckoutError("Pedido de troca de plano sem plano de destino.")
+
+    success_url = request.build_absolute_uri(reverse("system:home")) + "?plan_migration=success"
+    cancel_url = request.build_absolute_uri(reverse("system:home")) + "?plan_migration=canceled"
+    customer_id = ensure_stripe_customer(order.person)
+
+    session = _create_subscription_session(
+        client, order, plan, customer_id, success_url, cancel_url
+    )
+    order.kind = OrderKind.SUBSCRIPTION
+    order.stripe_session_id = session["id"]
+    order.save(update_fields=["stripe_session_id", "kind", "updated_at"])
+    return session
 
 
 def _create_one_time_session(client, order, has_plan, customer_id, success_url, cancel_url):

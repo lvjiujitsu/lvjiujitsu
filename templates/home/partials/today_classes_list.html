@@ -158,7 +158,9 @@
                 <span class="status-pill status-pill--success">{{ item.approved_count|default:0 }} presentes</span>
               {% endif %}
             {% elif item.entry_role == 'student' %}
-              {% if item.is_checkin_approved %}
+              {% if item.membership_paused %}
+                <span class="checkin-notice">Matrícula pausada até {{ item.membership_paused_until|date:"d/m/Y" }}</span>
+              {% elif item.is_checkin_approved %}
                 <span class="status-pill status-pill--success">Confirmado</span>
               {% elif item.has_checked_in %}
                 {% if item.can_cancel_checkin %}

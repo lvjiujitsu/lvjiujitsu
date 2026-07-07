@@ -12,8 +12,11 @@ from system.models.registration_order import (
     StripeWebhookEvent,
 )
 from system.services.membership import (
+    _from_unix,
+    _sget,
     activate_membership_from_paid_order,
     activate_membership_from_session,
+    extract_stripe_subscription_period,
     mark_invoice_failed,
     mark_membership_canceled,
     record_invoice_from_stripe,
@@ -119,12 +122,15 @@ def _handle_pre_registration_checkout_completed(session):
         return
 
     subscription_id = (session["subscription"] if "subscription" in session else None) or ""
+    customer_id = (session["customer"] if "customer" in session else None) or ""
     snapshot = pr.form_snapshot or {}
     plan_payment = snapshot.get("plan_payment") or {}
     session_id = session["id"] if "id" in session else ""
     plan_payment["stripe_session_id"] = session_id
     if subscription_id:
         plan_payment["stripe_subscription_id"] = str(subscription_id)
+    if customer_id:
+        plan_payment["stripe_customer_id"] = str(customer_id)
     snapshot["plan_payment"] = plan_payment
     snapshot["plan_paid"] = True
 
@@ -132,6 +138,46 @@ def _handle_pre_registration_checkout_completed(session):
     pr.status = PreRegistrationStatus.PAYMENT_CONFIRMED
     pr.save(update_fields=["form_snapshot", "status", "updated_at"])
     logger.info("Webhook Stripe: PreRegistration %s confirmada via checkout", pr_pk)
+
+
+def _apply_stripe_plan_change_migration(order, session, *, stripe_subscription=None):
+    from system.services.plan_change import apply_plan_change
+
+    active = (
+        Membership.objects.filter(
+            person=order.person,
+            status__in=(MembershipStatus.ACTIVE, MembershipStatus.EXEMPTED),
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if active is None:
+        return None
+
+    new_plan = order.plan_price_ref if order.plan_price_ref_id else order.plan
+    apply_plan_change(order, active, new_plan)
+
+    update_fields = []
+    if "subscription" in session and session["subscription"]:
+        active.stripe_subscription_id = str(session["subscription"])
+        update_fields.append("stripe_subscription_id")
+    if "customer" in session and session["customer"]:
+        active.stripe_customer_id = str(session["customer"])
+        update_fields.append("stripe_customer_id")
+    if stripe_subscription is not None:
+        current_period_start, current_period_end = extract_stripe_subscription_period(
+            stripe_subscription
+        )
+        if current_period_start:
+            active.current_period_start = current_period_start
+            update_fields.append("current_period_start")
+        if current_period_end:
+            active.current_period_end = current_period_end
+            update_fields.append("current_period_end")
+    if update_fields:
+        update_fields.append("updated_at")
+        active.save(update_fields=update_fields)
+    return active
 
 
 def _handle_checkout_session_completed(event):
@@ -170,6 +216,13 @@ def _handle_checkout_session_completed(event):
         )
         if not was_paid:
             apply_order_variant_stock(order)
+
+        if order.is_plan_change and (order.plan_id or order.plan_price_ref_id):
+            membership = _apply_stripe_plan_change_migration(
+                order, session, stripe_subscription=stripe_subscription
+            )
+            return order, membership
+
         membership = activate_membership_from_session(
             order, session, stripe_subscription=stripe_subscription
         )
@@ -198,7 +251,7 @@ def _handle_checkout_session_completed(event):
         mark_available=True,
     )
 
-    if order.is_plan_change and order.plan_id:
+    if order.is_plan_change and (order.plan_id or order.plan_price_ref_id):
         from system.services.plan_change import apply_plan_change
 
         active = (
@@ -210,7 +263,8 @@ def _handle_checkout_session_completed(event):
             .first()
         )
         if active:
-            apply_plan_change(order, active, order.plan)
+            new_plan = order.plan_price_ref if order.plan_price_ref_id else order.plan
+            apply_plan_change(order, active, new_plan)
             return order, active
 
     membership = activate_membership_from_paid_order(

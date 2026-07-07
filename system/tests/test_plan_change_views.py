@@ -18,6 +18,14 @@ from system.models import (
 )
 from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod
 from system.services import PORTAL_ACCOUNT_SESSION_KEY
+from system.services.registration_checkout import (
+    CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+    build_catalog_plan_id,
+)
+
+
+def sp_id(plan_pk):
+    return build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, plan_pk)
 
 
 class PlanChangeSelectViewTestCase(TestCase):
@@ -87,7 +95,7 @@ class PlanChangeSelectViewTestCase(TestCase):
 
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.cheaper_plan.pk, "leftover_action": "keep_credit"},
+            data={"selected_plan": sp_id(self.cheaper_plan.pk), "leftover_action": "keep_credit"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -102,7 +110,7 @@ class PlanChangeSelectViewTestCase(TestCase):
 
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.pricier_plan.pk},
+            data={"selected_plan": sp_id(self.pricier_plan.pk)},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -122,7 +130,7 @@ class PlanChangeSelectViewTestCase(TestCase):
 
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.cheaper_plan.pk},
+            data={"selected_plan": sp_id(self.cheaper_plan.pk)},
         )
 
         self.assertEqual(response.status_code, 400)
@@ -140,7 +148,7 @@ class PlanChangeSelectViewTestCase(TestCase):
 
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.cheaper_plan.pk},
+            data={"selected_plan": sp_id(self.cheaper_plan.pk)},
         )
 
         self.assertEqual(response.status_code, 400)
@@ -155,7 +163,7 @@ class PlanChangeSelectViewTestCase(TestCase):
 
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.current_plan.pk},
+            data={"selected_plan": sp_id(self.current_plan.pk)},
         )
 
         self.assertEqual(response.status_code, 400)
@@ -165,7 +173,7 @@ class PlanChangeSelectViewTestCase(TestCase):
     def test_unauthenticated_is_redirected_to_login(self):
         response = self.client.post(
             reverse("system:plan-change-select"),
-            data={"selected_plan": self.cheaper_plan.pk},
+            data={"selected_plan": sp_id(self.cheaper_plan.pk)},
         )
         self.assertEqual(response.status_code, 302)
 

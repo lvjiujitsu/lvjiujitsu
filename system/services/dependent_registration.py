@@ -37,6 +37,15 @@ DEPENDENT_FLOW_KIND = "dependent_addition"
 MATERIALS_ORDER_MARKER_PREFIX = "[dependent_materials_pre_registration:"
 
 
+def _legacy_selected_plan(cleaned_data):
+    from system.models.plan import PlanPrice
+
+    plan = cleaned_data.get("selected_plan_obj")
+    if plan is None or isinstance(plan, PlanPrice):
+        return None
+    return plan
+
+
 def create_dependent_pre_registration(owner, cleaned_data, *, session_key=""):
     existing = find_dependent_pre_registration(
         owner,
@@ -44,7 +53,6 @@ def create_dependent_pre_registration(owner, cleaned_data, *, session_key=""):
     )
     if existing is not None:
         return update_dependent_pre_registration(existing, owner, cleaned_data)
-    plan = cleaned_data.get("selected_plan_obj")
     snapshot = build_dependent_snapshot(owner, cleaned_data)
     return PreRegistration.objects.create(
         session_key=session_key or "",
@@ -52,7 +60,7 @@ def create_dependent_pre_registration(owner, cleaned_data, *, session_key=""):
         holder_cpf=owner.cpf,
         holder_email=owner.email,
         form_snapshot=snapshot,
-        selected_plan=plan,
+        selected_plan=_legacy_selected_plan(cleaned_data),
         checkout_action=cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER,
         status=PreRegistrationStatus.DRAFT,
     )
@@ -72,7 +80,7 @@ def update_dependent_pre_registration(pre_registration, owner, cleaned_data):
         if key in current_snapshot and key not in snapshot:
             snapshot[key] = current_snapshot[key]
     pre_registration.form_snapshot = snapshot
-    pre_registration.selected_plan = cleaned_data.get("selected_plan_obj")
+    pre_registration.selected_plan = _legacy_selected_plan(cleaned_data)
     pre_registration.checkout_action = (
         cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
     )
@@ -253,6 +261,7 @@ def finalize_dependent_registration(owner, cleaned_data, *, pre_registration=Non
             checkout_action=cleaned_data.get("checkout_action") or "",
             stripe_subscription_id=plan_payment.get("stripe_subscription_id", ""),
             stripe_subscription_item_id=plan_payment.get("stripe_subscription_item_id", ""),
+            stripe_customer_id=plan_payment.get("stripe_customer_id", ""),
         )
     elif (
         financial_mode == DependentFinancialMode.FAMILY_UPGRADE
@@ -339,11 +348,16 @@ def save_checkout_url(pre_registration, stage, checkout_url):
 
 def _create_paid_plan_order(
     dependent, plan, *, checkout_action="",
-    stripe_subscription_id="", stripe_subscription_item_id="",
+    stripe_subscription_id="", stripe_subscription_item_id="", stripe_customer_id="",
 ):
+    from system.models.plan import PlanPrice
+    from system.services.family_pricing import recompute_family_discounts_for_person
+
+    is_plan_price = isinstance(plan, PlanPrice)
     order = RegistrationOrder.objects.create(
         person=dependent,
-        plan=plan,
+        plan=None if is_plan_price else plan,
+        plan_price_ref=plan if is_plan_price else None,
         plan_price=plan.price,
         total=plan.price,
         payment_status=PaymentStatus.PAID,
@@ -365,7 +379,9 @@ def _create_paid_plan_order(
         notes="Dependente ativado após pagamento do pré-cadastro.",
         stripe_subscription_id=stripe_subscription_id,
         stripe_subscription_item_id=stripe_subscription_item_id,
+        stripe_customer_id=stripe_customer_id,
     )
+    recompute_family_discounts_for_person(dependent)
     return order
 
 
@@ -501,9 +517,22 @@ def _date_to_string(value):
 
 
 def _selected_plans_payload(owner, cleaned_data):
+    from system.models.plan import PlanPrice
+    from system.services.registration_checkout import (
+        CATALOG_ID_PREFIX_PLAN_PRICE,
+        CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+        build_catalog_plan_id,
+    )
+
     plan = cleaned_data.get("selected_plan_obj")
     if plan is None:
         return []
+    prefix = (
+        CATALOG_ID_PREFIX_PLAN_PRICE
+        if isinstance(plan, PlanPrice)
+        else CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN
+    )
+    plan_id = build_catalog_plan_id(prefix, plan.pk)
     financial_mode = (
         cleaned_data.get("financial_mode") or DependentFinancialMode.DEPENDENT_OWN
     )
@@ -515,13 +544,13 @@ def _selected_plans_payload(owner, cleaned_data):
                     f"{owner.full_name} + "
                     f"{cleaned_data.get('dependent_name') or 'Dependente'}"
                 ),
-                "plan_id": plan.pk,
+                "plan_id": plan_id,
             }
         ]
     return [
         {
             "person": "dependent",
             "label": cleaned_data.get("dependent_name") or "Dependente",
-            "plan_id": plan.pk,
+            "plan_id": plan_id,
         }
     ]

@@ -117,7 +117,23 @@ from system.views.plan_views import (
     PlanListView,
     PlanUpdateView,
 )
-from system.views.plan_change_views import PlanChangeSelectView
+from system.views.plan_tier_views import (
+    PlanPriceCreateView,
+    PlanPriceDeleteView,
+    PlanPriceUpdateView,
+    PlanTierCreateView,
+    PlanTierDeleteView,
+    PlanTierDetailView,
+    PlanTierListView,
+    PlanTierUpdateView,
+)
+from system.views.plan_change_views import MembershipUpdateCardView, PlanChangeSelectView
+from system.views.membership_pause_views import (
+    MembershipPauseQuotaView,
+    MembershipPauseRequestCreateView,
+    MembershipPauseRequestDetailView,
+    MembershipPauseRequestQueueView,
+)
 from system.views.calendar_views import (
     CalendarView,
     InstructorApproveCheckinView,
@@ -191,6 +207,11 @@ urlpatterns = [
     path("pagamentos/<int:order_id>/pagar-depois/", DeferPaymentView.as_view(), name="payment-defer"),
     path("pagamentos/pendente/", RetryPendingOrderView.as_view(), name="payment-retry"),
     path("minha-mensalidade/trocar-plano/", PlanChangeSelectView.as_view(), name="plan-change-select"),
+    path("minha-mensalidade/trocar-cartao/", MembershipUpdateCardView.as_view(), name="membership-update-card"),
+    path("minha-mensalidade/pausar/", MembershipPauseRequestCreateView.as_view(), name="membership-pause-request-create"),
+    path("minha-mensalidade/pausar/cota/", MembershipPauseQuotaView.as_view(), name="membership-pause-quota"),
+    path("requests/pausas/", MembershipPauseRequestQueueView.as_view(), name="membership-pause-request-list"),
+    path("requests/pausas/<int:pk>/", MembershipPauseRequestDetailView.as_view(), name="membership-pause-request-detail"),
     path("pagamentos/sucesso/", PaymentSuccessView.as_view(), name="payment-success"),
     path("pagamentos/cancelado/", PaymentCancelView.as_view(), name="payment-cancel"),
     path("pagamentos/webhook/asaas/", AsaasWebhookView.as_view(), name="asaas-webhook"),
@@ -244,6 +265,20 @@ urlpatterns = [
     path("plans/<int:pk>/view/", PlanDetailView.as_view(), name="plan-detail"),
     path("plans/<int:pk>/edit/", PlanUpdateView.as_view(), name="plan-update"),
     path("plans/<int:pk>/delete/", PlanDeleteView.as_view(), name="plan-delete"),
+
+    # Tiers comerciais e precos versionados (PRD-128)
+    path("plan-tiers/", PlanTierListView.as_view(), name="plan-tier-list"),
+    path("plan-tiers/create/", PlanTierCreateView.as_view(), name="plan-tier-create"),
+    path("plan-tiers/<int:pk>/view/", PlanTierDetailView.as_view(), name="plan-tier-detail"),
+    path("plan-tiers/<int:pk>/edit/", PlanTierUpdateView.as_view(), name="plan-tier-update"),
+    path("plan-tiers/<int:pk>/delete/", PlanTierDeleteView.as_view(), name="plan-tier-delete"),
+    path(
+        "plan-tiers/<int:tier_pk>/prices/create/",
+        PlanPriceCreateView.as_view(),
+        name="plan-price-create",
+    ),
+    path("plan-prices/<int:pk>/edit/", PlanPriceUpdateView.as_view(), name="plan-price-update"),
+    path("plan-prices/<int:pk>/delete/", PlanPriceDeleteView.as_view(), name="plan-price-delete"),
 
     # Compatibilidade temporaria com rotas antigas em portugues (PRD-077)
     path("planos/", RedirectView.as_view(pattern_name="system:plan-list", permanent=False)),

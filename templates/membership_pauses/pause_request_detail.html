@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pausa de mensalidade — LV Jiu Jitsu</title>
+  {% load static %}
+  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=2">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
+      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">◐</button>
+    </nav>
+  </header>
+
+  <main class="page" id="main-content">
+    {% if messages %}
+    <div class="system-messages" role="alert">
+      {% for message in messages %}<div class="system-message system-message--{{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:membership-pause-request-list' %}">← Pausas de mensalidade</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ pause_request.membership.person.full_name }}</h1>
+          <p class="page-header__meta">{{ pause_request.membership.person.cpf }} · {{ pause_request.get_kind_display }}</p>
+        </div>
+        <span class="badge {% if pause_request.status == 'pending' %}badge--warning{% elif pause_request.status == 'approved' %}badge--success{% elif pause_request.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ pause_request.get_status_display }}</span>
+      </div>
+    </div>
+
+    <section class="form-card">
+      <div class="form-group">
+        <h2 class="form-group__title">Resumo</h2>
+        <dl class="request-summary">
+          <div><dt>Plano atual</dt><dd>{{ pause_request.membership.effective_display_name|default:"—" }}</dd></div>
+          <div><dt>Período solicitado</dt><dd>{{ pause_request.requested_start_date|date:"d/m/Y" }} — {{ pause_request.requested_end_date|date:"d/m/Y" }} ({{ pause_request.duration_days }} dia{{ pause_request.duration_days|pluralize }})</dd></div>
+          <div class="request-summary__full"><dt>Observação do cliente</dt><dd>{{ pause_request.reason_note|default:"—" }}</dd></div>
+          {% if pause_request.decided_by %}<div><dt>Decidido por</dt><dd>{{ pause_request.decided_by.full_name }}</dd></div>{% endif %}
+          {% if pause_request.decision_notes %}<div class="request-summary__full"><dt>Decisão</dt><dd>{{ pause_request.decision_notes }}</dd></div>{% endif %}
+        </dl>
+      </div>
+    </section>
+
+    {% if pause_request.status == 'pending' %}
+    <form method="post" class="form-card" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <h2 class="form-group__title">Decisão</h2>
+        {% if decision_form.non_field_errors %}
+        <div class="system-message system-message--error">{{ decision_form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            {{ decision_form.decision_notes.label_tag }}
+            {{ decision_form.decision_notes }}
+            {{ decision_form.decision_notes.errors }}
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--secondary" type="submit" name="action" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn btn--danger-outline" type="submit" name="action" value="reject">Recusar</button>
+        <button class="btn btn--primary" type="submit" name="action" value="approve">Aprovar</button>
+      </div>
+    </form>
+    {% endif %}
+  </main>
+  <script src="{% static 'system/js/lv/theme_toggle.js' %}"></script>
+</body>
+</html>

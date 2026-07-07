@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from system.constants import CheckoutAction, DependentCardStrategy
-from system.models.plan import PlanPaymentMethod, SubscriptionPlan
+from system.models.plan import PlanPaymentMethod, PlanPrice, SubscriptionPlan
 from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
 from system.models.product import Product, ProductVariant
 from system.models.registration_order import RegistrationOrder, RegistrationOrderItem, PaymentProvider
@@ -88,7 +88,66 @@ def _plan_charge_group_key(plan):
     return (plan.audience, tier, plan.weekly_frequency, plan.is_family_plan, plan.billing_cycle)
 
 
-def get_plan_catalog_payload():
+CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN = "sp"
+CATALOG_ID_PREFIX_PLAN_PRICE = "pp"
+
+
+def build_catalog_plan_id(prefix, pk):
+    return f"{prefix}:{pk}"
+
+
+def resolve_catalog_plan(catalog_id):
+    """Resolve um id de catálogo ('sp:<pk>' ou 'pp:<pk>') para o objeto real.
+
+    Retorna uma tupla (plan, plan_price) — exatamente um dos dois é não-nulo,
+    ou (None, None) se o id for inválido/não encontrado.
+    """
+    if not catalog_id:
+        return None, None
+    prefix, _, raw_pk = str(catalog_id).partition(":")
+    if not raw_pk:
+        return None, None
+    try:
+        pk = int(raw_pk)
+    except (TypeError, ValueError):
+        return None, None
+    if prefix == CATALOG_ID_PREFIX_PLAN_PRICE:
+        plan_price = PlanPrice.objects.filter(pk=pk, is_active=True).select_related("tier").first()
+        return None, plan_price
+    if prefix == CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN:
+        plan = SubscriptionPlan.objects.filter(pk=pk, is_active=True).first()
+        return plan, None
+    return None, None
+
+
+def _build_installment_label_for_price(plan_price):
+    if plan_price.payment_method != "credit_card":
+        return ""
+    n = _CYCLE_INSTALLMENTS.get(plan_price.billing_cycle, 1)
+    if n <= 1:
+        return "1x"
+    if plan_price.monthly_reference_price:
+        price_str = f"R$ {plan_price.monthly_reference_price:.2f}".replace(".", ",")
+        return f"{n}x {price_str}"
+    return f"{n}x"
+
+
+def get_plan_catalog_payload(*, include_plan_prices=False):
+    """Catálogo de planos para o wizard público (padrão) ou para o wizard de
+    dependente (include_plan_prices=True), que também passa a receber os
+    planos do novo modelo PlanTier/PlanPrice (PRD-127) com ids prefixados
+    ('sp:<pk>' para SubscriptionPlan legado, 'pp:<pk>' para PlanPrice) para não
+    colidir com o catálogo legado, que mantém ids numéricos crus por
+    compatibilidade com o wizard público (`selected_plan` é IntegerField lá).
+    """
+    payload = []
+    payload.extend(_build_legacy_plan_catalog_payload(prefixed=include_plan_prices))
+    if include_plan_prices:
+        payload.extend(_build_plan_price_catalog_payload())
+    return payload
+
+
+def _build_legacy_plan_catalog_payload(*, prefixed=False):
     plans = list(
         SubscriptionPlan.objects.filter(is_active=True)
         .exclude(requires_special_authorization=True)
@@ -111,7 +170,11 @@ def get_plan_catalog_payload():
         )
         payload.append(
             {
-                "id": plan.pk,
+                "id": (
+                    build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, plan.pk)
+                    if prefixed
+                    else plan.pk
+                ),
                 "code": plan.code,
                 "name": plan.display_name,
                 "commercial_tier": tier,
@@ -143,6 +206,66 @@ def get_plan_catalog_payload():
                     else 0
                 ),
                 "gateway_code": plan.gateway_code or "",
+                "family_discount_percentage": "0",
+            }
+        )
+    return payload
+
+
+def _build_plan_price_catalog_payload():
+    prices = list(
+        PlanPrice.objects.filter(is_active=True, tier__is_active=True)
+        .select_related("tier")
+        .order_by("tier__display_order", "price")
+    )
+    groups = {}
+    for price in prices:
+        key = (price.tier_id, price.billing_cycle)
+        slot = groups.setdefault(key, {})
+        slot[price.payment_method] = price
+    cent = Decimal("0.01")
+    payload = []
+    for price in prices:
+        slot = groups[(price.tier_id, price.billing_cycle)]
+        pix_price = slot.get(PlanPaymentMethod.PIX)
+        card_price = slot.get(PlanPaymentMethod.CREDIT_CARD)
+        charge_pix = str(pix_price.price.quantize(cent)) if pix_price else "0.00"
+        charge_card = str(card_price.price.quantize(cent)) if card_price else "0.00"
+        payload.append(
+            {
+                "id": build_catalog_plan_id(CATALOG_ID_PREFIX_PLAN_PRICE, price.pk),
+                "code": f"{price.tier.code}-{price.gateway_code}-{price.billing_cycle}",
+                "name": price.tier.display_name,
+                "commercial_tier": "individual",
+                "commercial_tier_label": COMMERCIAL_TIER_LABELS.get("individual", "Individual"),
+                "price": str(price.price),
+                "charge_pix": charge_pix,
+                "charge_card": charge_card,
+                "monthly_reference_price": (
+                    str(price.monthly_reference_price)
+                    if price.monthly_reference_price is not None
+                    else ""
+                ),
+                "cycle": price.get_billing_cycle_display(),
+                "billing_cycle": price.billing_cycle,
+                "payment_method": price.payment_method,
+                "payment_method_label": price.get_payment_method_display(),
+                "is_family_plan": False,
+                "is_loyalty_plan": False,
+                "audience": price.tier.audience,
+                "audience_label": price.tier.get_audience_display(),
+                "weekly_frequency": price.tier.weekly_frequency,
+                "weekly_frequency_label": price.tier.get_weekly_frequency_display(),
+                "teacher_commission_percentage": str(price.teacher_commission_percentage),
+                "requires_special_authorization": False,
+                "installment_label": _build_installment_label_for_price(price),
+                "installment_count": (
+                    _CYCLE_INSTALLMENTS.get(price.billing_cycle, 1)
+                    if price.payment_method == "credit_card"
+                    else 0
+                ),
+                "gateway_code": price.gateway_code or "",
+                "family_discount_percentage": str(price.tier.family_discount_percentage),
             }
         )
     return payload
@@ -395,30 +518,35 @@ def get_registration_plan_multiplier(cleaned_data):
 
 @transaction.atomic
 def create_registration_order(person, cleaned_data):
-    plan_id = cleaned_data.get("selected_plan")
+    catalog_id = cleaned_data.get("selected_plan")
 
-    if not plan_id:
+    if not catalog_id:
         return None
 
-    plan = None
-    plan_price = Decimal("0")
-    try:
-        plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
-        if getattr(plan, "is_family_plan", False):
+    legacy_plan, plan_price_ref = resolve_catalog_plan(catalog_id)
+    if legacy_plan is None and plan_price_ref is None:
+        return None
+
+    if legacy_plan is not None:
+        resolved_plan = legacy_plan
+        if getattr(legacy_plan, "is_family_plan", False):
             multiplier = _count_group_members(cleaned_data)
         else:
             multiplier = _count_training_persons(cleaned_data)
-        plan_price = plan.price * Decimal(multiplier)
-    except SubscriptionPlan.DoesNotExist:
-        return None
+        unit_price = legacy_plan.price
+    else:
+        resolved_plan = plan_price_ref
+        multiplier = _count_training_persons(cleaned_data)
+        unit_price = plan_price_ref.price
 
-    payment_provider = resolve_payment_provider_for_plan(plan)
-    total = plan_price
+    total = unit_price * Decimal(multiplier)
+    payment_provider = resolve_payment_provider_for_plan(resolved_plan)
 
     order = RegistrationOrder.objects.create(
         person=person,
-        plan=plan,
-        plan_price=plan_price,
+        plan=legacy_plan,
+        plan_price_ref=plan_price_ref,
+        plan_price=total,
         total=total,
     )
     apply_order_financials(order, payment_provider=payment_provider)
@@ -569,6 +697,19 @@ def ensure_pre_registration_asaas_customer(pre_registration):
     return customer_id
 
 
+def _normalize_catalog_plan_id(value):
+    if not value:
+        return ""
+    text = str(value)
+    if ":" in text:
+        return text
+    # Compat: pré-cadastros antigos guardavam apenas o pk (int) do SubscriptionPlan.
+    try:
+        return build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, int(text))
+    except (TypeError, ValueError):
+        return ""
+
+
 def parse_selected_plan_payload(snapshot):
     raw = snapshot.get("selected_plans_payload") or ""
     result = []
@@ -582,18 +723,12 @@ def parse_selected_plan_payload(snapshot):
                 payload = []
         if isinstance(payload, list):
             for item in payload:
-                try:
-                    plan_id = int(item.get("plan_id") or 0)
-                except (TypeError, ValueError, AttributeError):
-                    continue
+                plan_id = _normalize_catalog_plan_id(item.get("plan_id"))
                 if plan_id:
                     result.append({"plan_id": plan_id, "label": item.get("label", "")})
     if result:
         return result
-    try:
-        plan_id = int(snapshot.get("selected_plan") or 0)
-    except (TypeError, ValueError):
-        plan_id = 0
+    plan_id = _normalize_catalog_plan_id(snapshot.get("selected_plan"))
     return [{"plan_id": plan_id, "label": ""}] if plan_id else []
 
 
@@ -634,11 +769,12 @@ def create_pre_registration_plan_payment(pre_registration, checkout_action, *, c
     if not selected_plans:
         raise ValueError("Selecione ao menos um plano para pagar.")
 
-    plans = list(SubscriptionPlan.objects.filter(
-        pk__in=[item["plan_id"] for item in selected_plans],
-        is_active=True,
-    ))
-    plans_by_id = {plan.pk: plan for plan in plans}
+    plans_by_id = {}
+    for item in selected_plans:
+        legacy_plan, plan_price = resolve_catalog_plan(item["plan_id"])
+        resolved = legacy_plan if legacy_plan is not None else plan_price
+        if resolved is not None:
+            plans_by_id[item["plan_id"]] = resolved
     missing = [item["plan_id"] for item in selected_plans if item["plan_id"] not in plans_by_id]
     if missing:
         raise ValueError("Selecione apenas planos válidos.")

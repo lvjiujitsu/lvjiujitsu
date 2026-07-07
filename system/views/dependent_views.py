@@ -33,6 +33,7 @@ from system.services.registration_checkout import (
     create_pre_registration_plan_payment,
     get_plan_catalog_payload,
     get_product_catalog_payload,
+    resolve_catalog_plan,
 )
 from system.selectors.plan_eligibility import build_eligibility_context_for_person
 from system.views.portal_mixins import PortalLoginRequiredMixin
@@ -92,7 +93,12 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
             form.cleaned_data["use_family_plan"] = (
                 financial_mode == DependentFinancialMode.FAMILY_EXISTING
             )
-            if pending and pending.selected_plan_id:
+            snapshot_plan_id = pending_snapshot.get("selected_plan") or ""
+            if snapshot_plan_id:
+                legacy_plan, plan_price = resolve_catalog_plan(snapshot_plan_id)
+                form.cleaned_data["selected_plan"] = str(snapshot_plan_id)
+                form.cleaned_data["selected_plan_obj"] = legacy_plan or plan_price
+            elif pending and pending.selected_plan_id:
                 form.cleaned_data["selected_plan"] = str(pending.selected_plan_id)
                 form.cleaned_data["selected_plan_obj"] = pending.selected_plan
             if pending and pending.checkout_action:
@@ -191,7 +197,7 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
             get_registration_catalog_payload(), ensure_ascii=False
         )
         context["plan_catalog_json"] = json.dumps(
-            get_plan_catalog_payload(), ensure_ascii=False
+            get_plan_catalog_payload(include_plan_prices=True), ensure_ascii=False
         )
         context["product_catalog_json"] = json.dumps(
             get_product_catalog_payload(), ensure_ascii=False
@@ -217,10 +223,17 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
             del post_data["use_family_plan"]
 
         selected_plan_id = ""
-        if pending and pending.selected_plan_id:
-            selected_plan_id = str(pending.selected_plan_id)
-        elif snapshot.get("selected_plan"):
+        if snapshot.get("selected_plan"):
             selected_plan_id = str(snapshot.get("selected_plan"))
+        elif pending and pending.selected_plan_id:
+            from system.services.registration_checkout import (
+                CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+                build_catalog_plan_id,
+            )
+
+            selected_plan_id = build_catalog_plan_id(
+                CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, pending.selected_plan_id
+            )
         if selected_plan_id:
             post_data["selected_plan"] = selected_plan_id
 
@@ -381,8 +394,34 @@ class DependentRemoveView(PortalLoginRequiredMixin, View):
             target_person_id=kwargs["pk"],
             relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
         )
-        dependent_name = relationship.target_person.full_name
+        dependent = relationship.target_person
+        dependent_name = dependent.full_name
+
+        from system.models.membership import MembershipStatus
+        from system.services.plan_change import get_plan_change_lock
+
+        dependent_membership = (
+            dependent.memberships.exclude(
+                status__in=(MembershipStatus.CANCELED, MembershipStatus.EXPIRED)
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        lock = get_plan_change_lock(dependent_membership)
+        if lock["is_locked"]:
+            messages.error(
+                request,
+                f"{dependent_name} não pode ser removido agora: {lock['message']}",
+            )
+            return redirect("system:home")
+
         relationship.delete()
+
+        from system.services.family_pricing import recompute_family_discounts_for_person
+
+        recompute_family_discounts_for_person(owner)
+        recompute_family_discounts_for_person(dependent)
+
         messages.success(
             request,
             f"{dependent_name} foi removido dos seus dependentes.",

@@ -113,6 +113,31 @@ def get_eligible_plans(context: PlanEligibilityContext, *, base_queryset=None):
     return queryset.filter(audience_filter).order_by("display_order", "price")
 
 
+def get_eligible_plan_prices(context: PlanEligibilityContext):
+    """Equivalente a `get_eligible_plans` para o catálogo novo (PlanTier/PlanPrice).
+
+    PlanPrice nunca é plano família nem veterano (esses modelos não migraram
+    para cá), então a elegibilidade é só por audiência ativa.
+    """
+    from system.models.plan import PlanPrice
+
+    audiences = []
+    if context.adult_active:
+        audiences.append(PlanAudience.ADULT)
+    if context.kids_juvenile_active_count >= 1:
+        audiences.append(PlanAudience.KIDS_JUVENILE)
+    if not audiences:
+        return PlanPrice.objects.none()
+
+    return (
+        PlanPrice.objects.filter(
+            is_active=True, tier__is_active=True, tier__audience__in=audiences
+        )
+        .select_related("tier")
+        .order_by("tier__display_order", "price")
+    )
+
+
 def is_plan_eligible(plan: SubscriptionPlan, context: PlanEligibilityContext) -> bool:
     if not context.allow_special_authorization and plan.requires_special_authorization:
         return False
@@ -303,6 +328,10 @@ def _get_audience_from_class_group(class_group):
         return getattr(category, "audience", "")
     category = getattr(class_group, "class_category", None)
     return getattr(category, "audience", "")
+
+
+def get_family_group_members(person):
+    return _get_family_group_members(person)
 
 
 def _get_family_group_members(person):

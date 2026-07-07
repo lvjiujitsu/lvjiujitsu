@@ -16,8 +16,8 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         script = (root / "static" / "system" / "js" / "auth" / "register.js").read_text(encoding="utf-8")
 
         self.assertNotIn("SENTINEL_TEST_XZ99", template)
-        self.assertIn("register.css' %}?v=24", template)
-        self.assertIn("register.js' %}?v=47", template)
+        self.assertIn("register.css' %}?v=26", template)
+        self.assertIn("register.js' %}?v=49", template)
         self.assertIn('id="profile-card-teacher-request"', template)
         self.assertIn('id="profile-card-administrative-request"', template)
         self.assertIn('id="administrative-request-suboption"', template)

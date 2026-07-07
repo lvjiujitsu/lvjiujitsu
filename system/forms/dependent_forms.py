@@ -20,7 +20,7 @@ from system.models import (
     SubscriptionPlan,
 )
 from system.models.class_membership import get_class_group_eligibility_error
-from system.models.plan import PlanAudience
+from system.models.plan import PlanAudience, PlanPrice
 from system.selectors.plan_eligibility import (
     PlanEligibilityContext,
     build_eligibility_context_for_person,
@@ -31,7 +31,13 @@ from system.selectors.plan_eligibility import (
 from system.services.class_overview import get_public_class_group_choice_options
 from system.services.membership import get_active_membership
 from system.services.registration import get_kinship_choices, resolve_class_groups
-from system.services.registration_checkout import resolve_selected_product_items
+from system.services.registration_checkout import (
+    build_catalog_plan_id,
+    resolve_catalog_plan,
+    resolve_selected_product_items,
+    CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+    CATALOG_ID_PREFIX_PLAN_PRICE,
+)
 from system.utils import ensure_formatted_cpf
 
 
@@ -204,10 +210,15 @@ class DependentRegistrationForm(forms.Form):
         )
         self.fields["dependent_class_groups"].valid_value = lambda value: True
         self.fields["selected_plan"].choices = [("", "Selecione")] + [
-            (plan.pk, plan.display_name)
+            (build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, plan.pk), plan.display_name)
             for plan in SubscriptionPlan.objects.filter(
                 is_active=True, requires_special_authorization=False,
             ).order_by("display_order", "price")
+        ] + [
+            (build_catalog_plan_id(CATALOG_ID_PREFIX_PLAN_PRICE, price.pk), price.tier.display_name)
+            for price in PlanPrice.objects.filter(
+                is_active=True, tier__is_active=True,
+            ).select_related("tier").order_by("tier__display_order", "price")
         ]
         self.material_variants = _get_material_variants()
         for variant in self.material_variants:
@@ -368,10 +379,36 @@ class DependentRegistrationForm(forms.Form):
         if not plan_id:
             self.add_error("selected_plan", "Selecione um plano para o dependente.")
             return
-        plan = SubscriptionPlan.objects.filter(pk=plan_id, is_active=True).first()
+
+        legacy_plan, plan_price = resolve_catalog_plan(plan_id)
+        plan = legacy_plan if legacy_plan is not None else plan_price
         if plan is None:
             self.add_error("selected_plan", "Selecione um plano válido.")
             return
+
+        if plan_price is not None:
+            # PRD-127: planos do novo catálogo (PlanTier/PlanPrice) sempre resolvem
+            # como mensalidade própria — o desconto família é aplicado
+            # dinamicamente depois, via recompute_family_discounts_for_person.
+            if mode == DependentFinancialMode.FAMILY_UPGRADE:
+                self.add_error(
+                    "selected_plan",
+                    "Selecione um plano familiar para migrar o titular.",
+                )
+                return
+            dependent_audience = _classify_dependent_audience(cleaned_data)
+            if dependent_audience and plan_price.tier.audience != dependent_audience:
+                self.add_error(
+                    "selected_plan",
+                    "Selecione um plano compatível com a idade/turma do dependente.",
+                )
+                return
+            cleaned_data["financial_mode"] = DependentFinancialMode.DEPENDENT_OWN
+            cleaned_data["selected_plan_obj"] = plan_price
+            if not cleaned_data.get("checkout_action"):
+                cleaned_data["checkout_action"] = CheckoutAction.PAY_LATER
+            return
+
         if plan.requires_special_authorization:
             self.add_error("selected_plan", "Este plano exige autorização da gestão.")
             return

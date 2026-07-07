@@ -30,6 +30,7 @@ from system.models.calendar import (
     SpecialClassCheckin,
 )
 from system.models import ClassInstructorAssignment
+from system.constants import PersonTypeCode
 from system.models.category import CategoryAudience, ClassCategory
 from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 from system.services.class_calendar import (
@@ -1021,6 +1022,53 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
 
         session = cancel_class_without_instructor(self.instructor, self.schedule.pk)
         self.assertFalse(session.is_cancelled)
+
+    def test_toggle_session_cancel_creates_session_with_instructor_present_true_by_default(self):
+        """PRD-131: turma nasce com professor presente por padrão. Cancelar a
+        aula sem nenhuma declaração prévia de ausência não deve derrubar
+        instructor_present para False na criação da sessão."""
+        today = timezone.localdate()
+        self.assertFalse(ClassSession.objects.filter(schedule=self.schedule, date=today).exists())
+
+        session = toggle_session_cancel(self.schedule.pk, today, "Motivo")
+
+        self.assertTrue(session.is_cancelled)
+        self.assertTrue(session.instructor_present)
+
+    def test_cancel_class_without_instructor_declaration_keeps_instructor_present_after_restore(self):
+        """PRD-131: regressão reportada pelo usuário — cancelar e restaurar
+        uma aula sem que o professor jamais tenha se declarado ausente não
+        pode travar o check-in dos alunos. instructor_present deve continuar
+        True depois de restaurar."""
+        today = timezone.localdate()
+        self.assertFalse(ClassSession.objects.filter(schedule=self.schedule, date=today).exists())
+
+        session = cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        self.assertTrue(session.is_cancelled)
+
+        session = cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        self.assertFalse(session.is_cancelled)
+        self.assertTrue(session.instructor_present)
+
+    def test_student_checkin_available_after_cancel_restore_without_absence_declaration(self):
+        """PRD-131: visão do aluno deve mostrar Check-in disponível
+        (instructor_present=True) após um ciclo cancelar/restaurar que nunca
+        teve declaração de ausência do professor."""
+        student_type = PersonType.objects.create(code=PersonTypeCode.STUDENT, display_name="Aluno")
+        student = Person.objects.create(
+            full_name="Aluna PRD-131", cpf="950.000.000-31",
+            person_type=student_type, birth_date=date(2000, 1, 1),
+            biological_sex="female",
+        )
+        ClassEnrollment.objects.create(person=student, class_group=self.group, status="active")
+
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+        cancel_class_without_instructor(self.instructor, self.schedule.pk)
+
+        entries = get_today_classes_for_person(student)
+        regular = [entry for entry in entries if not entry.is_special][0]
+        self.assertFalse(regular.is_cancelled)
+        self.assertTrue(regular.instructor_present)
 
     def test_today_classes_exposes_can_uncancel_class_after_instructor_cancel(self):
         cancel_instructor_self_checkin(self.instructor, self.schedule.pk)

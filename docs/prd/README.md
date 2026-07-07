@@ -141,3 +141,10 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-124-dependente-upgrade-plano-familiar.md](PRD-124-dependente-upgrade-plano-familiar.md) | Dependente com upgrade para plano familiar |
 | [PRD-125-sincronizacao-upgrade-familiar-stripe.md](PRD-125-sincronizacao-upgrade-familiar-stripe.md) | Sincronizacao remota do upgrade familiar Stripe |
 | [PRD-126-prevenir-cobranca-duplicada-mesmo-cartao-dependente.md](PRD-126-prevenir-cobranca-duplicada-mesmo-cartao-dependente.md) | Prevenir cobrança Stripe duplicada no mesmo cartão entre titular e dependente |
+| [PRD-127-desconto-familia-tier-unico-precificacao.md](PRD-127-desconto-familia-tier-unico-precificacao.md) | Desconto família como modificador de tier único (rework de precificação) |
+| [PRD-128-crud-plan-tier-price-ui-desconto-bloqueio-cancelamento.md](PRD-128-crud-plan-tier-price-ui-desconto-bloqueio-cancelamento.md) | CRUD PlanTier/PlanPrice, UI de desconto e bloqueio real de cancelamento na carência |
+| [PRD-129-migrar-cadastro-publico-catalogo-plantier-planprice.md](PRD-129-migrar-cadastro-publico-catalogo-plantier-planprice.md) | Migrar cadastro público (register.js) para o catálogo PlanTier/PlanPrice |
+| [PRD-130-migrar-troca-plano-catalogo-plantier-planprice.md](PRD-130-migrar-troca-plano-catalogo-plantier-planprice.md) | Migrar troca de plano (upgrade/downgrade) para o catálogo PlanTier/PlanPrice |
+| [PRD-131-corrigir-professor-presente-padrao-cancelar-restaurar-aula.md](PRD-131-corrigir-professor-presente-padrao-cancelar-restaurar-aula.md) | Corrigir professor presente por padrão ao cancelar/restaurar aula (regressão de check-in) |
+| [PRD-132-transicao-livre-planos-pausa-mensalidade.md](PRD-132-transicao-livre-planos-pausa-mensalidade.md) | Transição livre entre planos (qualquer gateway) + pausa de mensalidade (atestado médico e trancamento self-service) |
+| [PRD-133-indicador-pagamento-trocar-cartao-stripe.md](PRD-133-indicador-pagamento-trocar-cartao-stripe.md) | Indicador de forma de pagamento/gateway + trocar cartão via Stripe Billing Portal + histórico de cobrança falhada |

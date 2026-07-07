@@ -9,6 +9,7 @@ from django.utils import timezone
 from system.models.membership import Membership, MembershipStatus
 from system.models.plan import SubscriptionPlan
 from system.models.registration_order import PaymentStatus, RegistrationOrder
+from system.services.family_pricing import recompute_family_discounts_for_person
 from system.services.payroll_rules import append_order_refund_record
 
 
@@ -41,6 +42,7 @@ def cancel_membership(membership, *, at_period_end=True, admin_user=None, reason
         membership.save(
             update_fields=["status", "canceled_at", "cancel_at_period_end", "notes", "updated_at"]
         )
+        recompute_family_discounts_for_person(membership.person)
         return membership
 
     try:
@@ -69,6 +71,8 @@ def cancel_membership(membership, *, at_period_end=True, admin_user=None, reason
     if reason:
         membership.notes = (membership.notes + "\n" + reason).strip()
     membership.save()
+    if not at_period_end:
+        recompute_family_discounts_for_person(membership.person)
     return membership
 
 
@@ -147,4 +151,5 @@ def change_membership_plan(membership, new_plan, *, admin_user=None):
 
     membership.plan = new_plan
     membership.save(update_fields=["plan", "updated_at"])
+    recompute_family_discounts_for_person(membership.person)
     return membership

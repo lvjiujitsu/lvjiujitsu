@@ -78,7 +78,7 @@ class PortalRegisterView(FormView):
             get_ibjjf_age_category_payload(), ensure_ascii=False
         )
         context["plan_catalog_json"] = json.dumps(
-            get_plan_catalog_payload(), ensure_ascii=False
+            get_plan_catalog_payload(include_plan_prices=True), ensure_ascii=False
         )
         context["product_catalog_json"] = json.dumps(
             get_product_catalog_payload(), ensure_ascii=False

@@ -6,7 +6,7 @@
   <title>Início — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
-  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=25">
+  <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=29">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
   <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
-    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentCheckinCancelUrl":"{% url 'system:student-checkin-cancel' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","studentSpecialCheckinCancelUrl":"{% url 'system:student-special-checkin-cancel' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}"}</script>
+    <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentCheckinCancelUrl":"{% url 'system:student-checkin-cancel' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","studentSpecialCheckinCancelUrl":"{% url 'system:student-special-checkin-cancel' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}","membershipPauseCreateUrl":"{% url 'system:membership-pause-request-create' %}"}</script>
 
     {% if messages %}
     <div class="system-messages" role="alert" aria-live="assertive">
@@ -115,6 +115,12 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             </span>
             Planos
+          </a>
+          <a class="quick-link" href="{% url 'system:plan-tier-list' %}">
+            <span class="quick-link__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.4 9 12 15.5 8.5 12 3.9 16.6"/></svg>
+            </span>
+            Tiers e preços
           </a>
           <a class="quick-link" href="{% url 'system:person-type-list' %}">
             <span class="quick-link__icon" aria-hidden="true">
@@ -421,7 +427,10 @@
                       {% else %}
                         <span class="badge badge--warning">{{ m.get_status_display }}</span>
                       {% endif %}
-                      <span class="billing-compact-info__name">{{ m.plan.display_name }}</span>
+                      <span class="billing-compact-info__name">{{ m.effective_display_name }}</span>
+                      {% if m.effective_payment_summary_label %}
+                      <span class="badge badge--neutral billing-compact-info__method">{{ m.effective_payment_summary_label }}</span>
+                      {% endif %}
                     </div>
                   </div>
                   <button class="btn btn--secondary btn--sm js-billing-details-toggle"
@@ -439,8 +448,14 @@
                   <div class="billing-meta">
                     <div class="billing-meta__row">
                       <span class="billing-meta__label">Valor</span>
-                      <span class="billing-meta__value billing-meta__value--highlight">R$ {{ m.plan.price|floatformat:2 }}</span>
-                      <span class="billing-meta__value">/ {{ m.plan.get_billing_cycle_display|lower }}</span>
+                      {% if m.family_discount_applied and m.billed_price is not None %}
+                      <span class="billing-meta__value billing-meta__value--original">R$ {{ m.effective_full_price|floatformat:2 }}</span>
+                      <span class="billing-meta__value billing-meta__value--highlight">R$ {{ m.billed_price|floatformat:2 }}</span>
+                      <span class="billing-meta__badge badge badge--warning">Desconto família</span>
+                      {% else %}
+                      <span class="billing-meta__value billing-meta__value--highlight">R$ {{ m.billed_price|default:m.effective_full_price|floatformat:2 }}</span>
+                      {% endif %}
+                      <span class="billing-meta__value">/ {{ m.effective_billing_cycle_display|lower }}</span>
                     </div>
                     {% if m.current_period_start or m.current_period_end %}
                     <div class="billing-meta__row">
@@ -470,6 +485,12 @@
                   </p>
                   {% endif %}
 
+                  {% if m.status == "past_due" and m.is_stripe_recurring %}
+                  <p class="billing-lock-notice billing-lock-notice--danger" role="status">
+                    Pagamento pendente — a cobrança automática não foi concluída. Atualize seu cartão para regularizar.
+                  </p>
+                  {% endif %}
+
                   <div class="billing-card__actions">
                     {% if m.status == "past_due" and tab.pending_order %}
                     <a class="btn btn--primary btn--sm" href="{% url 'system:payment-checkout' order_id=tab.pending_order.pk %}">Pagar agora</a>
@@ -482,18 +503,32 @@
                     <button class="btn btn--secondary btn--sm js-open-plan-change-modal" type="button">Trocar plano</button>
                       {% endif %}
                     {% endif %}
+                    {% if tab.is_active_tab and m.status == "active" or tab.is_active_tab and m.status == "exempted" %}
+                    <button class="btn btn--secondary btn--sm js-open-pause-modal" type="button" data-membership-id="{{ m.pk }}">Pausar mensalidade</button>
+                    {% endif %}
+                    {% if tab.is_active_tab and m.is_stripe_recurring and m.status != "canceled" and m.status != "expired" %}
+                      {% if m.status == "past_due" %}
+                    <a class="btn btn--primary btn--sm" href="{% url 'system:membership-update-card' %}">Trocar cartão</a>
+                      {% else %}
+                    <a class="btn btn--secondary btn--sm" href="{% url 'system:membership-update-card' %}">Trocar cartão</a>
+                      {% endif %}
+                    {% endif %}
                   </div>
 
                   {% if tab.recent_invoices %}
                   <div class="billing-invoices">
-                    <div class="billing-invoices__title">Faturas pagas</div>
-                    <ul class="billing-invoice-list" aria-label="Faturas pagas">
+                    <div class="billing-invoices__title">Faturas</div>
+                    <ul class="billing-invoice-list" aria-label="Faturas">
                       {% for invoice in tab.recent_invoices %}
                       <li class="billing-invoice-item">
-                        <span class="billing-invoice-item__date">{{ invoice.paid_at|date:"d/m/Y"|default:"—" }}</span>
+                        <span class="billing-invoice-item__date">{{ invoice.paid_at|date:"d/m/Y"|default:invoice.created_at|date:"d/m/Y" }}</span>
                         <span class="billing-invoice-item__amount">R$ {{ invoice.amount_paid|floatformat:2 }}</span>
                         <span class="billing-invoice-item__status">
+                          {% if invoice.status == "failed" %}
+                          <span class="status-pill status-pill--danger" title="{{ invoice.description }}">Falhou</span>
+                          {% else %}
                           <span class="status-pill status-pill--success">Pago</span>
+                          {% endif %}
                         </span>
                       </li>
                       {% endfor %}
@@ -762,7 +797,14 @@
             <section class="client-profile__section" aria-label="{% if tab.is_owner %}Plano do titular{% else %}Mensalidade do dependente{% endif %}">
               <span class="client-profile__label">{% if tab.is_owner %}Plano do titular{% else %}Mensalidade{% endif %}</span>
               {% if tab.active_membership %}
-              <strong>{{ tab.active_membership.plan.display_name }}</strong>
+              <strong>{{ tab.active_membership.effective_display_name }}</strong>
+              {% if tab.active_membership.family_discount_applied and tab.active_membership.billed_price is not None %}
+              <p class="client-profile__price-wrap">
+                <span class="client-profile__price client-profile__price--original">R$ {{ tab.active_membership.effective_full_price|floatformat:2 }}</span>
+                <span class="client-profile__price client-profile__price--discounted">R$ {{ tab.active_membership.billed_price|floatformat:2 }}</span>
+                <span class="badge badge--warning">Desconto família</span>
+              </p>
+              {% endif %}
               <small>{{ tab.active_membership.get_status_display }}{% if tab.active_membership.current_period_end %} · até {{ tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
               {% if not tab.is_owner and tab.billing_owner and tab.billing_owner != tab.person %}
               <small>Vinculada ao responsável {{ tab.billing_owner.full_name }}.</small>
@@ -1025,7 +1067,9 @@
             <span class="attendance-history-item__class">{{ entry.plan_name }}</span>
             <span class="attendance-history-item__meta">R$ {{ entry.amount_paid|floatformat:2 }}</span>
           </div>
-          {% if entry.amount_refunded > 0 %}
+          {% if entry.status == "failed" %}
+          <span class="status-pill status-pill--danger" aria-label="Falhou">Falhou</span>
+          {% elif entry.amount_refunded > 0 %}
           <span class="status-pill status-pill--warning" aria-label="Estornado">Estornado</span>
           {% else %}
           <span class="status-pill status-pill--success" aria-label="Pago">Pago</span>
@@ -1167,7 +1211,7 @@
         <div class="plan-change-cards" role="radiogroup" aria-label="Planos disponíveis">
           {% for plan in plan_change_catalog %}
           <label
-            class="plan-change-card js-plan-change-card"
+            class="plan-change-card js-plan-change-card{% if plan.is_current %} plan-change-card--current{% endif %}"
             data-plan-id="{{ plan.id }}"
             data-weekly-frequency="{{ plan.weekly_frequency }}"
             data-billing-cycle="{{ plan.billing_cycle }}"
@@ -1182,17 +1226,25 @@
               data-has-leftover="{{ plan.proration.has_leftover|yesno:"1,0" }}"
               data-additional-charge="{{ plan.proration.additional_charge }}"
               data-leftover-credit="{{ plan.proration.leftover_credit }}"
+              {% if plan.is_current %}disabled{% endif %}
               hidden
             >
             <span class="plan-change-card__radio" aria-hidden="true"><span class="plan-change-card__radio-dot"></span></span>
             <span class="plan-change-card__body">
-              <span class="plan-change-card__tier">{{ plan.name }}</span>
+              <span class="plan-change-card__tier">
+                {{ plan.name }}
+                {% if plan.is_current %}<span class="plan-change-card__badge">Plano atual</span>{% endif %}
+              </span>
               <span class="plan-change-card__price-wrap">
                 <span class="plan-change-card__price">R$ {{ plan.price|floatformat:2 }}</span>
                 <span class="plan-change-card__price-cycle">/{{ plan.cycle|lower }}</span>
               </span>
               <span class="plan-change-card__meta">{{ plan.audience_label }} · {{ plan.weekly_frequency_label }}</span>
-              {% if plan.proration.is_upgrade %}
+              {% if plan.is_current %}
+              <span class="plan-change-card__proration plan-change-card__proration--neutral">Você já está neste plano</span>
+              {% elif plan.requires_checkout %}
+              <span class="plan-change-card__proration plan-change-card__proration--charge">Assinatura recorrente — você será redirecionado para o pagamento</span>
+              {% elif plan.proration.is_upgrade %}
               <span class="plan-change-card__proration plan-change-card__proration--charge">+ R$ {{ plan.proration.additional_charge }} a pagar agora</span>
               {% elif plan.proration.has_leftover %}
               <span class="plan-change-card__proration plan-change-card__proration--save">Você economiza R$ {{ plan.proration.leftover_credit }} agora</span>
@@ -1227,8 +1279,51 @@
   </div>
   {% endif %}
 
+  <!-- ─── Modal: pausar mensalidade ──────────────────────────────────────────── -->
+  <div class="modal-overlay" id="pause-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pause-modal-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="pause-modal-title">Pausar mensalidade</h2>
+        <button class="modal__close js-close-pause-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="modal__label">
+        Trancamento sem atestado: até 30 dias por ano de matrícula, liberado só fora do período de carência.
+        Atestado médico: sempre permitido, sem cobrança no período informado, com a carência prorrogada pelo mesmo prazo.
+        Toda pausa passa por aprovação do administrativo.
+      </p>
+      <form class="js-pause-form" novalidate>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-kind">Tipo</label>
+          <select id="pause-kind" name="kind">
+            <option value="self_service">Trancamento (sem atestado)</option>
+            <option value="medical">Atestado médico</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-start-date">Início</label>
+          <input id="pause-start-date" name="start_date" type="date" required>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-end-date">Fim</label>
+          <input id="pause-end-date" name="end_date" type="date" required>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-reason-note">Observação</label>
+          <textarea id="pause-reason-note" name="reason_note" rows="3" placeholder="Ex.: número do atestado, motivo"></textarea>
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-pause-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Solicitar pausa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=23" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=24" defer></script>
 
 </body>
 </html>

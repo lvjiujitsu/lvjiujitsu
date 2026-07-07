@@ -23,6 +23,8 @@ from system.models import (
     Holiday,
     Person,
     PersonRelationship,
+    PlanPrice,
+    PlanTier,
     SubscriptionPlan,
     TeacherPayrollConfig,
 )
@@ -568,31 +570,76 @@ class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
         self._call("seed_system_initial_subscription_plans_values")
         self._call("seed_system_initial_subscription_plans_values")
 
+        # PRD-127: Individual e Família migraram para PlanTier/PlanPrice (desconto
+        # dinâmico). SubscriptionPlan agora só gera as linhas de Veterano (loyalty).
         self.assertEqual(
             SubscriptionPlan.objects.exclude(code__in=("individual", "loyalty", "family")).count(),
-            48,
+            16,
         )
         self.assertFalse(SubscriptionPlan.objects.get(code="individual").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="loyalty").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="family").is_active)
 
         asaas_card_monthly = SubscriptionPlan.objects.get(
-            code="individual-2x-asaas-card-monthly"
+            code="loyalty-2x-asaas-card-monthly"
         )
-        self.assertEqual(asaas_card_monthly.price, Decimal("230.38"))
-        self.assertEqual(asaas_card_monthly.base_monthly_net_price, Decimal("220.00"))
+        self.assertEqual(asaas_card_monthly.price, Decimal("212.63"))
+        self.assertEqual(asaas_card_monthly.base_monthly_net_price, Decimal("203.01"))
         self.assertEqual(asaas_card_monthly.gateway_code, "asaas_card")
         self.assertEqual(asaas_card_monthly.gateway_percentage_fee, Decimal("0.0429"))
         self.assertEqual(asaas_card_monthly.cycle_discount_percentage, Decimal("0.0000"))
         self.assertIsNone(asaas_card_monthly.monthly_reference_price)
+        self.assertTrue(asaas_card_monthly.is_loyalty_plan)
 
-        family_annual = SubscriptionPlan.objects.get(
-            code="family-5x-asaas-card-annual"
+        loyalty_annual = SubscriptionPlan.objects.get(
+            code="loyalty-5x-asaas-card-annual"
         )
-        self.assertEqual(family_annual.price, Decimal("2570.91"))
-        self.assertEqual(family_annual.monthly_reference_price, Decimal("214.24"))
-        self.assertEqual(family_annual.cycle_discount_percentage, Decimal("0.0682"))
-        self.assertTrue(family_annual.is_family_plan)
+        self.assertEqual(loyalty_annual.price, Decimal("2570.91"))
+        self.assertEqual(loyalty_annual.monthly_reference_price, Decimal("214.24"))
+        self.assertEqual(loyalty_annual.cycle_discount_percentage, Decimal("0.0682"))
+        self.assertTrue(loyalty_annual.is_loyalty_plan)
         self.assertFalse(SubscriptionPlan.objects.filter(gateway_code="stripe_card").exists())
+
+
+class PlanTierPriceSeedCommandTestCase(TestCase):
+    def _call(self, command_name):
+        call_command(command_name, stdout=StringIO())
+
+    def test_seed_creates_tiers_and_prices_idempotently(self):
+        self._call("seed_system_initial_plan_tiers")
+        self._call("seed_system_initial_plan_prices")
+        self._call("seed_system_initial_plan_tiers")
+        self._call("seed_system_initial_plan_prices")
+
+        self.assertEqual(PlanTier.objects.count(), 4)
+        self.assertEqual(PlanPrice.objects.count(), 20)
+
+        adult_2x = PlanTier.objects.get(code="adult-2x")
+        self.assertEqual(adult_2x.family_discount_percentage, Decimal("0.1800"))
+        self.assertEqual(adult_2x.audience, "adult")
+        self.assertEqual(adult_2x.weekly_frequency, 2)
+
+        stripe_price = PlanPrice.objects.get(
+            tier=adult_2x, gateway_code="stripe_card", billing_cycle="monthly"
+        )
+        # PRD-127: preço sempre computado pela fórmula única (compute_gross_price),
+        # sem valores manuais divergentes — R$ 229,14 é o correto para base R$ 220,00
+        # com taxa Stripe de 3,99% (o antigo SubscriptionPlan gravava R$ 228,80 direto
+        # do JSON, ignorando a própria fórmula do modelo).
+        self.assertEqual(stripe_price.price, Decimal("229.14"))
+        self.assertEqual(stripe_price.payment_method, "credit_card")
+
+        asaas_pix_annual = PlanPrice.objects.get(
+            tier__code="adult-5x", gateway_code="asaas_pix", billing_cycle="annual"
+        )
+        self.assertEqual(asaas_pix_annual.price, Decimal("2641.99"))
+
+        kids_2x_price = PlanPrice.objects.get(tier__code="kids-2x")
+        self.assertEqual(kids_2x_price.price, Decimal("208.31"))
+        self.assertEqual(kids_2x_price.tier.audience, "kids_juvenile")
+
+    def test_seed_prices_requires_tier_to_exist(self):
+        with self.assertRaises(CommandError):
+            self._call("seed_system_initial_plan_prices")
 
 

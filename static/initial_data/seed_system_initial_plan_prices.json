@@ -1,0 +1,29 @@
+[
+  {"tier_code": "adult-2x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "monthly", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-2x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "quarterly", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "2.57", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-2x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "semiannual", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "5.15", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-2x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "annual", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "7.72", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+
+  {"tier_code": "adult-2x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "monthly", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-2x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "quarterly", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "2.57", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-2x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "semiannual", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "5.15", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-2x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "annual", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "7.72", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+
+  {"tier_code": "adult-2x", "payment_method": "credit_card", "gateway_code": "stripe_card", "billing_cycle": "monthly", "base_monthly_net_price": "220.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.00", "gateway_percentage_fee": "3.99"},
+
+  {"tier_code": "adult-5x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "monthly", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-5x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "quarterly", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "4.00", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-5x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "semiannual", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "8.00", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+  {"tier_code": "adult-5x", "payment_method": "pix", "gateway_code": "asaas_pix", "billing_cycle": "annual", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "12.00", "gateway_fixed_fee": "1.99", "gateway_percentage_fee": "0.00"},
+
+  {"tier_code": "adult-5x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "monthly", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-5x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "quarterly", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "4.00", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-5x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "semiannual", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "8.00", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+  {"tier_code": "adult-5x", "payment_method": "credit_card", "gateway_code": "asaas_card", "billing_cycle": "annual", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "12.00", "gateway_fixed_fee": "0.49", "gateway_percentage_fee": "4.29"},
+
+  {"tier_code": "adult-5x", "payment_method": "credit_card", "gateway_code": "stripe_card", "billing_cycle": "monthly", "base_monthly_net_price": "280.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.00", "gateway_percentage_fee": "3.99"},
+
+  {"tier_code": "kids-2x", "payment_method": "credit_card", "gateway_code": "stripe_card", "billing_cycle": "monthly", "base_monthly_net_price": "200.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.00", "gateway_percentage_fee": "3.99"},
+
+  {"tier_code": "kids-5x", "payment_method": "credit_card", "gateway_code": "stripe_card", "billing_cycle": "monthly", "base_monthly_net_price": "250.00", "cycle_discount_percentage": "0.00", "gateway_fixed_fee": "0.00", "gateway_percentage_fee": "3.99"}
+]

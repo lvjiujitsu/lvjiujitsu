@@ -52,6 +52,14 @@ class RegistrationOrder(TimeStampedModel):
         related_name="registration_orders",
         verbose_name="Plano",
     )
+    plan_price_ref = models.ForeignKey(
+        "system.PlanPrice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registration_orders",
+        verbose_name="Preço de plano (tier)",
+    )
     plan_price = models.DecimalField(
         "Preço do plano",
         max_digits=10,

@@ -9,6 +9,14 @@
 > Adicionada estratégia dual de teste de pagamento (Stripe simulado por hook local ×
 > Asaas via navegador real com confirmação do usuário) — ver "Estratégia de teste por gateway".
 > Reproduzível do zero a partir de um banco limpo.
+>
+> **Atualizado em 2026-07-06**: validado com sucesso o fluxo Asaas real (PIX) ponta a
+> ponta **sem nenhum navegador** (nem interno, nem externo) — via túnel HTTPS (ngrok)
+> + endpoint oficial de simulação do sandbox Asaas + chamadas HTTP diretas (`curl`).
+> Esse é agora o método **preferencial** para validar Asaas: mais rápido, 100%
+> scriptável, sem intervenção manual. Ver "Fluxo Asaas 100% via API (sem navegador)"
+> logo abaixo da tabela de estratégia por gateway. O navegador (interno) continua
+> útil só para uma conferência visual final, com um cliente novo — ver essa seção.
 
 ---
 
@@ -37,8 +45,8 @@ conforme o gateway, e isso define a estratégia de teste de cada um:
 
 | Gateway | Como o wizard confirma o pagamento | Estratégia de teste |
 |---|---|---|
-| **Stripe** | Webhook `checkout.session.completed` grava `plan_paid=True` no `PreRegistration` (ver `system/services/stripe_webhooks.py`) | **100% local, sem navegador externo.** Disparar o webhook com `stripe trigger` (Stripe CLI) apontando para `localhost:8000` — comandos de referência em `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-stripe-lvjiujitsu.md`. Ver "Hook de simulação Stripe" no Fluxo 2. |
-| **Asaas** | **Não há webhook para o wizard** — a confirmação depende exclusivamente do redirect `successUrl` após o pagamento real ser concluído na página hospedada da Asaas | Não existe um "trigger" de CLI equivalente ao Stripe. Para validar o fluxo real, abrir a `invoiceUrl` no **navegador Chrome real via `claude-in-chrome`** (não no preview) e pedir **confirmação interativa ao usuário** de que o pagamento sandbox foi concluído. Ver "Fluxo Asaas com navegador real" abaixo. |
+| **Stripe** | Webhook `checkout.session.completed` grava `plan_paid=True` no `PreRegistration` (ver `system/services/stripe_webhooks.py`) | **100% local, sem navegador.** Disparar o webhook com `stripe trigger` (Stripe CLI) apontando para `localhost:8000` — comandos de referência em `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-stripe-lvjiujitsu.md`. Ver "Hook de simulação Stripe" no Fluxo 2. |
+| **Asaas** | O wizard confirma via redirect `successUrl` (`/pagamentos/sucesso/`) — mas esse endpoint é um `GET` normal, chamável diretamente por HTTP sem navegador nenhum | **100% via API/`curl`, sem navegador nenhum** (interno ou externo) desde que exista um túnel HTTPS válido registrado na conta sandbox Asaas. Ver "Fluxo Asaas 100% via API (sem navegador)" abaixo — é o método **preferencial** a partir de 2026-07-06. O fluxo com navegador real (`claude-in-chrome`) documentado logo depois continua válido como alternativa/verificação visual manual. |
 
 **Por que a diferença:** o Stripe expõe um mecanismo de simulação de eventos (`stripe
 trigger`) que dispara o mesmo webhook que a produção usaria, sem precisar de uma página
@@ -333,6 +341,185 @@ Status: awaiting_payment
 asaas_payment_id: pay_<id_gerado_pelo_asaas>
 asaas_customer: {'id': 'cus_<id>'}
 ```
+
+---
+
+### Fluxo Asaas 100% via API (sem navegador)
+
+**Método preferencial desde 2026-07-06.** Validado ponta a ponta (Person criado, ativo,
+`Membership` ativa) usando só `curl`/chamadas HTTP diretas — nenhum navegador, interno
+ou externo, é necessário. A chave é que `/pagamentos/sucesso/` é um `GET` HTTP normal:
+ele não precisa ser "clicado" por um navegador, só recebido por qualquer cliente HTTP
+que carregue os mesmos cookies de sessão da etapa anterior.
+
+**Pré-requisitos (únicos passos que ainda exigem ação humana, uma vez só por sessão de teste):**
+
+1. Um túnel HTTPS rodando e apontando para `localhost:8000` (`ngrok http 8000` — ver
+   `curl http://127.0.0.1:4040/api/tunnels` para pegar a URL pública sem precisar
+   parsear log). Pode já estar rodando em segundo plano de um teste anterior.
+2. Esse domínio do túnel cadastrado no campo **"Site"** de Minha Conta → Informações no
+   painel sandbox da Asaas (esse campo só aceita um valor — se já estiver ocupado pelo
+   domínio do HG, o usuário precisa trocar temporariamente e reverter depois).
+3. `.env` local ajustado (com confirmação do usuário, é config compartilhada com HG/prod):
+   `SITE_BASE_URL=https://<dominio-do-tunel>` e `DJANGO_ALLOWED_HOSTS` incluindo esse
+   domínio. Reiniciar o servidor Django (`preview_stop` + `preview_start`, ou matar a
+   porta 8000 manualmente) para carregar o novo valor.
+
+**Passo 1 — Buscar a página, extrair CSRF token e IDs do catálogo:**
+
+```bash
+curl -s -c cookies.txt -b cookies.txt "http://localhost:8000/register/" -o register_page.html
+
+# CSRF token (pegar só o PRIMEIRO — a página tem 3 forms, cada um com seu próprio token)
+grep -o 'name="csrfmiddlewaretoken" value="[^"]*"' register_page.html | head -1
+
+# Plano adulto PIX mensal do catálogo novo (PlanTier/PlanPrice, PRD-127/129)
+grep -o '"id": "pp:[0-9]*", "code": "[^"]*"' register_page.html | head -5
+# Ex.: "id": "pp:1", "code": "adult-2x-asaas_pix-monthly"  ← este é o que queremos
+
+# Turma adulta (id composto "<pk>::<nome>")
+grep -o '"id": "[0-9]*::[^"]*"[^}]*"category_audience": "adult"' register_page.html | head -1
+```
+
+> **Atenção ao extrair o CSRF token via shell**: usar sempre `head -1` — os três `<form>`
+> da página (cadastro, materiais, produtos) embutem o mesmo token, e sem o `head -1` o
+> `grep -o` retorna as três ocorrências concatenadas por quebra de linha, gerando um
+> valor corrompido ("CSRF token from POST has incorrect length").
+
+**Passo 2 — Submeter o cadastro completo num único POST (o wizard é uma SPA que só
+envia UM POST no fim, não um por etapa):**
+
+```bash
+CSRF="<token do passo 1>"
+curl -s -c cookies.txt -b cookies.txt -o post_result.html -w "HTTP_STATUS:%{http_code}\n" \
+  -X POST "http://localhost:8000/register/" \
+  -H "Referer: http://localhost:8000/register/" \
+  --data-urlencode "csrfmiddlewaretoken=$CSRF" \
+  --data-urlencode "registration_profile=holder" \
+  --data-urlencode "holder_name=Ana Teste API" \
+  --data-urlencode "holder_cpf=960.013.389-14" \
+  --data-urlencode "holder_birthdate=22/07/1992" \
+  --data-urlencode "holder_biological_sex=female" \
+  --data-urlencode "holder_phone=(11) 97654-3210" \
+  --data-urlencode "holder_email=ana.teste.api@example.com" \
+  --data-urlencode "holder_password=Senha@123" \
+  --data-urlencode "holder_password_confirm=Senha@123" \
+  --data-urlencode "holder_class_groups=1::Jiu Jitsu" \
+  --data-urlencode "holder_has_martial_art=no" \
+  --data-urlencode "selected_plan=pp:1" \
+  --data-urlencode "checkout_action=pix"
+# Esperado: HTTP_STATUS:302
+```
+
+Isso já dispara `create_pre_registration_plan_payment` no servidor, que chama a API
+real da Asaas e cria o pagamento de verdade (`POST /payments`).
+
+**Passo 3 — Localizar o `PreRegistration` e o `asaas_payment_id` gerado:**
+
+```powershell
+.\.venv\Scripts\python.exe manage.py shell -c "
+from system.models import PreRegistration
+pr = PreRegistration.objects.filter(holder_cpf='960.013.389-14').order_by('-created_at').first()
+snap = pr.form_snapshot or {}
+print('ID:', pr.pk)
+print('asaas_payment_id:', snap.get('plan_payment', {}).get('asaas_payment_id'))
+"
+```
+
+**Passo 4 — Confirmar o pagamento via endpoint oficial de simulação do sandbox Asaas**
+(documentado em `docs.asaas.com/reference/confirm-payment` — funciona só no sandbox,
+não existe em produção; não precisa entrar no painel nem escanear PIX de verdade):
+
+```powershell
+.\.venv\Scripts\python.exe manage.py shell -c "
+from system.services.asaas_client import _request
+result = _request('POST', '/sandbox/payment/<asaas_payment_id>/confirm', json_body={})
+print('status:', result.get('status'))  # esperado: RECEIVED
+"
+```
+
+> Sem nenhum navegador visitando a `invoiceUrl`, o redirect automático da página
+> hospedada da Asaas **não acontece** (o polling que detecta o pagamento e redireciona
+> roda como JS na própria página da Asaas — só existe se alguém abrir a página). Isso é
+> esperado e não é um problema: o Passo 5 substitui esse redirect manualmente.
+
+**Passo 5 — Refletir a confirmação na mesma sessão (substitui o redirect que o
+navegador faria), usando o MESMO cookie jar do Passo 2:**
+
+```bash
+curl -s -c cookies.txt -b cookies.txt -w "HTTP_STATUS:%{http_code}\nREDIRECT_TO:%{redirect_url}\n" \
+  "http://localhost:8000/pagamentos/sucesso/?pre_registration_id=<PR_PK>&stage=plan"
+# Esperado: HTTP_STATUS:302, REDIRECT_TO:.../register/
+```
+
+**Verificar no banco:**
+```powershell
+.\.venv\Scripts\python.exe manage.py shell -c "
+from system.models import PreRegistration
+pr = PreRegistration.objects.get(pk=<PR_PK>)
+print('Status:', pr.status)        # payment_confirmed
+print('plan_paid:', (pr.form_snapshot or {}).get('plan_paid'))  # True
+"
+```
+
+**Passo 6 — Conferir que a página renderiza o estado pós-pagamento (sem abrir nada, só
+lendo o HTML retornado):**
+
+```bash
+curl -s -c cookies.txt -b cookies.txt "http://localhost:8000/register/" -o register_after_payment.html
+grep -o "Pagamento confirmado" register_after_payment.html   # deve aparecer
+grep -o '"reg-post-plan-json">[a-z]*' register_after_payment.html  # esperado: true
+```
+
+**Passo 7 — Finalizar o cadastro (POST simples, sem corpo além do CSRF — a view lê
+`pending_pre_registration_id` da sessão, não de campos do formulário):**
+
+```bash
+CSRF=$(grep -o 'name="csrfmiddlewaretoken" value="[^"]*"' register_after_payment.html | head -1 | sed 's/.*value="//;s/"$//')
+curl -s -c cookies.txt -b cookies.txt -w "HTTP_STATUS:%{http_code}\nREDIRECT:%{redirect_url}\n" \
+  -X POST "http://localhost:8000/register/finalizar/" \
+  -H "Referer: http://localhost:8000/register/" \
+  --data-urlencode "csrfmiddlewaretoken=$CSRF"
+# Esperado: HTTP_STATUS:302, REDIRECT:.../dashboard/
+```
+
+**Verificação final no banco (mesmo formato do Fluxo 1):**
+```powershell
+.\.venv\Scripts\python.exe manage.py shell -c "
+from system.models import Person, PreRegistration
+from system.models.membership import Membership
+p  = Person.objects.filter(email='ana.teste.api@example.com').first()
+pr = PreRegistration.objects.filter(holder_cpf='960.013.389-14').first()
+m  = Membership.objects.filter(person=p).first() if p else None
+print('Person:', p.full_name if p else 'NAO ENCONTRADO')
+print('is_active:', p.is_active if p else '-')
+print('PreRegistration status:', pr.status if pr else 'NAO ENCONTRADO')
+print('Membership status:', m.status if m else 'NAO ENCONTRADO')
+print('Membership plan_price_id:', m.plan_price_id if m else '-')
+"
+```
+
+**Saída esperada:**
+```
+Person: Ana Teste API
+is_active: True
+PreRegistration status: finalized
+Membership status: active
+Membership plan_price_id: 1
+```
+
+**Sobre o webhook Asaas neste fluxo:** o webhook `/pagamentos/webhook/asaas/` (visto na
+seção "Estratégia de teste por gateway") não participa da confirmação do wizard — ele
+serve para o Fluxo A (`RegistrationOrder` de clientes já cadastrados), não para
+`PreRegistration`. Não é necessário aguardar nem verificar entrega de webhook para este
+fluxo funcionar; o Passo 5 (`GET /pagamentos/sucesso/`) é autossuficiente.
+
+**Depois de validar**: se só este fluxo API era necessário, pode reverter `.env`
+(`SITE_BASE_URL`, `DJANGO_ALLOWED_HOSTS`) e encerrar o túnel. Se quiser também uma
+conferência visual, seguir para a seção seguinte usando o **navegador interno** (não é
+mais necessário o navegador externo/`claude-in-chrome`, já que a confirmação de
+pagamento não depende mais de abrir a `invoiceUrl`) — criar um **cliente novo** (CPF
+inédito) para não colidir com o registro já criado por este fluxo via API.
 
 ---
 

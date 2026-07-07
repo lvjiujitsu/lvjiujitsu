@@ -154,7 +154,7 @@ def _handle_payment_event(event_type, event):
             financial_transaction_id=asaas_payment_id,
             mark_available=True,
         )
-        if order.is_plan_change and order.plan_id:
+        if order.is_plan_change and (order.plan_id or order.plan_price_ref_id):
             from system.models.membership import Membership, MembershipStatus
             from system.services.plan_change import apply_plan_change
 
@@ -167,7 +167,8 @@ def _handle_payment_event(event_type, event):
                 .first()
             )
             if active:
-                apply_plan_change(order, active, order.plan)
+                new_plan = order.plan_price_ref if order.plan_price_ref_id else order.plan
+                apply_plan_change(order, active, new_plan)
         else:
             activate_membership_from_paid_order(
                 order,

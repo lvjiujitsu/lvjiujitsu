@@ -313,7 +313,7 @@
     if (!filtersArea || !cardsArea || !planSelect || !checkoutSelect || !catalog) return null;
 
     var filter = { frequency: null, cycle: null, method: null };
-    var selectedPlanId = planSelect.value ? parseInt(planSelect.value, 10) : null;
+    var selectedPlanId = planSelect.value || null;
     var familyPlanAvailable = form && form.getAttribute('data-family-plan-available') === 'true';
 
     function currentFinancialMode() {
@@ -504,6 +504,9 @@
         var modeLabel = plan.is_family_plan
           ? 'Troca o plano do titular para familiar e inclui o dependente.'
           : 'Mensalidade própria do dependente.';
+        var discountPct = parseFloat(plan.family_discount_percentage) || 0;
+        var fullPrice = parseFloat(price) || 0;
+        var discountedPrice = discountPct > 0 ? (fullPrice * (1 - discountPct)).toFixed(2) : null;
         var html = '';
 
         html += '<button type="button" class="plan-card' + (isSelected ? ' plan-card--selected' : '') + '" data-plan-id="' + plan.id + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">';
@@ -512,8 +515,17 @@
         html += '<div class="plan-card__header"><p class="plan-card__tier">' + escHtml(tierLabel) + '</p>';
         if (isStripe) html += '<span class="plan-card__badge plan-card__badge--stripe">Recorrente</span>';
         html += '</div>';
-        html += '<div class="plan-card__price-wrap"><span class="plan-card__price">' + fmtPrice(price) + '</span>';
-        html += '<span class="plan-card__price-cycle">/' + escHtml(cycleLabel) + '</span></div>';
+        if (discountedPrice) {
+          html += '<div class="plan-card__price-wrap plan-card__price-wrap--discounted">';
+          html += '<span class="plan-card__price plan-card__price--original">' + fmtPrice(price) + '</span>';
+          html += '<span class="plan-card__price plan-card__price--discounted">' + fmtPrice(discountedPrice) + '</span>';
+          html += '<span class="plan-card__price-cycle">/' + escHtml(cycleLabel) + '</span>';
+          html += '</div>';
+          html += '<p class="plan-card__family-discount-note">Com desconto família, quando 2+ pessoas compartilham este plano</p>';
+        } else {
+          html += '<div class="plan-card__price-wrap"><span class="plan-card__price">' + fmtPrice(price) + '</span>';
+          html += '<span class="plan-card__price-cycle">/' + escHtml(cycleLabel) + '</span></div>';
+        }
         if (!isStripe && plan.installment_count > 1 && plan.installment_label) {
           html += '<p class="plan-card__installment">' + escHtml(plan.installment_label) + '</p>';
         }
@@ -575,7 +587,7 @@
       cardsArea.querySelectorAll('.plan-card').forEach(function (card) {
         if (card.getAttribute('data-family-existing') === 'true') return;
         card.addEventListener('click', function () {
-          selectPlan(parseInt(card.getAttribute('data-plan-id'), 10));
+          selectPlan(card.getAttribute('data-plan-id'));
         });
       });
       renderCardStrategyArea();
@@ -669,18 +681,18 @@
         renderPlanPaidBanner();
         return;
       }
-      if (!filter.frequency) {
-        var freqs = uniqueValues(function (p) { return p.weekly_frequency; }).map(Number).sort(function (a, b) { return a - b; });
-        if (freqs.length) filter.frequency = freqs[0];
-      }
-      if (!filter.cycle) {
-        var cycles = uniqueValues(function (p) { return p.billing_cycle; });
-        if (cycles.length) filter.cycle = cycles[0];
-      }
-      if (!filter.method) {
-        var methods = uniqueValues(function (p) { return p.payment_method; });
-        if (methods.length) filter.method = methods[0];
-      }
+      var freqs = uniqueValues(function (p) { return p.weekly_frequency; }).map(Number).sort(function (a, b) { return a - b; });
+      if (filter.frequency !== null && freqs.indexOf(filter.frequency) === -1) filter.frequency = null;
+      if (!filter.frequency && freqs.length) filter.frequency = freqs[0];
+
+      var cycles = uniqueValues(function (p) { return p.billing_cycle; });
+      if (filter.cycle !== null && cycles.indexOf(filter.cycle) === -1) filter.cycle = null;
+      if (!filter.cycle && cycles.length) filter.cycle = cycles[0];
+
+      var methods = uniqueValues(function (p) { return p.payment_method; });
+      if (filter.method !== null && methods.indexOf(filter.method) === -1) filter.method = null;
+      if (!filter.method && methods.length) filter.method = methods[0];
+
       resetInvalidSelectedPlan();
       syncFinancialMode(currentFinancialMode());
       renderFilters();

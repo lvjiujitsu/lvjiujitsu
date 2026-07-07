@@ -485,10 +485,14 @@ def _create_relationship(
     kinship_type="",
     kinship_other_label="",
 ):
-    return PersonRelationship.objects.create(
+    relationship = PersonRelationship.objects.create(
         source_person=source_person,
         target_person=target_person,
         relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
         kinship_type=kinship_type,
         kinship_other_label=kinship_other_label,
     )
+    from system.services.family_pricing import recompute_family_discounts_for_person
+
+    recompute_family_discounts_for_person(source_person)
+    return relationship

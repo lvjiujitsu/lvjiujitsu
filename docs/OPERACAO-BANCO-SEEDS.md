@@ -60,11 +60,13 @@ Depois, executar as seeds necessárias em ordem.
 13. `seed_system_initial_class_catalog_administrative` — legado/idempotente; mesma fonte do passo 11
 14. `seed_system_initial_product_categories`
 15. `seed_system_initial_product_catalog`
-16. `seed_system_initial_subscription_plans`
-17. `seed_system_initial_subscription_plans_values`
-18. `seed_system_initial_subscription_plans_stripe`
+16. `seed_system_initial_subscription_plans` — a partir da PRD-127, gera só o plano Veterano (Individual/Família migraram para `PlanTier`/`PlanPrice`)
+17. `seed_system_initial_subscription_plans_values` — idem; só popula valores de Veterano
+18. `seed_system_initial_subscription_plans_stripe` — legado/obsoleto (JSON vazio); Individual/Família Stripe migraram para o passo 22
 19. `seed_system_initial_coupons`
 20. `seed_system_initial_holidays`
+21. `seed_system_initial_plan_tiers` — tiers comerciais (audience x frequência) com desconto família (PRD-127)
+22. `seed_system_initial_plan_prices` — preços por tier x forma de pagamento x ciclo (PRD-127); depende do passo 21
 
 Seeds específicas, como migração Kanri, devem ser executadas somente quando o objetivo exigir.
 

@@ -15,6 +15,7 @@ from .class_request_forms import (
     NewTeacherClassCatalogRequestForm,
 )
 from .dependent_forms import DependentProfileForm, DependentRegistrationForm
+from .membership_pause_forms import MembershipPauseDecisionForm, MembershipPauseRequestForm
 from .person_forms import ClientProfileForm, PersonForm, PersonListFilterForm, PersonTypeForm
 from .plan_forms import PlanForm, PlanListFilterForm
 from .product_forms import ProductCartForm, ProductForm, ProductVariantForm
@@ -31,6 +32,8 @@ __all__ = [
     "DependentProfileForm",
     "DependentRegistrationForm",
     "ExistingTeacherClassCatalogRequestForm",
+    "MembershipPauseDecisionForm",
+    "MembershipPauseRequestForm",
     "NewTeacherClassCatalogRequestForm",
     "PersonForm",
     "PersonListFilterForm",

@@ -7,7 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
   <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=14">
   <script type="application/json" id="dep-class-catalog-json">{{ class_catalog_json|safe }}</script>
   <script type="application/json" id="dep-plan-catalog-json">{{ plan_catalog_json|safe }}</script>
@@ -271,6 +271,20 @@
 
         <div id="dep-plan-section" class="financial-plan-section">
           <p class="plan-mode-hint" id="dep-plan-mode-hint">Escolha frequência e período para liberar os planos.</p>
+
+          <div class="plan-policy-notice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <div>
+              <strong>Trancamento e pausa por atestado médico</strong>
+              <p>
+                É possível trancar a matrícula por até <strong>30 dias por ano</strong> de matrícula, sem justificativa
+                — liberado fora do período de permanência mínima, quando houver. Atestado médico
+                <strong>sempre suspende a cobrança</strong> pelo período informado, mesmo durante a permanência mínima,
+                e a permanência é prorrogada pelo mesmo número de dias. Toda pausa passa por aprovação do administrativo.
+              </p>
+            </div>
+          </div>
+
           <div id="dep-plan-filters-area"></div>
           <div id="dep-plan-cards-area"></div>
           <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}{{ form.card_strategy }}</div>
@@ -398,6 +412,6 @@
     </div>
   </div>
 
-  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=17" defer></script>
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=19" defer></script>
 </body>
 </html>

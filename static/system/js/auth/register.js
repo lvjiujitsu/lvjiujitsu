@@ -1646,7 +1646,7 @@
 
     area.querySelectorAll('.plan-card').forEach(function (card) {
       card.addEventListener('click', function () {
-        selectPlan(parseInt(card.getAttribute('data-plan-id'), 10));
+        selectPlan(card.getAttribute('data-plan-id'));
       });
     });
   }
@@ -1728,18 +1728,17 @@
     if (planAlreadyPaid) { showPlanPaidMode(); return; }
     ensurePlanSelections();
     renderPlanPersonTabs();
-    if (!planFilter.cycle) {
-      var cycles = planCycles();
-      if (cycles.length) planFilter.cycle = cycles[0];
-    }
-    if (!planFilter.frequency) {
-      var freqs = planFreqs();
-      if (freqs.length) planFilter.frequency = freqs[0];
-    }
-    if (!planFilter.method) {
-      var methods = planMethods();
-      if (methods.length) planFilter.method = methods[0];
-    }
+    var cycles = planCycles();
+    if (planFilter.cycle !== null && cycles.indexOf(planFilter.cycle) === -1) planFilter.cycle = null;
+    if (!planFilter.cycle && cycles.length) planFilter.cycle = cycles[0];
+
+    var freqs = planFreqs();
+    if (planFilter.frequency !== null && freqs.indexOf(planFilter.frequency) === -1) planFilter.frequency = null;
+    if (!planFilter.frequency && freqs.length) planFilter.frequency = freqs[0];
+
+    var methods = planMethods();
+    if (planFilter.method !== null && methods.indexOf(planFilter.method) === -1) planFilter.method = null;
+    if (!planFilter.method && methods.length) planFilter.method = methods[0];
     renderPlanFilters();
     renderPlanCards();
     // Atualizar UI de Stripe com base na seleção atual (ou ausência dela)

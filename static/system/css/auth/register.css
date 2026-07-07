@@ -1333,6 +1333,26 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--muted);
   font-weight: 400;
 }
+.plan-card__price-wrap--discounted {
+  flex-wrap: wrap;
+}
+.plan-card__price--original {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.plan-card__price--discounted {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--brand-red);
+  line-height: 1;
+}
+.plan-card__family-discount-note {
+  font-size: .72rem;
+  color: var(--brand-red);
+  margin-top: 2px;
+}
 
 .plan-card__installment {
   font-size: .75rem;
@@ -2214,6 +2234,42 @@ html[data-theme="dark"] .ibjjf-notice {
   line-height: 1.45;
 }
 .stripe-commitment-notice p strong {
+  display: inline;
+  font-weight: 700;
+  color: var(--text, #111);
+}
+
+.plan-policy-notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-primary, #2563eb) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-primary, #2563eb) 25%, transparent);
+  color: var(--text, #111);
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+.plan-policy-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--brand-primary, #2563eb);
+}
+.plan-policy-notice > div > strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text, #111);
+}
+.plan-policy-notice p {
+  font-size: 0.8125rem;
+  color: var(--muted, #555);
+  margin: 0;
+  line-height: 1.45;
+}
+.plan-policy-notice p strong {
   display: inline;
   font-weight: 700;
   color: var(--text, #111);

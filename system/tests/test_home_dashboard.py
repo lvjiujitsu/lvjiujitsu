@@ -313,3 +313,75 @@ class HomeDashboardContractTestCase(TestCase):
         session = self.client.session
         session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
         session.save()
+
+
+class HomeDashboardPlanPriceMembershipTestCase(TestCase):
+    """Regressao encontrada na PRD-128: build_membership_summary (usado pela
+    home) acessava membership.plan.price/.display_name incondicionalmente,
+    quebrando com 500 para qualquer Membership que use plan_price (modelo
+    novo da PRD-127) em vez do plan legado."""
+
+    def setUp(self):
+        from decimal import Decimal
+
+        from system.models.plan import (
+            BillingCycle,
+            PlanAudience,
+            PlanPaymentMethod,
+            PlanPrice,
+            PlanTier,
+            PlanWeeklyFrequency,
+        )
+
+        student_type = PersonType.objects.create(
+            code=PersonTypeCode.STUDENT,
+            display_name="Aluno",
+        )
+        tier = PlanTier.objects.create(
+            code="adult-2x-home-regression",
+            display_name="Adulto 2x por semana",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=PlanWeeklyFrequency.TWICE,
+            family_discount_percentage=Decimal("0.18"),
+        )
+        self.price = PlanPrice.objects.create(
+            tier=tier,
+            payment_method=PlanPaymentMethod.PIX,
+            gateway_code="asaas_pix",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("200.00"),
+        )
+        self.person = Person.objects.create(
+            full_name="Aluno Plan Price Home",
+            cpf="153.509.460-56",
+            person_type=student_type,
+            birth_date=date(1995, 1, 1),
+            biological_sex="male",
+        )
+        self.account = PortalAccount(person=self.person)
+        self.account.set_password("123456")
+        self.account.save()
+
+    def test_home_renders_for_active_plan_price_membership(self):
+        from django.utils import timezone
+
+        from system.models.membership import Membership, MembershipStatus
+
+        Membership.objects.create(
+            person=self.person,
+            plan_price=self.price,
+            status=MembershipStatus.ACTIVE,
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        self._login_portal_account(self.account)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.price.tier.display_name, response.content.decode("utf-8"))
+
+    def _login_portal_account(self, account):
+        session = self.client.session
+        session[PORTAL_ACCOUNT_SESSION_KEY] = account.pk
+        session.save()

@@ -519,14 +519,14 @@ def _build_payment_history_items(billing_tabs):
             continue
         invoices = (
             MembershipInvoice.objects.filter(membership=membership)
-            .select_related("membership__plan")
+            .select_related("membership__plan", "membership__plan_price")
             .order_by("-paid_at", "-created_at")
         )
         for invoice in invoices:
             items.append({
                 "person_id": tab["person"].pk,
                 "person_name": tab["person"].full_name,
-                "plan_name": membership.plan.display_name,
+                "plan_name": membership.effective_display_name,
                 "amount_paid": invoice.amount_paid,
                 "amount_refunded": invoice.amount_refunded,
                 "paid_at": invoice.paid_at,
