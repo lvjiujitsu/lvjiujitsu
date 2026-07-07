@@ -33,7 +33,7 @@ from system.views.asaas_views import (
     PayoutQueueView,
     PayoutRefuseView,
 )
-from system.views.admin_views import AdminHubView, AuditLogListView
+from system.views.admin_views import AdminHubView, AuditLogListView, MembershipTimelineAdminListView
 from system.views.billing_admin_views import (
     ApprovalQueueView,
     CancelMembershipActionView,
@@ -290,6 +290,7 @@ urlpatterns = [
     # Administração
     path("administration/", AdminHubView.as_view(), name="admin-hub"),
     path("administration/audit/", AuditLogListView.as_view(), name="audit-log-list"),
+    path("administration/historico-assinaturas/", MembershipTimelineAdminListView.as_view(), name="membership-timeline-admin-list"),
     path("administration/person-types/", PersonTypeListView.as_view(), name="person-type-list"),
     path("administration/person-types/create/", PersonTypeCreateView.as_view(), name="person-type-create"),
     path("administration/person-types/<int:pk>/view/", PersonTypeDetailView.as_view(), name="person-type-detail"),

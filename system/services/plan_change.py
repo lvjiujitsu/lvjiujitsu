@@ -491,6 +491,22 @@ def apply_plan_change(order, membership, new_plan, *, proration=None):
     now = timezone.now()
     current_plan = _current_plan_reference(membership)
 
+    from system.services.membership_timeline import record_membership_event
+    from system.models.membership_timeline import MembershipTimelineEventType
+
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PLAN_CHANGED,
+        membership=membership,
+        actor=membership.person,
+        context={
+            "old_plan_name": current_plan.display_name if current_plan else "",
+            "new_plan_name": new_plan.display_name,
+            "old_price": str(current_plan.price) if current_plan else "",
+            "new_price": str(new_plan.price),
+        },
+    )
+
     if order is not None and order.is_plan_change:
         _assign_membership_plan(membership, new_plan)
         membership.current_period_start = now

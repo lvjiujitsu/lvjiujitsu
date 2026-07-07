@@ -783,6 +783,41 @@
     });
   }
 
+  function bindMembershipTimelineModal() {
+    var overlay = document.getElementById('membership-timeline-modal');
+    if (!overlay) return;
+
+    function openModal() {
+      overlay.removeAttribute('hidden');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+      overlay.setAttribute('hidden', '');
+      document.body.classList.remove('modal-open');
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.js-open-membership-timeline-modal')) {
+        e.preventDefault();
+        openModal();
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      var closeBtn = e.target.closest('.js-close-membership-timeline-modal');
+      if (closeBtn && overlay.contains(closeBtn)) closeModal();
+    });
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+    });
+  }
+
   function bindDependentRemoveConfirm() {
     document.addEventListener('submit', function (e) {
       var form = e.target.closest('.js-dependent-remove-form');
@@ -1667,6 +1702,7 @@
   bindPresenceModal();
   bindAttendanceHistoryModal();
   bindPaymentHistoryModal();
+  bindMembershipTimelineModal();
   bindGradHistoryModal();
   bindGradDetailsToggle();
   bindBillingDetailsToggle();

@@ -38,6 +38,7 @@ from system.services.membership import (
     get_membership_owner,
     has_dependents,
 )
+from system.services.membership_timeline import build_client_timeline
 from system.services.plan_change import (
     build_membership_summary,
     build_plan_catalog,
@@ -225,6 +226,7 @@ class HomeView(PortalLoginRequiredMixin, TemplateView):
             context["payment_history_items"] = _build_payment_history_items(
                 context.get("billing_tabs")
             )
+            context["membership_timeline_events"] = build_client_timeline(person)
 
         context["profile_tabs"] = _build_profile_tabs(context)
 

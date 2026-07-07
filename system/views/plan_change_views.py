@@ -161,4 +161,14 @@ class MembershipUpdateCardView(PortalRoleRequiredMixin, View):
         except StripeCheckoutError as exc:
             messages.error(request, str(exc))
             return redirect("system:home")
+
+        from system.models.membership_timeline import MembershipTimelineEventType
+        from system.services.membership_timeline import record_membership_event
+
+        record_membership_event(
+            person,
+            MembershipTimelineEventType.CARD_UPDATED,
+            membership=membership,
+            actor=person,
+        )
         return redirect(session["url"])

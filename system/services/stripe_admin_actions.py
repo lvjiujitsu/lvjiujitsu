@@ -7,9 +7,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from system.models.membership import Membership, MembershipStatus
+from system.models.membership_timeline import MembershipTimelineEventType
 from system.models.plan import SubscriptionPlan
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.family_pricing import recompute_family_discounts_for_person
+from system.services.membership_timeline import record_membership_event
 from system.services.payroll_rules import append_order_refund_record
 
 
@@ -42,6 +44,13 @@ def cancel_membership(membership, *, at_period_end=True, admin_user=None, reason
         membership.save(
             update_fields=["status", "canceled_at", "cancel_at_period_end", "notes", "updated_at"]
         )
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.MEMBERSHIP_CANCELED,
+            membership=membership,
+            actor_is_admin=True,
+            context={"plan_name": membership.effective_display_name},
+        )
         recompute_family_discounts_for_person(membership.person)
         return membership
 
@@ -72,6 +81,16 @@ def cancel_membership(membership, *, at_period_end=True, admin_user=None, reason
         membership.notes = (membership.notes + "\n" + reason).strip()
     membership.save()
     if not at_period_end:
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.MEMBERSHIP_CANCELED,
+            membership=membership,
+            actor_is_admin=True,
+            context={
+                "plan_name": membership.effective_display_name,
+                "stripe_subscription_id": membership.stripe_subscription_id,
+            },
+        )
         recompute_family_discounts_for_person(membership.person)
     return membership
 
@@ -110,6 +129,12 @@ def refund_order(order, *, amount=None, admin_user=None, reason=""):
         save=False,
     )
     order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
+    record_membership_event(
+        order.person,
+        MembershipTimelineEventType.REFUND_ISSUED,
+        actor_is_admin=True,
+        context={"amount": str(refunded_amount), "order_id": order.pk},
+    )
     return {"refund_id": refund["id"], "amount": refunded_amount, "order": order}
 
 
@@ -124,6 +149,8 @@ def change_membership_plan(membership, new_plan, *, admin_user=None):
         raise StripeAdminActionError(
             f"Plano '{new_plan.display_name}' sem Stripe Price sincronizado."
         )
+
+    old_plan = membership.plan
 
     try:
         subscription = client.Subscription.retrieve(membership.stripe_subscription_id)
@@ -151,5 +178,17 @@ def change_membership_plan(membership, new_plan, *, admin_user=None):
 
     membership.plan = new_plan
     membership.save(update_fields=["plan", "updated_at"])
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PLAN_CHANGED,
+        membership=membership,
+        actor_is_admin=True,
+        context={
+            "old_plan_name": old_plan.display_name if old_plan else "",
+            "new_plan_name": new_plan.display_name,
+            "old_price": str(old_plan.price) if old_plan else "",
+            "new_price": str(new_plan.price),
+        },
+    )
     recompute_family_discounts_for_person(membership.person)
     return membership

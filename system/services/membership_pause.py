@@ -87,13 +87,28 @@ def create_pause_request(membership, *, kind, start_date, end_date, reason_note=
                 f"{remaining} dia(s) disponíveis neste ano de matrícula."
             )
 
-    return MembershipPauseRequest.objects.create(
+    pause_request = MembershipPauseRequest.objects.create(
         membership=membership,
         kind=kind,
         requested_start_date=start_date,
         requested_end_date=end_date,
         reason_note=(reason_note or "").strip(),
     )
+    from system.services.membership_timeline import record_membership_event
+    from system.models.membership_timeline import MembershipTimelineEventType
+
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PAUSE_REQUESTED,
+        membership=membership,
+        actor=membership.person,
+        context={
+            "kind": kind,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        },
+    )
+    return pause_request
 
 
 def _pause_stripe_collection(membership, pause_request):
@@ -149,6 +164,17 @@ def approve_pause_request(request_id, *, approved_by, decision_notes=""):
     pause_request.save(
         update_fields=["status", "decided_by", "decided_at", "decision_notes", "updated_at"]
     )
+    from system.services.membership_timeline import record_membership_event
+    from system.models.membership_timeline import MembershipTimelineEventType
+
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PAUSE_APPROVED,
+        membership=membership,
+        actor=approved_by,
+        actor_is_admin=True,
+        context={"kind": pause_request.kind, "duration_days": duration},
+    )
     return pause_request
 
 
@@ -164,6 +190,17 @@ def reject_pause_request(request_id, *, rejected_by, decision_notes):
     pause_request.decision_notes = decision_notes.strip()
     pause_request.save(
         update_fields=["status", "decided_by", "decided_at", "decision_notes", "updated_at"]
+    )
+    from system.services.membership_timeline import record_membership_event
+    from system.models.membership_timeline import MembershipTimelineEventType
+
+    record_membership_event(
+        pause_request.membership.person,
+        MembershipTimelineEventType.PAUSE_REJECTED,
+        membership=pause_request.membership,
+        actor=rejected_by,
+        actor_is_admin=True,
+        context={"kind": pause_request.kind, "decision_notes": pause_request.decision_notes},
     )
     return pause_request
 

@@ -18,6 +18,8 @@ from system.models import (
     SubscriptionPlan,
     TeacherPayout,
 )
+from system.models.membership_timeline import MembershipTimelineEvent, MembershipTimelineEventType
+from system.services.membership_timeline import build_admin_timeline
 from system.views.person_views import AdministrativeRequiredMixin
 
 
@@ -83,6 +85,13 @@ class AdminHubView(AdministrativeRequiredMixin, TemplateView):
                 "primary_count": OperationalAuditEntry.objects.count(),
                 "primary_label": "entradas registradas",
             },
+            {
+                "title": "Histórico de assinaturas",
+                "description": "Trilha técnica de dependente, plano, pausa, cobrança e cancelamento.",
+                "url_name": "system:membership-timeline-admin-list",
+                "primary_count": MembershipTimelineEvent.objects.count(),
+                "primary_label": "eventos registrados",
+            },
         ]
         context["admin_kpis"] = [
             {"label": "Categorias de turma", "value": ClassCategory.objects.count()},
@@ -114,4 +123,27 @@ class AuditLogListView(AdministrativeRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["module_filter"] = self.request.GET.get("module") or ""
         context["module_choices"] = OperationalAuditEntry._meta.get_field("module").choices
+        return context
+
+
+class MembershipTimelineAdminListView(AdministrativeRequiredMixin, TemplateView):
+    template_name = "audit/membership_timeline_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        person_search = (self.request.GET.get("person") or "").strip()
+        event_type = self.request.GET.get("event_type") or ""
+
+        person = None
+        if person_search:
+            person = (
+                Person.objects.filter(full_name__icontains=person_search)
+                .order_by("full_name")
+                .first()
+            )
+
+        context["events"] = build_admin_timeline(person=person, event_type=event_type)
+        context["person_search"] = person_search
+        context["event_type_filter"] = event_type
+        context["event_type_choices"] = MembershipTimelineEventType.choices
         return context

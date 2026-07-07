@@ -147,6 +147,17 @@ def activate_membership_from_session(order, stripe_session, stripe_subscription=
         for field, value in defaults.items():
             setattr(membership, field, value)
         membership.save()
+
+    from system.models.membership_timeline import MembershipTimelineEventType
+    from system.services.membership_timeline import record_membership_event
+
+    record_membership_event(
+        person,
+        MembershipTimelineEventType.PAYMENT_CONFIRMED,
+        membership=membership,
+        actor=None,
+        context={"amount": str(order.total) if order.total is not None else "", "order_id": order.pk},
+    )
     return membership
 
 
@@ -201,6 +212,17 @@ def activate_membership_from_paid_order(
         for field, value in defaults.items():
             setattr(membership, field, value)
         membership.save()
+
+    from system.models.membership_timeline import MembershipTimelineEventType
+    from system.services.membership_timeline import record_membership_event
+
+    record_membership_event(
+        order.person,
+        MembershipTimelineEventType.PAYMENT_CONFIRMED,
+        membership=membership,
+        actor=None,
+        context={"amount": str(order.total) if order.total is not None else "", "order_id": order.pk},
+    )
     return membership
 
 
@@ -306,7 +328,9 @@ def record_invoice_from_stripe(stripe_invoice):
                 **common,
             },
         )
-        _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end)
+        _refresh_membership_after_invoice(
+            membership, invoice_id, period_start, period_end, amount_paid=amount_paid
+        )
         return invoice
 
     memberships_by_item_id = {
@@ -332,13 +356,20 @@ def record_invoice_from_stripe(stripe_invoice):
                 **common,
             },
         )
-        _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end)
+        _refresh_membership_after_invoice(
+            membership, invoice_id, period_start, period_end, amount_paid=line_amount
+        )
         if first_invoice is None:
             first_invoice = invoice
     return first_invoice
 
 
-def _refresh_membership_after_invoice(membership, invoice_id, period_start, period_end):
+def _refresh_membership_after_invoice(
+    membership, invoice_id, period_start, period_end, *, amount_paid=None
+):
+    from system.models.membership_timeline import MembershipTimelineEventType
+    from system.services.membership_timeline import record_membership_event
+
     if period_end:
         membership.current_period_end = period_end
     if period_start:
@@ -355,10 +386,23 @@ def _refresh_membership_after_invoice(membership, invoice_id, period_start, peri
             "updated_at",
         ]
     )
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PAYMENT_CONFIRMED,
+        membership=membership,
+        actor=None,
+        context={
+            "amount": str(amount_paid) if amount_paid is not None else "",
+            "stripe_invoice_id": invoice_id,
+        },
+    )
 
 
 @transaction.atomic
 def mark_invoice_failed(stripe_invoice):
+    from system.models.membership_timeline import MembershipTimelineEventType
+    from system.services.membership_timeline import record_membership_event
+
     subscription_id = _sget(stripe_invoice, "subscription")
     if not subscription_id:
         return None
@@ -390,6 +434,13 @@ def mark_invoice_failed(stripe_invoice):
                 )[:255],
             },
         )
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.PAYMENT_FAILED,
+            membership=membership,
+            actor=None,
+            context={"amount": str(amount_due), "stripe_invoice_id": invoice_id},
+        )
         try:
             from system.services.stripe_notifications import notify_payment_failed
             notify_payment_failed(membership, stripe_invoice=stripe_invoice)
@@ -400,7 +451,9 @@ def mark_invoice_failed(stripe_invoice):
 
 @transaction.atomic
 def mark_membership_canceled(stripe_subscription):
+    from system.models.membership_timeline import MembershipTimelineEventType
     from system.services.family_pricing import recompute_family_discounts_for_person
+    from system.services.membership_timeline import record_membership_event
 
     memberships = list(
         Membership.objects.filter(stripe_subscription_id=stripe_subscription["id"])
@@ -416,6 +469,17 @@ def mark_membership_canceled(stripe_subscription):
             update_fields=["status", "cancel_at_period_end", "canceled_at", "updated_at"]
         )
     for membership in memberships:
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.MEMBERSHIP_CANCELED,
+            membership=membership,
+            actor=None,
+            actor_is_admin=False,
+            context={
+                "plan_name": membership.effective_display_name,
+                "stripe_subscription_id": membership.stripe_subscription_id,
+            },
+        )
         recompute_family_discounts_for_person(membership.person)
     return memberships[0]
 

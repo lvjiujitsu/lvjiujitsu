@@ -92,6 +92,7 @@ from .request_workflows import (
 )
 from .trial_access import TrialAccessGrant
 from .audit import AuditAction, AuditModule, OperationalAuditEntry
+from .membership_timeline import MembershipTimelineEvent, MembershipTimelineEventType
 
 __all__ = [
     "AdministrativeAccessRequest",
@@ -152,6 +153,8 @@ __all__ = [
     "MembershipPauseRequestKind",
     "MembershipPauseRequestStatus",
     "MembershipStatus",
+    "MembershipTimelineEvent",
+    "MembershipTimelineEventType",
     "OrderKind",
     "PaymentProvider",
     "PaymentStatus",

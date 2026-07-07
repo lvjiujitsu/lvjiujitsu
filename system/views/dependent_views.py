@@ -418,6 +418,21 @@ class DependentRemoveView(PortalLoginRequiredMixin, View):
         relationship.delete()
 
         from system.services.family_pricing import recompute_family_discounts_for_person
+        from system.services.membership_timeline import record_membership_event
+        from system.models.membership_timeline import MembershipTimelineEventType
+
+        record_membership_event(
+            owner,
+            MembershipTimelineEventType.DEPENDENT_REMOVED,
+            actor=owner,
+            context={"dependent_name": dependent_name},
+        )
+        record_membership_event(
+            dependent,
+            MembershipTimelineEventType.DEPENDENT_REMOVED,
+            actor=owner,
+            context={"dependent_name": dependent_name},
+        )
 
         recompute_family_discounts_for_person(owner)
         recompute_family_discounts_for_person(dependent)

@@ -234,6 +234,21 @@ def finalize_dependent_registration(owner, cleaned_data, *, pre_registration=Non
         kinship_type=cleaned_data.get("dependent_kinship_type", ""),
         kinship_other_label=cleaned_data.get("dependent_kinship_other_label", ""),
     )
+    from system.services.membership_timeline import record_membership_event
+    from system.models.membership_timeline import MembershipTimelineEventType
+
+    record_membership_event(
+        owner,
+        MembershipTimelineEventType.DEPENDENT_ADDED,
+        actor=owner,
+        context={"dependent_name": dependent.full_name},
+    )
+    record_membership_event(
+        dependent,
+        MembershipTimelineEventType.DEPENDENT_ADDED,
+        actor=owner,
+        context={"dependent_name": dependent.full_name},
+    )
     dependent.is_active = True
     dependent.save(update_fields=["is_active", "updated_at"])
     account = dependent.access_account

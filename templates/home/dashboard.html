@@ -368,12 +368,20 @@
           </button>
           <h2 class="section__title" id="billing-title">Mensalidade</h2>
         </div>
-        {% if payment_history_items %}
+        {% if payment_history_items or membership_timeline_events %}
         <div class="section__actions">
+          {% if payment_history_items %}
           <button class="btn btn--secondary btn--sm section-action js-open-payment-history-modal" type="button" aria-haspopup="dialog" aria-label="Abrir histórico de pagamentos" title="Histórico de pagamentos">
             <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
             <span class="section-action__text">Histórico de pagamentos</span>
           </button>
+          {% endif %}
+          {% if membership_timeline_events %}
+          <button class="btn btn--secondary btn--sm section-action js-open-membership-timeline-modal" type="button" aria-haspopup="dialog" aria-label="Abrir histórico de alterações" title="Histórico de alterações">
+            <svg class="section-action__icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            <span class="section-action__text">Histórico de alterações</span>
+          </button>
+          {% endif %}
         </div>
         {% endif %}
       </div>
@@ -1082,6 +1090,35 @@
   </div>
   {% endif %}
 
+  <!-- ─── Modal: histórico de alterações ───────────────────────────────────── -->
+  {% if membership_timeline_events %}
+  <div class="modal-overlay" id="membership-timeline-modal" hidden role="dialog" aria-modal="true" aria-labelledby="membership-timeline-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="membership-timeline-title">Histórico de alterações</h2>
+        <button class="modal__close js-close-membership-timeline-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <ul class="attendance-history-list" aria-label="Histórico de alterações">
+        {% for entry in membership_timeline_events %}
+        <li class="attendance-history-item">
+          <div class="attendance-history-item__date">
+            <span class="attendance-history-item__day">{{ entry.created_at|date:"d/m/Y" }}</span>
+            <span class="attendance-history-item__time">{{ entry.created_at|date:"H:i" }}</span>
+          </div>
+          <div class="attendance-history-item__info">
+            <span class="attendance-history-item__class">{{ entry.description }}</span>
+            <span class="attendance-history-item__meta">{{ entry.person_name }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="modal-empty" {% if membership_timeline_events %}hidden{% endif %}>Nenhum evento encontrado.</p>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ─── Modal: presenças da aula (instrutor) ─────────────────────────────── -->
   {% if show_instructor_area %}
   <div class="modal-overlay" id="class-presence-modal" hidden role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
@@ -1323,7 +1360,7 @@
   </div>
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=24" defer></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=25" defer></script>
 
 </body>
 </html>

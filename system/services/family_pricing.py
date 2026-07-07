@@ -4,7 +4,9 @@ from collections import defaultdict
 from django.db import transaction
 
 from system.models.membership import Membership, MembershipStatus
+from system.models.membership_timeline import MembershipTimelineEventType
 from system.selectors.plan_eligibility import get_family_group_members
+from system.services.membership_timeline import record_membership_event
 from system.services.stripe_discounts import (
     StripeDiscountError,
     apply_family_discount,
@@ -41,6 +43,7 @@ def recompute_family_discounts_for_person(person):
         discount_applies = len(tier_memberships) >= 2
         for membership in tier_memberships:
             previous = membership.family_discount_applied
+            previous_price = membership.billed_price
             membership.family_discount_applied = discount_applies
             membership.recompute_billed_price()
             membership.save(
@@ -49,6 +52,19 @@ def recompute_family_discounts_for_person(person):
             if previous != discount_applies:
                 changed.append(membership)
                 _sync_stripe_discount(membership, discount_applies)
+                record_membership_event(
+                    membership.person,
+                    MembershipTimelineEventType.FAMILY_DISCOUNT_CHANGED,
+                    membership=membership,
+                    actor=None,
+                    context={
+                        "discount_applied": discount_applies,
+                        "old_price": str(previous_price) if previous_price is not None else "",
+                        "new_price": str(membership.billed_price)
+                        if membership.billed_price is not None
+                        else "",
+                    },
+                )
 
     return changed
 
