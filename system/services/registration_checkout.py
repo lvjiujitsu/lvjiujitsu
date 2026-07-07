@@ -218,19 +218,16 @@ def _build_plan_price_catalog_payload():
         .select_related("tier")
         .order_by("tier__display_order", "price")
     )
-    groups = {}
-    for price in prices:
-        key = (price.tier_id, price.billing_cycle)
-        slot = groups.setdefault(key, {})
-        slot[price.payment_method] = price
     cent = Decimal("0.01")
     payload = []
     for price in prices:
-        slot = groups[(price.tier_id, price.billing_cycle)]
-        pix_price = slot.get(PlanPaymentMethod.PIX)
-        card_price = slot.get(PlanPaymentMethod.CREDIT_CARD)
-        charge_pix = str(pix_price.price.quantize(cent)) if pix_price else "0.00"
-        charge_card = str(card_price.price.quantize(cent)) if card_price else "0.00"
+        # Cada PlanPrice já representa um gateway/forma de pagamento específico
+        # (ex.: asaas_card e stripe_card podem coexistir no mesmo tier/ciclo com
+        # preços diferentes) — charge_pix/charge_card devem refletir só o preço
+        # desta própria linha, nunca o de uma linha "irmã" de outro gateway.
+        own_price = str(price.price.quantize(cent))
+        charge_pix = own_price if price.payment_method == PlanPaymentMethod.PIX else "0.00"
+        charge_card = own_price if price.payment_method == PlanPaymentMethod.CREDIT_CARD else "0.00"
         payload.append(
             {
                 "id": build_catalog_plan_id(CATALOG_ID_PREFIX_PLAN_PRICE, price.pk),

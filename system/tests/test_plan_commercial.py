@@ -2,8 +2,8 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from system.models import SubscriptionPlan
-from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod
+from system.models import PlanPrice, PlanTier, SubscriptionPlan
+from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod, PlanWeeklyFrequency
 from system.services.registration_checkout import get_plan_catalog_payload
 from system.utils.plan_commercial import (
     COMMERCIAL_TIER_FAMILY,
@@ -75,3 +75,45 @@ class PlanCatalogPayloadCommercialTierTestCase(TestCase):
         family_entry = next(p for p in payload if p["code"] == "family-2x-asaas-pix-monthly")
         self.assertEqual(family_entry["commercial_tier"], COMMERCIAL_TIER_FAMILY)
         self.assertEqual(family_entry["commercial_tier_label"], "Família")
+
+
+class PlanPriceCatalogMultiGatewayCardPriceTestCase(TestCase):
+    """PRD real: asaas_card e stripe_card no mesmo tier/ciclo não podem
+    vazar o preço um do outro em charge_card (bug encontrado em validação
+    ao vivo — os dois apareciam com o mesmo valor no wizard)."""
+
+    def test_asaas_card_and_stripe_card_report_their_own_price(self):
+        tier = PlanTier.objects.create(
+            code="adult-2x-catalog-multigateway",
+            display_name="Adulto 2x por semana",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=PlanWeeklyFrequency.TWICE,
+        )
+        PlanPrice.objects.create(
+            tier=tier,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            gateway_code="asaas_card",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("225.00"),
+            gateway_fixed_fee=Decimal("0.49"),
+            gateway_percentage_fee=Decimal("0.0429"),
+        )
+        PlanPrice.objects.create(
+            tier=tier,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            gateway_code="stripe_card",
+            billing_cycle=BillingCycle.MONTHLY,
+            base_monthly_net_price=Decimal("225.00"),
+            gateway_fixed_fee=Decimal("0.39"),
+            gateway_percentage_fee=Decimal("0.0399"),
+        )
+
+        payload = get_plan_catalog_payload(include_plan_prices=True)
+
+        asaas_entry = next(p for p in payload if p["gateway_code"] == "asaas_card")
+        stripe_entry = next(p for p in payload if p["gateway_code"] == "stripe_card")
+
+        self.assertEqual(asaas_entry["charge_card"], asaas_entry["price"])
+        self.assertEqual(stripe_entry["charge_card"], stripe_entry["price"])
+        self.assertNotEqual(asaas_entry["price"], stripe_entry["price"])
+        self.assertNotEqual(asaas_entry["charge_card"], stripe_entry["charge_card"])
