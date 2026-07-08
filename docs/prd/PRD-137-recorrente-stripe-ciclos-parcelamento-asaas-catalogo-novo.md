@@ -88,6 +88,7 @@ Corrigir `asaas_checkout.py` para resolver o ciclo de cobrança via `plan` OU `p
 - [x] `create_credit_card_charge_for_order` envia o `installmentCount` correto ao Asaas para pedidos do catálogo novo.
 - [x] Nome do plano exibido corretamente na tela de parcelamento para ambos os catálogos (bug correlato encontrado e corrigido).
 - [x] Valores comerciais do recorrente Stripe para semestral/anual gravados no catálogo — aprovado pelo usuário ("implemente") e gravado.
+- [x] `sync_plan_to_stripe` funciona com `PlanPrice` além de `SubscriptionPlan` — descoberto que não funcionava (bug adicional), corrigido e testado (sem chamada real ao Stripe).
 
 ### Expected evidence
 - Teste Red (bug reproduzido revertendo a correção via `git stash`) e Green (suíte após correção) com comando e saída reais.
@@ -110,7 +111,7 @@ Correção implementada e testada (parcelamento) + proposta documentada aguardan
 - Sincronização real com o Stripe (criação de Product/Price) — só ocorre quando `STRIPE_PLAN_SYNC_ENABLED=True`, fora do escopo local desta correção.
 
 ## Impacted files
-`system/services/asaas_checkout.py`, `system/views/asaas_views.py`, `templates/login/installment_select.html`, `system/tests/test_asaas.py`, `system/tests/test_commands.py`, `static/initial_data/seed_system_initial_plan_prices.json`.
+`system/services/asaas_checkout.py`, `system/views/asaas_views.py`, `templates/login/installment_select.html`, `system/tests/test_asaas.py`, `system/tests/test_commands.py`, `static/initial_data/seed_system_initial_plan_prices.json`, `system/services/stripe_sync.py`, `system/management/commands/seed_system_initial_plan_prices.py`, `system/tests/test_stripe_sync.py`.
 
 ## Risks and edge cases
 - Pedidos antigos (pré-PRD-129) com `plan` preenchido continuam resolvendo pelo caminho legado — `_billing_cycle_for_order` prioriza `order.plan_id` antes de `plan_price_ref_id`, preservando o comportamento anterior.
@@ -168,19 +169,23 @@ Ver "Execution evidence" acima.
 - `system/tests/test_asaas.py`: nova classe `AsaasCheckoutPlanPriceCatalogTests` com 3 testes cobrindo o cenário do catálogo novo.
 - `static/initial_data/seed_system_initial_plan_prices.json`: 8 novas linhas `gateway_code=stripe_card` (semestral + anual × `adult-2x`/`adult-5x`/`kids-2x`/`kids-5x`), com `base_monthly_net_price`/`cycle_discount_percentage` calculados por engenharia reversa de `compute_gross_price` para reproduzir exatamente os valores aprovados (R$ 1.195,00/2.265,00 para 2x; R$ 1.250,00/2.390,00 para 5x/Kids/Juvenil).
 - `system/tests/test_commands.py`: `test_seed_creates_tiers_and_prices_idempotently` estendido com a nova contagem (44) e asserções de preço exato para as 4 linhas Stripe novas.
+- `system/services/stripe_sync.py`: `sync_plan_to_stripe` generalizado para funcionar com `SubscriptionPlan` (legado) OU `PlanPrice` (novo) — antes só funcionava com `SubscriptionPlan` hardcoded (`SubscriptionPlan.objects.filter(pk=plan.pk).update(...)`), quebrando com `AttributeError` para `PlanPrice` (sem campos `code`/`description`). Novas funções `_plan_code(plan)` (deriva `tier.code-gateway_code-billing_cycle` quando não há `code` próprio) e `_plan_description(plan)` (retorna `None` quando o modelo não tem o campo). A persistência do resultado usa `type(plan).objects.filter(...)` em vez do modelo fixo.
+- `system/management/commands/seed_system_initial_plan_prices.py`: passou a sincronizar com o Stripe real quando `STRIPE_PLAN_SYNC_ENABLED=True` (mesmo padrão já usado em `seed_system_initial_subscription_plans_stripe.py`), só para linhas `gateway_code="stripe_card"`.
+- `system/tests/test_stripe_sync.py` (novo): 5 testes — regressão de `SubscriptionPlan` (criação de Product/Price, preço zero pulado, erro sem `STRIPE_SECRET_KEY`) + 2 testes novos de `PlanPrice` (criação de Product/Price com `plan_code` derivado do tier, e substituição/arquivamento de Price quando o valor muda). Bug reproduzido em Red (`AttributeError: 'PlanPrice' object has no attribute 'description'`) antes da correção.
+- `system/tests/test_commands.py`: 2 novos testes no seed de preços — erro sem `STRIPE_SECRET_KEY` quando `STRIPE_PLAN_SYNC_ENABLED=True`; sincronização chamada só para linhas `stripe_card` (mock de `sync_plan_to_stripe`, sem chamada real).
 
 ## Cleanup findings
 - Nenhum resíduo introduzido. O bug do `plan.name` inexistente no template era pré-existente (afetava também pedidos legados) e foi corrigido como parte do mesmo fluxo tocado — não expande o escopo, é o mesmo template/linha da correção principal.
 
 ## Follow-up PRDs
 - `PRD-117` (fidelidade contratual/carência do recorrente Stripe) continua pendente, sem relação direta com esta correção.
-- Se o Stripe real for sincronizado (`STRIPE_PLAN_SYNC_ENABLED=True` em HG/produção), as 8 novas `PlanPrice` precisarão de Product/Price criados no painel Stripe — fora do escopo local desta entrega, exige autorização de ambiente.
+- Rodar `seed_system_initial_plan_prices` com `STRIPE_PLAN_SYNC_ENABLED=True` em HG/produção (criação real de Product/Price no Stripe) exige autorização de ambiente e credenciais reais — não executado nesta sessão local (sem `STRIPE_SECRET_KEY` de HG/produção disponível aqui).
 
 ## Deviations from plan
-Nenhum desvio — plano executado como descrito, incluindo a etapa 7 (gravação dos valores aprovados).
+Nenhum desvio no escopo original — a sincronização Stripe para `PlanPrice` foi adicionada como extensão explicitamente autorizada pelo usuário ("implementar a sincronização agora, local, testada, sem chamada real") após a descoberta de que o mecanismo não existia para o modelo novo.
 
 ## Pending
-Nenhuma pendência de implementação. `PRD-117` (fidelidade contratual/carência) segue como pendente separada e não bloqueia esta entrega. Sincronização real com o Stripe (Product/Price em HG/produção) exige autorização de ambiente futura.
+Nenhuma pendência de implementação local. Sincronização real com o Stripe (Product/Price em HG/produção, `STRIPE_PLAN_SYNC_ENABLED=True`) exige autorização de ambiente e execução separada — nenhuma chamada real ao Stripe foi feita nesta PRD. `PRD-117` (fidelidade contratual/carência) segue como pendente separada e não bloqueia esta entrega.
 
 **Valores aprovados e gravados** (referência — ver "Implemented"):
 
@@ -192,4 +197,4 @@ Nenhuma pendência de implementação. `PRD-117` (fidelidade contratual/carênci
 | Individual Adulto 5x / Kids / Juvenil | Anual | R$ 2.520,00 | R$ 2.390,00 | ~5,2% |
 
 ## Final status
-**Concluída.** Bug de parcelamento Asaas corrigido, testado (Red→Green) e validado via simulação real da view. Recorrente Stripe em ciclos longos: valores aprovados pelo usuário, gravados no catálogo e confirmados no payload servido ao wizard público. Suíte completa: 644 testes, OK. `manage.py check`: sem issues.
+**Concluída.** Bug de parcelamento Asaas corrigido, testado (Red→Green) e validado via simulação real da view. Recorrente Stripe em ciclos longos: valores aprovados pelo usuário e gravados no catálogo. Descoberta adicional durante o fechamento: `sync_plan_to_stripe` não suportava `PlanPrice` (só `SubscriptionPlan` legado) — corrigido, testado (Red→Green) e sem chamada real ao Stripe (mock em todos os testes; execução real em HG/produção fica para quando houver autorização de ambiente e credenciais). Suíte completa: 651 testes, OK. `manage.py check`: sem issues.

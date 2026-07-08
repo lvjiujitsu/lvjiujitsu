@@ -23,8 +23,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"Nenhum preço encontrado no arquivo {DATA_FILENAME}."))
             return
 
+        sync_enabled = getattr(settings, "STRIPE_PLAN_SYNC_ENABLED", False)
+        if sync_enabled and not getattr(settings, "STRIPE_SECRET_KEY", ""):
+            raise CommandError("STRIPE_PLAN_SYNC_ENABLED=True mas STRIPE_SECRET_KEY não configurada no .env.")
+
         created_count = 0
         updated_count = 0
+        synced_count = 0
 
         with transaction.atomic():
             for entry in data:
@@ -39,11 +44,27 @@ class Command(BaseCommand):
                 else:
                     updated_count += 1
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"\nPreços de plano: {created_count} criado(s), {updated_count} atualizado(s)."
+                if sync_enabled and price.gateway_code == "stripe_card":
+                    self._sync_to_stripe(price)
+                    synced_count += 1
+
+        summary = f"\nPreços de plano: {created_count} criado(s), {updated_count} atualizado(s)"
+        if sync_enabled:
+            summary += f", {synced_count} sincronizado(s) com o Stripe."
+        else:
+            summary += ". Sincronização Stripe desabilitada (STRIPE_PLAN_SYNC_ENABLED não definida)."
+        self.stdout.write(self.style.SUCCESS(summary))
+
+    def _sync_to_stripe(self, price):
+        from system.services.stripe_sync import StripeSyncError, sync_plan_to_stripe
+
+        try:
+            synced = sync_plan_to_stripe(price)
+            self.stdout.write(
+                f"    -> Stripe sincronizado: product={synced.stripe_product_id} price={synced.stripe_price_id}"
             )
-        )
+        except StripeSyncError as exc:
+            self.stdout.write(self.style.WARNING(f"    -> Falha na sincronização Stripe: {exc}"))
 
     def _load_json(self) -> list:
         path = Path(settings.BASE_DIR) / "static" / "initial_data" / DATA_FILENAME

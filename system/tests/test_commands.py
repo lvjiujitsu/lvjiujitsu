@@ -12,7 +12,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core.management import call_command, get_commands
 from django.core.management.base import CommandError
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from clear_migrations import remove_runtime_artifacts
 from system.constants import OperationalRoleCode, PersonTypeCode
@@ -674,5 +674,26 @@ class PlanTierPriceSeedCommandTestCase(TestCase):
     def test_seed_prices_requires_tier_to_exist(self):
         with self.assertRaises(CommandError):
             self._call("seed_system_initial_plan_prices")
+
+    @override_settings(STRIPE_PLAN_SYNC_ENABLED=True, STRIPE_SECRET_KEY="")
+    def test_seed_prices_requires_secret_key_when_sync_enabled(self):
+        self._call("seed_system_initial_plan_tiers")
+        with self.assertRaises(CommandError):
+            self._call("seed_system_initial_plan_prices")
+
+    @override_settings(STRIPE_PLAN_SYNC_ENABLED=True, STRIPE_SECRET_KEY="sk_test_123")
+    @patch("system.services.stripe_sync.sync_plan_to_stripe")
+    def test_seed_prices_syncs_only_stripe_card_rows_when_enabled(self, mock_sync):
+        mock_sync.side_effect = lambda price: price
+        self._call("seed_system_initial_plan_tiers")
+        self._call("seed_system_initial_plan_prices")
+
+        synced_prices = [call.args[0] for call in mock_sync.call_args_list]
+        self.assertTrue(synced_prices)
+        self.assertTrue(all(p.gateway_code == "stripe_card" for p in synced_prices))
+        self.assertEqual(
+            len(synced_prices),
+            PlanPrice.objects.filter(gateway_code="stripe_card").count(),
+        )
 
 

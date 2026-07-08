@@ -26,9 +26,30 @@ def _to_cents(value):
     return int((Decimal(value) * 100).quantize(Decimal("1")))
 
 
-def sync_plan_to_stripe(plan):
-    from system.models.plan import SubscriptionPlan
+def _plan_code(plan):
+    """Código estável para metadata Stripe. SubscriptionPlan tem 'code' próprio;
+    PlanPrice não tem — deriva um código equivalente a partir do tier/gateway/ciclo."""
+    code = getattr(plan, "code", None)
+    if code:
+        return code
+    tier = getattr(plan, "tier", None)
+    if tier is not None:
+        return f"{tier.code}-{plan.gateway_code}-{plan.billing_cycle}"
+    return str(plan.pk)
 
+
+def _plan_description(plan):
+    """SubscriptionPlan tem 'description'; PlanPrice não tem esse campo."""
+    return getattr(plan, "description", "") or None
+
+
+def sync_plan_to_stripe(plan):
+    """Sincroniza um plano (SubscriptionPlan legado OU PlanPrice novo) com o
+    Stripe. Ambos os modelos compartilham os mesmos campos stripe_* — a query
+    de persistência usa type(plan) em vez de um modelo fixo para funcionar
+    com qualquer um dos dois.
+    """
+    model = type(plan)
     client = _get_client()
     now = timezone.now()
 
@@ -39,7 +60,7 @@ def sync_plan_to_stripe(plan):
     if plan_price is None or plan_price <= 0:
         plan.stripe_sync_error = ""
         plan.stripe_synced_at = now
-        SubscriptionPlan.objects.filter(pk=plan.pk).update(
+        model.objects.filter(pk=plan.pk).update(
             stripe_sync_error="",
             stripe_synced_at=now,
         )
@@ -50,7 +71,7 @@ def sync_plan_to_stripe(plan):
         price = _ensure_price(client, plan, product)
     except Exception as exc:
         logger.exception("Falha ao sincronizar plano %s com Stripe", plan.pk)
-        SubscriptionPlan.objects.filter(pk=plan.pk).update(
+        model.objects.filter(pk=plan.pk).update(
             stripe_sync_error=str(exc)[:2000],
             stripe_synced_at=now,
         )
@@ -63,27 +84,29 @@ def sync_plan_to_stripe(plan):
         "stripe_sync_error": "",
         "stripe_synced_at": now,
     }
-    SubscriptionPlan.objects.filter(pk=plan.pk).update(**update_fields)
+    model.objects.filter(pk=plan.pk).update(**update_fields)
     for field, value in update_fields.items():
         setattr(plan, field, value)
     return plan
 
 
 def _ensure_product(client, plan):
+    code = _plan_code(plan)
+    description = _plan_description(plan)
     if plan.stripe_product_id:
         product = client.Product.modify(
             plan.stripe_product_id,
             name=plan.display_name,
-            description=plan.description or None,
+            description=description,
             active=plan.is_active,
-            metadata={"plan_id": str(plan.pk), "plan_code": plan.code},
+            metadata={"plan_id": str(plan.pk), "plan_code": code},
         )
         return product
     return client.Product.create(
         name=plan.display_name,
-        description=plan.description or None,
+        description=description,
         active=plan.is_active,
-        metadata={"plan_id": str(plan.pk), "plan_code": plan.code},
+        metadata={"plan_id": str(plan.pk), "plan_code": code},
     )
 
 
@@ -131,7 +154,7 @@ def _ensure_price(client, plan, product):
         currency=payment_currency(),
         unit_amount=_to_cents(plan.price),
         recurring={"interval": interval_name, "interval_count": interval_count},
-        metadata={"plan_id": str(plan.pk), "plan_code": plan.code},
+        metadata={"plan_id": str(plan.pk), "plan_code": _plan_code(plan)},
     )
     return new_price
 
