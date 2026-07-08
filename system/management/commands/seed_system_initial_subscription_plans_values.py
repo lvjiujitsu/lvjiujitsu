@@ -33,11 +33,13 @@ class Command(BaseCommand):
 
         created_count = 0
         updated_count = 0
+        valid_codes: list[str] = []
 
         with transaction.atomic():
             for entry in data:
                 for billing_cycle, cycle_data in self._get_cycles(entry).items():
                     plan, created = self._upsert_plan(entry, billing_cycle, cycle_data)
+                    valid_codes.append(plan.code)
                     status = "criado" if created else "atualizado"
                     self.stdout.write(
                         f"  [{status}] {plan.display_name} - R$ {plan.price} (code={plan.code})"
@@ -52,11 +54,26 @@ class Command(BaseCommand):
                 is_active=True,
             ).update(is_active=False)
 
+            stale_qs = SubscriptionPlan.objects.filter(
+                gateway_code__in=SUPPORTED_GATEWAYS,
+                is_active=True,
+            ).exclude(code__in=valid_codes)
+            stale_count = stale_qs.count()
+            if stale_count:
+                stale_qs.update(is_active=False)
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  [inativado] {stale_count} plano(s) Asaas obsoleto(s) "
+                        "(fora do JSON atual, ex: Veterano 2x)."
+                    )
+                )
+                deactivated_count += stale_count
+
         self.stdout.write(
             self.style.SUCCESS(
                 "\nValores de planos: "
                 f"{created_count} criado(s), {updated_count} atualizado(s), "
-                f"{deactivated_count} plano(s) base inativado(s)."
+                f"{deactivated_count} plano(s) inativado(s)."
             )
         )
 
@@ -87,6 +104,15 @@ class Command(BaseCommand):
                 rounding=ROUND_HALF_UP,
             )
 
+        # O preço realmente cobrado é sempre 'charged_price' (sobrescrito abaixo via
+        # .update()); 'base_monthly_net_price' por ciclo é opcional e só existe para
+        # reproduzir o valor comercial exato quando o ciclo mensal não divide o total
+        # do ciclo em uma fração de centavo exata.
+        base_monthly_net_price = self._decimal(
+            cycle_data if "base_monthly_net_price" in cycle_data else entry,
+            "base_monthly_net_price",
+        )
+
         defaults = {
             "display_name": self._build_display_name(entry, billing_cycle),
             "audience": PlanAudience.ADULT,
@@ -95,7 +121,7 @@ class Command(BaseCommand):
             "payment_method": self._payment_method(entry),
             "is_family_plan": entry["category_code"] == "family",
             "is_loyalty_plan": entry["category_code"] == "loyalty",
-            "base_monthly_net_price": self._decimal(entry, "base_monthly_net_price"),
+            "base_monthly_net_price": base_monthly_net_price,
             "gateway_code": self._required(entry, "gateway_code"),
             "gateway_fixed_fee": self._decimal(entry, "gateway_fixed_fee"),
             "gateway_percentage_fee": self._percentage(entry, "gateway_percentage_fee"),
@@ -132,8 +158,9 @@ class Command(BaseCommand):
         )
 
     def _build_description(self, entry: dict, cycle_data: dict) -> str:
+        base_source = cycle_data if "base_monthly_net_price" in cycle_data else entry
         return (
-            f"Valor líquido mensal desejado: R$ {self._decimal(entry, 'base_monthly_net_price')}. "
+            f"Valor líquido mensal desejado: R$ {self._decimal(base_source, 'base_monthly_net_price')}. "
             f"Líquido mensal estimado no ciclo: R$ {self._decimal(cycle_data, 'monthly_net_price')}."
         )
 

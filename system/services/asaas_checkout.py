@@ -230,18 +230,28 @@ INSTALLMENT_OPTIONS = {
 }
 
 
+def _billing_cycle_for_order(order):
+    """Resolve o ciclo de cobrança do pedido, aceitando tanto o catálogo legado
+    (SubscriptionPlan, 'plan') quanto o catálogo PlanTier/PlanPrice ('plan_price_ref')
+    usado pelo cadastro público desde a PRD-129 — sem isso, pedidos do catálogo
+    novo caem para 'monthly'/1x mesmo em ciclos trimestral/semestral/anual.
+    """
+    if order.plan_id:
+        return order.plan.billing_cycle
+    if order.plan_price_ref_id:
+        return order.plan_price_ref.billing_cycle
+    return "monthly"
+
+
 def _max_installments_for_order(order):
-    plan = order.plan
-    if plan is None:
-        return 1
-    return _CYCLE_MAX_INSTALLMENTS.get(plan.billing_cycle, 1)
+    cycle = _billing_cycle_for_order(order)
+    return _CYCLE_MAX_INSTALLMENTS.get(cycle, 1)
 
 
 def get_installment_options_for_order(order):
     """Retorna lista de opções de parcelamento com valor por parcela."""
     from decimal import Decimal, ROUND_HALF_UP
-    plan = order.plan
-    cycle = plan.billing_cycle if plan else "monthly"
+    cycle = _billing_cycle_for_order(order)
     options = INSTALLMENT_OPTIONS.get(cycle, [1])
     total = Decimal(str(order.total or 0))
     cent = Decimal("0.01")

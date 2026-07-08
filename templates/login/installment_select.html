@@ -180,7 +180,7 @@
 
       <div class="order-summary">
         <span class="order-summary__label">Pedido #{{ order.pk }}</span>
-        <span class="order-summary__plan">{{ order.plan.name }}</span>
+        <span class="order-summary__plan">{{ order.plan.display_name|default:order.plan_price_ref.tier.display_name }}</span>
         <span class="order-summary__total">Total: <strong>R$ {{ order.total|floatformat:2 }}</strong></span>
       </div>
 

@@ -90,6 +90,37 @@ class PlanPriceComputationTestCase(TestCase):
 
         self.assertEqual(price.family_price(), (price.price * Decimal("0.82")).quantize(Decimal("0.01")))
 
+    def test_price_recomputed_via_update_or_create_persists_to_database(self):
+        # Regressão: update_or_create() do Django restringe o UPDATE aos campos
+        # de 'defaults' via update_fields. 'price'/'monthly_reference_price' são
+        # derivados dentro do próprio save() e não estavam nesse conjunto — o
+        # valor calculado ficava certo só no objeto em memória, e o preço antigo
+        # permanecia gravado no banco (usado pelos seeds de catálogo).
+        PlanPrice.objects.create(
+            tier=self.tier,
+            payment_method=PlanPaymentMethod.PIX,
+            billing_cycle=BillingCycle.MONTHLY,
+            gateway_code="asaas_pix",
+            base_monthly_net_price=Decimal("200.00"),
+            gateway_fixed_fee=Decimal("1.99"),
+        )
+
+        price, created = PlanPrice.objects.update_or_create(
+            tier=self.tier,
+            gateway_code="asaas_pix",
+            billing_cycle=BillingCycle.MONTHLY,
+            defaults={
+                "payment_method": PlanPaymentMethod.PIX,
+                "base_monthly_net_price": Decimal("300.00"),
+                "gateway_fixed_fee": Decimal("1.99"),
+            },
+        )
+
+        self.assertFalse(created)
+        self.assertEqual(price.price, Decimal("301.99"))
+        persisted = PlanPrice.objects.get(pk=price.pk)
+        self.assertEqual(persisted.price, Decimal("301.99"))
+
 
 class PlanPriceImmutabilityTestCase(TestCase):
     def setUp(self):

@@ -571,20 +571,24 @@ class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
         self._call("seed_system_initial_subscription_plans_values")
 
         # PRD-127: Individual e Família migraram para PlanTier/PlanPrice (desconto
-        # dinâmico). SubscriptionPlan agora só gera as linhas de Veterano (loyalty).
+        # dinâmico). SubscriptionPlan agora só gera as linhas de Veterano (loyalty),
+        # e só existe o Veterano 5x por semana (não há Veterano 2x).
         self.assertEqual(
             SubscriptionPlan.objects.exclude(code__in=("individual", "loyalty", "family")).count(),
-            16,
+            8,
         )
         self.assertFalse(SubscriptionPlan.objects.get(code="individual").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="loyalty").is_active)
         self.assertFalse(SubscriptionPlan.objects.get(code="family").is_active)
+        self.assertFalse(
+            SubscriptionPlan.objects.filter(code__startswith="loyalty-2x").exists()
+        )
 
         asaas_card_monthly = SubscriptionPlan.objects.get(
-            code="loyalty-2x-asaas-card-monthly"
+            code="loyalty-5x-asaas-card-monthly"
         )
-        self.assertEqual(asaas_card_monthly.price, Decimal("212.63"))
-        self.assertEqual(asaas_card_monthly.base_monthly_net_price, Decimal("203.01"))
+        self.assertEqual(asaas_card_monthly.price, Decimal("245.00"))
+        self.assertEqual(asaas_card_monthly.base_monthly_net_price, Decimal("234.00"))
         self.assertEqual(asaas_card_monthly.gateway_code, "asaas_card")
         self.assertEqual(asaas_card_monthly.gateway_percentage_fee, Decimal("0.0429"))
         self.assertEqual(asaas_card_monthly.cycle_discount_percentage, Decimal("0.0000"))
@@ -594,9 +598,9 @@ class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
         loyalty_annual = SubscriptionPlan.objects.get(
             code="loyalty-5x-asaas-card-annual"
         )
-        self.assertEqual(loyalty_annual.price, Decimal("2570.91"))
-        self.assertEqual(loyalty_annual.monthly_reference_price, Decimal("214.24"))
-        self.assertEqual(loyalty_annual.cycle_discount_percentage, Decimal("0.0682"))
+        self.assertEqual(loyalty_annual.price, Decimal("2340.00"))
+        self.assertEqual(loyalty_annual.monthly_reference_price, Decimal("195.00"))
+        self.assertEqual(loyalty_annual.cycle_discount_percentage, Decimal("0.1971"))
         self.assertTrue(loyalty_annual.is_loyalty_plan)
         self.assertFalse(SubscriptionPlan.objects.filter(gateway_code="stripe_card").exists())
 
@@ -612,7 +616,7 @@ class PlanTierPriceSeedCommandTestCase(TestCase):
         self._call("seed_system_initial_plan_prices")
 
         self.assertEqual(PlanTier.objects.count(), 4)
-        self.assertEqual(PlanPrice.objects.count(), 20)
+        self.assertEqual(PlanPrice.objects.count(), 44)
 
         adult_2x = PlanTier.objects.get(code="adult-2x")
         self.assertEqual(adult_2x.family_discount_percentage, Decimal("0.1800"))
@@ -632,11 +636,40 @@ class PlanTierPriceSeedCommandTestCase(TestCase):
         asaas_pix_annual = PlanPrice.objects.get(
             tier__code="adult-5x", gateway_code="asaas_pix", billing_cycle="annual"
         )
-        self.assertEqual(asaas_pix_annual.price, Decimal("2641.99"))
+        self.assertEqual(asaas_pix_annual.price, Decimal("2400.00"))
 
-        kids_2x_price = PlanPrice.objects.get(tier__code="kids-2x")
+        kids_2x_price = PlanPrice.objects.get(
+            tier__code="kids-2x", gateway_code="stripe_card", billing_cycle="monthly"
+        )
         self.assertEqual(kids_2x_price.price, Decimal("208.31"))
         self.assertEqual(kids_2x_price.tier.audience, "kids_juvenile")
+
+        kids_2x_asaas_pix_monthly = PlanPrice.objects.get(
+            tier__code="kids-2x", gateway_code="asaas_pix", billing_cycle="monthly"
+        )
+        self.assertEqual(kids_2x_asaas_pix_monthly.price, Decimal("250.00"))
+
+        # PRD-137: recorrente Stripe passou a existir também em semestral/anual
+        # (antes só existia mensal) — desconto de fidelidade vs. Asaas Cartão.
+        stripe_adult_2x_semiannual = PlanPrice.objects.get(
+            tier__code="adult-2x", gateway_code="stripe_card", billing_cycle="semiannual"
+        )
+        self.assertEqual(stripe_adult_2x_semiannual.price, Decimal("1195.00"))
+
+        stripe_adult_2x_annual = PlanPrice.objects.get(
+            tier__code="adult-2x", gateway_code="stripe_card", billing_cycle="annual"
+        )
+        self.assertEqual(stripe_adult_2x_annual.price, Decimal("2265.00"))
+
+        stripe_kids_5x_semiannual = PlanPrice.objects.get(
+            tier__code="kids-5x", gateway_code="stripe_card", billing_cycle="semiannual"
+        )
+        self.assertEqual(stripe_kids_5x_semiannual.price, Decimal("1250.00"))
+
+        stripe_kids_5x_annual = PlanPrice.objects.get(
+            tier__code="kids-5x", gateway_code="stripe_card", billing_cycle="annual"
+        )
+        self.assertEqual(stripe_kids_5x_annual.price, Decimal("2390.00"))
 
     def test_seed_prices_requires_tier_to_exist(self):
         with self.assertRaises(CommandError):

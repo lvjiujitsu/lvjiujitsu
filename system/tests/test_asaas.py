@@ -16,13 +16,15 @@ from system.models import (
     Person,
     PersonType,
     PixKeyType,
+    PlanPrice,
+    PlanTier,
     RegistrationOrder,
     SubscriptionPlan,
     TeacherBankAccount,
     TeacherPayout,
     TeacherPayrollConfig,
 )
-from system.models.plan import BillingCycle, PlanPaymentMethod
+from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod, PlanWeeklyFrequency
 from system.models.registration_order import PaymentStatus
 from system.services import asaas_checkout, asaas_client, asaas_payroll, asaas_webhooks
 from system.services.asaas_client import AsaasClientError
@@ -190,6 +192,68 @@ class AsaasCheckoutTests(TestCase):
         self.assertEqual(body["value"], 230.38)
         self.assertNotIn("installmentCount", body)
         self.assertNotIn("totalValue", body)
+
+
+@override_settings(
+    ASAAS_API_KEY="test-key",
+    ASAAS_WEBHOOK_TOKEN="wh-token",
+    ASAAS_API_URL="https://sandbox.asaas.com/api/v3",
+)
+class AsaasCheckoutPlanPriceCatalogTests(TestCase):
+    """PRD-137: pedidos do catálogo PlanTier/PlanPrice (Individual/Kids/Juvenil,
+    usado pelo cadastro público desde a PRD-129) ficavam presos em 1x — o cálculo
+    de parcelamento só olhava para RegistrationOrder.plan (SubscriptionPlan
+    legado, hoje só Veterano), nunca para plan_price_ref."""
+
+    def setUp(self):
+        self.person = _make_person()
+        self.tier = PlanTier.objects.create(
+            code="adult-2x-installments",
+            display_name="Adulto 2x por semana",
+            audience=PlanAudience.ADULT,
+            weekly_frequency=PlanWeeklyFrequency.TWICE,
+        )
+        self.plan_price = PlanPrice.objects.create(
+            tier=self.tier,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            billing_cycle=BillingCycle.SEMIANNUAL,
+            gateway_code="asaas_card",
+            base_monthly_net_price=Decimal("216.42"),
+            cycle_discount_percentage=Decimal("0.0774"),
+            gateway_fixed_fee=Decimal("0.49"),
+            gateway_percentage_fee=Decimal("0.0429"),
+        )
+        self.order = RegistrationOrder.objects.create(
+            person=self.person,
+            plan_price_ref=self.plan_price,
+            plan_price=self.plan_price.price,
+            total=self.plan_price.price,
+        )
+
+    def test_max_installments_resolves_cycle_from_plan_price_ref(self):
+        self.assertIsNone(self.order.plan)
+        self.assertEqual(asaas_checkout._max_installments_for_order(self.order), 6)
+
+    def test_installment_options_resolve_cycle_from_plan_price_ref(self):
+        options = asaas_checkout.get_installment_options_for_order(self.order)
+
+        self.assertEqual([o["count"] for o in options], [1, 2, 3, 6])
+
+    @patch("system.services.asaas_checkout.asaas_client.create_credit_card_payment")
+    @patch("system.services.asaas_checkout.asaas_client.create_customer")
+    def test_create_credit_card_charge_uses_plan_price_cycle_for_installments(
+        self, m_customer, m_payment
+    ):
+        m_customer.return_value = {"id": "cus_pp"}
+        m_payment.return_value = {
+            "id": "pay_pp",
+            "invoiceUrl": "https://sandbox.asaas.com/i/pay_pp",
+        }
+
+        asaas_checkout.create_credit_card_charge_for_order(self.order)
+
+        payload = m_payment.call_args.kwargs
+        self.assertEqual(payload["installment_count"], 6)
 
 
 class AsaasClientTests(TestCase):

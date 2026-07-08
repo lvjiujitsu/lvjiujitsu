@@ -52,7 +52,7 @@ class CreatePixChargeView(View):
 
     def _start(self, request, order_id):
         try:
-            order = RegistrationOrder.objects.select_related("plan", "person").get(
+            order = RegistrationOrder.objects.select_related("plan", "plan_price_ref", "person").get(
                 pk=order_id
             )
         except RegistrationOrder.DoesNotExist:
@@ -115,7 +115,7 @@ class CreateCreditCardChargeView(View):
 
     def get(self, request, order_id, *args, **kwargs):
         try:
-            order = RegistrationOrder.objects.select_related("plan", "person").get(pk=order_id)
+            order = RegistrationOrder.objects.select_related("plan", "plan_price_ref", "person").get(pk=order_id)
         except RegistrationOrder.DoesNotExist:
             messages.error(request, "Pedido não encontrado.")
             return redirect("system:root")
@@ -137,7 +137,7 @@ class CreateCreditCardChargeView(View):
 
     def post(self, request, order_id, *args, **kwargs):
         try:
-            order = RegistrationOrder.objects.select_related("plan", "person").get(pk=order_id)
+            order = RegistrationOrder.objects.select_related("plan", "plan_price_ref", "person").get(pk=order_id)
         except RegistrationOrder.DoesNotExist:
             messages.error(request, "Pedido não encontrado.")
             return redirect("system:root")

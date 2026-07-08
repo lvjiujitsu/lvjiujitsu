@@ -2,74 +2,6 @@
   {
     "category_code": "loyalty",
     "category_name": "Veterano",
-    "weekly_frequency": 2,
-    "gateway_code": "asaas_pix",
-    "gateway_name": "Asaas",
-    "payment_method": "pix",
-    "payment_label": "PIX",
-    "gateway_fixed_fee": "1.99",
-    "gateway_percentage_fee": "0.00",
-    "base_monthly_net_price": "203.01",
-    "cycles": {
-      "monthly": {
-        "discount_percentage": "0.00",
-        "charged_price": "205.00",
-        "monthly_net_price": "203.01"
-      },
-      "quarterly": {
-        "discount_percentage": "0.50",
-        "charged_price": "607.96",
-        "monthly_net_price": "201.99"
-      },
-      "semiannual": {
-        "discount_percentage": "1.00",
-        "charged_price": "1207.87",
-        "monthly_net_price": "200.98"
-      },
-      "annual": {
-        "discount_percentage": "1.48",
-        "charged_price": "2402.11",
-        "monthly_net_price": "200.01"
-      }
-    }
-  },
-  {
-    "category_code": "loyalty",
-    "category_name": "Veterano",
-    "weekly_frequency": 2,
-    "gateway_code": "asaas_card",
-    "gateway_name": "Asaas",
-    "payment_method": "credit_card",
-    "payment_label": "Cartão",
-    "gateway_fixed_fee": "0.49",
-    "gateway_percentage_fee": "4.29",
-    "base_monthly_net_price": "203.01",
-    "cycles": {
-      "monthly": {
-        "discount_percentage": "0.00",
-        "charged_price": "212.63",
-        "monthly_net_price": "203.02"
-      },
-      "quarterly": {
-        "discount_percentage": "0.50",
-        "charged_price": "633.65",
-        "monthly_net_price": "201.99"
-      },
-      "semiannual": {
-        "discount_percentage": "1.00",
-        "charged_price": "1260.45",
-        "monthly_net_price": "200.98"
-      },
-      "annual": {
-        "discount_percentage": "1.48",
-        "charged_price": "2508.22",
-        "monthly_net_price": "200.01"
-      }
-    }
-  },
-  {
-    "category_code": "loyalty",
-    "category_name": "Veterano",
     "weekly_frequency": 5,
     "gateway_code": "asaas_pix",
     "gateway_name": "Asaas",
@@ -77,27 +9,30 @@
     "payment_label": "PIX",
     "gateway_fixed_fee": "1.99",
     "gateway_percentage_fee": "0.00",
-    "base_monthly_net_price": "220.01",
+    "base_monthly_net_price": "233.01",
     "cycles": {
       "monthly": {
         "discount_percentage": "0.00",
-        "charged_price": "222.00",
-        "monthly_net_price": "220.01"
+        "charged_price": "235.00",
+        "monthly_net_price": "233.01"
       },
       "quarterly": {
-        "discount_percentage": "2.28",
-        "charged_price": "646.96",
-        "monthly_net_price": "214.99"
+        "discount_percentage": "7.23",
+        "charged_price": "645.00",
+        "monthly_net_price": "214.34",
+        "base_monthly_net_price": "231.04"
       },
       "semiannual": {
-        "discount_percentage": "4.55",
-        "charged_price": "1261.99",
-        "monthly_net_price": "210.00"
+        "discount_percentage": "15.75",
+        "charged_price": "1170.00",
+        "monthly_net_price": "194.67",
+        "base_monthly_net_price": "231.06"
       },
       "annual": {
-        "discount_percentage": "6.82",
-        "charged_price": "2462.11",
-        "monthly_net_price": "205.01"
+        "discount_percentage": "20.02",
+        "charged_price": "2220.00",
+        "monthly_net_price": "184.83",
+        "base_monthly_net_price": "231.10"
       }
     }
   },
@@ -111,27 +46,30 @@
     "payment_label": "Cartão",
     "gateway_fixed_fee": "0.49",
     "gateway_percentage_fee": "4.29",
-    "base_monthly_net_price": "220.01",
+    "base_monthly_net_price": "234.00",
     "cycles": {
       "monthly": {
         "discount_percentage": "0.00",
-        "charged_price": "230.39",
-        "monthly_net_price": "220.02"
+        "charged_price": "245.00",
+        "monthly_net_price": "234.00"
       },
       "quarterly": {
-        "discount_percentage": "2.28",
-        "charged_price": "674.40",
-        "monthly_net_price": "214.99"
+        "discount_percentage": "7.26",
+        "charged_price": "675.00",
+        "monthly_net_price": "215.18",
+        "base_monthly_net_price": "232.03"
       },
       "semiannual": {
-        "discount_percentage": "4.55",
-        "charged_price": "1316.99",
-        "monthly_net_price": "210.00"
+        "discount_percentage": "15.50",
+        "charged_price": "1230.00",
+        "monthly_net_price": "196.12",
+        "base_monthly_net_price": "232.10"
       },
       "annual": {
-        "discount_percentage": "6.82",
-        "charged_price": "2570.91",
-        "monthly_net_price": "205.01"
+        "discount_percentage": "19.71",
+        "charged_price": "2340.00",
+        "monthly_net_price": "186.59",
+        "base_monthly_net_price": "232.40"
       }
     }
   }
