@@ -15,11 +15,6 @@ def _from_email():
 
 
 def notify_payment_failed(membership, stripe_invoice=None):
-    """
-    Notifica o cliente por e-mail quando uma cobrança Stripe falha.
-    Inclui o link da fatura hospedada quando disponível para que o cliente
-    possa regularizar o pagamento diretamente.
-    """
     person = membership.person
     to_email = (person.email or "").strip()
     if not to_email:
@@ -46,7 +41,11 @@ def notify_payment_failed(membership, stripe_invoice=None):
                 dt = datetime.fromtimestamp(int(next_attempt), tz=dt_timezone.utc)
                 next_attempt_text = dt.strftime("%d/%m/%Y às %H:%Mh (UTC)")
             except (ValueError, TypeError, OSError):
-                pass
+                logger.debug(
+                    "next_payment_attempt inválido na invoice Stripe (membership=%s).",
+                    membership.pk,
+                    exc_info=True,
+                )
 
     subject = f"[{site_name}] Falha no pagamento da sua assinatura"
 
@@ -78,7 +77,7 @@ def notify_payment_failed(membership, stripe_invoice=None):
         "",
         f"Qualquer dúvida, responda este e-mail ou procure a equipe {site_name}.",
         "",
-        f"Atenciosamente,",
+        "Atenciosamente,",
         f"Equipe {site_name}",
     ]
 
@@ -106,10 +105,6 @@ def notify_payment_failed(membership, stripe_invoice=None):
 
 
 def notify_subscription_past_due(membership):
-    """
-    Notifica o cliente por e-mail quando a assinatura entra em estado past_due
-    sem uma fatura específica disponível (ex: via customer.subscription.updated).
-    """
     person = membership.person
     to_email = (person.email or "").strip()
     if not to_email:

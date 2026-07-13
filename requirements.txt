@@ -10,7 +10,6 @@ cryptography==48.0.0
 deprecation==2.1.0
 dj-database-url==3.1.2
 Django==5.2.14
-django-environ==0.13.0
 gunicorn==26.0.0
 h11==0.16.0
 h2==4.3.0

@@ -1,4 +1,4 @@
-# PRD-122: Correções do wizard de "Adicionar dependente"
+# PRD-140: Correções do wizard de "Adicionar dependente"
 
 ## Summary
 Corrigir o wizard de "Adicionar dependente" (reimplementado nesta mesma sessão para reaproveitar o visual de `auth/register.css`) em cinco pontos concretos apontados pelo usuário: cabeçalho do popup, filtro de turmas por idade/sexo, filtro de planos por idade, espaçamento dentro do popup e ausência de etapa de revisão antes da confirmação final.

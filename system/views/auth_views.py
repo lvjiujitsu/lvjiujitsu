@@ -1,4 +1,3 @@
-import json
 from decimal import Decimal
 
 from django.conf import settings
@@ -16,9 +15,21 @@ from system.forms import (
     PortalSetPasswordForm,
 )
 from system.constants import CheckoutAction, PersonTypeCode, RegistrationProfile
-from system.models import Person
-from system.models import PreRegistration
-from system.services import asaas_client
+from system.models import Person, PreRegistration
+from system.models.coupon import DiscountType
+from system.selectors.plan_eligibility import (
+    build_eligibility_context_for_registration,
+    get_eligible_plan_prices,
+)
+from system.services import (
+    asaas_client,
+    authenticate_portal_identity,
+    create_password_reset_token,
+    get_valid_password_reset_token,
+    login_portal_identity,
+    logout_portal_identity,
+    reset_portal_password,
+)
 from system.services.coupon import CouponError, apply_coupon, validate_coupon
 from system.services.class_catalog import get_ibjjf_age_category_payload
 from system.services.class_overview import get_registration_catalog_payload
@@ -30,25 +41,19 @@ from system.services.pre_registration import (
     save_pre_registration_from_form,
 )
 from system.services.registration_checkout import (
+    CATALOG_ID_PREFIX_PLAN_PRICE,
+    build_catalog_plan_id,
     create_pre_registration_materials_payment,
     create_pre_registration_plan_payment,
-    get_plan_catalog_payload,
     get_product_catalog_payload,
-    create_product_only_order,
-    gross_up_order_for_checkout,
+    get_public_registration_plan_catalog_payload,
     parse_selected_products,
     resolve_selected_product_items,
 )
-from system.services.registration_validation import validate_registration_step
-from system.utils import ensure_formatted_cpf
-from system.services import (
-    authenticate_portal_identity,
-    create_password_reset_token,
-    get_valid_password_reset_token,
-    login_portal_identity,
-    logout_portal_identity,
-    reset_portal_password,
+from system.services.registration_validation import (
+    build_eligibility_context_from_wizard_data,
 )
+from system.utils import ensure_formatted_cpf
 
 
 class PortalRegisterView(FormView):
@@ -71,40 +76,28 @@ class PortalRegisterView(FormView):
         form = context["form"]
         context["registration_initial_step"] = self._get_initial_step(form)
         context["selected_other_type_code"] = form["other_type_code"].value() or ""
-        context["registration_catalog_json"] = json.dumps(
-            get_registration_catalog_payload(), ensure_ascii=False
-        )
-        context["ibjjf_categories_json"] = json.dumps(
-            get_ibjjf_age_category_payload(), ensure_ascii=False
-        )
-        context["plan_catalog_json"] = json.dumps(
-            get_plan_catalog_payload(include_plan_prices=True), ensure_ascii=False
-        )
-        context["product_catalog_json"] = json.dumps(
-            get_product_catalog_payload(), ensure_ascii=False
-        )
+        context["registration_catalog_json"] = get_registration_catalog_payload()
+        context["ibjjf_categories_json"] = get_ibjjf_age_category_payload()
+        context["plan_catalog_json"] = get_public_registration_plan_catalog_payload()
+        context["product_catalog_json"] = get_product_catalog_payload()
         context["post_plan_payment_complete"] = self.request.session.get("post_plan_payment_complete", False)
         context["plan_is_trial"] = self.request.session.get("plan_is_trial", False)
         context["post_materials_payment_complete"] = self.request.session.get("post_materials_payment_complete", False)
         context["post_materials_skipped"] = self.request.session.get("post_materials_skipped", False)
-        context["plan_order_json"] = json.dumps(
-            get_registration_order_or_pre_registration_summary(self.request.session, "plan"),
-            ensure_ascii=False,
+        context["plan_order_json"] = get_registration_order_or_pre_registration_summary(
+            self.request.session, "plan"
         )
-        context["materials_order_json"] = json.dumps(
-            get_registration_order_or_pre_registration_summary(self.request.session, "materials"),
-            ensure_ascii=False,
+        context["materials_order_json"] = get_registration_order_or_pre_registration_summary(
+            self.request.session, "materials"
         )
-        context["pending_person_json"] = json.dumps(
-            self._get_pending_person_summary(), ensure_ascii=False
-        )
-        context["fee_config_json"] = json.dumps({
+        context["pending_person_json"] = self._get_pending_person_summary()
+        context["fee_config_json"] = {
             "pixFixedFee": float(settings.ASAAS_PIX_FIXED_FEE),
             "creditCardPercentFee": float(settings.ASAAS_CREDIT_PERCENT_FEE),
             "creditCardFixedFee": float(settings.ASAAS_CREDIT_FIXED_FEE),
             "creditCardFeePassThrough": bool(settings.CREDIT_CARD_FEE_PASS_THROUGH),
             "pixFeePassThrough": bool(settings.PIX_FEE_PASS_THROUGH),
-        }, ensure_ascii=False)
+        }
         return context
 
     def form_valid(self, form):
@@ -112,7 +105,6 @@ class PortalRegisterView(FormView):
             self.request.session, self.request.POST, form.cleaned_data,
         )
         self.request.session["pending_pre_registration_id"] = pre_registration.pk
-        self.request.session.pop("pending_registration_person_id", None)
         self.request.session.pop("post_plan_payment_complete", None)
         self.request.session.pop("post_materials_payment_complete", None)
         self.request.session.pop("post_materials_skipped", None)
@@ -226,16 +218,8 @@ class PortalRegisterView(FormView):
         return 1
 
 
-class RegistrationStepValidationView(View):
-    def post(self, request, *args, **kwargs):
-        errors = validate_registration_step(request.POST)
-        return JsonResponse({"valid": not errors, "errors": errors})
-
-
 class ValidateCouponView(View):
     def post(self, request, *args, **kwargs):
-        from decimal import Decimal
-
         code = request.POST.get("coupon_code") or ""
         raw_total = request.POST.get("total") or "0"
 
@@ -250,7 +234,6 @@ class ValidateCouponView(View):
             return JsonResponse({"valid": False, "message": str(exc)})
 
         discounted_total, discount_amount = apply_coupon(coupon, total)
-        from system.models.coupon import DiscountType
         label = (
             f"{coupon.discount_value}%"
             if coupon.discount_type == DiscountType.PERCENT
@@ -262,6 +245,36 @@ class ValidateCouponView(View):
             "discount_amount": str(discount_amount),
             "discounted_total": str(discounted_total),
             "coupon_code": coupon.code,
+        })
+
+
+class RegistrationEligibilityView(View):
+    def post(self, request, *args, **kwargs):
+        import json as json_module
+
+        try:
+            payload = json_module.loads(request.body or b"{}")
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "JSON inválido."}, status=400)
+        if not isinstance(payload, dict):
+            return JsonResponse({"error": "JSON inválido."}, status=400)
+
+        cleaned_data = build_eligibility_context_from_wizard_data(payload)
+        context = build_eligibility_context_for_registration(cleaned_data)
+        eligible_plan_prices = get_eligible_plan_prices(context)
+
+        return JsonResponse({
+            "eligible_plan_ids": [
+                build_catalog_plan_id(CATALOG_ID_PREFIX_PLAN_PRICE, plan_price.pk)
+                for plan_price in eligible_plan_prices
+            ],
+            "context": {
+                "adult_active": context.adult_active,
+                "adult_active_count": context.adult_active_count,
+                "kids_juvenile_active_count": context.kids_juvenile_active_count,
+                "adult_family_group_eligible": context.adult_family_group_eligible,
+                "kids_family_group_eligible": context.kids_family_group_eligible,
+            },
         })
 
 
@@ -382,50 +395,12 @@ class ChromeDevtoolsProbeView(View):
         return HttpResponse(status=204, content_type="application/json")
 
 
-
 class MaterialsCheckoutView(View):
     def post(self, request, *args, **kwargs):
         pre_registration_id = request.session.get("pending_pre_registration_id")
-        if pre_registration_id:
-            return self._post_for_pre_registration(request, pre_registration_id)
-
-        person_id = request.session.get("pending_registration_person_id")
-        if not person_id:
+        if not pre_registration_id:
             return redirect("system:register")
-
-        try:
-            person = Person.objects.get(pk=person_id)
-        except Person.DoesNotExist:
-            return redirect("system:register")
-
-        raw_payload = request.POST.get("selected_products_payload", "")
-        selected = parse_selected_products(raw_payload)
-        if not selected:
-            request.session["post_materials_payment_complete"] = True
-            return redirect("system:register")
-
-        try:
-            items = resolve_selected_product_items(selected)
-        except ValueError:
-            messages.error(request, "Selecione apenas materiais válidos com estoque disponível.")
-            return redirect("system:register")
-
-        order = create_product_only_order(person, items)
-        if order is None:
-            request.session["post_materials_payment_complete"] = True
-            return redirect("system:register")
-
-        request.session["pending_checkout_order_id"] = order.pk
-        checkout_action = request.POST.get("checkout_action") or CheckoutAction.PAY_LATER
-        gross_up_order_for_checkout(order, checkout_action)
-        if checkout_action == CheckoutAction.ASAAS_CARD:
-            return redirect("system:asaas-card-create", order_id=order.pk)
-        if checkout_action == CheckoutAction.PIX:
-            return redirect("system:asaas-pix-create", order_id=order.pk)
-
-        request.session["post_materials_payment_complete"] = True
-        request.session["materials_order_id"] = order.pk
-        return redirect("system:register")
+        return self._post_for_pre_registration(request, pre_registration_id)
 
     def _post_for_pre_registration(self, request, pre_registration_id):
         pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
@@ -473,64 +448,17 @@ class MaterialsCheckoutView(View):
 
 
 class ResetRegistrationView(View):
-    """Limpa estado de cadastro da sessão e redireciona para /register/ limpo."""
-
-    _SESSION_KEYS = (
-        "pending_pre_registration_id",
-        "pending_registration_person_id",
-        "post_plan_payment_complete",
-        "post_materials_payment_complete",
-        "post_materials_skipped",
-        "plan_order_id",
-        "materials_order_id",
-        "plan_is_trial",
-    )
-
     def get(self, request, *args, **kwargs):
         request.session.flush()
         return redirect("system:register")
 
 
 class FinalizeRegistrationView(View):
-    """Ativa person.is_active=True, faz login e redireciona para dashboard."""
-
     def post(self, request, *args, **kwargs):
         pre_registration_id = request.session.get("pending_pre_registration_id")
-        if pre_registration_id:
-            return self._finalize_pre_registration(request, pre_registration_id)
-
-        person_id = request.session.get("pending_registration_person_id")
-        if not person_id:
+        if not pre_registration_id:
             return redirect("system:register")
-
-        try:
-            person = Person.objects.select_related("access_account").get(pk=person_id)
-        except Person.DoesNotExist:
-            return redirect("system:register")
-
-        if not person.is_active:
-            person.is_active = True
-            person.save(update_fields=["is_active", "updated_at"])
-
-        portal_account = getattr(person, "access_account", None)
-        if portal_account and not portal_account.is_active:
-            portal_account.is_active = True
-            portal_account.save(update_fields=["is_active", "updated_at"])
-
-        for key in (
-            "pending_registration_person_id",
-            "post_plan_payment_complete",
-            "post_materials_payment_complete",
-            "plan_order_id",
-            "materials_order_id",
-        ):
-            request.session.pop(key, None)
-
-        if portal_account:
-            login_portal_identity(request, portal_account=portal_account)
-
-        messages.success(request, "Cadastro finalizado com sucesso! Seja bem-vindo.")
-        return redirect("system:dashboard-redirect")
+        return self._finalize_pre_registration(request, pre_registration_id)
 
     def _finalize_pre_registration(self, request, pre_registration_id):
         pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
@@ -546,7 +474,6 @@ class FinalizeRegistrationView(View):
 
         for key in (
             "pending_pre_registration_id",
-            "pending_registration_person_id",
             "post_plan_payment_complete",
             "post_materials_payment_complete",
             "post_materials_skipped",

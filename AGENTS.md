@@ -175,5 +175,6 @@ Toda entrega informa:
 - `lv-ui-delivery`
 - `lv-django-delivery`
 - `lv-cleanup-audit`
+- `lv-prompt-builder`
 
 Invocação e localização estão em `docs/PLATFORM-ADAPTERS.md`.

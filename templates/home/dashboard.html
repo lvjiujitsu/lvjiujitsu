@@ -10,7 +10,6 @@
 </head>
 <body>
 
-  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
   <header class="topbar" role="banner">
     <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
       <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
@@ -39,7 +38,6 @@
     </nav>
   </header>
 
-  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
   <main class="page" id="main-content">
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
     <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentCheckinCancelUrl":"{% url 'system:student-checkin-cancel' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","studentSpecialCheckinCancelUrl":"{% url 'system:student-special-checkin-cancel' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}","membershipPauseCreateUrl":"{% url 'system:membership-pause-request-create' %}"}</script>
@@ -65,7 +63,6 @@
       <h2 class="area-block__title" id="staff-area-title">Gestão</h2>
     {% endif %}
 
-    <!-- ─── Acesso rápido (staff / admin) ──────────────────────────────────── -->
     {% if show_staff_area %}
     <section class="section" aria-labelledby="quick-title">
       <div class="section__header">
@@ -149,7 +146,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Turmas de hoje ─────────────────────────────────────────────────── -->
     {% if not needs_split %}
       {% if staff_today_classes %}
       {% include "home/partials/today_classes_section.html" with class_items=staff_today_classes section_slug="turmas" instructor_toolbar="overview" attendance_history=attendance_history only %}
@@ -227,7 +223,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Repasse (professor) ──────────────────────────────────────────── -->
     {% if is_instructor %}
     <section class="section" aria-labelledby="payroll-title">
       <div class="section__header">
@@ -248,7 +243,6 @@
           {% if payroll_config and payroll_config.is_active %}
 
             <div class="payroll-card">
-              <!-- Saldo a receber -->
               <div class="payroll-balance">
                 <div class="payroll-balance__inner">
                   <div>
@@ -266,7 +260,6 @@
                 </div>
               </div>
 
-              <!-- Detalhamento -->
               {% if payroll_calculation.gross_total %}
               <div class="payroll-breakdown">
                 {% if payroll_calculation.fixed_total %}
@@ -300,7 +293,6 @@
               </div>
               {% endif %}
 
-              <!-- Dados bancários -->
               {% if payroll_bank and payroll_bank.is_active %}
               <div class="payroll-bank">
                 <span class="payroll-bank__label">Chave PIX</span>
@@ -309,7 +301,6 @@
               {% endif %}
             </div>
 
-            <!-- Histórico de repasses -->
             {% if payroll_recent_payouts %}
             <div class="payroll-payout-header">Repasses recentes</div>
             <ul class="payroll-payout-list" aria-label="Repasses recentes">
@@ -355,7 +346,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Mensalidade (aluno / responsável) ────────────────────────────── -->
     {% if show_billing_area and not needs_split %}
     {% if billing_tabs %}
     <section class="section" aria-labelledby="billing-title">
@@ -417,7 +407,6 @@
               {% if tab.active_membership %}
                 {% with m=tab.active_membership %}
 
-                <!-- Cabeçalho compacto sempre visível -->
                 <div class="billing-compact-header">
                   <div class="billing-compact-info">
                     <span class="billing-compact-info__label">{% if tab.is_active_tab %}Mensalidade do titular{% else %}Mensalidade do dependente{% endif %}</span>
@@ -449,7 +438,6 @@
                   </button>
                 </div>
 
-                <!-- Painel expandível (oculto por padrão) -->
                 <div class="billing-details" id="billing-details-{{ forloop.counter }}" hidden>
 
                   {% if m.status != "exempted" %}
@@ -605,7 +593,6 @@
     {% endif %}
 
     {% if show_dependents_area %}
-    <!-- ─── Dependentes ───────────────────────────────────────────────────── -->
     <section class="section" aria-labelledby="dependents-title">
       <div class="section__header">
         <h2 class="section__title" id="dependents-title">{% if dependents %}Meus dependentes{% else %}Dependentes{% endif %}</h2>
@@ -667,7 +654,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Financeiro (staff) ────────────────────────────────────────────── -->
     {% if show_staff_area %}
     <section class="section" aria-labelledby="financial-title">
       <div class="section__header">
@@ -715,7 +701,6 @@
   </main>
 
   {% if client_person %}
-  <!-- ─── Modal: dados do cliente ───────────────────────────────────────────── -->
   <div class="modal-overlay" id="client-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="client-profile-modal-title">
     <div class="modal client-profile-modal">
       <div class="modal__header profile-modal__header">
@@ -870,7 +855,6 @@
   {% endif %}
 
   {% if show_dependents_area %}
-  <!-- ─── Modal: adicionar dependente ───────────────────────────────────────── -->
   <div
     class="modal-overlay"
     id="dependent-registration-modal"
@@ -897,7 +881,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: cronograma ────────────────────────────────────────────────── -->
   <div class="modal-overlay" id="calendar-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
     <div class="modal modal--calendar">
       <div class="modal__header">
@@ -910,7 +893,6 @@
     </div>
   </div>
 
-  <!-- ─── Modal: criar aulão ───────────────────────────────────────────────── -->
   {% if can_create_special_classes %}
   <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-aulao-title">
     <div class="modal">
@@ -947,7 +929,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: indicar professor substituto ─────────────────────────────── -->
   {% if show_instructor_area %}
   <div class="modal-overlay" id="substitute-teacher-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-substitute-title">
     <div class="modal">
@@ -981,7 +962,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: histórico de presença ────────────────────────────────────── -->
   {% if attendance_history_items %}
   <div class="modal-overlay" id="attendance-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="attendance-history-title">
     <div class="modal modal--wide">
@@ -1055,7 +1035,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: histórico de pagamentos ───────────────────────────────────── -->
   {% if payment_history_items %}
   <div class="modal-overlay" id="payment-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="payment-history-title">
     <div class="modal modal--wide">
@@ -1090,7 +1069,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: histórico de alterações ───────────────────────────────────── -->
   {% if membership_timeline_events %}
   <div class="modal-overlay" id="membership-timeline-modal" hidden role="dialog" aria-modal="true" aria-labelledby="membership-timeline-title">
     <div class="modal modal--wide">
@@ -1119,7 +1097,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: presenças da aula (instrutor) ─────────────────────────────── -->
   {% if show_instructor_area %}
   <div class="modal-overlay" id="class-presence-modal" hidden role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
     <div class="modal">
@@ -1130,13 +1107,11 @@
         </button>
       </div>
       <div class="modal-checkin-list" id="presence-modal-body" role="list" aria-label="Lista de presenças">
-        <!-- Populado pelo JS ao abrir o modal -->
       </div>
     </div>
   </div>
   {% endif %}
 
-  <!-- ─── Modal: histórico de graduações ──────────────────────────────────── -->
   {% if graduation_tabs %}
   <div class="modal-overlay" id="grad-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-grad-title">
     <div class="modal modal--grad-history">
@@ -1151,9 +1126,7 @@
       <div class="grad-history-list" data-history-for="{{ forloop.counter }}" {% if not tab.is_active_tab %}hidden{% endif %}>
         {% for entry in tab.graduation_history %}
         <div class="grad-history-entry{% if entry.is_current %} grad-history-entry--current{% endif %}">
-          <!-- Indicador de atual -->
           <span class="grad-history-entry__dot{% if entry.is_current %} grad-history-entry__dot--active{% endif %}" aria-hidden="true"></span>
-          <!-- Faixa SVG miniatura -->
           {% if entry.belt_rank %}
           <div class="grad-history-entry__belt" aria-hidden="true">
             <svg class="grad-history-entry__belt-svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
@@ -1168,7 +1141,6 @@
             </svg>
           </div>
           {% endif %}
-          <!-- Informações textuais -->
           <div class="grad-history-entry__info">
             <div class="grad-history-entry__rank">
               {{ entry.belt_rank.display_name }}{% if entry.grade_number %} · {{ entry.grade_number }}º grau{% endif %}
@@ -1195,7 +1167,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: trocar plano ────────────────────────────────────────────────── -->
   {% if plan_change_catalog %}
   <div class="modal-overlay" id="plan-change-modal" hidden role="dialog" aria-modal="true" aria-labelledby="plan-change-modal-title">
     <div class="modal modal--wide">
@@ -1316,7 +1287,6 @@
   </div>
   {% endif %}
 
-  <!-- ─── Modal: pausar mensalidade ──────────────────────────────────────────── -->
   <div class="modal-overlay" id="pause-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pause-modal-title">
     <div class="modal">
       <div class="modal__header">
@@ -1359,8 +1329,8 @@
     </div>
   </div>
 
-  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/home/dashboard.js' %}?v=25" defer></script>
+  <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
+  <script src="{% static 'system/js/home/dashboard.js' %}?v=28" defer></script>
 
 </body>
 </html>

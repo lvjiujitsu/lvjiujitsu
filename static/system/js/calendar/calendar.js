@@ -1,27 +1,6 @@
 (function () {
   'use strict';
 
-  function applyTheme(theme) {
-    var toggle = document.getElementById('theme-toggle');
-    var iconSun = document.getElementById('icon-sun');
-    var iconMoon = document.getElementById('icon-moon');
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('lv-theme', theme);
-    if (iconSun) iconSun.hidden = theme === 'dark';
-    if (iconMoon) iconMoon.hidden = theme !== 'dark';
-    if (toggle) toggle.setAttribute('aria-label', theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro');
-  }
-
-  var toggle = document.getElementById('theme-toggle');
-  var current = document.documentElement.getAttribute('data-theme') || 'light';
-  applyTheme(current);
-  if (toggle) {
-    toggle.addEventListener('click', function () {
-      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-    });
-  }
-
   function clearChildren(node) {
     if (!node) return;
     while (node.firstChild) node.removeChild(node.firstChild);
@@ -64,7 +43,6 @@
     });
   })();
 
-  // Modal criar aulão (apenas instrutores — elementos só existem quando show_instructor_area)
   (function () {
     function getCsrfToken() {
       var input = document.querySelector('input[name="csrfmiddlewaretoken"]');

@@ -1,5 +1,4 @@
 from django.contrib import messages
-from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import (
@@ -11,7 +10,6 @@ from django.views.generic import (
     UpdateView,
 )
 
-from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.forms.graduation_forms import (
     BeltRankForm,
     GraduationForm,
@@ -19,16 +17,11 @@ from system.forms.graduation_forms import (
 )
 from system.models import BeltRank, Graduation, GraduationRule
 from system.selectors.graduation import get_graduation_overview
-from system.services.graduation import compute_graduation_progress
 from system.views.person_views import ModalFormMixin
-from system.views.portal_mixins import PortalRoleRequiredMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
-class _AdministrativeRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
-
-
-class BeltRankListView(_AdministrativeRequiredMixin, ListView):
+class BeltRankListView(AdministrativeRequiredMixin, ListView):
     model = BeltRank
     template_name = "graduation/belt_rank_list.html"
     context_object_name = "belt_ranks"
@@ -37,7 +30,7 @@ class BeltRankListView(_AdministrativeRequiredMixin, ListView):
         return BeltRank.objects.order_by("display_order", "display_name")
 
 
-class BeltRankCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
+class BeltRankCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = BeltRank
     form_class = BeltRankForm
     template_name = "graduation/belt_rank_form.html"
@@ -50,7 +43,7 @@ class BeltRankCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateVie
         return context
 
 
-class BeltRankUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, UpdateView):
+class BeltRankUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = BeltRank
     form_class = BeltRankForm
     template_name = "graduation/belt_rank_form.html"
@@ -63,7 +56,7 @@ class BeltRankUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, UpdateVie
         return context
 
 
-class BeltRankDetailView(_AdministrativeRequiredMixin, DetailView):
+class BeltRankDetailView(AdministrativeRequiredMixin, DetailView):
     model = BeltRank
     template_name = "graduation/belt_rank_detail.html"
     context_object_name = "belt_rank"
@@ -76,14 +69,14 @@ class BeltRankDetailView(_AdministrativeRequiredMixin, DetailView):
         return context
 
 
-class BeltRankDeleteView(_AdministrativeRequiredMixin, DeleteView):
+class BeltRankDeleteView(AdministrativeRequiredMixin, DeleteView):
     model = BeltRank
     template_name = "graduation/belt_rank_confirm_delete.html"
     success_url = reverse_lazy("system:belt-rank-list")
     context_object_name = "belt_rank"
 
 
-class GraduationRuleListView(_AdministrativeRequiredMixin, ListView):
+class GraduationRuleListView(AdministrativeRequiredMixin, ListView):
     model = GraduationRule
     template_name = "graduation/graduation_rule_list.html"
     context_object_name = "graduation_rules"
@@ -95,7 +88,7 @@ class GraduationRuleListView(_AdministrativeRequiredMixin, ListView):
         )
 
 
-class GraduationRuleCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
+class GraduationRuleCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = GraduationRule
     form_class = GraduationRuleForm
     template_name = "graduation/graduation_rule_form.html"
@@ -108,7 +101,7 @@ class GraduationRuleCreateView(ModalFormMixin, _AdministrativeRequiredMixin, Cre
         return context
 
 
-class GraduationRuleUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, UpdateView):
+class GraduationRuleUpdateView(ModalFormMixin, AdministrativeRequiredMixin, UpdateView):
     model = GraduationRule
     form_class = GraduationRuleForm
     template_name = "graduation/graduation_rule_form.html"
@@ -121,14 +114,14 @@ class GraduationRuleUpdateView(ModalFormMixin, _AdministrativeRequiredMixin, Upd
         return context
 
 
-class GraduationRuleDeleteView(_AdministrativeRequiredMixin, DeleteView):
+class GraduationRuleDeleteView(AdministrativeRequiredMixin, DeleteView):
     model = GraduationRule
     template_name = "graduation/graduation_rule_confirm_delete.html"
     success_url = reverse_lazy("system:graduation-rule-list")
     context_object_name = "graduation_rule"
 
 
-class GraduationListView(_AdministrativeRequiredMixin, ListView):
+class GraduationListView(AdministrativeRequiredMixin, ListView):
     model = Graduation
     template_name = "graduation/graduation_list.html"
     context_object_name = "graduations"
@@ -141,7 +134,7 @@ class GraduationListView(_AdministrativeRequiredMixin, ListView):
         )
 
 
-class GraduationCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateView):
+class GraduationCreateView(ModalFormMixin, AdministrativeRequiredMixin, CreateView):
     model = Graduation
     form_class = GraduationForm
     template_name = "graduation/graduation_form.html"
@@ -160,14 +153,14 @@ class GraduationCreateView(ModalFormMixin, _AdministrativeRequiredMixin, CreateV
         return context
 
 
-class GraduationDeleteView(_AdministrativeRequiredMixin, DeleteView):
+class GraduationDeleteView(AdministrativeRequiredMixin, DeleteView):
     model = Graduation
     template_name = "graduation/graduation_confirm_delete.html"
     success_url = reverse_lazy("system:graduation-list")
     context_object_name = "graduation"
 
 
-class GraduationOverviewView(_AdministrativeRequiredMixin, TemplateView):
+class GraduationOverviewView(AdministrativeRequiredMixin, TemplateView):
     template_name = "graduation/graduation_overview.html"
 
     def get_context_data(self, **kwargs):

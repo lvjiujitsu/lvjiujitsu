@@ -34,7 +34,7 @@ from system.services.class_calendar import (
     create_special_class,
     delete_special_class,
     get_calendar_month_data,
-    get_today_classes_for_person,
+    get_instructor_class_group_ids,
     perform_checkin,
     perform_special_class_checkin,
     register_instructor_self_checkin,
@@ -85,9 +85,8 @@ class CalendarView(PortalRoleRequiredMixin, TemplateView):
         owned_schedule_ids = []
         owned_special_ids = []
         if is_instructor:
-            from system.services.class_calendar import _get_instructor_class_group_ids
             from system.models import ClassSchedule
-            class_group_ids = _get_instructor_class_group_ids(person)
+            class_group_ids = get_instructor_class_group_ids(person)
             owned_schedule_ids = list(
                 ClassSchedule.objects.filter(class_group_id__in=class_group_ids)
                 .values_list("pk", flat=True)
@@ -100,13 +99,7 @@ class CalendarView(PortalRoleRequiredMixin, TemplateView):
         return context
 
 
-# Kept for backward compatibility — both views now delegate to CalendarView
-StudentScheduleView = CalendarView
-
-
 def _resolve_checkin_actor(portal_person, body):
-    """Resolve qual Person deve registrar o check-in: o titular logado ou um
-    dependente sob sua responsabilidade, conforme `person_id` opcional no payload."""
     person_id = body.get("person_id")
     if not person_id or int(person_id) == portal_person.pk:
         return portal_person
@@ -242,10 +235,6 @@ class StudentSpecialClassCheckinCancelView(PortalLoginRequiredMixin, View):
             "changed": changed,
             "message": "Check-in desfeito." if changed else "Nenhum check-in pendente encontrado.",
         })
-
-
-# Alias mantido para imports existentes em urls.py
-InstructorCalendarView = CalendarView
 
 
 class InstructorToggleSessionView(PortalRoleRequiredMixin, View):

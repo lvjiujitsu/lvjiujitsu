@@ -37,7 +37,6 @@ def base_dir_path_setting(name, default):
     return BASE_DIR / configured_path
 
 
-# ── Ambiente ──────────────────────────────────────────────────────────────────
 DJANGO_ENVIRONMENT = config("DJANGO_ENVIRONMENT", default="local").strip().lower()
 if DJANGO_ENVIRONMENT not in {"local", "hg", "prod"}:
     raise ImproperlyConfigured(
@@ -55,7 +54,6 @@ if DJANGO_ENVIRONMENT in {"hg", "prod"} and DEBUG:
     )
 
 
-# ── Segurança ─────────────────────────────────────────────────────────────────
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="")
 if not SECRET_KEY:
     if not DEBUG:
@@ -79,13 +77,11 @@ CSRF_TRUSTED_ORIGINS = [
     if o.strip()
 ]
 
-# Cookies seguros: False em DEBUG, True em produção — sobrescrevível via env
 SESSION_COOKIE_SECURE = config("DJANGO_SESSION_COOKIE_SECURE", default=not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE    = config("DJANGO_CSRF_COOKIE_SECURE",    default=not DEBUG, cast=bool)
 SESSION_COOKIE_SAMESITE = config("DJANGO_SESSION_COOKIE_SAMESITE", default="Lax")
 CSRF_COOKIE_SAMESITE    = config("DJANGO_CSRF_COOKIE_SAMESITE",    default="Lax")
 
-# HSTS: 0 em DEBUG, 1 ano em produção — sobrescrevível via env
 SECURE_HSTS_SECONDS = config(
     "DJANGO_SECURE_HSTS_SECONDS",
     default=0 if DEBUG else 31536000,
@@ -99,11 +95,9 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
 SECURE_HSTS_PRELOAD = config("DJANGO_SECURE_HSTS_PRELOAD", default=False, cast=bool)
 SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=not DEBUG, cast=bool)
 
-# Necessário para que Django enxergue HTTPS atrás do proxy do Render
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
-# ── Admin / seeds ─────────────────────────────────────────────────────────────
 ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
 ADMIN_SUPERUSER_EMAIL    = config("ADMIN_SUPERUSER_EMAIL",    default="")
 ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
@@ -112,18 +106,15 @@ SEED_INITIAL_TEACHER_PASSWORD        = config("SEED_INITIAL_TEACHER_PASSWORD",  
 SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config("SEED_INITIAL_ADMINISTRATIVE_PASSWORD", default="")
 
 
-# ── Stripe ────────────────────────────────────────────────────────────────────
 STRIPE_PUBLIC_KEY      = config("STRIPE_PUBLIC_KEY",      default="")
 STRIPE_SECRET_KEY      = config("STRIPE_SECRET_KEY",      default="")
 STRIPE_WEBHOOK_SECRET  = config("STRIPE_WEBHOOK_SECRET",  default="")
 STRIPE_PLAN_SYNC_ENABLED = config("STRIPE_PLAN_SYNC_ENABLED", default=False, cast=bool)
 
 
-# ── Site ──────────────────────────────────────────────────────────────────────
 SITE_BASE_URL = config("SITE_BASE_URL", default="http://127.0.0.1:8000")
 
 
-# ── Asaas ─────────────────────────────────────────────────────────────────────
 ASAAS_API_KEY            = config("ASAAS_API_KEY",            default="")
 ASAAS_API_URL            = config("ASAAS_API_URL",            default="")
 ASAAS_WEBHOOK_TOKEN      = config("ASAAS_WEBHOOK_TOKEN",      default="")
@@ -133,7 +124,6 @@ ASAAS_PIX_DUE_DAYS          = config("ASAAS_PIX_DUE_DAYS",          default=1,  
 ASAAS_PIX_EXPIRATION_MINUTES = config("ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int)
 
 
-# ── Negócio ───────────────────────────────────────────────────────────────────
 SITE_NAME             = config("SITE_NAME",             default="LV Jiu Jitsu")
 SITE_NAME_UPPER       = config("SITE_NAME_UPPER",       default=SITE_NAME.upper())
 PAYMENT_CURRENCY      = config("PAYMENT_CURRENCY",      default="brl").lower()
@@ -157,7 +147,6 @@ VETERAN_PLAN_TENURE_YEARS   = config("VETERAN_PLAN_TENURE_YEARS",   default=2,  
 VETERAN_PLAN_GAP_GRACE_DAYS = config("VETERAN_PLAN_GAP_GRACE_DAYS", default=60, cast=int)
 
 
-# ── Email ─────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = config(
     "DJANGO_EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
@@ -172,8 +161,6 @@ EMAIL_USE_TLS       = config("DJANGO_EMAIL_USE_TLS",  default=True, cast=bool)
 EMAIL_HOST_USER     = config("DJANGO_EMAIL_HOST_USER",     default="")
 EMAIL_HOST_PASSWORD = config("DJANGO_EMAIL_HOST_PASSWORD", default="")
 
-
-# ── Application definition ────────────────────────────────────────────────────
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -204,11 +191,8 @@ _CONTEXT_PROCESSORS = [
     'django.template.context_processors.request',
     'django.contrib.auth.context_processors.auth',
     'django.contrib.messages.context_processors.messages',
-    'system.context_processors.portal_navigation',
 ]
 
-# Em DEBUG: APP_DIRS=True para hot-reload. Em produção: cached.Loader para não
-# recompilar templates a cada request (win grande em servidor fraco).
 if DEBUG:
     TEMPLATES = [
         {
@@ -241,10 +225,6 @@ else:
 WSGI_APPLICATION = 'lvjiujitsu.wsgi.application'
 
 
-# ── Database ──────────────────────────────────────────────────────────────────
-# Local dev (DEBUG=1, DATABASE_URL vazio): SQLite
-# Render HG (DEBUG=0, DATABASE_URL=supabase-hg): PostgreSQL HG
-# Render PROD (DEBUG=0, DATABASE_URL=supabase-prod): PostgreSQL PROD
 DATABASE_URL = config("DATABASE_URL", default="").strip()
 if DJANGO_ENVIRONMENT in {"hg", "prod"} and not DATABASE_URL:
     raise ImproperlyConfigured(
@@ -253,7 +233,6 @@ if DJANGO_ENVIRONMENT in {"hg", "prod"} and not DATABASE_URL:
 
 if DATABASE_URL:
     DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
-    # Supabase free com Transaction Pooler usa PgBouncer em transaction mode.
     DATABASES['default']['CONN_MAX_AGE'] = config('DB_CONN_MAX_AGE', default=0, cast=int)
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
@@ -262,19 +241,11 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
-            # transaction_mode=IMMEDIATE adquire o lock de escrita já no BEGIN,
-            # evitando o "database is locked" da subida de lock DEFERRED->EXCLUSIVE
-            # sob escritas concorrentes (ex: rajada de webhooks Stripe locais).
-            # timeout maior é o retry de reforço para o caso de fila mesmo assim.
             'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'},
         }
     }
 
 
-# ── Cache ─────────────────────────────────────────────────────────────────────
-# LocMemCache: embutido no Django, zero dependência extra, ideal para free tier.
-# Para produção com múltiplos workers cada processo tem seu próprio cache em memória
-# — suficiente para template cache e small object cache neste cenário.
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -286,13 +257,8 @@ CACHES = {
     }
 }
 
-# ── Sessões ───────────────────────────────────────────────────────────────────
-# cached_db: lê da cache em memória (rápido), grava no banco (persistente).
-# Elimina o SELECT na tabela django_session a cada request autenticado.
 SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 SESSION_CACHE_ALIAS = 'default'
-
-# ── Password validation ───────────────────────────────────────────────────────
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -301,8 +267,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# ── Internacionalização ───────────────────────────────────────────────────────
 
 LANGUAGE_CODE = config("DJANGO_LANGUAGE_CODE", default="pt-br")
 TIME_ZONE     = config("DJANGO_TIME_ZONE",      default="America/Sao_Paulo")
@@ -317,8 +281,6 @@ DATE_INPUT_FORMATS = [
 DATE_FORMAT     = "d/m/Y"
 DATETIME_FORMAT = "d/m/Y H:i"
 
-
-# ── Static / Media ────────────────────────────────────────────────────────────
 
 STATIC_URL    = config("DJANGO_STATIC_URL", default="/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
@@ -336,9 +298,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 TEST_RUNNER = 'system.test_runner.PostgreSQLDiscoverRunner'
 
 
-# ── WhiteNoise ────────────────────────────────────────────────────────────────
-# CompressedManifestStaticFilesStorage: gera .gz e .br na build (collectstatic),
-# serve direto sem recomprimir por request. Cache-busting via hash no nome do arquivo.
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -351,12 +310,9 @@ STORAGES = {
         ),
     },
 }
-# 1 ano de cache nos assets — o hash no nome garante que mudanças invalidam o cache.
 WHITENOISE_MAX_AGE = config('WHITENOISE_MAX_AGE', default=31536000 if not DEBUG else 0, cast=int)
 
 
-# ── Logging ───────────────────────────────────────────────────────────────────
-# Em produção: só WARNING+ para reduzir I/O. Em DEBUG: padrão Django.
 if not DEBUG:
     LOGGING = {
         'version': 1,

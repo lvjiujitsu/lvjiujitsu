@@ -138,17 +138,9 @@ class Membership(TimeStampedModel):
 
     @property
     def effective_tier(self):
-        if self.plan_price_id is not None:
-            return self.plan_price.tier
-        if self.plan_id is not None and not self.plan.is_loyalty_plan:
-            from system.models.plan import PlanTier
+        from system.services.membership import resolve_effective_tier
 
-            return PlanTier.objects.filter(
-                audience=self.plan.audience,
-                weekly_frequency=self.plan.weekly_frequency,
-                is_active=True,
-            ).first()
-        return None
+        return resolve_effective_tier(self)
 
     @property
     def effective_full_price(self):
@@ -204,11 +196,14 @@ class Membership(TimeStampedModel):
             return f"{method} · {gateway}"
         return method or gateway
 
-    def recompute_billed_price(self):
+    def recompute_billed_price(self, *, tier=None):
+        from system.services.membership import resolve_effective_tier
+
         full_price = self.effective_full_price
         if full_price is None:
             return
-        tier = self.effective_tier
+        if tier is None:
+            tier = resolve_effective_tier(self)
         if self.family_discount_applied and tier is not None:
             discount = Decimal(str(tier.family_discount_percentage or 0))
             self.billed_price = (full_price * (1 - discount)).quantize(
@@ -241,16 +236,9 @@ class Membership(TimeStampedModel):
 
     @property
     def current_pause(self):
-        today = timezone.localdate()
-        return (
-            self.pause_requests.filter(
-                status=MembershipPauseRequestStatus.APPROVED,
-                requested_start_date__lte=today,
-                requested_end_date__gte=today,
-            )
-            .order_by("-requested_end_date")
-            .first()
-        )
+        from system.services.membership import resolve_current_pause
+
+        return resolve_current_pause(self)
 
     @property
     def is_currently_paused(self):

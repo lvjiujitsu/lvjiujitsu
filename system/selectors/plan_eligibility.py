@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from system.models.category import CategoryAudience
 from system.models.class_group import ClassGroup
-from system.models.class_membership import EnrollmentStatus
+from system.models.class_membership import ClassEnrollment, EnrollmentStatus
 from system.models.person import Person, PersonRelationship, PersonRelationshipKind
 from system.models.plan import PlanAudience, SubscriptionPlan
 
@@ -45,11 +45,6 @@ class PlanEligibilityContext:
 
 
 def compute_veteran_member_since(person, *, reference_date=None):
-    """Data de início do vínculo contínuo atual, derivada do histórico de Membership.
-
-    Um intervalo sem Membership ativa/isenta/em atraso maior que
-    VETERAN_PLAN_GAP_GRACE_DAYS reinicia a contagem.
-    """
     if person is None:
         return None
 
@@ -114,11 +109,6 @@ def get_eligible_plans(context: PlanEligibilityContext, *, base_queryset=None):
 
 
 def get_eligible_plan_prices(context: PlanEligibilityContext):
-    """Equivalente a `get_eligible_plans` para o catálogo novo (PlanTier/PlanPrice).
-
-    PlanPrice nunca é plano família nem veterano (esses modelos não migraram
-    para cá), então a elegibilidade é só por audiência ativa.
-    """
     from system.models.plan import PlanPrice
 
     audiences = []
@@ -248,10 +238,27 @@ def build_eligibility_context_for_person(person, *, allow_special_authorization=
         )
 
     family_people = _get_family_group_members(person)
+    family_ids = [member.pk for member in family_people]
+    hydrated_by_id = {
+        p.pk: p
+        for p in Person.objects.filter(pk__in=family_ids).select_related(
+            "class_group__class_category", "class_category"
+        )
+    }
+    enrollments_by_person_id = {}
+    for enrollment in (
+        ClassEnrollment.objects.filter(person_id__in=family_ids, status=EnrollmentStatus.ACTIVE)
+        .select_related("class_group__class_category")
+    ):
+        enrollments_by_person_id.setdefault(enrollment.person_id, []).append(enrollment)
+
     adult_active_count = 0
     kids_juvenile_count = 0
     for member in family_people:
-        member_audience = _classify_person_audience(member)
+        member_audience = _classify_person_audience(
+            hydrated_by_id.get(member.pk, member),
+            active_enrollments=enrollments_by_person_id.get(member.pk, []),
+        )
         if member_audience == PlanAudience.ADULT:
             adult_active_count += 1
         elif member_audience == PlanAudience.KIDS_JUVENILE:
@@ -296,11 +303,15 @@ def _classify_groups_or_age(class_groups, birth_date):
     return classify_audience_from_age(birth_date)
 
 
-def _classify_person_audience(person):
+def _classify_person_audience(person, *, active_enrollments=None):
     audiences = set()
-    enrollments = person.class_enrollments.filter(
-        status=EnrollmentStatus.ACTIVE,
-    ).select_related("class_group__class_category")
+    enrollments = (
+        active_enrollments
+        if active_enrollments is not None
+        else person.class_enrollments.filter(
+            status=EnrollmentStatus.ACTIVE,
+        ).select_related("class_group__class_category")
+    )
     for enrollment in enrollments:
         audience = _get_audience_from_class_group(enrollment.class_group)
         if audience:

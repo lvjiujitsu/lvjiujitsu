@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from system.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES
 from system.models import Person
-from system.services.graduation import compute_graduation_progress
+from system.services.graduation import compute_graduation_progress_bulk
 
 
 def get_graduation_overview(reference_date=None, audience=None):
@@ -19,10 +19,9 @@ def get_graduation_overview(reference_date=None, audience=None):
             | Q(class_group__class_category__audience=audience)
         )
 
-    rows = []
-    for person in queryset.order_by("full_name"):
-        progress = compute_graduation_progress(person, reference_date=reference_date)
-        rows.append(progress)
+    persons = list(queryset.order_by("full_name"))
+    progress_by_person_id = compute_graduation_progress_bulk(persons, reference_date=reference_date)
+    rows = [progress_by_person_id[person.pk] for person in persons]
 
     rows.sort(
         key=lambda r: (

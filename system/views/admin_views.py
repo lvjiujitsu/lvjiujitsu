@@ -20,7 +20,7 @@ from system.models import (
 )
 from system.models.membership_timeline import MembershipTimelineEvent, MembershipTimelineEventType
 from system.services.membership_timeline import build_admin_timeline
-from system.views.person_views import AdministrativeRequiredMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
 class AdminHubView(AdministrativeRequiredMixin, TemplateView):

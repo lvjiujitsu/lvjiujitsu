@@ -4,6 +4,7 @@ from datetime import datetime, timezone as dt_timezone
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from system.models.membership import (
@@ -14,7 +15,6 @@ from system.models.membership import (
 )
 from system.models.person import PersonRelationship, PersonRelationshipKind
 from system.models.plan import BillingCycle
-from system.models.plan import SubscriptionPlan
 from system.models.registration_order import (
     ApprovalType,
     PaymentProvider,
@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 def _sget(obj, key, default=None):
-    """Leitura segura em StripeObject (não suporta .get())."""
     if obj is None:
         return default
     try:
@@ -52,9 +51,6 @@ def _from_unix(value):
 
 
 def extract_stripe_subscription_period(stripe_subscription):
-    """current_period_start/end saíram do objeto Subscription para o
-    SubscriptionItem nas versões recentes da API do Stripe — cai para o
-    primeiro item quando os campos de nível superior não existem."""
     if stripe_subscription is None:
         return None, None
     start = _sget(stripe_subscription, "current_period_start")
@@ -97,11 +93,80 @@ def _add_months(value, months):
     return value.replace(year=target_year, month=target_month, day=target_day)
 
 
+def resolve_effective_tier(membership, tier_cache=None):
+    if membership is None:
+        return None
+    if membership.plan_price_id is not None:
+        plan_price = getattr(membership, "plan_price", None)
+        if plan_price is not None:
+            return plan_price.tier
+        return None
+    if membership.plan_id is not None and not membership.plan.is_loyalty_plan:
+        from system.models.plan import PlanTier
+
+        cache_key = (membership.plan.audience, membership.plan.weekly_frequency)
+        if tier_cache is not None and cache_key in tier_cache:
+            return tier_cache[cache_key]
+        tier = PlanTier.objects.filter(
+            audience=membership.plan.audience,
+            weekly_frequency=membership.plan.weekly_frequency,
+            is_active=True,
+        ).first()
+        if tier_cache is not None:
+            tier_cache[cache_key] = tier
+        return tier
+    return None
+
+
+def resolve_current_pause(membership):
+    if membership is None:
+        return None
+    from system.models.membership import MembershipPauseRequestStatus
+
+    today = timezone.localdate()
+    prefetched = getattr(membership, "_prefetched_objects_cache", {})
+    if "pause_requests" in prefetched:
+        candidates = [
+            pause
+            for pause in membership.pause_requests.all()
+            if pause.status == MembershipPauseRequestStatus.APPROVED
+            and pause.requested_start_date <= today
+            and pause.requested_end_date >= today
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda pause: pause.requested_end_date)
+    return (
+        membership.pause_requests.filter(
+            status=MembershipPauseRequestStatus.APPROVED,
+            requested_start_date__lte=today,
+            requested_end_date__gte=today,
+        )
+        .order_by("-requested_end_date")
+        .first()
+    )
+
+
+def membership_is_family_plan(membership):
+    if membership is None:
+        return False
+    if membership.plan_id is not None:
+        return membership.plan.is_family_plan
+    if membership.plan_price_id is not None:
+        tier = resolve_effective_tier(membership)
+        if tier is None:
+            return False
+        tier_code = (tier.code or "").strip().lower()
+        return tier_code == "family" or tier_code.startswith("family-")
+    return False
+
+
 @transaction.atomic
 def activate_membership_from_session(order, stripe_session, stripe_subscription=None):
     person = order.person
     plan = order.plan
-    if plan is None:
+    plan_price = order.plan_price_ref
+    if plan is None and plan_price is None:
         return None
 
     subscription_id = ""
@@ -117,6 +182,7 @@ def activate_membership_from_session(order, stripe_session, stripe_subscription=
 
     defaults = {
         "plan": plan,
+        "plan_price": plan_price,
         "status": MembershipStatus.ACTIVE,
         "created_via": MembershipCreatedVia.CHECKOUT,
         "stripe_subscription_id": subscription_id,
@@ -132,12 +198,13 @@ def activate_membership_from_session(order, stripe_session, stripe_subscription=
             stripe_subscription_id=subscription_id
         ).first()
     if membership is None:
+        lookup = {"person": person, "stripe_subscription_id": ""}
+        if plan is not None:
+            lookup["plan"] = plan
+        else:
+            lookup["plan_price"] = plan_price
         membership = (
-            Membership.objects.filter(
-                person=person,
-                plan=plan,
-                stripe_subscription_id="",
-            )
+            Membership.objects.filter(**lookup)
             .order_by("-created_at")
             .first()
         )
@@ -623,8 +690,29 @@ def _ensure_manual_paid_membership(order, admin_user, notes):
     return membership
 
 
-def get_active_membership(person):
-    billing_person = get_membership_owner(person)
+def get_active_memberships_for_people(people):
+    person_ids = [person.pk for person in people if person is not None]
+    if not person_ids:
+        return {}
+    memberships = (
+        Membership.objects.filter(person_id__in=person_ids)
+        .exclude(status__in=(MembershipStatus.EXPIRED, MembershipStatus.CANCELED))
+        .select_related("plan_price__tier", "plan")
+        .prefetch_related("pause_requests")
+        .order_by("person_id", "-created_at")
+    )
+    active_by_person = {}
+    for membership in memberships:
+        active_by_person.setdefault(membership.person_id, membership)
+    return active_by_person
+
+
+def get_active_membership(person, billing_owner=None, *, memberships_by_person=None):
+    billing_person = billing_owner if billing_owner is not None else get_membership_owner(person)
+    if memberships_by_person is not None:
+        cached = memberships_by_person.get(billing_person.pk)
+        if cached is not None:
+            return cached
     return _ensure_active_membership_for_person(billing_person)
 
 
@@ -664,6 +752,8 @@ def _ensure_active_membership_for_person(person):
     active_membership = (
         Membership.objects.filter(person=person)
         .exclude(status__in=(MembershipStatus.EXPIRED, MembershipStatus.CANCELED))
+        .select_related("plan_price__tier", "plan")
+        .prefetch_related("pause_requests")
         .order_by("-created_at")
         .first()
     )
@@ -672,10 +762,13 @@ def _ensure_active_membership_for_person(person):
     latest_paid_order = (
         RegistrationOrder.objects.filter(
             person=person,
-            plan__isnull=False,
             payment_status__in=(PaymentStatus.PAID, PaymentStatus.EXEMPTED),
         )
+        .filter(
+            Q(plan__isnull=False) | Q(plan_price_ref__isnull=False)
+        )
         .exclude(total__lte=Decimal("0"))
+        .select_related("plan", "plan_price_ref")
         .order_by("-paid_at", "-created_at")
         .first()
     )
@@ -696,15 +789,52 @@ def get_guardian_billing_tabs(guardian_person):
         .select_related("target_person")
         .order_by("target_person__full_name")
     )
-    tabs = [_build_billing_tab(guardian_person, is_active=True)]
-    for rel in dependents_qs:
-        tabs.append(_build_billing_tab(rel.target_person, is_active=False))
+    dependents = [rel.target_person for rel in dependents_qs]
+    memberships_by_person = get_active_memberships_for_people([guardian_person, *dependents])
+    tabs = [
+        _build_billing_tab(
+            guardian_person,
+            is_active=True,
+            memberships_by_person=memberships_by_person,
+        )
+    ]
+    for dependent in dependents:
+        tabs.append(
+            _build_billing_tab(
+                dependent,
+                is_active=False,
+                memberships_by_person=memberships_by_person,
+            )
+        )
     return tabs
 
 
-def _build_billing_tab(person, *, is_active=False):
+def build_guardian_billing_tabs_cached(guardian, dependent_people, memberships_by_person):
+    tabs = [
+        _build_billing_tab(
+            guardian,
+            is_active=True,
+            memberships_by_person=memberships_by_person,
+        )
+    ]
+    for dependent in dependent_people:
+        tabs.append(
+            _build_billing_tab(
+                dependent,
+                is_active=False,
+                memberships_by_person=memberships_by_person,
+            )
+        )
+    return tabs
+
+
+def _build_billing_tab(person, *, is_active=False, memberships_by_person=None):
     billing_owner = get_membership_owner(person)
-    active_membership = get_active_membership(person)
+    active_membership = get_active_membership(
+        person,
+        billing_owner=billing_owner,
+        memberships_by_person=memberships_by_person,
+    )
     pending_order = get_latest_open_order(person)
     recent_invoices = []
     if active_membership is not None:

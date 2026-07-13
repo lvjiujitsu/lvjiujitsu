@@ -7,16 +7,8 @@ def decimal_setting(name):
     return Decimal(str(getattr(settings, name)))
 
 
-def int_setting(name):
-    return int(getattr(settings, name))
-
-
 def payment_currency():
     return str(getattr(settings, "PAYMENT_CURRENCY", "brl")).lower()
-
-
-def payment_currency_symbol():
-    return str(getattr(settings, "PAYMENT_CURRENCY_SYMBOL", "R$"))
 
 
 def site_name():

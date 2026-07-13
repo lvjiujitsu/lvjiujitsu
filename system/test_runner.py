@@ -1,3 +1,4 @@
+import logging
 import warnings
 from pathlib import Path
 
@@ -6,23 +7,14 @@ from django.db import connections
 from django.test.runner import DiscoverRunner
 
 
+logger = logging.getLogger(__name__)
+
+
 class PostgreSQLDiscoverRunner(DiscoverRunner):
-    """Test runner com dois ajustes para PostgreSQL via pooler (Supabase/PgBouncer):
-
-    1. Garante que STATIC_ROOT existe antes dos testes para evitar o UserWarning
-       do WhiteNoise que polui a saída dos pontos.
-
-    2. Encerra sessões pendentes antes de deletar o banco de testes, evitando
-       'database is being accessed by other users' no teardown.
-    """
-
     def setup_test_environment(self, **kwargs):
-        # Cria STATIC_ROOT se não existir (gitignored, ausente em dev)
         static_root = Path(settings.STATIC_ROOT)
         static_root.mkdir(parents=True, exist_ok=True)
 
-        # Suprime o UserWarning do WhiteNoise caso o diretório ainda não tenha
-        # sido populado por collectstatic
         warnings.filterwarnings(
             "ignore",
             message=r"No directory at:.*",
@@ -30,12 +22,24 @@ class PostgreSQLDiscoverRunner(DiscoverRunner):
             module=r"whitenoise",
         )
 
+        # Sem LOGGING configurado fora de produção (settings.py só define
+        # LOGGING quando DEBUG=False), o handler padrão do Python escreve
+        # WARNING+ direto no stderr — intercalando com os pontos de
+        # progresso do unittest e quebrando a saída padronizada dos testes.
+        # Mensagens de warning esperadas em branches testados (ex.:
+        # notificação sem e-mail cadastrado) não são falhas; suprimir aqui
+        # é o padrão documentado pelo Django para saída limpa de testes.
+        # Só até WARNING — ERROR/CRITICAL continuam passando, preservando
+        # `assertLogs(level="ERROR")` (ex.: test_stripe_webhook_view.py).
+        logging.disable(logging.WARNING)
+
         super().setup_test_environment(**kwargs)
 
+    def teardown_test_environment(self, **kwargs):
+        logging.disable(logging.NOTSET)
+        super().teardown_test_environment(**kwargs)
+
     def teardown_databases(self, old_config, **kwargs):
-        # Encerra sessões do pooler antes do DROP DATABASE.
-        # Inclui o próprio backend para cobrir conexões mantidas por poolers
-        # (PgBouncer/Supabase) que ignoram o close() do cliente.
         for alias in connections:
             conn = connections[alias]
             if conn.vendor != "postgresql":
@@ -50,7 +54,10 @@ class PostgreSQLDiscoverRunner(DiscoverRunner):
                         [test_db_name],
                     )
             except Exception:
-                pass
+                logger.warning(
+                    "Falha ao encerrar sessões PostgreSQL antes do teardown do banco de testes.",
+                    exc_info=True,
+                )
             finally:
                 conn.close()
         super().teardown_databases(old_config, **kwargs)

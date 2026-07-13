@@ -17,7 +17,6 @@ from system.models.asaas import (
     TeacherPayrollConfig,
 )
 from system.models.registration_order import PaymentStatus, RegistrationOrder
-from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.services.asaas_checkout import (
     AsaasCheckoutError,
     create_credit_card_charge_for_order,
@@ -28,16 +27,12 @@ from system.services.asaas_client import verify_webhook_token
 from system.services.asaas_payroll import (
     PayrollError,
     approve_payout,
-    compute_available_balance,
     dispatch_payout,
     refuse_payout,
 )
 from system.services.asaas_webhooks import process_asaas_event
 from system.services.payroll_rules import calculate_monthly_payroll
-from system.views.portal_mixins import (
-    PortalLoginRequiredMixin,
-    PortalRoleRequiredMixin,
-)
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
 logger = logging.getLogger(__name__)
@@ -130,7 +125,6 @@ class CreateCreditCardChargeView(View):
 
         options = get_installment_options_for_order(order)
         if len(options) <= 1:
-            # Apenas 1 parcela disponível — vai direto
             return self._create_charge(request, order, installment_count=1)
 
         return render(request, self.template_name, {"order": order, "options": options})
@@ -228,10 +222,6 @@ class AsaasWebhookView(View):
             result["duplicate"],
         )
         return HttpResponse(status=200)
-
-
-class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
 
 class PayrollListView(AdministrativeRequiredMixin, ListView):

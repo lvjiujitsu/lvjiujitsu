@@ -1,5 +1,3 @@
-from django.db.models import Q
-
 from system.models.product_backorder import (
     ACTIVE_BACKORDER_STATUSES,
     ProductBackorder,
@@ -39,15 +37,6 @@ def get_ready_backorders_for_person(person):
         .select_related("variant", "variant__product")
         .order_by("expires_at", "created_at")
     )
-
-
-def count_ready_backorders_for_person(person):
-    if person is None:
-        return 0
-    return ProductBackorder.objects.filter(
-        person=person,
-        status=ProductBackorderStatus.READY,
-    ).count()
 
 
 def get_pending_queue_for_variant(variant):

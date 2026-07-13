@@ -19,7 +19,10 @@ from system.models import (
     PreRegistrationStatus,
     RegistrationOrder,
 )
-from system.services.financial_transactions import apply_order_financials
+from system.services.financial_transactions import (
+    apply_order_financials,
+    resolve_checkout_action_for_plan,
+)
 from system.services.membership import activate_membership_from_paid_order
 from system.services.registration import (
     _create_person_with_account,
@@ -28,6 +31,8 @@ from system.services.registration import (
 )
 from system.services.registration_checkout import (
     apply_order_variant_stock,
+    create_pre_registration_materials_payment,
+    create_pre_registration_plan_payment,
     create_product_only_order,
     resolve_selected_product_items,
 )
@@ -327,6 +332,145 @@ def get_pending_dependent_pre_registration(session, owner):
     if snapshot.get("owner_person_id") != owner.pk:
         return None
     return pre_registration
+
+
+def is_dependent_payment_confirmed(pre_registration):
+    if pre_registration is None:
+        return False
+    snapshot = pre_registration.form_snapshot or {}
+    return pre_registration.payment_confirmed or bool(snapshot.get("plan_paid"))
+
+
+def is_dependent_materials_confirmed(pre_registration):
+    if pre_registration is None:
+        return False
+    snapshot = pre_registration.form_snapshot or {}
+    return bool(snapshot.get("materials_paid"))
+
+
+def restore_confirmed_payment_post_data(post_data, pre_registration):
+    snapshot = (pre_registration.form_snapshot or {}) if pre_registration else {}
+    financial_mode = (
+        snapshot.get("financial_mode") or DependentFinancialMode.DEPENDENT_OWN
+    )
+    post_data["financial_mode"] = financial_mode
+    if financial_mode == DependentFinancialMode.FAMILY_EXISTING:
+        post_data["use_family_plan"] = "on"
+    elif "use_family_plan" in post_data:
+        del post_data["use_family_plan"]
+
+    selected_plan_id = ""
+    if snapshot.get("selected_plan"):
+        selected_plan_id = str(snapshot.get("selected_plan"))
+    elif pre_registration and pre_registration.selected_plan_id:
+        from system.services.registration_checkout import (
+            CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN,
+            build_catalog_plan_id,
+        )
+
+        selected_plan_id = build_catalog_plan_id(
+            CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, pre_registration.selected_plan_id
+        )
+    if selected_plan_id:
+        post_data["selected_plan"] = selected_plan_id
+
+    checkout_action = ""
+    if pre_registration and pre_registration.checkout_action:
+        checkout_action = pre_registration.checkout_action
+    elif snapshot.get("checkout_action"):
+        checkout_action = snapshot.get("checkout_action")
+    if checkout_action:
+        post_data["checkout_action"] = checkout_action
+
+
+def apply_confirmed_payment_to_cleaned_data(cleaned_data, pre_registration):
+    snapshot = (pre_registration.form_snapshot or {}) if pre_registration else {}
+    financial_mode = snapshot.get("financial_mode") or DependentFinancialMode.DEPENDENT_OWN
+    cleaned_data["financial_mode"] = financial_mode
+    cleaned_data["use_family_plan"] = financial_mode == DependentFinancialMode.FAMILY_EXISTING
+
+    snapshot_plan_id = snapshot.get("selected_plan") or ""
+    if snapshot_plan_id:
+        from system.services.registration_checkout import resolve_catalog_plan
+
+        legacy_plan, plan_price = resolve_catalog_plan(snapshot_plan_id)
+        cleaned_data["selected_plan"] = str(snapshot_plan_id)
+        cleaned_data["selected_plan_obj"] = legacy_plan or plan_price
+    elif pre_registration and pre_registration.selected_plan_id:
+        cleaned_data["selected_plan"] = str(pre_registration.selected_plan_id)
+        cleaned_data["selected_plan_obj"] = pre_registration.selected_plan
+
+    if pre_registration and pre_registration.checkout_action:
+        cleaned_data["checkout_action"] = pre_registration.checkout_action
+
+
+def process_dependent_registration_submission(*, owner, form, pending, session):
+    if form.existing_owned_dependent is not None:
+        session.pop("pending_dependent_pre_registration_id", None)
+        return {"kind": "existing_owned"}
+
+    cleaned_data = form.cleaned_data
+    payment_confirmed = is_dependent_payment_confirmed(pending)
+    materials_confirmed = is_dependent_materials_confirmed(pending)
+    if payment_confirmed:
+        apply_confirmed_payment_to_cleaned_data(cleaned_data, pending)
+
+    selected_materials = cleaned_data.get("selected_product_items") or []
+    if (
+        (cleaned_data.get("use_family_plan") or payment_confirmed)
+        and selected_materials
+        and not materials_confirmed
+    ):
+        if session.session_key is None:
+            session.save()
+        if pending is None:
+            pending = create_dependent_pre_registration(
+                owner, cleaned_data, session_key=session.session_key or ""
+            )
+        else:
+            pending = update_dependent_pre_registration(pending, owner, cleaned_data)
+        session["pending_dependent_pre_registration_id"] = pending.pk
+        checkout_url = create_pre_registration_materials_payment(
+            pending,
+            selected_materials,
+            cleaned_data["materials_checkout_action"],
+        )
+        save_checkout_url(pending, "materials", checkout_url)
+        return {"kind": "materials_checkout", "checkout_url": checkout_url}
+
+    if cleaned_data.get("use_family_plan") or payment_confirmed:
+        finalize_dependent_registration(owner, cleaned_data, pre_registration=pending)
+        session.pop("pending_dependent_pre_registration_id", None)
+        return {"kind": "finalized"}
+
+    checkout_action = cleaned_data.get("checkout_action")
+    if not checkout_action or checkout_action == "pay_later":
+        checkout_action = resolve_checkout_action_for_plan(
+            cleaned_data.get("selected_plan_obj")
+        )
+    if checkout_action == "pay_later":
+        return {"kind": "checkout_action_missing"}
+
+    if session.session_key is None:
+        session.save()
+    pre_registration = create_dependent_pre_registration(
+        owner, cleaned_data, session_key=session.session_key or ""
+    )
+    session["pending_dependent_pre_registration_id"] = pre_registration.pk
+    existing_checkout_url = (pre_registration.form_snapshot or {}).get(
+        "plan_checkout_url"
+    )
+    if pre_registration.is_awaiting_payment and existing_checkout_url:
+        return {"kind": "plan_checkout", "checkout_url": existing_checkout_url}
+    checkout_url = create_pre_registration_plan_payment(
+        pre_registration,
+        checkout_action,
+        card_strategy=cleaned_data.get("card_strategy"),
+        owner=owner,
+    )
+    save_checkout_url(pre_registration, "plan", checkout_url)
+    pre_registration.mark_awaiting_payment()
+    return {"kind": "plan_checkout", "checkout_url": checkout_url}
 
 
 def initial_from_pre_registration(pre_registration):

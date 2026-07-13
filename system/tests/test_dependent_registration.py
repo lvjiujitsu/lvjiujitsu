@@ -190,7 +190,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         self._login()
 
         with patch(
-            "system.views.dependent_views.create_pre_registration_plan_payment"
+            "system.services.dependent_registration.create_pre_registration_plan_payment"
         ) as mocked_payment:
             mocked_payment.return_value = "https://checkout.stripe.test/session"
             response = self.client.post(
@@ -230,7 +230,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         )
 
         with patch(
-            "system.views.dependent_views.create_pre_registration_plan_payment"
+            "system.services.dependent_registration.create_pre_registration_plan_payment"
         ) as mocked_payment:
             mocked_payment.return_value = "https://checkout.stripe.test/family"
             response = self.client.post(
@@ -542,7 +542,7 @@ class DependentRegistrationFlowTestCase(TestCase):
         session.save()
 
         with patch(
-            "system.views.dependent_views.create_pre_registration_materials_payment"
+            "system.services.dependent_registration.create_pre_registration_materials_payment"
         ) as mocked_payment:
             mocked_payment.return_value = "https://asaas.test/materials"
             response = self.client.post(
@@ -686,7 +686,7 @@ class DependentRegistrationFlowTestCase(TestCase):
             },
         )
 
-        with patch("system.views.dependent_views.create_pre_registration_plan_payment") as mocked_payment:
+        with patch("system.services.dependent_registration.create_pre_registration_plan_payment") as mocked_payment:
             response = self.client.post(
                 reverse("system:dependent-add"),
                 data=self._payload(
@@ -1080,7 +1080,7 @@ class PlanPriceDependentRegistrationTestCase(TestCase):
         self._login()
 
         with patch(
-            "system.views.dependent_views.create_pre_registration_plan_payment"
+            "system.services.dependent_registration.create_pre_registration_plan_payment"
         ) as mocked_payment:
             mocked_payment.return_value = "https://checkout.asaas.test/pp-session"
             response = self.client.post(

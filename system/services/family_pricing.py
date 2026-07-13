@@ -7,6 +7,7 @@ from system.models.membership import Membership, MembershipStatus
 from system.models.membership_timeline import MembershipTimelineEventType
 from system.selectors.plan_eligibility import get_family_group_members
 from system.services.membership_timeline import record_membership_event
+from system.services.membership import resolve_effective_tier
 from system.services.stripe_discounts import (
     StripeDiscountError,
     apply_family_discount,
@@ -32,8 +33,9 @@ def recompute_family_discounts_for_person(person):
     )
 
     by_tier = defaultdict(list)
+    tier_cache = {}
     for membership in memberships:
-        tier = membership.effective_tier
+        tier = resolve_effective_tier(membership, tier_cache=tier_cache)
         if tier is None:
             continue
         by_tier[tier.pk].append(membership)
@@ -45,7 +47,9 @@ def recompute_family_discounts_for_person(person):
             previous = membership.family_discount_applied
             previous_price = membership.billed_price
             membership.family_discount_applied = discount_applies
-            membership.recompute_billed_price()
+            membership.recompute_billed_price(
+                tier=resolve_effective_tier(membership, tier_cache=tier_cache)
+            )
             membership.save(
                 update_fields=["family_discount_applied", "billed_price", "updated_at"]
             )

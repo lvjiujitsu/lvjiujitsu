@@ -33,7 +33,7 @@ from system.models.product import Product, ProductCategory, ProductVariant
 from system.models.plan import BillingCycle, PlanPaymentMethod
 from system.models.registration_order import DepositStatus, PaymentProvider, PaymentStatus
 from system.models.asaas import PixKeyType
-from system.services.financial_dashboard import build_financial_dashboard
+from system.services.financial_dashboard import _aggregate_net_inflows, build_financial_dashboard
 from system.services.financial_transactions import (
     apply_order_financials,
     calculate_financial_amounts,
@@ -111,6 +111,22 @@ class FinancialTransactionServiceTestCase(TestCase):
 
         self.assertEqual(resolve_payment_provider_for_plan(card_plan), PaymentProvider.ASAAS)
         self.assertEqual(resolve_checkout_action_for_plan(card_plan), CheckoutAction.ASAAS_CARD)
+
+    def test_stripe_gateway_plan_resolves_to_stripe_provider(self):
+        stripe_plan = SubscriptionPlan.objects.create(
+            code="standard-monthly-stripe-card",
+            display_name="Plano mensal cartão Stripe",
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.CREDIT_CARD,
+            gateway_code="stripe_card",
+            price=Decimal("230.38"),
+        )
+
+        self.assertEqual(resolve_payment_provider_for_plan(stripe_plan), PaymentProvider.STRIPE)
+        self.assertEqual(
+            resolve_checkout_action_for_plan(stripe_plan),
+            CheckoutAction.STRIPE_CARD,
+        )
 
     @override_settings(
         ASAAS_CREDIT_PERCENT_FEE="0.0429",
@@ -234,6 +250,44 @@ class FinancialDashboardServiceTestCase(TestCase):
         self.assertEqual(dashboard["totals"]["outflows"], Decimal("100.00"))
         self.assertTrue(any(entry["direction"] == "outflow" for entry in dashboard["history"]))
         self.assertTrue(any(entry["person"] == self.person for entry in dashboard["history"]))
+
+
+class AggregateNetInflowsQueryBudgetTestCase(TestCase):
+    def setUp(self):
+        student_type = PersonType.objects.create(code="student", display_name="Aluno")
+        self.person = Person.objects.create(
+            full_name="Aluno Inflows", cpf="111.222.333-47", person_type=student_type,
+        )
+        plan = SubscriptionPlan.objects.create(
+            code="inflows-pix",
+            display_name="Inflows PIX",
+            price=Decimal("100.00"),
+            billing_cycle=BillingCycle.MONTHLY,
+            payment_method=PlanPaymentMethod.PIX,
+        )
+        RegistrationOrder.objects.create(
+            person=self.person, plan=plan, plan_price=Decimal("100.00"),
+            total=Decimal("100.00"), payment_status=PaymentStatus.PAID,
+            net_amount=Decimal("95.00"),
+        )
+        RegistrationOrder.objects.create(
+            person=self.person, plan=plan, plan_price=Decimal("30.00"),
+            total=Decimal("30.00"), payment_status=PaymentStatus.PAID,
+            net_amount=Decimal("0.00"),
+        )
+
+    def test_matches_python_loop_semantics_for_zero_net_amount(self):
+        queryset = RegistrationOrder.objects.filter(payment_status=PaymentStatus.PAID)
+        self.assertEqual(_aggregate_net_inflows(queryset), Decimal("125.00"))
+
+    def test_uses_single_aggregate_query(self):
+        queryset = RegistrationOrder.objects.filter(payment_status=PaymentStatus.PAID)
+        with self.assertNumQueries(1):
+            _aggregate_net_inflows(queryset)
+
+    def test_empty_queryset_returns_zero(self):
+        queryset = RegistrationOrder.objects.none()
+        self.assertEqual(_aggregate_net_inflows(queryset), Decimal("0.00"))
 
 
 class PayrollRulesServiceTestCase(TestCase):

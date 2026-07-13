@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tiers comerciais — LV Jiu Jitsu</title>
   {% load static %}
-  <script src="{% static 'system/js/lv/theme_boot.js' %}"></script>
+  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260709-1"></script>
   <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/plans/plans.css' %}?v=1">
 </head>
@@ -196,12 +196,10 @@
     </section>
   </main>
 
-  <!-- ─── Modal CRUD (create/editar) ──────────────────────────────────────── -->
   <dialog class="crud-modal" data-crud-modal aria-label="Formulário de tier">
     <iframe class="crud-modal__frame" data-crud-modal-frame src="about:blank" title="Formulário de tier"></iframe>
   </dialog>
 
-  <!-- ─── Diálogo de confirmação de exclusão ──────────────────────────────── -->
   <dialog class="confirm-delete-dialog" data-confirm-delete-dialog aria-label="Confirmar exclusão">
     <form method="post" data-confirm-delete-form>
       {% csrf_token %}
@@ -215,7 +213,7 @@
     </form>
   </dialog>
 
-  <script src="{% static 'system/js/lv/crud_modal.js' %}"></script>
+  <script src="{% static 'system/js/lv/crud_modal.js' %}?v=20260709-1"></script>
   <script src="{% static 'system/js/lv/confirm_delete.js' %}"></script>
   <script src="{% static 'system/js/plans/plans.js' %}?v=1" defer></script>
 </body>

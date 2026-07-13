@@ -15,7 +15,6 @@ from .plan_eligibility import (
     is_veteran_plan_eligible,
 )
 from .product_backorders import (
-    count_ready_backorders_for_person,
     get_active_backorder,
     get_admin_backorder_queue,
     get_backorders_for_person,
@@ -32,7 +31,6 @@ __all__ = [
     "classify_audience_from_age",
     "classify_class_groups_audience",
     "compute_veteran_member_since",
-    "count_ready_backorders_for_person",
     "get_active_backorder",
     "get_admin_backorder_queue",
     "get_backorders_for_person",

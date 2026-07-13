@@ -1,7 +1,17 @@
 (function () {
   'use strict';
 
-  // ── Constantes ────────────────────────────────────────────────────────────────
+  var Wz = window.LV && window.LV.Wizard;
+  if (!Wz) {
+    if (typeof console !== 'undefined' && console.error) {
+      console.error('[LV register] wizard_shared.js é obrigatório');
+    }
+    return;
+  }
+
+  var wizardForm = document.getElementById('wizard-form');
+  var wizardEndpoints = Wz.getFormEndpoints(wizardForm);
+  var escHtml = Wz.escapeHtml;
 
   var PROFILE_HOLDER   = 'holder';
   var PROFILE_GUARDIAN = 'guardian';
@@ -13,31 +23,27 @@
   };
   var MAX_DEPENDENTS   = 5;
 
-  // Etapas fixas que seguem após seleção de turmas
   var TRAILING_STEPS = ['step-plan', 'step-products', 'step-review'];
-
-  // ── Estado central ────────────────────────────────────────────────────────────
 
   var state = {
     profile:              null,
     holderDepCount:       0,
     guardianStudentCount: 1,
-    stepSequence:         [],   // ex: ['step-profile','step-principal','step-dep','step-classes','step-plan',...]
-    stepIndex:            0,    // posição atual na sequência
-    deps:                 [],   // [{name,cpf,birthdate,sex,phone,email,password,pwConfirm,kinship,kinshipOther,classGroups}]
-    classSelections:      [],   // [{ids:[]}] — 1 por pessoa que precisa de turma (holder/deps ou só deps)
-    planSelections:       [],   // [{personIndex, label, planId}]
+    stepSequence:         [],
+    stepIndex:            0,
+    deps:                 [],
+    classSelections:      [],
+    planSelections:       [],
     teacherProposedSchedule: null,
     teacherExistingClassSelections: [],
+    eligibility: { fetchKey: null, planIds: null, pending: false },
   };
 
-  var productCart = []; // [{variantId, variantLabel, variantColor, variantSize, productId, productName, qty, unitPrice}]
+  var productCart = [];
   var configureProduct = null;
   var configureColor = null;
   var configureVariantId = null;
   var configureQty = 1;
-
-  // ── Utilitários de máscara ────────────────────────────────────────────────────
 
   function maskCpf(value) {
     var d = value.replace(/\D/g, '').slice(0, 11);
@@ -92,7 +98,9 @@
         if (data.localidade && !s2City.value.trim())
           s2City.value = data.localidade;
       })
-      .catch(function () {});
+      .catch(function (err) {
+        Wz.warn('cep', 'Falha ao consultar CEP', err);
+      });
   }
 
   function bindMask(el, fn) {
@@ -105,8 +113,6 @@
       el.setSelectionRange(pos + masked.length - old.length, pos + masked.length - old.length);
     });
   }
-
-  // ── Utilitários de erro ───────────────────────────────────────────────────────
 
   function showErr(input, errorEl, msg) {
     if (errorEl) { errorEl.textContent = msg; errorEl.hidden = false; }
@@ -138,8 +144,6 @@
     var el = document.getElementById(id);
     return el ? el.value : '';
   }
-
-  // ── Sequência de etapas ───────────────────────────────────────────────────────
 
   function isOperationalProfile(profile) {
     return profile === PROFILE_TEACHER_REQUEST || profile === PROFILE_ADMINISTRATIVE_REQUEST;
@@ -176,7 +180,7 @@
     var seq = ['step-profile', 'step-principal'];
 
     if (state.profile === PROFILE_HOLDER) {
-      // Holder treina: saúde + marcial antes dos deps
+
       seq.push('step-health');
       seq.push('step-martial');
       for (var i = 0; i < numDeps; i++) {
@@ -185,7 +189,7 @@
         seq.push('step-martial');
       }
     } else {
-      // Guardian: tem saúde + marcial próprios, depois cada aluno também
+
       seq.push('step-health');
       seq.push('step-martial');
       for (var i = 0; i < numDeps; i++) {
@@ -195,14 +199,12 @@
       }
     }
 
-    // Turmas: holder treina (1 etapa) + cada dep/aluno
     var numClassSteps = (state.profile === PROFILE_HOLDER) ? (1 + numDeps) : numDeps;
     for (var j = 0; j < numClassSteps; j++) seq.push('step-classes');
 
     seq = seq.concat(TRAILING_STEPS);
     state.stepSequence = seq;
 
-    // Garante array de deps com tamanho correto
     while (state.deps.length < numDeps) {
       state.deps.push({
         name: '', cpf: '', birthdate: '', sex: '', phone: '', email: '',
@@ -215,7 +217,6 @@
     }
     state.deps.length = numDeps;
 
-    // Garante array de classSelections com tamanho correto
     while (state.classSelections.length < numClassSteps) {
       state.classSelections.push({ ids: [] });
     }
@@ -233,17 +234,15 @@
     return state.deps.length;
   }
 
-  // Planos elegíveis para este cadastro (regras de negócio de visibilidade)
   function getEligiblePlans() {
     var numPersons = totalTrainingPersons();
     return planCatalog.filter(function (p) {
-      if (p.is_loyalty_plan) return false;          // exige 2 anos — nunca no cadastro inicial
-      if (p.is_family_plan)  return numPersons >= 2; // família: mínimo 2 pessoas treinando
+      if (p.is_loyalty_plan) return false;
+      if (p.is_family_plan)  return numPersons >= 2;
       return true;
     });
   }
 
-  // Retorna índice 0-based do dependente dentro de state.deps para uma posição na sequência
   function depIndexAt(seqIdx) {
     var count = 0;
     for (var i = 0; i <= seqIdx; i++) {
@@ -252,7 +251,6 @@
     return count - 1;
   }
 
-  // Retorna índice 0-based dentro de state.classSelections para uma posição na sequência
   function classPersonIndexAt(seqIdx) {
     var count = 0;
     for (var i = 0; i <= seqIdx; i++) {
@@ -261,7 +259,6 @@
     return count - 1;
   }
 
-  // Retorna índice de pessoa (mesmo esquema que class) para step-health/step-martial
   function healthPersonIndexAt(seqIdx) {
     var count = 0;
     for (var i = 0; i <= seqIdx; i++) {
@@ -278,7 +275,6 @@
     return count - 1;
   }
 
-  // person 0 com HOLDER = holder; com GUARDIAN = guardian principal (não treina como aluno)
   function isHolderPerson(personIdx) {
     return state.profile === PROFILE_HOLDER && personIdx === 0;
   }
@@ -291,12 +287,10 @@
     return isOperationalProfile(state.profile) && personIdx === 0;
   }
 
-  // Retorna índice no state.deps para um personIdx (personIdx=0 é sempre o principal)
   function getDepIdxForPerson(personIdx) {
     return personIdx - 1;
   }
 
-  // Retorna nome e dados da pessoa correspondente a um classPersonIdx
   function getPersonForClass(classPersonIdx) {
     if (isOperationalProfile(state.profile)) {
       return {
@@ -316,8 +310,6 @@
     return { name: dep.name || ('Aluno ' + (classPersonIdx + 1)), sex: dep.sex, birthdate: dep.birthdate };
   }
 
-  // ── Progresso ─────────────────────────────────────────────────────────────────
-
   var elStepCurrent  = document.getElementById('wizard-step-current');
   var elStepTotal    = document.getElementById('wizard-step-total');
   var elProgressFill = document.getElementById('wizard-progress-fill');
@@ -335,8 +327,6 @@
       elProgressBar.setAttribute('aria-valuemax',  total);
     }
   }
-
-  // ── Navegação central ─────────────────────────────────────────────────────────
 
   function hideAllWizardSteps() {
     document.querySelectorAll('.wizard-step').forEach(function (el) {
@@ -433,8 +423,6 @@
     if (stepId === 'step-classes')   onEnterClasses(classPersonIndexAt(seqIdx));
     if (stepId === 'step-plan')      onEnterPlan();
   }
-
-  // ── Elementos — Etapa de perfil ───────────────────────────────────────────────
 
   var elProfileHolder   = document.getElementById('profile-card-holder');
   var elProfileGuardian = document.getElementById('profile-card-guardian');
@@ -570,8 +558,6 @@
     setHidden('id_include_dependent', '');
     setHidden('id_extra_dependents_payload', '[]');
   }
-
-  // ── Elementos — Etapa principal (step-2) ─────────────────────────────────────
 
   var s2Name          = document.getElementById('ui-s2-name');
   var s2NameError     = document.getElementById('ui-s2-name-error');
@@ -742,8 +728,6 @@
       });
   }
 
-  // ── Elementos — Etapa dependente (step-dep) ───────────────────────────────────
-
   var depBadge        = document.getElementById('dep-step-badge');
   var depTitle        = document.getElementById('dep-step-title');
   var depKinship      = document.getElementById('ui-dep-kinship');
@@ -877,8 +861,6 @@
     return valid;
   }
 
-  // ── Sincroniza deps no form hidden ───────────────────────────────────────────
-
   function syncDepsToForm() {
     if (state.deps.length === 0) return;
 
@@ -942,15 +924,13 @@
     elExtraDepInput.value = JSON.stringify(extras);
   }
 
-  // ── Turmas — sincronização com form ──────────────────────────────────────────
-
   function _syncClassGroupInputs(fieldName, ids) {
     var form = document.getElementById('wizard-form');
     if (!form) return;
-    // Remove inputs existentes com esse name
+
     var existing = form.querySelectorAll('input[name="' + fieldName + '"]');
     existing.forEach(function (el) { el.parentNode.removeChild(el); });
-    // Cria um input por id selecionado
+
     ids.forEach(function (id) {
       var inp = document.createElement('input');
       inp.type = 'hidden';
@@ -963,26 +943,20 @@
   function syncClassesToForm() {
     var isHolder = (state.profile === PROFILE_HOLDER);
     if (isHolder) {
-      // classSelections[0] = turma do holder
+
       _syncClassGroupInputs('holder_class_groups', state.classSelections[0]?.ids || []);
-      // classSelections[1..N] = turma dos deps (armazenado em state.deps[i-1].classGroups)
+
       for (var i = 1; i < state.classSelections.length; i++) {
         if (state.deps[i - 1]) state.deps[i - 1].classGroups = state.classSelections[i].ids || [];
       }
     } else {
-      // guardian: classSelections[i] = turma do student[i]
-      // student[0] → id_student_class_groups
-      // student[1..N] → extra payload
+
       for (var j = 0; j < state.classSelections.length; j++) {
         if (state.deps[j]) state.deps[j].classGroups = state.classSelections[j].ids || [];
       }
     }
     syncDepsToForm();
   }
-
-  // ── Turmas — elementos e lógica de etapa ─────────────────────────────────────
-
-  // ── Elementos — Etapa de saúde (step-health) ─────────────────────────────────
 
   var healthBadge      = document.getElementById('health-step-badge');
   var healthTitle      = document.getElementById('health-step-title');
@@ -1075,8 +1049,6 @@
       }
     }
   }
-
-  // ── Elementos — Etapa de artes marciais (step-martial) ───────────────────────
 
   var martialBadge           = document.getElementById('martial-step-badge');
   var martialTitle           = document.getElementById('martial-step-title');
@@ -1197,7 +1169,7 @@
       };
     }
 
-    var resolvedHas = data.hasMartialArt || 'no'; // padrão: iniciante
+    var resolvedHas = data.hasMartialArt || 'no';
     if (martialHas)       martialHas.value       = resolvedHas;
     if (martialArtEl)     martialArtEl.value      = data.martialArt;
     if (martialAcademy)   martialAcademy.value    = data.previousAcademy;
@@ -1212,7 +1184,6 @@
     toggleMartialDetail(hasMA);
     toggleMartialJj(hasMA && data.martialArt === 'jiu_jitsu');
 
-    // Limpa erros
     clearErr(martialHas, martialHasErr);
     clearErr(martialArtEl, martialArtErr);
     clearErr(martialJjBelt, martialJjBeltErr);
@@ -1222,7 +1193,7 @@
 
   function validateMartial() {
     var valid = true;
-    // has_martial_art sempre tem valor ("no" por padrão) — não há mais campo vazio
+
     clearErr(martialHas, martialHasErr);
     if (martialHas && martialHas.value === 'yes') {
       if (!martialArtEl || !martialArtEl.value) {
@@ -1288,16 +1259,12 @@
     }
   }
 
-  // ── Elementos — Etapa de turma ─────────────────────────────────────────────
-
   var elClassCatalog    = document.getElementById('class-catalog-list');
   var elClassBadge      = document.getElementById('class-step-badge');
   var elClassTitle      = document.getElementById('class-step-title');
   var elClassSubtitle   = document.getElementById('class-step-subtitle');
   var elClassError      = document.getElementById('class-step-error');
   var elStepClassesNext = document.getElementById('step-classes-next');
-
-  // ── Plano — catálogo e estado ─────────────────────────────────────────────────
 
   var planCatalog = (function () {
     try {
@@ -1424,24 +1391,74 @@
     if (currentPlanPersonIndex >= persons.length) currentPlanPersonIndex = Math.max(0, persons.length - 1);
   }
 
+  function getWizardCsrfToken() {
+    return window.LV.getCsrfToken();
+  }
+
+  function buildEligibilityRequestPayload() {
+    var payload = {
+      registration_profile: state.profile,
+      include_dependent: state.profile === PROFILE_HOLDER && state.holderDepCount > 0,
+    };
+    if (state.profile === PROFILE_HOLDER) {
+      payload.holder_birthdate = getHidden('id_holder_birthdate') || '';
+      payload.holder_class_groups = (state.classSelections[0] || { ids: [] }).ids;
+      if (state.holderDepCount > 0) {
+        var dep0 = state.deps[0] || {};
+        payload.dependent_birthdate = dep0.birthdate || '';
+        payload.dependent_class_groups = (state.classSelections[1] || { ids: [] }).ids;
+      }
+    } else if (state.profile === PROFILE_GUARDIAN) {
+      var student0 = state.deps[0] || {};
+      payload.student_birthdate = student0.birthdate || '';
+      payload.student_class_groups = (state.classSelections[0] || { ids: [] }).ids;
+    }
+    return payload;
+  }
+
+  function refreshEligibilityFromServer(onUpdated) {
+    if (isOperationalProfile(state.profile)) return;
+    Wz.fetchEligibility({
+      url: wizardEndpoints.eligibilityUrl,
+      csrfToken: getWizardCsrfToken(),
+      payload: buildEligibilityRequestPayload(),
+      cache: state.eligibility,
+      onUpdated: onUpdated,
+    });
+  }
+
   function getEligiblePlansForCurrentPerson() {
     var persons = getTrainingPersonsForPlans();
     var person = persons[currentPlanPersonIndex] || persons[0] || {};
     var audience = resolveAudience(person.birthdate);
-    // Conta pessoas do mesmo grupo etário (adulto vs kids/juvenil) para
-    // decidir se um plano familiar está disponível — precisa bater tanto
-    // a quantidade quanto a faixa etária, senão um plano familiar adulto
-    // aparece como opção para um grupo de só crianças (e vice-versa).
-    var sameAudienceCount = persons.filter(function (p) {
-      var personAudience = resolveAudience(p.birthdate);
-      if (audience === 'adult') return personAudience === 'adult';
-      return personAudience === 'kids' || personAudience === 'juvenile';
-    }).length;
-    return getEligiblePlans().filter(function (p) {
-      if (!audience) return true;
-      if (p.audience === 'adult' && audience !== 'adult') return false;
-      if (p.audience === 'kids_juvenile' && audience !== 'kids' && audience !== 'juvenile') return false;
-      if (p.is_family_plan) return sameAudienceCount >= 2;
+
+    var serverKey = Wz.eligibilityFetchKey(buildEligibilityRequestPayload());
+    var baseEligible;
+    if (state.eligibility.planIds && state.eligibility.fetchKey === serverKey) {
+      var idSet = {};
+      state.eligibility.planIds.forEach(function (id) { idSet[id] = true; });
+      baseEligible = getEligiblePlans().filter(function (p) { return idSet[p.id]; });
+    } else {
+
+      var sameAudienceCount = persons.filter(function (p) {
+        var personAudience = resolveAudience(p.birthdate);
+        if (audience === 'adult') return personAudience === 'adult';
+        return personAudience === 'kids' || personAudience === 'juvenile';
+      }).length;
+      baseEligible = getEligiblePlans().filter(function (p) {
+        if (!audience) return true;
+        if (p.audience === 'adult' && audience !== 'adult') return false;
+        if (p.audience === 'kids_juvenile' && audience !== 'kids' && audience !== 'juvenile') return false;
+        if (p.is_family_plan) return sameAudienceCount >= 2;
+        return true;
+      });
+      return baseEligible;
+    }
+
+    if (!audience) return baseEligible;
+    return baseEligible.filter(function (p) {
+      if (p.audience === 'adult') return audience === 'adult';
+      if (p.audience === 'kids_juvenile') return audience === 'kids' || audience === 'juvenile';
       return true;
     });
   }
@@ -1467,13 +1484,13 @@
   function getFilteredPlans() {
     var filtered = getEligiblePlansForCurrentPerson().filter(function (p) {
       if (planFilter.frequency !== null && p.weekly_frequency !== planFilter.frequency) return false;
-      // Stripe é recorrência mensal — exibido junto a qualquer ciclo quando Cartão estiver selecionado
+
       var isStripe = p.gateway_code === 'stripe_card';
       if (!isStripe && planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;
       if (planFilter.method && p.payment_method !== planFilter.method) return false;
       return true;
     });
-    // Stripe sempre aparece após planos Asaas na listagem
+
     filtered.sort(function (a, b) {
       var aStripe = a.gateway_code === 'stripe_card' ? 1 : 0;
       var bStripe = b.gateway_code === 'stripe_card' ? 1 : 0;
@@ -1529,13 +1546,11 @@
     var eligible = getEligiblePlansForCurrentPerson();
     if (eligible.length === 0) { area.innerHTML = ''; return; }
 
-    // Auto-seleciona quando só há uma opção
     if (freqs.length === 1   && planFilter.frequency === null) planFilter.frequency = freqs[0];
     if (methods.length === 1 && planFilter.method   === null)  planFilter.method   = methods[0];
 
     var html = '';
 
-    // Frequência
     if (freqs.length > 1) {
       html += '<div class="plan-filter-section"><p class="plan-filter-label">Frequência semanal</p><div class="plan-filter-row">';
       freqs.forEach(function (f) {
@@ -1545,7 +1560,6 @@
       html += '</div></div>';
     }
 
-    // Ciclo
     if (cycles.length > 0) {
       html += '<div class="plan-filter-section"><p class="plan-filter-label">Período de cobrança</p><div class="plan-filter-row">';
       cycles.forEach(function (c) {
@@ -1556,7 +1570,6 @@
       html += '</div></div>';
     }
 
-    // Método
     if (methods.length > 1) {
       html += '<div class="plan-filter-section"><p class="plan-filter-label">Forma de pagamento</p><div class="plan-filter-row">';
       methods.forEach(function (m) {
@@ -1593,7 +1606,11 @@
         : getEligiblePlans().length === 0
           ? 'Nenhum plano disponível para esta pessoa.'
           : 'Nenhum plano disponível para os filtros selecionados.';
-      area.innerHTML = '<p class="plan-cards--empty">' + emptyMsg + '</p>';
+      area.textContent = '';
+      var emptyP = document.createElement('p');
+      emptyP.className = 'plan-cards--empty';
+      emptyP.textContent = emptyMsg;
+      area.appendChild(emptyP);
       return;
     }
 
@@ -1611,30 +1628,25 @@
       html += '<div class="plan-card__radio"><div class="plan-card__radio-dot"></div></div>';
       html += '<div class="plan-card__body">';
 
-      // Cabeçalho
       html += '<div class="plan-card__header">';
       html += '<p class="plan-card__tier">' + escHtml(tierLabel) + '</p>';
       if (isStripe)        html += '<span class="plan-card__badge plan-card__badge--stripe">Recorrente</span>';
       else if (isFeatured) html += '<span class="plan-card__badge">Recomendado</span>';
       html += '</div>';
 
-      // Preço
       html += '<div class="plan-card__price-wrap">';
       html += '<span class="plan-card__price">' + fmtPrice(price) + '</span>';
       html += '<span class="plan-card__price-cycle">/' + escHtml(cycleLabel) + '</span>';
       html += '</div>';
 
-      // Parcelas — Stripe é mensal, "1x" não é relevante
       if (!isStripe && plan.installment_count > 1 && plan.installment_label) {
         html += '<p class="plan-card__installment">' + escHtml(plan.installment_label) + '</p>';
       }
 
-      // Frequência
       if (plan.weekly_frequency_label) {
         html += '<p class="plan-card__meta">' + escHtml(plan.weekly_frequency_label) + '</p>';
       }
 
-      // Auth
       if (plan.requires_special_authorization) {
         html += '<p class="plan-card__auth-note">Requer autorização da academia</p>';
       }
@@ -1741,15 +1753,19 @@
     if (!planFilter.method && methods.length) planFilter.method = methods[0];
     renderPlanFilters();
     renderPlanCards();
-    // Atualizar UI de Stripe com base na seleção atual (ou ausência dela)
+
     var currentSelection = state.planSelections[currentPlanPersonIndex] || {};
     var currentPlan = currentSelection.planId
       ? planCatalog.find(function (p) { return p.id === currentSelection.planId; }) || null
       : null;
     updateStripeUiForPlan(currentPlan);
-  }
 
-  // ── Catálogo de turmas (declarado após as funções de plano) ───────────────────
+    refreshEligibilityFromServer(function () {
+      if (state.stepSequence[state.stepIndex] !== 'step-plan') return;
+      renderPlanFilters();
+      renderPlanCards();
+    });
+  }
 
   var catalogGroups = (function () {
     try {
@@ -2215,34 +2231,13 @@
     }
   }
 
-  function calcAgeYears(birthdateStr) {
-    if (!birthdateStr) return null;
-    var parts = birthdateStr.split('/');
-    if (parts.length !== 3) return null;
-    var d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-    if (isNaN(d.getTime())) return null;
-    var today = new Date();
-    var age = today.getFullYear() - d.getFullYear();
-    if (today.getMonth() < d.getMonth() || (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())) age--;
-    return age;
-  }
-
   function resolveAudience(birthdateStr) {
-    var age = calcAgeYears(birthdateStr);
-    if (age === null) return null;
-    if (ibjjfCategories.length === 0) return age >= 16 ? 'adult' : (age >= 10 ? 'juvenile' : 'kids');
-    var sorted = ibjjfCategories.slice().sort(function (a, b) { return a.minimum_age - b.minimum_age; });
-    for (var i = 0; i < sorted.length; i++) {
-      var cat = sorted[i];
-      var maxOk = cat.maximum_age === null || cat.maximum_age === undefined || age <= cat.maximum_age;
-      if (age >= cat.minimum_age && maxOk) return cat.audience;
-    }
-    return null;
+    return Wz.resolveAudience(birthdateStr, ibjjfCategories);
   }
 
   function filterGroupsByPerson(groups, person) {
     var audience = resolveAudience(person.birthdate);
-    if (!audience) return groups; // sem data de nascimento → exibe tudo
+    if (!audience) return groups;
     var sex = person.sex;
     return groups.filter(function (g) {
       var ga = g.category_audience;
@@ -2307,11 +2302,9 @@
       card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
       card.setAttribute('data-group-id', group.id);
 
-      // Título
       var titleText = escHtml(group.category_name) +
         (group.display_name ? ' · ' + escHtml(group.display_name) : '');
 
-      // Tabela de horários agrupada por dia usando compact_schedule_sections
       var scheduleHtml = '';
       var sections = group.compact_schedule_sections || [];
       if (sections.length) {
@@ -2342,16 +2335,6 @@
     });
   }
 
-  function escHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  // ── Construção de DOM segura ──────────────────────────────────────────────────
-
   function el(tag, opts, children) {
     var node = document.createElement(tag);
     opts = opts || {};
@@ -2371,7 +2354,6 @@
     while (node.firstChild) node.removeChild(node.firstChild);
   }
 
-  // Markup fixo (sem dado de usuário) — usado apenas para ícones estáticos.
   function svgIcon(markup) {
     var template = document.createElement('template');
     template.innerHTML = markup;
@@ -2381,21 +2363,21 @@
   function selectClassGroup(classPersonIdx, groupId) {
     var selection = state.classSelections[classPersonIdx];
     if (!selection) return;
-    // Seleção múltipla: alterna a turma no array (adiciona ou remove)
+
     var index = selection.ids.indexOf(groupId);
     if (index === -1) {
       selection.ids.push(groupId);
     } else {
       selection.ids.splice(index, 1);
     }
-    // Atualiza visual dos cards
+
     if (!elClassCatalog) return;
     elClassCatalog.querySelectorAll('.class-card').forEach(function (card) {
       var selected = selection.ids.indexOf(card.getAttribute('data-group-id')) !== -1;
       card.classList.toggle('class-card--selected', selected);
       card.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
-    // Limpa erro ao selecionar
+
     if (elClassError && selection.ids.length > 0) { elClassError.textContent = ''; elClassError.hidden = true; }
   }
 
@@ -2407,8 +2389,6 @@
     }
     return true;
   }
-
-  // ── Eventos — Etapa de perfil ─────────────────────────────────────────────────
 
   if (elHolderDepChk) {
     elHolderDepChk.addEventListener('change', function () {
@@ -2486,11 +2466,9 @@
   if (elStep1Next) {
     elStep1Next.addEventListener('click', function () {
       if (!state.profile) return;
-      goTo(1); // step-principal
+      goTo(1);
     });
   }
-
-  // ── Eventos — Etapa principal ─────────────────────────────────────────────────
 
   bindMask(s2Cpf,       maskCpf);
   if (s2Cpf) {
@@ -2519,8 +2497,6 @@
     });
   }
 
-  // ── Eventos — Etapa dependente ────────────────────────────────────────────────
-
   if (depKinship) {
     depKinship.addEventListener('change', function () {
       toggleKinshipOther(depKinship.value);
@@ -2543,8 +2519,6 @@
     });
   }
 
-  // ── Eventos — Etapa de saúde ─────────────────────────────────────────────────
-
   if (elStepHealthNext) {
     elStepHealthNext.addEventListener('click', function () {
       var pi = healthPersonIndexAt(state.stepIndex);
@@ -2552,8 +2526,6 @@
       goTo(state.stepIndex + 1);
     });
   }
-
-  // ── Eventos — Etapa de artes marciais ────────────────────────────────────────
 
   function _setMartialHas(value) {
     if (martialHas) martialHas.value = value;
@@ -2591,8 +2563,6 @@
       goTo(state.stepIndex + 1);
     });
   }
-
-  // ── Eventos — Etapas operacionais ───────────────────────────────────────────
 
   document.querySelectorAll('input[name="teacher-assignment-mode"]').forEach(function (input) {
     input.addEventListener('change', updateTeacherScheduleMode);
@@ -2645,8 +2615,6 @@
     });
   }
 
-  // ── Eventos — Plano ──────────────────────────────────────────────────────────
-
   var planAlreadyPaid = false;
 
   var elStepPlanNext = document.getElementById('step-plan-next');
@@ -2660,8 +2628,6 @@
     });
   }
 
-  // ── Botão "Fazer uma aula experimental" (step-plan) ─────────────────────────
-
   var elBtnTrialClass = document.getElementById('btn-trial-class');
   if (elBtnTrialClass) {
     elBtnTrialClass.addEventListener('click', function () {
@@ -2669,8 +2635,6 @@
       bindProductsSection();
     });
   }
-
-  // ── Cupom de desconto ────────────────────────────────────────────────────────
 
   (function bindCoupon() {
     var elCouponInput  = document.getElementById('coupon-code-input');
@@ -2686,7 +2650,7 @@
         if (elCouponMsg) { elCouponMsg.textContent = 'Informe o código do cupom.'; elCouponMsg.className = 'coupon-msg coupon-msg--error'; elCouponMsg.hidden = false; }
         return;
       }
-      // Calcular total atual a partir dos planos selecionados
+
       var total = state.planSelections.reduce(function (acc, sel) {
         var p = planCatalog.find(function (p) { return p.id === sel.planId; });
         return p ? acc + parseFloat(p.price || 0) : acc;
@@ -2698,7 +2662,7 @@
       body.append('csrfmiddlewaretoken', (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '');
 
       elCouponBtn.disabled = true;
-      fetch('/cadastro/validar-cupom/', { method: 'POST', body: body })
+      fetch(wizardEndpoints.validateCouponUrl, { method: 'POST', body: body })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data.valid) {
@@ -2712,14 +2676,13 @@
             elCouponBtn.disabled = false;
           }
         })
-        .catch(function () {
+        .catch(function (err) {
+          Wz.warn('coupon', 'Falha ao validar cupom', err);
           if (elCouponMsg) { elCouponMsg.textContent = 'Erro ao validar cupom. Tente novamente.'; elCouponMsg.className = 'coupon-msg coupon-msg--error'; elCouponMsg.hidden = false; }
           elCouponBtn.disabled = false;
         });
     });
   }());
-
-  // ── Eventos — Etapa de turma ─────────────────────────────────────────────────
 
   if (elStepClassesNext) {
     elStepClassesNext.addEventListener('click', function () {
@@ -2730,14 +2693,11 @@
     });
   }
 
-  // ── Botão Voltar ──────────────────────────────────────────────────────────────
-
   if (elWizardBack) {
     elWizardBack.addEventListener('click', function (e) {
       var visibleStep = document.querySelector('.wizard-step:not([hidden])');
       var visibleId = visibleStep ? visibleStep.id : null;
 
-      // Pós-pagamento: resumo final volta para materiais
       if (visibleId === 'step-review') {
         e.preventDefault();
         showPostPaymentMode('step-products');
@@ -2745,16 +2705,13 @@
         return;
       }
 
-      // Pós-pagamento: materiais volta para o plano (modo pago, sem permitir trocar).
-      // Usa showPlanPaidMode() diretamente — o bootstrap da página pode ter pulado
-      // step-plan (ex: materiais já estava concluído), deixando planAlreadyPaid=false.
       if (visibleId === 'step-products') {
         e.preventDefault();
         showPlanPaidMode();
         return;
       }
 
-      if (state.stepIndex === 0) return; // deixa navegar para login
+      if (state.stepIndex === 0) return;
       e.preventDefault();
       var currentId = state.stepSequence[state.stepIndex];
       if (currentId === 'step-dep') {
@@ -2767,8 +2724,6 @@
       goTo(state.stepIndex - 1);
     });
   }
-
-  // ── Pós-pagamento: modo materiais e revisão ───────────────────────────────────
 
   var CHECK_ICON_MARKUP = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
@@ -2822,7 +2777,6 @@
     if (wizForm) wizForm.hidden = true;
     showOnlyWizardStep(stepId);
 
-    // Avança o contador; step-plan-confirmed usa step-plan como referência.
     var idx = state.stepSequence.indexOf(stepId);
     if (idx < 0) {
       var fallbackStep = (stepId === 'step-plan-confirmed') ? 'step-plan' : 'step-plan';
@@ -2878,7 +2832,13 @@
     if (!area) return;
 
     if (!productCatalog.length) {
-      area.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:2rem 0">Nenhum produto disponível no momento.</p>';
+      area.textContent = '';
+      var emptyProducts = document.createElement('p');
+      emptyProducts.className = 'wizard-step__subtitle';
+      emptyProducts.style.textAlign = 'center';
+      emptyProducts.style.padding = '2rem 0';
+      emptyProducts.textContent = 'Nenhum produto disponível no momento.';
+      area.appendChild(emptyProducts);
       if (viewCartBtn) viewCartBtn.hidden = true;
       return;
     }
@@ -2960,7 +2920,6 @@
     configureVariantId = null;
     configureQty = 1;
 
-    // Restore from cart if already added
     for (var i = 0; i < productCart.length; i++) {
       if (productCart[i].productId === product.id) {
         configureVariantId = productCart[i].variantId;
@@ -2970,7 +2929,6 @@
       }
     }
 
-    // Auto-select color if only 1 unique color
     if (configureColor === null) {
       var uniqueColors = getUniqueColors(product);
       if (uniqueColors.length === 1) configureColor = uniqueColors[0];
@@ -2988,7 +2946,6 @@
     var uniqueColors = getUniqueColors(product);
     var showColorPicker = uniqueColors.length > 1;
 
-    // Auto-select single color if not chosen yet
     if (!configureColor && uniqueColors.length === 1) configureColor = uniqueColors[0];
 
     var variantsForColor = getVariantsForColor(product, configureColor);
@@ -2999,21 +2956,18 @@
     });
     var showSizePicker = uniqueSizes.length > 0;
 
-    // Auto-select variant when no color/size selectors needed
     if (!configureVariantId && !showColorPicker && !showSizePicker && product.variants.length > 0) {
       for (var k = 0; k < product.variants.length; k++) {
         if (product.variants[k].is_in_stock) { configureVariantId = product.variants[k].id; break; }
       }
     }
 
-    // Auto-select variant when size picker present but only 1 size for chosen color
     if (!configureVariantId && variantsForColor.length === 1 && !showSizePicker) {
       if (variantsForColor[0].is_in_stock) configureVariantId = variantsForColor[0].id;
     }
 
     var html = '';
 
-    // ── Color picker ──────────────────────────────────────────────────────────
     if (showColorPicker) {
       html += '<div class="prod-configure__section">';
       html += '<p class="prod-configure__section-label">Cor</p>';
@@ -3030,7 +2984,6 @@
       html += '</div>';
     }
 
-    // ── Size picker ───────────────────────────────────────────────────────────
     if (showSizePicker && (configureColor !== null || !showColorPicker)) {
       html += '<div class="prod-configure__section">';
       html += '<p class="prod-configure__section-label">Tamanho</p>';
@@ -3051,7 +3004,6 @@
       html += '</div>';
     }
 
-    // ── Quantity stepper ──────────────────────────────────────────────────────
     var selectedVariant = null;
     for (var i = 0; i < product.variants.length; i++) {
       if (product.variants[i].id === configureVariantId) { selectedVariant = product.variants[i]; break; }
@@ -3080,7 +3032,6 @@
 
     area.innerHTML = html;
 
-    // Bind color pills
     area.querySelectorAll('.color-pill[data-color]').forEach(function (pill) {
       pill.addEventListener('click', function () {
         configureColor = this.getAttribute('data-color');
@@ -3090,7 +3041,6 @@
       });
     });
 
-    // Bind size pills
     area.querySelectorAll('.size-pill[data-variant-id]').forEach(function (pill) {
       pill.addEventListener('click', function () {
         configureVariantId = parseInt(this.getAttribute('data-variant-id'), 10);
@@ -3099,7 +3049,6 @@
       });
     });
 
-    // Qty stepper
     var dec = document.getElementById('cfg-qty-dec');
     var inc = document.getElementById('cfg-qty-inc');
     var valEl = document.getElementById('cfg-qty-val');
@@ -3121,7 +3070,13 @@
     if (!area) return;
 
     if (!productCart.length) {
-      area.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:1.5rem 0">Carrinho vazio.</p>';
+      area.textContent = '';
+      var emptyCart = document.createElement('p');
+      emptyCart.className = 'wizard-step__subtitle';
+      emptyCart.style.textAlign = 'center';
+      emptyCart.style.padding = '1.5rem 0';
+      emptyCart.textContent = 'Carrinho vazio.';
+      area.appendChild(emptyCart);
       return;
     }
 
@@ -3236,7 +3191,6 @@
     if (!area) return;
     var blocks = [];
 
-    // Bloco do responsável ou aluno principal
     if (pendingPersonData) {
       var isGuardian = pendingPersonData.person_type_code === 'guardian';
       var mainChildren = [
@@ -3248,7 +3202,6 @@
       }
       blocks.push(el('div', { className: 'order-review-block' }, mainChildren));
 
-      // Alunos vinculados (perfil guardian)
       var students = pendingPersonData.students || [];
       var planTotal = parseFloat((planOrderData && planOrderData.total) || 0);
       var perStudent = students.length > 0 ? planTotal / students.length : planTotal;
@@ -3269,7 +3222,6 @@
         blocks.push(el('div', { className: 'order-review-block' }, studentChildren));
       });
 
-      // Aluno único (perfil holder)
       if (!isGuardian && pendingPersonData.class_group_name) {
         blocks.push(el('div', { className: 'order-review-block' }, [
           el('p', { className: 'order-review-block__label', text: 'Turma' }),
@@ -3399,8 +3351,6 @@
     }
   }
 
-  // ── Modo plano já pago: mostra step-plan inline com estado confirmado ────────
-
   function showPlanPaidMode() {
     planAlreadyPaid = true;
     if (!rehydratePendingWizardState() && !state.stepSequence.length) buildStepSequence();
@@ -3412,7 +3362,6 @@
       updateProgress();
     }
 
-    // Renderiza o status de pagamento confirmado (ou aula experimental) dentro do step-plan
     var filtersArea = document.getElementById('plan-filters-area');
     var cardsArea   = document.getElementById('plan-cards-area');
 
@@ -3448,7 +3397,6 @@
     if (filtersArea) filtersArea.innerHTML = html;
     if (cardsArea)   cardsArea.innerHTML   = '';
 
-    // Esconde elementos que não fazem sentido no estado pós-pagamento
     var trialBtnEl = document.getElementById('btn-trial-class');
     if (trialBtnEl) trialBtnEl.hidden = true;
     var couponAreaEl = document.getElementById('coupon-area');
@@ -3456,7 +3404,6 @@
     var stripeNoticeEl = document.getElementById('stripe-commitment-notice');
     if (stripeNoticeEl) stripeNoticeEl.hidden = true;
 
-    // Altera o botão para avançar para materiais
     var nextBtn = document.getElementById('step-plan-next');
     if (nextBtn) {
       nextBtn.innerHTML =
@@ -3470,15 +3417,12 @@
       };
     }
 
-    // Remove o link "Recomeçar cadastro" de renderizações anteriores, se existir
     var existingReset = document.getElementById('plan-paid-reset-link');
     if (existingReset) existingReset.remove();
 
-    // Restaura wizard-form (necessário quando chamado via onEnterPlan a partir de step-products)
     var wizFormPaid = document.getElementById('wizard-form');
     if (wizFormPaid) wizFormPaid.hidden = false;
 
-    // Auto-dismiss da mensagem Django após 5s (a banner JS já exibe a confirmação)
     var sysMsgs = document.querySelector('.wizard-system-messages');
     if (sysMsgs && !sysMsgs.hidden) {
       setTimeout(function () {
@@ -3488,8 +3432,6 @@
       }, 5000);
     }
   }
-
-  // ── Persistência do wizard (sessionStorage) ──────────────────────────────────
 
   var WIZARD_STORAGE_KEY = 'lv-wiz-v1';
   var _wizardRestoring   = false;
@@ -3522,11 +3464,17 @@
         teacherExistingClassSelections: state.teacherExistingClassSelections,
         fields: _collectHiddenFields(),
       }));
-    } catch (e) {}
+    } catch (e) {
+      Wz.warn('storage', 'Falha ao salvar estado do wizard em sessionStorage', e);
+    }
   }
 
   function clearWizardState() {
-    try { sessionStorage.removeItem(WIZARD_STORAGE_KEY); } catch (e) {}
+    try {
+      sessionStorage.removeItem(WIZARD_STORAGE_KEY);
+    } catch (e) {
+      Wz.warn('storage', 'Falha ao limpar estado do wizard em sessionStorage', e);
+    }
   }
 
   function _applyHiddenFields(form, savedFields) {
@@ -3539,7 +3487,7 @@
         existing[0].value = vals[0];
         return;
       }
-      // Inputs dinâmicos (class_groups, extra payload): remove sem id, recria
+
       var staticInps  = existing.filter(function (el) { return !!el.id; });
       var dynamicInps = existing.filter(function (el) { return !el.id; });
       dynamicInps.forEach(function (el) { el.parentNode.removeChild(el); });
@@ -3638,11 +3586,9 @@
 
       _wizardRestoring = true;
 
-      // 1. Restaura campos hidden do form
       var form = document.getElementById('wizard-form');
       if (form && saved.fields) _applyHiddenFields(form, saved.fields);
 
-      // 2. Restaura estado JS antes de selectProfile (que reseta contagens)
       state.deps              = saved.deps              || [];
       state.classSelections   = saved.classSelections   || [];
       state.planSelections    = saved.planSelections     || [];
@@ -3651,10 +3597,8 @@
       state.holderDepCount    = saved.holderDepCount     || 0;
       state.guardianStudentCount = saved.guardianStudentCount || 1;
 
-      // 3. Aplica UI de perfil (marca o card de perfil, exibe sub-opções)
       selectProfile(saved.profile);
 
-      // 4. selectProfile reseta contagens — restaura novamente
       state.holderDepCount       = saved.holderDepCount     || 0;
       state.guardianStudentCount = saved.guardianStudentCount || 1;
       state.deps                 = saved.deps              || [];
@@ -3663,7 +3607,6 @@
       state.teacherProposedSchedule = saved.teacherProposedSchedule || null;
       state.teacherExistingClassSelections = saved.teacherExistingClassSelections || [];
 
-      // 5. Restaura UI de checkbox de dependentes (holder)
       if (saved.profile === PROFILE_HOLDER && state.holderDepCount > 0) {
         if (elHolderDepChk)    { elHolderDepChk.checked   = true; }
         if (elHolderCountArea) { elHolderCountArea.hidden  = false; }
@@ -3675,12 +3618,10 @@
         syncGuardianStudents();
       }
 
-      // 6. Reconstrói sequência com contagens corretas
       buildStepSequence();
 
       _wizardRestoring = false;
 
-      // 7. Navega para o step salvo
       var targetIdx = Math.min(saved.stepIndex || 0, state.stepSequence.length - 1);
       goTo(targetIdx);
       return true;
@@ -3689,8 +3630,6 @@
       return false;
     }
   }
-
-  // ── Inicialização ─────────────────────────────────────────────────────────────
 
   if (regPostMaterialsSkipped) {
     clearWizardState();

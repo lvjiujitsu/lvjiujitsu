@@ -60,7 +60,7 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-034-remocao-temporaria-testes-telas.md](PRD-034-remocao-temporaria-testes-telas.md) | Remocao Temporaria de Testes de Telas |
 | [PRD-035-seed-valores-planos-assinatura.md](PRD-035-seed-valores-planos-assinatura.md) | Seed de Valores dos Planos de Assinatura |
 | [PRD-036-icones-pagamento-cadastro.md](PRD-036-icones-pagamento-cadastro.md) | Icones de Pagamento no Cadastro |
-| [PRD-037-remover-stripe-checkout-asaas.md](PRD-037-remover-stripe-checkout-asaas.md) | Remover Stripe do checkout e usar Asaas |
+| [PRD-037-remover-stripe-checkout-asaas.md](PRD-037-remover-stripe-checkout-asaas.md) | **Histórica** — Remover Stripe do checkout e usar Asaas (superada: PRD-041/137 reintroduziram Stripe recorrente, hoje ativo) |
 | [PRD-038-redesign-etapa-materiais-wizard.md](PRD-038-redesign-etapa-materiais-wizard.md) | Redesign da etapa "Materiais e equipamentos" no wizard de cadastro |
 | [PRD-039-fluxo-guardian-asaas-home-multiplicador.md](PRD-039-fluxo-guardian-asaas-home-multiplicador.md) | Padronizar fluxo de cadastro — guardian, Asaas, home, multiplicador de plano |
 | [PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md](PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md) | Fluxo intransigente de cadastro com pagamento antes de criar Pessoa |
@@ -125,6 +125,16 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-098-modulo-auditoria-operacional.md](PRD-098-modulo-auditoria-operacional.md) | Módulo de auditoria operacional |
 | [PRD-099-permissao-edicao-pessoa-apoio.md](PRD-099-permissao-edicao-pessoa-apoio.md) | Permissão de edição de pessoa para apoio |
 | [PRD-100-rota-perfis-vs-papeis-operacionais.md](PRD-100-rota-perfis-vs-papeis-operacionais.md) | Rota Perfis versus papéis operacionais |
+| [PRD-101-loja-publica-prepedidos-historico-aluno.md](PRD-101-loja-publica-prepedidos-historico-aluno.md) | Loja pública, pré-pedidos e histórico do aluno |
+| [PRD-102-crud-categoria-material.md](PRD-102-crud-categoria-material.md) | CRUD de categoria de material |
+| [PRD-103-acoes-assinatura-detalhe-pessoa.md](PRD-103-acoes-assinatura-detalhe-pessoa.md) | Ações de assinatura no detalhe de pessoa |
+| [PRD-104-remocao-dead-code-checkout-wizard.md](PRD-104-remocao-dead-code-checkout-wizard.md) | Remoção de código morto no wizard de cadastro (onEnterCheckout) |
+| [PRD-105-secao-dependentes-home-responsavel.md](PRD-105-secao-dependentes-home-responsavel.md) | Seção "Meus dependentes" no home do responsável |
+| [PRD-106-responsavel-compra-materiais-para-dependente.md](PRD-106-responsavel-compra-materiais-para-dependente.md) | Responsável não consegue comprar/ver materiais em nome do dependente |
+| [PRD-107-aprovar-checkin-aula-cancelada.md](PRD-107-aprovar-checkin-aula-cancelada.md) | Instrutor consegue aprovar check-in de aula regular já cancelada |
+| [PRD-108-repasse-professor-aula-cancelada-e-view-morta.md](PRD-108-repasse-professor-aula-cancelada-e-view-morta.md) | Repasse do professor conta aula cancelada; `TeacherFinancialView` é código morto |
+| [PRD-109-crash-calendario-aulao-em-feriado.md](PRD-109-crash-calendario-aulao-em-feriado.md) | Calendário administrativo quebra quando aulão cai em feriado |
+| [PRD-110-graduacao-conta-aula-cancelada.md](PRD-110-graduacao-conta-aula-cancelada.md) | Elegibilidade de graduação conta aula/aulão cancelado |
 | [PRD-111-seeds-homologacao-cadastro-nn.md](PRD-111-seeds-homologacao-cadastro-nn.md) | Seeds de homologacao de cadastro N:N |
 | [PRD-112-solicitacao-acesso-administrativo-pendente.md](PRD-112-solicitacao-acesso-administrativo-pendente.md) | Solicitacao de acesso administrativo pendente |
 | [PRD-113-solicitacao-turmas-horarios-professor.md](PRD-113-solicitacao-turmas-horarios-professor.md) | Solicitacao de turmas e horarios por professor |
@@ -152,3 +162,10 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-135-cobranca-recorrente-asaas-backfill-timeline.md](PRD-135-cobranca-recorrente-asaas-backfill-timeline.md) | Cobrança recorrente automatizada Asaas (sincronizada com desconto família) + backfill de eventos históricos da timeline |
 | [PRD-136-falha-silenciosa-pagar-mensalidade-endereco-asaas.md](PRD-136-falha-silenciosa-pagar-mensalidade-endereco-asaas.md) | Falha silenciosa no botão "Pagar mensalidade" (form_invalid sem mensagem) + confirmação pendente do pré-preenchimento de endereço no Asaas — documentação, sem correção |
 | [PRD-137-recorrente-stripe-ciclos-parcelamento-asaas-catalogo-novo.md](PRD-137-recorrente-stripe-ciclos-parcelamento-asaas-catalogo-novo.md) | Recorrente Stripe em semestral/anual (valores aprovados e gravados) + parcelamento Asaas corrigido no catálogo PlanTier/PlanPrice |
+| [PRD-138-auditoria-arquitetural-fluxo-unico-consistencia.md](PRD-138-auditoria-arquitetural-fluxo-unico-consistencia.md) | Auditoria arquitetural total — inventário, classificação de arquivos, fluxo único e plano de consolidação por ondas |
+| [PRD-139-auditoria-cobertura-total-inventario-completo.md](PRD-139-auditoria-cobertura-total-inventario-completo.md) | Auditoria de cobertura total — inventário 100% arquivo-a-arquivo, infra/seeds/docs, órfãos confirmados e plano complementar à PRD-138 |
+| [PRD-140-dependente-wizard-correcoes.md](PRD-140-dependente-wizard-correcoes.md) | Correções do wizard de "Adicionar dependente" (renumerada de PRD-122 duplicada — ver PRD-139) |
+| [PRD-141-critica-frontend-problemas.md](PRD-141-critica-frontend-problemas.md) | Crítica profunda do frontend — 42 achados (CRÍTICA/ALTA/MÉDIA/BAIXA) com evidência; shells, god-modules JS/CSS, innerHTML, a11y, ?v=; sem proposta de correção |
+| [PRD-142-critica-backend-performance.md](PRD-142-critica-backend-performance.md) | Crítica backend — performance, N+1, índices ausentes e testes de query budget (read-only) |
+| [PRD-143-critica-views-models-forms-mvt.md](PRD-143-critica-views-models-forms-mvt.md) | Crítica MVT — views, models e forms (god-modules, violações, top 30 achados, read-only) |
+| [PRD-144-pendencias-implementacao-varredura-jul-2026.md](PRD-144-pendencias-implementacao-varredura-jul-2026.md) | Pendências pós-varredura jul/2026 — status implementação PRD-138…143, inventário, matriz P0–P3 e top 20 bloqueadores (read-only) |

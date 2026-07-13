@@ -19,6 +19,7 @@ from system.models import (
     PortalPasswordResetToken,
 )
 from system.services.portal_auth import create_password_reset_token, reset_portal_password
+from system.services.registration import create_portal_registration
 
 
 User = get_user_model()
@@ -163,9 +164,37 @@ class PersonModelTestCase(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors.as_json())
-        created = form.save()
+        created = create_portal_registration(form.cleaned_data)
 
         self.assertEqual(created["other"].person_type.code, "instructor")
+
+    def test_form_save_raises_not_implemented(self):
+        PersonType.objects.create(code="instructor", display_name="Professor")
+        form = PortalRegistrationForm(
+            data={
+                "registration_profile": "other",
+                "other_type_code": "instructor",
+                "other_name": "Professor Teste",
+                "other_cpf": "10433218100",
+                "other_birthdate": "01/01/1990",
+                "other_biological_sex": "male",
+                "other_password": "123456",
+                "other_password_confirm": "123456",
+                "teacher_assignment_mode": "propose",
+                "teacher_proposed_schedule_payload": json.dumps(
+                    {
+                        "category_id": "1",
+                        "display_name": "Adulto Manha",
+                        "weekdays": ["monday"],
+                        "start_time": "07:00",
+                    }
+                ),
+                "operational_financial_arrangement": "volunteer",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+        with self.assertRaises(NotImplementedError):
+            form.save()
 
     def test_teacher_operational_registration_requires_schedule_weekdays(self):
         PersonType.objects.create(code=PersonTypeCode.INSTRUCTOR, display_name="Professor")

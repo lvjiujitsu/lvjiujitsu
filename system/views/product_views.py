@@ -45,8 +45,8 @@ from system.services.registration_checkout import (
     create_product_only_order,
     get_product_catalog_payload,
 )
-from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
-from system.views.portal_mixins import PortalRoleRequiredMixin
+from system.views.person_views import ModalFormMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin, PortalRoleRequiredMixin
 
 
 class ProductVariantMixin:

@@ -1,7 +1,7 @@
 from django import forms
 
 from system.constants import CheckoutAction, DependentCardStrategy, DependentFinancialMode
-from system.forms.registration_forms import (
+from system.forms.registration_common import (
     MARTIAL_ART_EXPERIENCE_CHOICES,
     MARTIAL_ART_EXPERIENCE_YES,
     MARTIAL_ART_MODALITY_CHOICES,
@@ -29,7 +29,7 @@ from system.selectors.plan_eligibility import (
     is_plan_eligible,
 )
 from system.services.class_overview import get_public_class_group_choice_options
-from system.services.membership import get_active_membership
+from system.services.membership import get_active_membership, membership_is_family_plan
 from system.services.registration import get_kinship_choices, resolve_class_groups
 from system.services.registration_checkout import (
     build_catalog_plan_id,
@@ -387,9 +387,6 @@ class DependentRegistrationForm(forms.Form):
             return
 
         if plan_price is not None:
-            # PRD-127: planos do novo catálogo (PlanTier/PlanPrice) sempre resolvem
-            # como mensalidade própria — o desconto família é aplicado
-            # dinamicamente depois, via recompute_family_discounts_for_person.
             if mode == DependentFinancialMode.FAMILY_UPGRADE:
                 self.add_error(
                     "selected_plan",
@@ -584,7 +581,7 @@ class DependentProfileForm(forms.ModelForm):
 
 def _owner_has_family_plan(owner):
     membership = get_active_membership(owner)
-    return bool(membership and membership.plan and membership.plan.is_family_plan)
+    return membership_is_family_plan(membership)
 
 
 def _resolve_financial_mode(cleaned_data):

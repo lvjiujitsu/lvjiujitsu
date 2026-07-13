@@ -147,6 +147,18 @@ def get_plan_catalog_payload(*, include_plan_prices=False):
     return payload
 
 
+def get_public_registration_plan_catalog_payload():
+    """Catálogo de planos para cadastro novo (wizard público e dependente).
+
+    Só `PlanTier`/`PlanPrice` (PRD-127/144 C-01) — o catálogo legado
+    (`SubscriptionPlan`) hoje só contém o plano Veterano (fidelidade), que
+    exige tempo de matrícula e nunca é elegível para quem está se
+    cadastrando agora (`is_plan_eligible` já rejeitaria no `clean()` do
+    form). Expor esses ids ao cliente é ruído sem propósito de negócio.
+    """
+    return _build_plan_price_catalog_payload()
+
+
 def _build_legacy_plan_catalog_payload(*, prefixed=False):
     plans = list(
         SubscriptionPlan.objects.filter(is_active=True)

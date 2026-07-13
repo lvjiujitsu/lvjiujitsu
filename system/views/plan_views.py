@@ -13,7 +13,8 @@ from system.services.plan_management import (
     get_plan_by_pk,
     get_plan_list,
 )
-from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
+from system.views.person_views import ModalFormMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
 class PlanListView(AdministrativeRequiredMixin, ListView):

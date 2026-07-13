@@ -77,4 +77,6 @@ Use CPFs e e-mails unicos por execucao.
 
 ## Proximo teste
 
-Continuar a partir da selecao de plano e pagamento da mensalidade Asaas conforme o PRD-040.
+Continuar a partir da selecao de plano — catalogo `PlanTier`/`PlanPrice` (PRD-127/129), incluindo desconto familia como modificador de tier — e pagamento da mensalidade via Asaas (PIX/cartao) ou Stripe recorrente conforme o ciclo do plano escolhido (PRD-041/137), seguindo o PRD-040.
+
+Para perfis operacionais sequenciais (professor, administrativo) fora do escopo aluno/dependente/responsavel destes guias, ver PRD-115.

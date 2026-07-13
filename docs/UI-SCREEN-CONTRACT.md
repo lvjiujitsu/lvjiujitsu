@@ -215,19 +215,19 @@ Flags reais no request (via middleware):
 | Template | Rota | View | Status |
 |---|---|---|---|
 | `login/login_form.html` | `GET/POST /login/` | `PortalLoginView` | **implementado** (PRD-030) |
-| `login/password_reset_form.html` | `GET/POST /password-reset/` | `PortalPasswordResetView` | pendente |
-| `login/password_reset_done.html` | `GET /password-reset/done/` | `PortalPasswordResetDoneView` | pendente |
-| `login/password_reset_confirm.html` | `GET/POST /reset/<token>/` | `PortalPasswordResetConfirmView` | pendente |
-| `login/password_reset_complete.html` | `GET /reset/done/` | `PortalPasswordResetCompleteView` | pendente |
+| `login/password_reset_form.html` | `GET/POST /password-reset/` | `PortalPasswordResetView` | **implementado** |
+| `login/password_reset_done.html` | `GET /password-reset/done/` | `PortalPasswordResetDoneView` | **implementado** |
+| `login/password_reset_confirm.html` | `GET/POST /reset/<token>/` | `PortalPasswordResetConfirmView` | **implementado** |
+| `login/password_reset_complete.html` | `GET /reset/done/` | `PortalPasswordResetCompleteView` | **implementado** |
 
-### 9.2 Dashboards
+### 9.2 Home unificada
+
+A home é uma única superfície por permissão (PRD-043), não um dashboard por papel.
 
 | Template | Rota | View | Status |
 |---|---|---|---|
-| `home/admin/dashboard.html` | `GET /home/admin/` | `AdminHomeView` | pendente |
-| `home/administrative/dashboard.html` | `GET /home/administrative/` | `AdministrativeHomeView` | pendente |
-| `home/instructor/dashboard.html` | `GET /home/instructor/` | `InstructorHomeView` | pendente |
-| `home/student/dashboard.html` | `GET /home/student/` | `StudentHomeView` | pendente |
+| `home/dashboard.html` | `GET /home/` | `HomeView` | **implementado** — contexto varia por papel (`portal_is_technical_admin`, `portal_is_administrative`, `portal_is_instructor`, `portal_is_student`) dentro da mesma tela |
+| — | `GET /dashboard/` | `DashboardRedirectView` | Redireciona para `/home/` pós-login |
 
 ### 9.3 Demais módulos (rotas removidas da fase 1 — readicionadas conforme PRDs)
 
@@ -245,9 +245,15 @@ Flags reais no request (via middleware):
 
 ## 10. Componentes mínimos obrigatórios
 
-### Shell global (a implementar)
+### Shell global (estado real — rollout parcial, PRD-141 Onda P0)
 
-- `base.html` — shell padrão das telas autenticadas.
+`templates/lv/base.html` **existe** desde jul/2026 (PRD-141 Onda P0) com blocos `title`, `extra_css`, `body_class`, `topbar`, `page_class`, `content`, `modals`, `extra_js`. Inclui favicon, meta viewport, `theme_boot.js`/`theme_toggle.js` versionados e mensagens do sistema. Ainda convivem quatro padrões enquanto a migração dos ~62 standalone não termina:
+
+- **`lv/base.html`** (piloto: `templates/people/person_list.html`, `templates/calendar/calendar.html`) — shell único; tema/topbar/mensagens herdados, tela só declara `content`/`extra_css`/`extra_js`/`modals`.
+- **Standalone** (~60 restantes) — HTML completo próprio, tema aplicado por IIFE inline lendo `localStorage["lv-theme"]`. Migração faseada (admin → home → wizard) pendente, PRD-141 Onda P1/P2.
+- **Auth** — `{% extends "auth/base_auth.html" %}` (login, wizard de reset de senha).
+- **Modal CRUD** — `{% extends "lv/modal_frame.html" %}`, controlado por `static/system/js/lv/crud_modal.js` e `modal_child.js`; tema via `static/system/js/lv/theme_boot.js` e `theme_toggle.js`; tokens em `static/system/css/lv/base.css`.
+
 - Topbar com: logo LV, nome do portal, menu do usuário, alternância de tema.
 - Drawer/sidebar refletindo permissões reais — nunca mostra link inacessível.
 - Telas de autenticação são standalone (não herdam `base.html`), mas compartilham tokens e tema.
@@ -506,20 +512,20 @@ Padrão portado do projeto irmão Visary (PRD-066). Aplica-se a todos os hubs e 
 
 **Implementação**
 - Modal é um `<dialog class="crud-modal">` com `.crud-modal__header` (eyebrow + título + botão `.crud-modal__close` 44×44) e corpo iframe (`.crud-modal__frame`) ou `.crud-modal__body` para formulário curto.
-- Conteúdo server-rendered: criar/editar/visualizar carregam rota com `?modal=1`; o controlador `crud_modal.js` abre o iframe e o `crud_frame.js` sincroniza tema e sinaliza conclusão por `postMessage`.
+- Conteúdo server-rendered: criar/editar/visualizar carregam rota com `?modal=1`; o controlador `static/system/js/lv/crud_modal.js` abre o iframe e `static/system/js/lv/modal_child.js` sincroniza tema (via `theme_boot.js`) e sinaliza conclusão por `postMessage`.
 - GET de rota antiga de popup redireciona para a superfície principal com modal aberto por estado previsível (query).
 - POST inválido re-renderiza a superfície principal com o modal aberto e erros por campo.
-- Excluir usa diálogo de confirmação (`data-confirm-submit`) e trata `ProtectedError` com mensagem por vínculo.
+- Excluir usa diálogo de confirmação (`static/system/js/lv/confirm_delete.js`, `data-confirm-submit`) e trata `ProtectedError` com mensagem por vínculo.
 
 **Estados**
 - CRUD modal: `closed` → `open` → `submitting` → `success` ou `error`.
 - Diálogo destrutivo: `closed` → `confirmable` → `submitting` → `success` ou `error`.
 
-**Fundação compartilhada obrigatória** (reescrita do zero em PRD-068, referência Visary)
-- `templates/lv/base.html`, `templates/lv/modal_base.html`, `templates/lv/modal_done.html`.
+**Fundação compartilhada real (estado atual — não é um `base.html` único; ver §10)**
+- `templates/lv/modal_frame.html`, `templates/lv/modal_done.html`.
 - `static/system/css/lv/base.css` (tokens + shell + componentes + ações icônicas + modal CRUD).
-- `static/system/js/lv/theme.js`, `crud_modal.js`, `crud_frame.js`.
-- Sem CSS/JS inline de comportamento; cada módulo estende `lv/base.html`.
+- `static/system/js/lv/theme_boot.js`, `theme_toggle.js`, `crud_modal.js`, `modal_child.js`, `confirm_delete.js`.
+- Sem CSS/JS inline de comportamento nas telas que já usam `lv/modal_frame.html`; standalones ainda têm IIFE de tema inline (débito PRD-141 M-01).
 
 **Validação**
 - Desktop e mobile sem overflow horizontal; tema claro e escuro corretos; console sem erro crítico; modal abre/fecha por botão, backdrop e Esc.
@@ -554,4 +560,17 @@ Regra portada do Visary (PRD-068).
 [2026-06-29] Adicionada Seção 15.7 — Anti-KPI não solicitado (PRD-067):
              paridade de CSS de Pessoas (linhas, filtros 44px, responsividade mobile) e
              remoção da faixa de KPIs não solicitada do hub operacional.
+[2026-07-09] Correção pós-auditoria PRD-138/139/141 (Onda 0, sem mudança de código):
+             §9.1 password reset marcado implementado (estava "pendente").
+             §9.2 reescrita — home unificada `/home/` (PRD-043), dashboards por papel nunca existiram como rotas separadas.
+             §10 e §15.6 corrigidos — não existia `lv/base.html`/`theme.js`/`crud_frame.js`; nomes reais
+             eram `templates/lv/modal_frame.html` e `static/system/js/lv/{theme_boot,theme_toggle,crud_modal,modal_child,confirm_delete}.js`.
+[2026-07-09] PRD-141 Onda P0 implementada: `templates/lv/base.html` criado (shell único com
+             blocos title/extra_css/topbar/content/modals/extra_js); piloto em
+             `templates/people/person_list.html` e `templates/calendar/calendar.html` (zero diff
+             visual, validado desktop/mobile/tema claro-escuro). `|safe` em JSON substituído por
+             `json_script` em `register.html`/`dependent_registration.html` (C-05). `?v=` de
+             `theme_boot.js`/`theme_toggle.js`/`crud_modal.js` normalizado para `20260709-1` em
+             todos os 44 templates que os referenciam (M-02/M-03). §10 atualizado para refletir
+             rollout parcial.
 ```

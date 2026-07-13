@@ -9,19 +9,19 @@
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
 
-  {# Dados de contexto do servidor — lidos pelo JS #}
-  <script type="application/json" id="reg-catalog-json">{{ registration_catalog_json|safe }}</script>
-  <script type="application/json" id="reg-plan-catalog-json">{{ plan_catalog_json|safe }}</script>
-  <script type="application/json" id="reg-product-catalog-json">{{ product_catalog_json|safe }}</script>
-  <script type="application/json" id="reg-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
-  <script type="application/json" id="reg-fee-config-json">{{ fee_config_json|safe }}</script>
+  {# Dados de contexto do servidor — lidos pelo JS. json_script escapa com segurança (sem |safe). #}
+  {{ registration_catalog_json|json_script:"reg-catalog-json" }}
+  {{ plan_catalog_json|json_script:"reg-plan-catalog-json" }}
+  {{ product_catalog_json|json_script:"reg-product-catalog-json" }}
+  {{ ibjjf_categories_json|json_script:"reg-ibjjf-json" }}
+  {{ fee_config_json|json_script:"reg-fee-config-json" }}
   <script type="application/json" id="reg-post-plan-json">{{ post_plan_payment_complete|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-plan-is-trial-json">{{ plan_is_trial|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
   <script type="application/json" id="reg-post-materials-skipped-json">{{ post_materials_skipped|yesno:"true,false" }}</script>
-  <script type="application/json" id="reg-plan-order-json">{{ plan_order_json|safe }}</script>
-  <script type="application/json" id="reg-materials-order-json">{{ materials_order_json|safe }}</script>
-  <script type="application/json" id="reg-pending-person-json">{{ pending_person_json|safe }}</script>
+  {{ plan_order_json|json_script:"reg-plan-order-json" }}
+  {{ materials_order_json|json_script:"reg-materials-order-json" }}
+  {{ pending_person_json|json_script:"reg-pending-person-json" }}
 </head>
 <body class="register-page">
 
@@ -67,6 +67,8 @@
       id="wizard-form"
       method="post"
       action="{% url 'system:register' %}"
+      data-eligibility-url="{% url 'system:registration-eligibility' %}"
+      data-validate-coupon-url="{% url 'system:validate-coupon' %}"
       novalidate
     >
       {% csrf_token %}
@@ -1169,6 +1171,8 @@
 
   </div>{# /wizard-shell #}
 
-  <script src="{% static 'system/js/auth/register.js' %}?v=49" defer></script>
+  <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
+  <script src="{% static 'system/js/auth/wizard_shared.js' %}?v=1"></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=53" defer></script>
 </body>
 </html>

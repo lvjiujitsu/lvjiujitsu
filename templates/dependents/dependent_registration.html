@@ -9,11 +9,12 @@
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
   <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=14">
-  <script type="application/json" id="dep-class-catalog-json">{{ class_catalog_json|safe }}</script>
-  <script type="application/json" id="dep-plan-catalog-json">{{ plan_catalog_json|safe }}</script>
-  <script type="application/json" id="dep-product-catalog-json">{{ product_catalog_json|safe }}</script>
-  <script type="application/json" id="dep-owner-plan-context-json">{{ owner_plan_context_json|safe }}</script>
-  <script type="application/json" id="dep-ibjjf-json">{{ ibjjf_categories_json|safe }}</script>
+  {# json_script escapa com segurança (sem |safe) #}
+  {{ class_catalog_json|json_script:"dep-class-catalog-json" }}
+  {{ plan_catalog_json|json_script:"dep-plan-catalog-json" }}
+  {{ product_catalog_json|json_script:"dep-product-catalog-json" }}
+  {{ owner_plan_context_json|json_script:"dep-owner-plan-context-json" }}
+  {{ ibjjf_categories_json|json_script:"dep-ibjjf-json" }}
 </head>
 <body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
 
@@ -67,6 +68,7 @@
       data-payment-confirmed="{{ payment_confirmed|yesno:'true,false' }}"
       data-materials-confirmed="{{ materials_confirmed|yesno:'true,false' }}"
       data-family-plan-available="{{ family_plan_available|yesno:'true,false' }}"
+      data-eligibility-url="{% url 'system:registration-eligibility' %}"
       novalidate
     >
       {% csrf_token %}
@@ -412,6 +414,8 @@
     </div>
   </div>
 
-  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=19" defer></script>
+  <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
+  <script src="{% static 'system/js/auth/wizard_shared.js' %}?v=1"></script>
+  <script src="{% static 'system/js/dependents/dependent_registration.js' %}?v=23" defer></script>
 </body>
 </html>

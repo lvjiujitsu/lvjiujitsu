@@ -5,13 +5,12 @@ from django.utils import timezone
 from django.utils.formats import date_format
 
 from system.models.membership import (
-    Membership,
     MembershipCredit,
     MembershipCreditSource,
     MembershipCreditStatus,
     MembershipStatus,
 )
-from system.models.plan import PlanPrice, SubscriptionPlan
+from system.models.plan import PlanPrice
 from system.models.registration_order import (
     OrderKind,
     PaymentProvider,
@@ -38,6 +37,7 @@ from system.services.registration_checkout import (
 )
 from system.services.stripe_admin_actions import (
     StripeAdminActionError,
+    cancel_membership,
     refund_order,
 )
 from system.utils.plan_commercial import COMMERCIAL_TIER_LABELS, resolve_commercial_tier
@@ -305,7 +305,11 @@ def build_plan_catalog(person, membership):
     current_plan = _current_plan_reference(membership)
     current_catalog_id = _catalog_id_for_plan(current_plan) if current_plan is not None else None
 
-    legacy_plans = get_eligible_plans(eligibility).exclude(pk=membership.plan_id)
+    legacy_plans = (
+        get_eligible_plans(eligibility)
+        .filter(is_loyalty_plan=True)
+        .exclude(pk=membership.plan_id)
+    )
     plan_prices = get_eligible_plan_prices(eligibility).exclude(pk=membership.plan_price_id)
 
     catalog = []
@@ -484,6 +488,29 @@ def create_plan_change_stripe_order(person, membership, new_plan):
         is_plan_change=True,
         notes=notes,
     )
+
+
+@transaction.atomic
+def migrate_membership_off_stripe(membership):
+    cancel_membership(
+        membership,
+        at_period_end=False,
+        reason="Migração para plano fora do Stripe.",
+    )
+    membership.status = MembershipStatus.ACTIVE
+    membership.stripe_subscription_id = ""
+    membership.canceled_at = None
+    membership.cancel_at_period_end = False
+    membership.save(
+        update_fields=[
+            "status",
+            "stripe_subscription_id",
+            "canceled_at",
+            "cancel_at_period_end",
+            "updated_at",
+        ]
+    )
+    return membership
 
 
 @transaction.atomic

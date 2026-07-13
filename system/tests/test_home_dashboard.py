@@ -35,7 +35,8 @@ class HomeDashboardContractTestCase(TestCase):
         self.assertIn("Materiais", content)
         self.assertIn("Planos", content)
         self.assertIn("Tipos de vínculo", content)
-        self.assertIn("Turmas de hoje", content)
+        self.assertEqual(response.context["staff_today_classes"], [])
+        self.assertNotIn("Turmas de hoje", content)
         self.assertIn("Disponível", content)
         self.assertIn("A receber", content)
         self.assertIn("Pendências", content)
@@ -44,6 +45,36 @@ class HomeDashboardContractTestCase(TestCase):
         self.assertNotIn("Django Admin", content)
         self.assertNotIn("quick-link--disabled", content)
         self.assertNotIn('href="#"', content)
+
+    def test_technical_admin_home_shows_today_classes_when_schedules_exist(self):
+        from system.models import ClassCategory, ClassGroup, ClassSchedule
+        from system.services.class_calendar import PYTHON_WEEKDAY_TO_CODE
+
+        category = ClassCategory.objects.create(
+            code="adult-admin-today",
+            display_name="Adulto",
+            audience=CategoryAudience.ADULT,
+        )
+        class_group = ClassGroup.objects.create(
+            display_name="Turma Admin Hoje",
+            class_category=category,
+        )
+        today_weekday = PYTHON_WEEKDAY_TO_CODE[date.today().weekday()]
+        ClassSchedule.objects.create(
+            class_group=class_group,
+            weekday=today_weekday,
+            start_time="06:30",
+        )
+        self._login_technical_admin()
+
+        response = self.client.get(reverse("system:home"))
+        content = response.content.decode("utf-8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["staff_today_classes"])
+        self.assertIn("Turmas de hoje", content)
+        self.assertIn("Turma Admin Hoje", content)
+        self.assertIn("js-open-calendar-modal", content)
 
     def _login_technical_admin(self):
         session = self.client.session

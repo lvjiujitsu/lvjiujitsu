@@ -1,23 +1,21 @@
 (function () {
   'use strict';
 
+  var Wz = window.LV && window.LV.Wizard;
+  if (!Wz) {
+    if (typeof console !== 'undefined' && console.error) {
+      console.error('[LV dependent] wizard_shared.js é obrigatório');
+    }
+    return;
+  }
+
+  var depWizardForm = document.getElementById('dep-wizard-form');
+  var wizardEndpoints = Wz.getFormEndpoints(depWizardForm);
+  var escHtml = Wz.escapeHtml;
+
   function notifyParent(type) {
     if (window.parent === window) return;
     window.parent.postMessage({ type: type }, window.location.origin);
-  }
-
-  function readJson(id) {
-    var el = document.getElementById(id);
-    if (!el) return null;
-    try { return JSON.parse(el.textContent || 'null'); } catch (e) { return null; }
-  }
-
-  function escHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   }
 
   function fmtPrice(val) {
@@ -138,43 +136,13 @@
     'Quinta-feira': 'Qui', 'Sexta-feira': 'Sex', 'Sábado': 'Sáb', 'Domingo': 'Dom',
   };
 
-  var ibjjfCategories = readJson('dep-ibjjf-json') || [];
-  var depProductCatalog = readJson('dep-product-catalog-json') || [];
+  var ibjjfCategories = Wz.readJsonScript('dep-ibjjf-json') || [];
+  var depProductCatalog = Wz.readJsonScript('dep-product-catalog-json') || [];
 
   var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
 
-  function calcAgeYears(birthdateStr) {
-    if (!birthdateStr) return null;
-    var y, m, day;
-    if (birthdateStr.indexOf('-') !== -1) {
-      // <input type="date"> sempre envia AAAA-MM-DD
-      var isoParts = birthdateStr.split('-');
-      if (isoParts.length !== 3) return null;
-      y = parseInt(isoParts[0], 10); m = parseInt(isoParts[1], 10); day = parseInt(isoParts[2], 10);
-    } else {
-      var brParts = birthdateStr.split('/');
-      if (brParts.length !== 3) return null;
-      day = parseInt(brParts[0], 10); m = parseInt(brParts[1], 10); y = parseInt(brParts[2], 10);
-    }
-    var d = new Date(y, m - 1, day);
-    if (isNaN(d.getTime())) return null;
-    var today = new Date();
-    var age = today.getFullYear() - d.getFullYear();
-    if (today.getMonth() < d.getMonth() || (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())) age--;
-    return age;
-  }
-
   function resolveAudience(birthdateStr) {
-    var age = calcAgeYears(birthdateStr);
-    if (age === null) return null;
-    if (ibjjfCategories.length === 0) return age >= 16 ? 'adult' : (age >= 10 ? 'juvenile' : 'kids');
-    var sorted = ibjjfCategories.slice().sort(function (a, b) { return a.minimum_age - b.minimum_age; });
-    for (var i = 0; i < sorted.length; i++) {
-      var cat = sorted[i];
-      var maxOk = cat.maximum_age === null || cat.maximum_age === undefined || age <= cat.maximum_age;
-      if (age >= cat.minimum_age && maxOk) return cat.audience;
-    }
-    return null;
+    return Wz.resolveAudience(birthdateStr, ibjjfCategories);
   }
 
   function getDependentPerson() {
@@ -186,7 +154,7 @@
 
   function filterGroupsByPerson(groups, person) {
     var audience = resolveAudience(person.birthdate);
-    if (!audience) return groups; // sem data de nascimento → exibe tudo
+    if (!audience) return groups;
     var sex = person.sex;
     return groups.filter(function (g) {
       var ga = g.category_audience;
@@ -204,7 +172,7 @@
   function bindClassCatalog() {
     var container = document.getElementById('dep-class-catalog');
     var nativeSelect = document.getElementById('id_dependent_class_groups');
-    var catalog = readJson('dep-class-catalog-json');
+    var catalog = Wz.readJsonScript('dep-class-catalog-json');
     if (!container || !nativeSelect || !catalog) return null;
 
     var selectedIds = Array.prototype.map.call(nativeSelect.selectedOptions || [], function (o) { return o.value; });
@@ -299,6 +267,37 @@
   var FINANCIAL_MODE_FAMILY_EXISTING = 'family_existing';
   var FINANCIAL_MODE_FAMILY_UPGRADE = 'family_upgrade';
 
+  var depEligibility = { fetchKey: null, planIds: null, pending: false };
+
+  function getWizardCsrfToken() {
+    return window.LV.getCsrfToken();
+  }
+
+  function getSelectedValues(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.selectedOptions) return [];
+    return Array.prototype.map.call(el.selectedOptions, function (o) { return o.value; });
+  }
+
+  function buildDependentEligibilityPayload() {
+    return {
+      registration_profile: 'holder',
+      include_dependent: false,
+      holder_birthdate: getVal('id_dependent_birthdate') || '',
+      holder_class_groups: getSelectedValues('id_dependent_class_groups'),
+    };
+  }
+
+  function refreshDependentEligibilityFromServer(onUpdated) {
+    Wz.fetchEligibility({
+      url: wizardEndpoints.eligibilityUrl,
+      csrfToken: getWizardCsrfToken(),
+      payload: buildDependentEligibilityPayload(),
+      cache: depEligibility,
+      onUpdated: onUpdated,
+    });
+  }
+
   function bindPlanCatalog() {
     var filtersArea = document.getElementById('dep-plan-filters-area');
     var cardsArea = document.getElementById('dep-plan-cards-area');
@@ -308,8 +307,8 @@
     var familyCheckbox = document.getElementById('id_use_family_plan');
     var modeHint = document.getElementById('dep-plan-mode-hint');
     var form = document.getElementById('dep-wizard-form');
-    var ownerContext = readJson('dep-owner-plan-context-json') || {};
-    var catalog = readJson('dep-plan-catalog-json');
+    var ownerContext = Wz.readJsonScript('dep-owner-plan-context-json') || {};
+    var catalog = Wz.readJsonScript('dep-plan-catalog-json');
     if (!filtersArea || !cardsArea || !planSelect || !checkoutSelect || !catalog) return null;
 
     var filter = { frequency: null, cycle: null, method: null };
@@ -365,10 +364,18 @@
 
     function eligiblePlans() {
       var audience = resolveAudience(getVal('id_dependent_birthdate'));
+      var serverKey = Wz.eligibilityFetchKey(buildDependentEligibilityPayload());
+      var serverAuthorized = null;
+      if (depEligibility.planIds && depEligibility.fetchKey === serverKey) {
+        serverAuthorized = {};
+        depEligibility.planIds.forEach(function (id) { serverAuthorized[id] = true; });
+      }
       return catalog.filter(function (p) {
         if (p.is_family_plan) {
           return p.is_family_plan && familyUpgradePlanEligible(p, audience);
         }
+        if (serverAuthorized) return !!serverAuthorized[p.id];
+
         return dependentOwnPlanEligible(p, audience);
       });
     }
@@ -547,6 +554,15 @@
         '</div></button>';
     }
 
+    function showPlanCardsEmpty(message, prominent) {
+      cardsArea.textContent = '';
+      Wz.setElementText(
+        cardsArea,
+        message,
+        prominent ? 'plan-cards--empty plan-cards--empty-prominent' : 'plan-cards--empty'
+      );
+    }
+
     function renderCards() {
       if (!hasMinimumFilters()) {
         selectedPlanId = null;
@@ -554,7 +570,7 @@
         checkoutSelect.value = 'pay_later';
         syncFinancialMode(FINANCIAL_MODE_DEPENDENT_OWN);
         syncHint('Escolha frequência e período para ver os planos.', false);
-        cardsArea.innerHTML = '<p class="plan-cards--empty plan-cards--empty-prominent">Escolha frequência e período para ver os planos disponíveis.</p>';
+        showPlanCardsEmpty('Escolha frequência e período para ver os planos disponíveis.', true);
         return;
       }
 
@@ -567,7 +583,7 @@
       );
 
       if (!plans.length && !familyPlanAvailable) {
-        cardsArea.innerHTML = '<p class="plan-cards--empty">Nenhum plano disponível para os filtros selecionados.</p>';
+        showPlanCardsEmpty('Nenhum plano disponível para os filtros selecionados.', false);
         return;
       }
 
@@ -681,6 +697,7 @@
         renderPlanPaidBanner();
         return;
       }
+      refreshDependentEligibilityFromServer(refresh);
       var freqs = uniqueValues(function (p) { return p.weekly_frequency; }).map(Number).sort(function (a, b) { return a - b; });
       if (filter.frequency !== null && freqs.indexOf(filter.frequency) === -1) filter.frequency = null;
       if (!filter.frequency && freqs.length) filter.frequency = freqs[0];
@@ -704,7 +721,7 @@
       if (currentFinancialMode() === FINANCIAL_MODE_FAMILY_EXISTING) return true;
       if (!hasMinimumFilters()) {
         syncHint('Escolha frequência e período antes de continuar.', true);
-        cardsArea.innerHTML = '<p class="plan-cards--empty plan-cards--empty-prominent">Escolha frequência e período para ver os planos disponíveis.</p>';
+        showPlanCardsEmpty('Escolha frequência e período para ver os planos disponíveis.', true);
         return false;
       }
       if (!selectedPlanId) {
@@ -745,16 +762,10 @@
       return form && form.getAttribute('data-materials-confirmed') === 'true';
     }
 
-    function fmtCurrency(val) {
-      var n = parseFloat(val);
-      return isNaN(n) ? 'R$ —' : 'R$ ' + n.toFixed(2).replace('.', ',');
-    }
-
     function getVariantInput(variantId) {
       return document.getElementById('id_material_variant_' + variantId);
     }
 
-    // Reconstrói o carrinho a partir dos campos ocultos já preenchidos (retomada pós-pagamento/voltar)
     function rebuildCartFromFields() {
       cart = [];
       depProductCatalog.forEach(function (product) {
@@ -826,7 +837,7 @@
           html += '<p class="prod-card__desc">' + escHtml(product.description) + '</p>';
         }
         html += '<div class="prod-card__price-row">';
-        html += '<span class="prod-card__price">' + fmtCurrency(product.price) + '</span>';
+        html += '<span class="prod-card__price">' + fmtPrice(product.price) + '</span>';
         if (!hasStock) {
           html += '<span class="prod-card__stock-badge prod-card__stock-badge--out">Sem estoque</span>';
         } else {
@@ -1021,12 +1032,12 @@
         html += '<p class="cart-item__name">' + escHtml(item.productName) + '</p>';
         html += '<p class="cart-item__meta">' + escHtml(item.variantLabel) + ' · Qtd: ' + item.qty + '</p>';
         html += '</div>';
-        html += '<span class="cart-item__subtotal">' + fmtCurrency(item.unitPrice * item.qty) + '</span>';
+        html += '<span class="cart-item__subtotal">' + fmtPrice(item.unitPrice * item.qty) + '</span>';
         html += '<button type="button" class="cart-item__remove" data-variant-id="' + item.variantId + '" aria-label="Remover">×</button>';
         html += '</div>';
       });
       html += '</div>';
-      html += '<div class="cart-total-row"><span>Total</span><strong>' + fmtCurrency(getCartTotal()) + '</strong></div>';
+      html += '<div class="cart-total-row"><span>Total</span><strong>' + fmtPrice(getCartTotal()) + '</strong></div>';
       cartArea.innerHTML = html;
 
       cartArea.querySelectorAll('.cart-item__remove').forEach(function (btn) {
@@ -1064,9 +1075,9 @@
         html += '<p class="checkout-summary__label">Materiais adquiridos</p>';
         cart.forEach(function (item) {
           html += '<div class="order-review-item"><span>' + escHtml(item.productName) + ' (' + escHtml(item.variantLabel) + ') × ' + item.qty + '</span>';
-          html += '<span>' + fmtCurrency(item.unitPrice * item.qty) + '</span></div>';
+          html += '<span>' + fmtPrice(item.unitPrice * item.qty) + '</span></div>';
         });
-        html += '<p class="checkout-summary__plan-meta" style="margin-top:.5rem">Total: ' + fmtCurrency(getCartTotal()) + '</p>';
+        html += '<p class="checkout-summary__plan-meta" style="margin-top:.5rem">Total: ' + fmtPrice(getCartTotal()) + '</p>';
         html += '</div></div>';
       }
       confirmArea.innerHTML = html;
@@ -1134,17 +1145,28 @@
     var box = document.getElementById('dep-review-summary');
     if (!box) return null;
 
-    function addRow(rows, label, value) {
+    function addRowData(rows, label, value) {
       if (!value) return;
-      rows.push(
-        '<div class="review-row"><span class="review-row__label">' + escHtml(label) +
-        '</span><span class="review-row__value">' + escHtml(value) + '</span></div>'
-      );
+      rows.push({ label: label, value: value });
+    }
+
+    function renderReviewRow(label, value) {
+      var row = document.createElement('div');
+      row.className = 'review-row';
+      var labelEl = document.createElement('span');
+      labelEl.className = 'review-row__label';
+      labelEl.textContent = label;
+      var valueEl = document.createElement('span');
+      valueEl.className = 'review-row__value';
+      valueEl.textContent = value;
+      row.appendChild(labelEl);
+      row.appendChild(valueEl);
+      return row;
     }
 
     function classesSummary() {
       var nativeSelect = document.getElementById('id_dependent_class_groups');
-      var catalog = readJson('dep-class-catalog-json') || [];
+      var catalog = Wz.readJsonScript('dep-class-catalog-json') || [];
       if (!nativeSelect) return '';
       var selectedIds = Array.prototype.map.call(nativeSelect.selectedOptions || [], function (o) { return o.value; });
       var names = catalog
@@ -1164,7 +1186,7 @@
       }
       var planId = getVal('id_selected_plan');
       if (!planId) return '';
-      var catalog = readJson('dep-plan-catalog-json') || [];
+      var catalog = Wz.readJsonScript('dep-plan-catalog-json') || [];
       var plan = catalog.filter(function (p) { return String(p.id) === String(planId); })[0];
       if (!plan) return '';
       var price = plan.payment_method === 'pix' ? plan.charge_pix : plan.charge_card;
@@ -1190,25 +1212,26 @@
       return parts.join(', ');
     }
 
-    function formatIsoDateForDisplay(isoStr) {
-      if (!isoStr || isoStr.indexOf('-') === -1) return isoStr;
-      var parts = isoStr.split('-');
-      if (parts.length !== 3) return isoStr;
-      return parts[2] + '/' + parts[1] + '/' + parts[0];
-    }
-
     function refresh() {
       var rows = [];
-      addRow(rows, 'Nome', getVal('id_dependent_name'));
-      addRow(rows, 'CPF', getVal('id_dependent_cpf'));
-      addRow(rows, 'Data de nascimento', formatIsoDateForDisplay(getVal('id_dependent_birthdate')));
-      addRow(rows, 'Parentesco', getSelectedOptionText('id_dependent_kinship_type'));
-      addRow(rows, 'Turma(s)', classesSummary());
-      addRow(rows, 'Plano', planSummary());
-      addRow(rows, 'Materiais', materialsSummary() || 'Nenhum material selecionado');
-      box.innerHTML = rows.length
-        ? rows.join('')
-        : '<p class="review-empty">Nenhum dado preenchido.</p>';
+      addRowData(rows, 'Nome', getVal('id_dependent_name'));
+      addRowData(rows, 'CPF', getVal('id_dependent_cpf'));
+      addRowData(rows, 'Data de nascimento', Wz.formatIsoDateForDisplay(getVal('id_dependent_birthdate')));
+      addRowData(rows, 'Parentesco', getSelectedOptionText('id_dependent_kinship_type'));
+      addRowData(rows, 'Turma(s)', classesSummary());
+      addRowData(rows, 'Plano', planSummary());
+      addRowData(rows, 'Materiais', materialsSummary() || 'Nenhum material selecionado');
+      box.textContent = '';
+      if (!rows.length) {
+        var empty = document.createElement('p');
+        empty.className = 'review-empty';
+        empty.textContent = 'Nenhum dado preenchido.';
+        box.appendChild(empty);
+        return;
+      }
+      rows.forEach(function (row) {
+        box.appendChild(renderReviewRow(row.label, row.value));
+      });
     }
 
     refresh();

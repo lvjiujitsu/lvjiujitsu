@@ -62,11 +62,10 @@ Depois, executar as seeds necessárias em ordem.
 15. `seed_system_initial_product_catalog`
 16. `seed_system_initial_subscription_plans` — a partir da PRD-127, gera só o plano Veterano (Individual/Família migraram para `PlanTier`/`PlanPrice`)
 17. `seed_system_initial_subscription_plans_values` — idem; só popula valores de Veterano
-18. `seed_system_initial_subscription_plans_stripe` — legado/obsoleto (JSON vazio); Individual/Família Stripe migraram para o passo 22
-19. `seed_system_initial_coupons`
-20. `seed_system_initial_holidays`
-21. `seed_system_initial_plan_tiers` — tiers comerciais (audience x frequência) com desconto família (PRD-127)
-22. `seed_system_initial_plan_prices` — preços por tier x forma de pagamento x ciclo (PRD-127); depende do passo 21
+18. `seed_system_initial_coupons`
+19. `seed_system_initial_holidays`
+20. `seed_system_initial_plan_tiers` — tiers comerciais (audience x frequência) com desconto família (PRD-127)
+21. `seed_system_initial_plan_prices` — preços por tier x forma de pagamento x ciclo (PRD-127); depende do passo 20 (Individual/Família Stripe migraram para este catálogo)
 
 Seeds específicas, como migração Kanri, devem ser executadas somente quando o objetivo exigir.
 
@@ -93,6 +92,16 @@ Arquivos de dados:
 Senha local das contas fictícias: `LvTest@2026`.
 
 Usar essas contas para homologar, uma a uma, as combinações de aluno, dependente, responsável, professor, administrativo, papéis operacionais, faixas, experiência marcial e tipos sanguíneos descritas na PRD-111.
+
+### Amostra mínima de Pessoas (PRD-070) — **obsoleto**
+
+`seed_system_people_flow_samples` está **fora do bootstrap canônico** e emite `DeprecationWarning`. Use os seeds `seed_system_initial_test_*` acima para homologação estruturada. O comando permanece apenas para compatibilidade local pontual; depende de `seed_system_initial_person_type` já aplicado.
+
+```powershell
+.\.venv\Scripts\python.exe manage.py seed_system_people_flow_samples
+```
+
+Senha local das contas: `lv-pessoas-2026`.
 
 ## Supabase HG
 

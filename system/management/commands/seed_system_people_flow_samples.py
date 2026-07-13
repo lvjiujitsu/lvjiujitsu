@@ -1,4 +1,5 @@
 from datetime import date, time
+import warnings
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -28,9 +29,24 @@ PEOPLE_FLOW_SAMPLE_PASSWORD = "lv-pessoas-2026"
 
 
 class Command(BaseCommand):
-    help = "Cria poucos dados locais para validar visualmente o fluxo de Pessoas."
+    help = (
+        "DEPRECATED: cria amostras locais de Pessoas fora do bootstrap canônico. "
+        "Prefira seed_system_initial_test_* documentado em docs/OPERACAO-BANCO-SEEDS.md."
+    )
 
     def handle(self, *args, **options):
+        warnings.warn(
+            "seed_system_people_flow_samples está obsoleto e fora do bootstrap canônico. "
+            "Use seed_system_initial_test_students/guardians/teachers/administrative.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.stdout.write(
+            self.style.WARNING(
+                "AVISO: comando obsoleto — prefira os seeds canônicos "
+                "seed_system_initial_test_* (ver docs/OPERACAO-BANCO-SEEDS.md)."
+            )
+        )
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_people_flow_samples"))
 
         with transaction.atomic():

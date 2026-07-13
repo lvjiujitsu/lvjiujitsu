@@ -1,6 +1,6 @@
 import calendar
 from collections import OrderedDict
-from datetime import date, timedelta
+from datetime import date
 from types import SimpleNamespace
 
 from django.conf import settings
@@ -373,7 +373,7 @@ def get_today_classes_for_person(person):
 def get_today_classes_for_instructor(person):
     today = timezone.localdate()
     weekday_code = PYTHON_WEEKDAY_TO_CODE[today.weekday()]
-    class_group_ids = _get_instructor_class_group_ids(person)
+    class_group_ids = get_instructor_class_group_ids(person)
 
     schedules = list(
         ClassSchedule.objects.filter(
@@ -509,15 +509,9 @@ def get_today_classes_for_instructor(person):
 
 
 def get_today_classes_for_administrative(person):
-    """Today's classes for administrative-assistant.
-
-    Instructor controls for class groups they manage (main teacher or assignment).
-    Student check-in for enrolled groups not in their instructor groups.
-    Aulões: instructor role when they are the teacher, student role otherwise.
-    """
     today = timezone.localdate()
     weekday_code = PYTHON_WEEKDAY_TO_CODE[today.weekday()]
-    instructor_group_ids = set(_get_instructor_class_group_ids(person))
+    instructor_group_ids = set(get_instructor_class_group_ids(person))
     holiday = Holiday.objects.filter(date=today, is_active=True).first()
     entries = []
 
@@ -783,10 +777,15 @@ def get_today_classes_staff_overview():
             )
         )
 
-    for special in SpecialClass.objects.filter(date=today).select_related("teacher").order_by("start_time"):
-        special_checkins = list(
-            SpecialClassCheckin.objects.filter(special_class=special).select_related("person")
-        )
+    specials_today = list(
+        SpecialClass.objects.filter(date=today).select_related("teacher").order_by("start_time")
+    )
+    special_checkins_by_special_id = {}
+    for checkin in SpecialClassCheckin.objects.filter(special_class__in=specials_today).select_related("person"):
+        special_checkins_by_special_id.setdefault(checkin.special_class_id, []).append(checkin)
+
+    for special in specials_today:
+        special_checkins = special_checkins_by_special_id.get(special.pk, [])
         is_cancelled, cancellation_reason = _special_cancel_state(special, holiday)
         entries.append(
             SimpleNamespace(
@@ -824,8 +823,7 @@ def _instructor_checkin_view(checkin, *, is_special):
 
 
 def get_instructor_checkin_history(person, limit=12):
-    """Frequência própria do professor: dias em que registrou presença explícita."""
-    class_group_ids = _get_instructor_class_group_ids(person)
+    class_group_ids = get_instructor_class_group_ids(person)
 
     class_entries = [
         SimpleNamespace(
@@ -1196,7 +1194,10 @@ def get_student_checkin_history(person, limit=12):
     return history[:limit]
 
 
-def _get_instructor_class_group_ids(person):
+def get_instructor_class_group_ids(person):
+    cached = getattr(person, "_instructor_class_group_ids_cache", None)
+    if cached is not None:
+        return cached
     main_teacher_group_ids = set(
         ClassGroup.objects.filter(main_teacher=person, is_active=True).values_list("pk", flat=True)
     )
@@ -1206,18 +1207,20 @@ def _get_instructor_class_group_ids(person):
             class_group__is_active=True,
         ).values_list("class_group_id", flat=True)
     )
-    return list(main_teacher_group_ids | assignment_group_ids)
+    result = list(main_teacher_group_ids | assignment_group_ids)
+    person._instructor_class_group_ids_cache = result
+    return result
 
 
 def assert_instructor_owns_schedule(person, schedule_id):
     schedule = ClassSchedule.objects.select_related("class_group").get(pk=schedule_id)
-    if schedule.class_group_id not in _get_instructor_class_group_ids(person):
+    if schedule.class_group_id not in get_instructor_class_group_ids(person):
         raise PermissionError("Você não é responsável por esta turma.")
     return schedule
 
 
 def _can_instructor_access_session(person, schedule, session):
-    if schedule.class_group_id in _get_instructor_class_group_ids(person):
+    if schedule.class_group_id in get_instructor_class_group_ids(person):
         return True
     return bool(session and session.substitute_teacher_id == person.pk)
 
@@ -1299,7 +1302,7 @@ def approve_class_checkin(*, instructor, checkin_id):
         )
         .get(pk=checkin_id)
     )
-    instructor_group_ids = _get_instructor_class_group_ids(instructor)
+    instructor_group_ids = get_instructor_class_group_ids(instructor)
     is_substitute = checkin.session.substitute_teacher_id == instructor.pk
     if checkin.session.schedule.class_group_id not in instructor_group_ids and not is_substitute:
         raise PermissionError("Você não é responsável por esta turma.")
@@ -1350,7 +1353,7 @@ def get_calendar_month_data(year, month):
 
     schedules = (
         ClassSchedule.objects.filter(is_active=True)
-        .select_related("class_group", "class_group__class_category")
+        .select_related("class_group", "class_group__class_category", "class_group__main_teacher")
         .order_by("start_time")
     )
 

@@ -17,7 +17,10 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
 
         self.assertNotIn("SENTINEL_TEST_XZ99", template)
         self.assertIn("register.css' %}?v=26", template)
-        self.assertIn("register.js' %}?v=49", template)
+        self.assertIn("wizard_shared.js' %}?v=1", template)
+        self.assertIn("register.js' %}?v=53", template)
+        self.assertIn('data-eligibility-url="{% url \'system:registration-eligibility\' %}"', template)
+        self.assertIn('data-validate-coupon-url="{% url \'system:validate-coupon\' %}"', template)
         self.assertIn('id="profile-card-teacher-request"', template)
         self.assertIn('id="profile-card-administrative-request"', template)
         self.assertIn('id="administrative-request-suboption"', template)
@@ -47,6 +50,9 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertNotIn("goToSelectedRequestProfile", script)
         self.assertIn("function showOnlyWizardStep", script)
         self.assertIn("function rehydratePendingWizardState", script)
+        self.assertIn("LV.Wizard", script)
+        self.assertIn("wizardEndpoints.eligibilityUrl", script)
+        self.assertIn("wizardEndpoints.validateCouponUrl", script)
         self.assertIn("document.querySelectorAll('.wizard-step')", script)
 
     def test_user_data_render_functions_use_safe_dom_not_innerhtml(self):
@@ -87,10 +93,13 @@ class CalendarTemplateStaticContractTestCase(SimpleTestCase):
         root = Path(__file__).resolve().parents[2]
         template = (root / "templates" / "calendar" / "calendar.html").read_text(encoding="utf-8")
         script = (root / "static" / "system" / "js" / "calendar" / "calendar.js").read_text(encoding="utf-8")
+        extra_js = template.split("{% block extra_js %}", 1)[-1].split("{% endblock %}", 1)[0]
 
-        self.assertIn("system/js/calendar/calendar.js' %}?v=1", template)
+        self.assertIn("{% block extra_js %}", template)
+        self.assertIn("system/js/calendar/calendar.js' %}?v=3", extra_js)
         self.assertNotIn("function applyTheme", template)
-        self.assertNotIn("js-open-day-detail", template.split("<!-- ─── Scripts", 1)[-1])
+        self.assertNotIn("onclick=", template)
+        self.assertNotIn("js-open-day-detail", extra_js)
         self.assertNotIn(".innerHTML", script)
         self.assertIn("function clearChildren", script)
 

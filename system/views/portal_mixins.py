@@ -2,6 +2,8 @@ from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import redirect
 from django.urls import reverse
 
+from system.constants import ADMINISTRATIVE_PERSON_TYPE_CODES, PortalCapability
+
 
 class PortalLoginRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
@@ -38,3 +40,8 @@ class PortalRoleRequiredMixin(PortalLoginRequiredMixin):
         if person is None or not person.person_type_id:
             return False
         return person.person_type.code in self.allowed_codes
+
+
+class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
+    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
+    required_capabilities = (PortalCapability.MANAGE_ACADEMY,)

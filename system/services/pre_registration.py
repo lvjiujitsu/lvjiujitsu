@@ -1,34 +1,8 @@
-"""
-Serviço de pré-cadastro.
-
-Responsável por:
-- Criar/atualizar PreRegistration a partir dos dados do wizard
-- Restaurar o snapshot para re-popular o formulário
-- Montar o resumo de pessoa pendente (pré-cadastro ou Person já criada)
-- Finalizar: migrar os dados para a tabela Person
-"""
-
 import json
-
-from django.utils import timezone
 
 from system.constants import CheckoutAction
 from system.models.pre_registration import PreRegistration, PreRegistrationStatus
 
-# Campos sensíveis que não devem ser armazenados no snapshot
-_EXCLUDED_SNAPSHOT_FIELDS = frozenset({
-    "holder_password",
-    "holder_password_confirm",
-    "dependent_password",
-    "dependent_password_confirm",
-    "guardian_password",
-    "guardian_password_confirm",
-    "student_password",
-    "student_password_confirm",
-    "csrfmiddlewaretoken",
-})
-
-# Campos que o Django processa como lista (MultipleChoiceField) — sempre salvar como list no snapshot
 MULTI_VALUE_FORM_FIELDS = frozenset({
     "holder_class_groups",
     "dependent_class_groups",
@@ -36,35 +10,7 @@ MULTI_VALUE_FORM_FIELDS = frozenset({
 })
 
 
-def build_form_snapshot(post_data: dict) -> dict:
-    """
-    Extrai do POST data apenas os campos relevantes do wizard,
-    excluindo senhas e tokens CSRF.
-
-    Args:
-        post_data: QueryDict ou dict com os dados submetidos.
-
-    Returns:
-        dict seguro para armazenar no form_snapshot.
-    """
-    snapshot = {}
-    for key, value in post_data.items():
-        if key in _EXCLUDED_SNAPSHOT_FIELDS:
-            continue
-        # QueryDict pode ter listas (ex: class_groups MultipleChoiceField)
-        if hasattr(post_data, "getlist"):
-            values = post_data.getlist(key)
-            snapshot[key] = values if len(values) > 1 else value
-        else:
-            snapshot[key] = value
-    return snapshot
-
-
 def build_wizard_form_snapshot(post_data) -> dict:
-    """
-    Constrói o snapshot do wizard a partir do POST bruto, preservando
-    MultipleChoiceFields sempre como lista (mesmo com 1 valor).
-    """
     snapshot = {}
     for key, values in post_data.lists():
         if key == "csrfmiddlewaretoken":
@@ -77,7 +23,6 @@ def build_wizard_form_snapshot(post_data) -> dict:
 
 
 def snapshot_scalar(snapshot, key, default=""):
-    """Lê um campo scalar do snapshot, normalizando caso tenha sido salvo como lista."""
     value = snapshot.get(key, default)
     if isinstance(value, list):
         value = value[0] if value else default
@@ -103,9 +48,6 @@ def resolve_primary_email(cleaned_data):
 
 
 def _legacy_plan_pk_from_catalog_id(catalog_id):
-    """`PreRegistration.selected_plan` é FK a `SubscriptionPlan`; uma seleção
-    `PlanPrice` (catálogo novo da PRD-127) não pode ser atribuída a esse campo
-    — o id de catálogo (string) continua disponível no snapshot bruto."""
     if not catalog_id:
         return None
     from system.services.registration_checkout import resolve_catalog_plan
@@ -115,17 +57,6 @@ def _legacy_plan_pk_from_catalog_id(catalog_id):
 
 
 def save_pre_registration_from_form(session, post_data, cleaned_data):
-    """
-    Cria ou atualiza o PreRegistration ativo da sessão a partir do form do wizard.
-
-    Args:
-        session: sessão Django (precisa de session_key, cria se ausente).
-        post_data: QueryDict bruto do POST (para montar o snapshot completo).
-        cleaned_data: form.cleaned_data já validado.
-
-    Returns:
-        A instância de PreRegistration criada ou atualizada.
-    """
     snapshot = build_wizard_form_snapshot(post_data)
     if not session.session_key:
         session.create()
@@ -151,7 +82,6 @@ def save_pre_registration_from_form(session, post_data, cleaned_data):
 
 
 def mark_pre_registration_trial_requested(pre_registration):
-    """Marca aula experimental no snapshot do pré-cadastro (fluxo 'pagar depois')."""
     snapshot = pre_registration.form_snapshot or {}
     snapshot["trial_requested"] = True
     pre_registration.form_snapshot = snapshot
@@ -159,136 +89,14 @@ def mark_pre_registration_trial_requested(pre_registration):
     return pre_registration
 
 
-def get_pre_registration_for_session(session_key: str) -> "PreRegistration | None":
-    """
-    Retorna o PreRegistration ativo (não finalizado, não abandonado)
-    para a sessão dada, ou None se não existir.
-    """
-    return (
-        PreRegistration.objects.filter(
-            session_key=session_key,
-            status__in=(
-                PreRegistrationStatus.DRAFT,
-                PreRegistrationStatus.AWAITING_PAYMENT,
-                PreRegistrationStatus.PAYMENT_CONFIRMED,
-            ),
-        )
-        .select_related("selected_plan", "plan_order", "finalized_person")
-        .order_by("-created_at")
-        .first()
-    )
-
-
-def create_or_update_pre_registration(
-    session_key: str,
-    post_data: dict,
-    selected_plan=None,
-    checkout_action: str = "",
-) -> "PreRegistration":
-    """
-    Cria ou atualiza o PreRegistration para a sessão dada com os dados do wizard.
-
-    Sempre sobrescreve o snapshot com os dados mais recentes.
-    Não inclui senhas no snapshot.
-
-    Args:
-        session_key: chave da sessão Django.
-        post_data: dados brutos do POST (QueryDict ou dict).
-        selected_plan: instância de SubscriptionPlan, ou None.
-        checkout_action: 'asaas_card' | 'pix' | 'pay_later' | ''.
-
-    Returns:
-        A instância de PreRegistration criada ou atualizada.
-    """
-    snapshot = build_form_snapshot(post_data)
-
-    registration_profile = snapshot.get("registration_profile", "")
-    holder_cpf = snapshot.get("holder_cpf", "")
-    holder_email = snapshot.get("holder_email", "")
-
-    pre_reg = get_pre_registration_for_session(session_key)
-
-    if pre_reg is None:
-        pre_reg = PreRegistration(session_key=session_key)
-
-    pre_reg.registration_profile = registration_profile
-    pre_reg.holder_cpf = holder_cpf
-    pre_reg.holder_email = holder_email
-    pre_reg.form_snapshot = snapshot
-    if selected_plan is not None:
-        pre_reg.selected_plan = selected_plan
-    if checkout_action:
-        pre_reg.checkout_action = checkout_action
-
-    pre_reg.save()
-    return pre_reg
-
-
-def restore_form_initial(pre_reg: "PreRegistration") -> dict:
-    """
-    Converte o form_snapshot de um PreRegistration de volta para um dict
-    de initial values adequado para o PortalRegistrationForm.
-
-    Senhas são excluídas — o usuário precisará digitá-las novamente.
-
-    Returns:
-        dict com os valores iniciais para passar ao Form como `initial=`.
-    """
-    if not pre_reg or not pre_reg.form_snapshot:
-        return {}
-    return {k: v for k, v in pre_reg.form_snapshot.items()}
-
-
 def get_pending_person_summary(session):
-    """
-    Resolve o resumo de pessoa pendente para exibir no wizard:
-    a partir do PreRegistration ativo, ou — se já finalizado em fluxo legado —
-    a partir da Person criada em sessão.
-    """
-    from system.models import Person, PersonRelationship, PersonRelationshipKind
-
     pre_registration_id = session.get("pending_pre_registration_id")
-    if pre_registration_id:
-        pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
-        if pre_registration is not None:
-            return build_pending_summary_from_pre_registration(pre_registration)
-
-    person_id = session.get("pending_registration_person_id")
-    if not person_id:
+    if not pre_registration_id:
         return None
-    try:
-        person = Person.objects.select_related(
-            "class_group__class_category", "person_type"
-        ).get(pk=person_id)
-    except Person.DoesNotExist:
+    pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
+    if pre_registration is None:
         return None
-
-    class_group_summary = build_person_class_group_summary(person)
-    base = {
-        "id": person.pk,
-        "full_name": person.full_name,
-        "email": person.email or "",
-        "phone": person.phone or "",
-        "class_group_name": class_group_summary["class_group_name"],
-        "class_group_ids": class_group_summary["class_group_ids"],
-        "person_type_code": person.person_type.code if person.person_type else "",
-    }
-
-    students = list(
-        PersonRelationship.objects.filter(
-            source_person=person,
-            relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
-        ).select_related("target_person__class_group__class_category")
-    )
-    if students:
-        base["students"] = [
-            {
-                "full_name": rel.target_person.full_name,
-                **build_person_class_group_summary(rel.target_person),
-            }
-            for rel in students
-        ]
-    return base
+    return build_pending_summary_from_pre_registration(pre_registration)
 
 
 def build_pending_summary_from_pre_registration(pre_registration):
@@ -346,12 +154,6 @@ def get_extra_dependents_from_snapshot(snapshot):
     except (TypeError, json.JSONDecodeError):
         return []
     return parsed if isinstance(parsed, list) else []
-
-
-def build_person_class_group_summary(person):
-    if not person.class_group_id:
-        return {"class_group_name": "", "class_group_ids": []}
-    return build_class_group_summary_from_groups([person.class_group])
 
 
 def build_snapshot_class_group_summary(raw_values):
@@ -445,19 +247,11 @@ def get_registration_order_or_pre_registration_summary(session, kind):
 
 
 def normalize_snapshot_for_form(snapshot):
-    """Prepara o snapshot do banco para uso como `data` no PortalRegistrationForm.
-
-    Corrige dois problemas acumulados em snapshots antigos:
-    - MultipleChoiceField (class_groups) salvo como string quando havia apenas 1 valor → converte para lista.
-    - Campos scalar salvos como lista por duplicata de input no template → toma o primeiro valor.
-    - Entradas de dicionário aninhado (plan_payment, etc.) não são campos do form → removidas.
-    """
     result = {}
     for key, value in snapshot.items():
         if isinstance(value, dict):
-            continue  # plan_payment, materials_payment — não são campos do form
+            continue
         if key in MULTI_VALUE_FORM_FIELDS:
-            # Garante que MultipleChoiceField sempre receba lista
             if isinstance(value, list):
                 result[key] = value
             elif value:
@@ -465,7 +259,6 @@ def normalize_snapshot_for_form(snapshot):
             else:
                 result[key] = []
         elif isinstance(value, list):
-            # Campo scalar armazenado como lista por bug de duplicata — usa primeiro valor
             result[key] = value[0] if value else ""
         else:
             result[key] = value
@@ -499,96 +292,6 @@ def grant_trial_for_pre_registration(pre_registration, primary_person):
 
 
 def finalize_pre_registration(pre_registration):
-    """
-    Finaliza um PreRegistration: cria Person/PortalAccount via form, ativa contas,
-    sincroniza pagamento já confirmado e concede aula experimental se aplicável.
+    from system.services.registration_finalize import RegistrationFinalizeService
 
-    Retorna um dict com chaves:
-        - "ok": bool
-        - "error": str | None
-        - "person": Person | None
-        - "portal_account": PortalAccount | None
-        - "already_finalized": bool
-    """
-    from system.forms import PortalRegistrationForm
-    from system.models.registration_order import PaymentStatus
-
-    if pre_registration.status == PreRegistrationStatus.FINALIZED and pre_registration.finalized_person:
-        return {
-            "ok": True,
-            "error": None,
-            "person": pre_registration.finalized_person,
-            "portal_account": getattr(pre_registration.finalized_person, "access_account", None),
-            "already_finalized": True,
-        }
-
-    form_data = normalize_snapshot_for_form(pre_registration.form_snapshot or {})
-    form = PortalRegistrationForm(data=form_data)
-    if not form.is_valid():
-        return {
-            "ok": False,
-            "error": "Revise os dados do cadastro antes de finalizar.",
-            "person": None,
-            "portal_account": None,
-            "already_finalized": False,
-        }
-
-    created_people = form.save()
-    primary_person = (
-        created_people.get("holder")
-        or created_people.get("guardian")
-        or created_people.get("other")
-    )
-    if primary_person is None:
-        return {
-            "ok": False,
-            "error": "Não foi possível finalizar o cadastro.",
-            "person": None,
-            "portal_account": None,
-            "already_finalized": False,
-        }
-
-    if not primary_person.is_active:
-        primary_person.is_active = True
-        primary_person.save(update_fields=["is_active", "updated_at"])
-    portal_account = getattr(primary_person, "access_account", None)
-    if portal_account and not portal_account.is_active:
-        portal_account.is_active = True
-        portal_account.save(update_fields=["is_active", "updated_at"])
-
-    pre_registration.mark_finalized(primary_person)
-
-    # Sincroniza o pagamento já realizado no Asaas/Stripe com a RegistrationOrder criada pela finalização.
-    # form.save() → create_portal_registration() → create_registration_order() cria uma ordem PENDING para
-    # a pessoa recém-criada. Quando o pré-cadastro já teve pagamento confirmado (plan_paid=True no snapshot),
-    # essa ordem deve ser marcada como PAID para não bloquear o login do usuário.
-    snapshot = pre_registration.form_snapshot or {}
-    order = created_people.get("order")
-    if order is not None and snapshot.get("plan_paid") and order.payment_status == PaymentStatus.PENDING:
-        plan_payment = snapshot.get("plan_payment") or {}
-        asaas_payment_id = plan_payment.get("asaas_payment_id") or ""
-        order.payment_status = PaymentStatus.PAID
-        order.paid_at = timezone.now()
-        if asaas_payment_id:
-            order.asaas_payment_id = asaas_payment_id
-        order.save(update_fields=["payment_status", "paid_at", "asaas_payment_id", "updated_at"])
-        from system.services.membership import activate_membership_from_paid_order
-        activate_membership_from_paid_order(
-            order,
-            notes="Pagamento confirmado via pré-cadastro.",
-            stripe_subscription_id=plan_payment.get("stripe_subscription_id", ""),
-            stripe_subscription_item_id=plan_payment.get("stripe_subscription_item_id", ""),
-            stripe_customer_id=plan_payment.get("stripe_customer_id", ""),
-        )
-
-    # Aula experimental: criar RegistrationOrder pendente e TrialAccessGrant
-    if snapshot.get("trial_requested"):
-        grant_trial_for_pre_registration(pre_registration, primary_person)
-
-    return {
-        "ok": True,
-        "error": None,
-        "person": primary_person,
-        "portal_account": portal_account,
-        "already_finalized": False,
-    }
+    return RegistrationFinalizeService.create_from_pre_registration(pre_registration)

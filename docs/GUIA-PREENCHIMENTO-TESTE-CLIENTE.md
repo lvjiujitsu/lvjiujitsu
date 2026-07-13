@@ -1,5 +1,13 @@
 # Guia de Preenchimento e Teste de Cliente
 
+> **Nota de portabilidade:** este guia foi validado com as ferramentas do Claude Code
+> (`preview_start`, `claude-in-chrome`, `.claude/launch.json`). O procedimento e as
+> limitações de rede (bloqueio de navegação para domínio externo, `SITE_BASE_URL`
+> apontando para HG) são válidos para qualquer agente — Codex e Cursor usam o
+> equivalente descrito em `docs/PLATFORM-ADAPTERS.md` (browser interno da ferramenta,
+> configuração de execução do servidor local) no lugar dos comandos específicos do
+> Claude citados abaixo.
+>
 > Roteiro operacional completo para cadastrar clientes de teste no wizard público
 > usando o **preview browser interno do Claude Code** (porta 8000, sem acesso a URLs externas).
 >

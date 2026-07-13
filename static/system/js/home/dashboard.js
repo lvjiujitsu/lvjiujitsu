@@ -17,20 +17,8 @@
     }
   }
 
-  function getCookie(name) {
-    var parts = document.cookie ? document.cookie.split(';') : [];
-    for (var i = 0; i < parts.length; i += 1) {
-      var part = parts[i].trim();
-      if (part.substring(0, name.length + 1) === name + '=') {
-        return decodeURIComponent(part.substring(name.length + 1));
-      }
-    }
-    return '';
-  }
-
   function getCsrfToken() {
-    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    return input ? input.value : getCookie('csrftoken');
+    return window.LV.getCsrfToken();
   }
 
   function readConfig() {
@@ -87,8 +75,6 @@
   }
 
   function bindTabs() {
-    // Cada .tabs[role=tablist] é um grupo independente (identificado por data-tab-group),
-    // permitindo várias seções com abas Bruno/Lucas na mesma página sem conflito de ID.
     document.querySelectorAll('.tabs[role="tablist"]').forEach(function (tabList) {
       var group = tabList.getAttribute('data-tab-group') || '';
       var tabButtons = tabList.querySelectorAll('.tab-btn');
@@ -315,14 +301,14 @@
           button.textContent = 'Aprovar';
           return;
         }
-        // Update the row that contains the clicked button (works in modal or anywhere)
+
         var row = button.closest('.modal-checkin-item, .checkin-row');
         if (row) {
           var waitingPill = row.querySelector('.status-pill--warning');
           if (waitingPill) waitingPill.remove();
           button.replaceWith(createStatusPill('Confirmado', 'success'));
         }
-        // Mirror the update into the hidden source container so re-opening modal shows updated state
+
         var sourceRow = document.querySelector('.js-checkin-source [data-checkin-id="' + checkinId + '"]');
         if (sourceRow && sourceRow !== row) {
           var sourcePill = sourceRow.querySelector('.status-pill--warning');
@@ -338,7 +324,7 @@
   }
 
   function bindApproveCheckins() {
-    // Event delegation: works for buttons in modal AND in hidden source containers
+
     document.addEventListener('click', function (e) {
       var button = e.target.closest('.js-approve-checkin');
       if (!button) return;
@@ -364,6 +350,7 @@
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.style.overflow = '';
+      if (frame) frame.setAttribute('src', 'about:blank');
     }
 
     document.addEventListener('click', function (e) {
@@ -420,6 +407,7 @@
       overlay.setAttribute('hidden', '');
       document.body.style.overflow = '';
       cleanUrlState();
+      if (frame) frame.setAttribute('src', 'about:blank');
     }
 
     document.addEventListener('click', function (e) {
@@ -920,16 +908,12 @@
     var modalTitle = document.getElementById('presence-modal-title');
     if (!overlay || !modalBody || !modalTitle) return;
 
-    var currentSourceId = null;
-
     function closeModal() {
       overlay.setAttribute('hidden', '');
       document.body.style.overflow = '';
       modalBody.replaceChildren();
-      currentSourceId = null;
     }
 
-    // Open handler via event delegation (multiple buttons on page)
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.js-open-presence-modal');
       if (!btn) return;
@@ -938,11 +922,9 @@
       var sourceDiv = sourceId ? document.getElementById(sourceId) : null;
       if (!sourceDiv) return;
 
-      currentSourceId = sourceId;
       var className = sourceDiv.getAttribute('data-class-name') || 'Turma';
       modalTitle.textContent = 'Presenças — ' + className;
 
-      // Clone source children into modal body
       modalBody.replaceChildren();
       var children = sourceDiv.childNodes;
       for (var i = 0; i < children.length; i += 1) {
@@ -1223,7 +1205,13 @@
 
   function bindSectionCollapse() {
     var stored = {};
-    try { stored = JSON.parse(localStorage.getItem('lv-sections') || '{}'); } catch (e) {}
+    try {
+      stored = JSON.parse(localStorage.getItem('lv-sections') || '{}');
+    } catch (e) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[LV dashboard:storage]', 'Falha ao ler preferências de seção', e);
+      }
+    }
 
     document.querySelectorAll('.section__toggle').forEach(function (btn) {
       var key = btn.getAttribute('data-section');
@@ -1231,7 +1219,6 @@
       var body = bodyId ? document.getElementById(bodyId) : null;
       if (!body) return;
 
-      // Restore persisted state
       if (stored[key] === false) {
         btn.setAttribute('aria-expanded', 'false');
         body.hidden = true;
@@ -1244,7 +1231,13 @@
         body.hidden = !next;
 
         stored[key] = next;
-        try { localStorage.setItem('lv-sections', JSON.stringify(stored)); } catch (e) {}
+        try {
+          localStorage.setItem('lv-sections', JSON.stringify(stored));
+        } catch (e) {
+          if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[LV dashboard:storage]', 'Falha ao salvar preferências de seção', e);
+          }
+        }
       });
     });
   }
@@ -1393,7 +1386,7 @@
     });
 
     openBtn.addEventListener('click', function () {
-      // Seleciona a primeira opção de cada filtro para já mostrar poucos cards
+
       ['frequency', 'cycle', 'method'].forEach(function (filterType) {
         var firstPill = overlay.querySelector('.js-plan-change-filter-pill[data-filter="' + filterType + '"]');
         if (firstPill) selectPill(firstPill);

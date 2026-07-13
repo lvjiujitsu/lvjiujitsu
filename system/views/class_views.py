@@ -12,7 +12,8 @@ from system.services.class_catalog import (
     prepare_class_group_for_display,
 )
 from system.services.class_management import save_class_group_catalog
-from system.views.person_views import AdministrativeRequiredMixin, ModalFormMixin
+from system.views.person_views import ModalFormMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
 class ClassGroupCatalogMixin:

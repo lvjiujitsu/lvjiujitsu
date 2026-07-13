@@ -20,4 +20,3 @@ test_screenshots/
 pytest-cache-files-*/
 .coverage
 *.log
-limpar_asaas.py

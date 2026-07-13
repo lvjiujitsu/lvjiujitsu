@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 from types import SimpleNamespace
 
@@ -9,7 +10,6 @@ from system.models import (
     BeltRank,
     Graduation,
     GraduationRule,
-    Person,
 )
 from system.models.calendar import (
     CheckinStatus,
@@ -237,6 +237,205 @@ def compute_graduation_progress(person, reference_date=None):
         progress_pct=progress_pct,
         blocker=age_blocker,
     )
+
+
+def _empty_progress(person, reference_date, blocker, *, current=None, months_in_current_grade=0):
+    return SimpleNamespace(
+        person=person,
+        current_belt_rank=current.belt_rank if current is not None else None,
+        current_grade_number=current.grade_number if current is not None else None,
+        current_graduation_date=current.awarded_at if current is not None else None,
+        applicable_rule=None,
+        target_belt_rank=None,
+        target_grade_number=None,
+        months_in_current_grade=months_in_current_grade,
+        required_months=0,
+        months_remaining=0,
+        approved_classes_in_window=0,
+        required_classes=0,
+        missing_classes=0,
+        window_start=None,
+        window_end=reference_date,
+        is_eligible=False,
+        progress_pct=0.0,
+        blocker=blocker,
+    )
+
+
+def compute_graduation_progress_bulk(persons, reference_date=None):
+    reference_date = reference_date or timezone.localdate()
+    persons = list(persons)
+    if not persons:
+        return {}
+
+    person_by_id = {person.pk: person for person in persons}
+
+    current_by_person = {}
+    graduations = (
+        Graduation.objects.filter(person_id__in=person_by_id.keys())
+        .select_related("belt_rank")
+        .order_by("person_id", "-awarded_at", "-created_at")
+    )
+    for graduation in graduations:
+        current_by_person.setdefault(graduation.person_id, graduation)
+
+    missing_ids = [pid for pid in person_by_id if pid not in current_by_person]
+    if missing_ids:
+        legacy_codes = {
+            person_by_id[pid].jiu_jitsu_belt.strip()
+            for pid in missing_ids
+            if (person_by_id[pid].jiu_jitsu_belt or "").strip()
+        }
+        belt_ranks_by_code = (
+            {belt_rank.code: belt_rank for belt_rank in BeltRank.objects.filter(code__in=legacy_codes)}
+            if legacy_codes
+            else {}
+        )
+        for pid in missing_ids:
+            person = person_by_id[pid]
+            legacy_code = (person.jiu_jitsu_belt or "").strip()
+            belt_rank = belt_ranks_by_code.get(legacy_code) if legacy_code else None
+            if belt_rank is None:
+                continue
+            current_by_person[pid] = SimpleNamespace(
+                person=person,
+                belt_rank=belt_rank,
+                grade_number=person.jiu_jitsu_stripes or 0,
+                awarded_at=person.created_at.date() if person.created_at else reference_date,
+                awarded_by=None,
+                notes="Migrado dos campos legados de cadastro.",
+                pk=None,
+            )
+
+    rules_by_key = {}
+    for rule in GraduationRule.objects.filter(is_active=True):
+        rules_by_key.setdefault((rule.belt_rank_id, rule.from_grade), rule)
+
+    windows = {}
+    for pid, current in current_by_person.items():
+        rule = rules_by_key.get((current.belt_rank.pk, current.grade_number))
+        if rule is None:
+            continue
+        if rule.min_classes_window_months and rule.min_classes_window_months > 0:
+            window_start = _add_months(reference_date, -rule.min_classes_window_months)
+        else:
+            window_start = current.awarded_at
+        windows[pid] = (window_start, reference_date)
+
+    approved_dates = defaultdict(set)
+    if windows:
+        global_start = min(window_start for window_start, _ in windows.values())
+        person_ids_with_window = list(windows.keys())
+
+        regular_checkins = (
+            ClassCheckin.objects.filter(
+                person_id__in=person_ids_with_window,
+                status=CheckinStatus.APPROVED,
+                session__date__gte=global_start,
+                session__date__lte=reference_date,
+            )
+            .exclude(session__status=SessionStatus.CANCELLED)
+            .values_list("person_id", "session__date")
+        )
+        for person_id, checkin_date in regular_checkins:
+            approved_dates[person_id].add(checkin_date)
+
+        special_checkins = (
+            SpecialClassCheckin.objects.filter(
+                person_id__in=person_ids_with_window,
+                status=CheckinStatus.APPROVED,
+                special_class__date__gte=global_start,
+                special_class__date__lte=reference_date,
+            )
+            .exclude(special_class__status=SessionStatus.CANCELLED)
+            .values_list("person_id", "special_class__date")
+        )
+        for person_id, checkin_date in special_checkins:
+            approved_dates[person_id].add(checkin_date)
+
+    results = {}
+    for pid, person in person_by_id.items():
+        current = current_by_person.get(pid)
+        if current is None:
+            results[pid] = _empty_progress(person, reference_date, "Sem registro de graduação.")
+            continue
+
+        rule = rules_by_key.get((current.belt_rank.pk, current.grade_number))
+        months_in_current_grade = _months_between(current.awarded_at, reference_date)
+
+        if rule is None:
+            results[pid] = _empty_progress(
+                person,
+                reference_date,
+                "Sem regra de graduação cadastrada para esta faixa/grau.",
+                current=current,
+                months_in_current_grade=months_in_current_grade,
+            )
+            continue
+
+        window_start, window_end = windows[pid]
+        approved_classes = len({
+            checkin_date
+            for checkin_date in approved_dates.get(pid, ())
+            if window_start <= checkin_date <= window_end
+        })
+        required_classes = rule.min_classes_required
+        missing_classes = max(0, required_classes - approved_classes)
+        required_months = rule.min_months_in_current_grade
+        months_remaining = max(0, required_months - months_in_current_grade)
+
+        if rule.promotes_to_next_rank:
+            target_belt_rank = current.belt_rank.next_rank
+            target_grade_number = 0
+        else:
+            target_belt_rank = current.belt_rank
+            target_grade_number = rule.to_grade
+
+        age = person.get_age(reference_date)
+        age_blocker = ""
+        if target_belt_rank is not None and target_belt_rank.min_age and age is not None:
+            if age < target_belt_rank.min_age:
+                age_blocker = (
+                    f"Idade mínima da faixa {target_belt_rank.display_name}: "
+                    f"{target_belt_rank.min_age} anos."
+                )
+
+        is_eligible = (
+            months_remaining == 0
+            and missing_classes == 0
+            and target_belt_rank is not None
+            and not age_blocker
+        )
+
+        progress_pct = _compute_progress_pct(
+            months_in_current_grade=months_in_current_grade,
+            required_months=required_months,
+            approved_classes=approved_classes,
+            required_classes=required_classes,
+        )
+
+        results[pid] = SimpleNamespace(
+            person=person,
+            current_belt_rank=current.belt_rank,
+            current_grade_number=current.grade_number,
+            current_graduation_date=current.awarded_at,
+            applicable_rule=rule,
+            target_belt_rank=target_belt_rank,
+            target_grade_number=target_grade_number,
+            months_in_current_grade=months_in_current_grade,
+            required_months=required_months,
+            months_remaining=months_remaining,
+            approved_classes_in_window=approved_classes,
+            required_classes=required_classes,
+            missing_classes=missing_classes,
+            window_start=window_start,
+            window_end=window_end,
+            is_eligible=is_eligible,
+            progress_pct=progress_pct,
+            blocker=age_blocker,
+        )
+
+    return results
 
 
 def _compute_progress_pct(*, months_in_current_grade, required_months, approved_classes, required_classes):

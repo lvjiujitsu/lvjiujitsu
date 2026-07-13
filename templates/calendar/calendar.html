@@ -1,42 +1,23 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Cronograma — LV Jiu Jitsu</title>
-  {% load static %}
-  <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+{% extends "lv/base.html" %}
+{% load static %}
+
+{% block title %}Cronograma — LV Jiu Jitsu{% endblock %}
+
+{% block body_class %}{% if is_embedded %}calendar-embedded{% endif %}{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=18">
-</head>
-<body{% if is_embedded %} class="calendar-embedded"{% endif %}>
+{% endblock %}
 
-  <!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
-  {% if not is_embedded %}
-  <header class="topbar" role="banner">
-    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
-      <span class="topbar__name">LV JIU JITSU</span>
-    </a>
-    <nav class="topbar__actions" aria-label="Ações do usuário">
-      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
-        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair do sistema" title="Sair">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </a>
-    </nav>
-  </header>
-  {% endif %}
+{% block topbar %}
+{% if not is_embedded %}
+{{ block.super }}
+{% endif %}
+{% endblock %}
 
-  <!-- ─── Conteúdo principal ───────────────────────────────────────────────── -->
-  <main class="page page--calendar" id="main-content">
+{% block page_class %} page--calendar{% endblock %}
+
+{% block content %}
 
     {% if show_instructor_area %}
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
@@ -49,7 +30,6 @@
     }</script>
     {% endif %}
 
-    <!-- Cabeçalho -->
     <div class="page-header">
       {% if not is_embedded %}
       <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
@@ -57,7 +37,6 @@
       <h1 class="page-header__title">Cronograma</h1>
     </div>
 
-    <!-- Navegação do mês -->
     <section class="section calendar-board" aria-labelledby="calendar-title">
       <div class="cal-nav">
         <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.prev_year month=calendar.prev_month %}{{ calendar_query_suffix }}">← Mês anterior</a>
@@ -69,7 +48,6 @@
         {% endif %}
       </div>
 
-      <!-- Cabeçalho da grade -->
       <div class="cal-grid cal-grid--weekdays">
         <div class="cal-header-cell">Seg</div>
         <div class="cal-header-cell">Ter</div>
@@ -80,7 +58,6 @@
         <div class="cal-header-cell">Dom</div>
       </div>
 
-      <!-- Grade de dias -->
       <div class="cal-grid cal-grid--days">
         {% for day in calendar.days %}
         <div class="cal-day{% if day.is_today %} cal-day--today{% endif %}{% if day.is_holiday %} cal-day--holiday{% endif %}">
@@ -137,7 +114,6 @@
         {% endfor %}
       </div>
 
-      <!-- Legenda -->
       <div class="cal-legend">
         {% if show_instructor_area %}
         <span><span class="cal-class-pill cal-class-pill--owned">Minhas turmas</span></span>
@@ -148,8 +124,10 @@
         <span><span class="cal-class-pill cal-class-pill--cancelled">Cancelada</span></span>
       </div>
     </section>
-  </main>
 
+{% endblock %}
+
+{% block modals %}
   <div class="modal-overlay" id="calendar-day-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-day-modal-title">
     <div class="modal">
       <div class="modal__header">
@@ -162,7 +140,6 @@
     </div>
   </div>
 
-  <!-- ─── Modal: criar aulão (apenas instrutores) ──────────────────────────── -->
   {% if show_instructor_area %}
   <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-cal-title">
     <div class="modal">
@@ -193,9 +170,8 @@
     </div>
   </div>
   {% endif %}
+{% endblock %}
 
-  <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
-  <script src="{% static 'system/js/calendar/calendar.js' %}?v=1" defer></script>
-
-</body>
-</html>
+{% block extra_js %}
+  <script src="{% static 'system/js/calendar/calendar.js' %}?v=3" defer></script>
+{% endblock %}

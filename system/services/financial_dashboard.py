@@ -198,10 +198,16 @@ def _aggregate_money(queryset, field_name):
 
 
 def _aggregate_net_inflows(queryset):
-    total = ZERO
-    for order in queryset:
-        total += _money(order.net_amount if order.net_amount else order.total)
-    return _money(total)
+    result = queryset.aggregate(
+        total=models.Sum(
+            models.Case(
+                models.When(net_amount__gt=0, then=models.F("net_amount")),
+                default=models.F("total"),
+                output_field=models.DecimalField(max_digits=10, decimal_places=2),
+            )
+        )
+    )
+    return _money(result["total"])
 
 
 def _money(value):

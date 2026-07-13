@@ -194,10 +194,12 @@ def _validate_class_groups(data, step_key, errors):
 def _parse_birthdate(value):
     if not value:
         return None
-    try:
-        return datetime.strptime(value, "%d/%m/%Y").date()
-    except ValueError:
-        return None
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def _get(data, key):
@@ -216,3 +218,27 @@ def _normalize_martial_art_answer(answer, martial_art):
     if answer:
         return answer
     return "yes" if martial_art else ""
+
+
+def build_eligibility_context_from_wizard_data(data):
+    extra_dependents_raw = data.get("extra_dependents") or []
+    extra_dependents = [
+        {
+            "birth_date": _parse_birthdate(entry.get("birth_date")),
+            "class_groups": resolve_class_groups(entry.get("class_groups") or []),
+        }
+        for entry in extra_dependents_raw
+        if isinstance(entry, dict)
+    ]
+
+    return {
+        "registration_profile": _get(data, "registration_profile"),
+        "include_dependent": bool(_get(data, "include_dependent")),
+        "holder_birthdate": _parse_birthdate(_get(data, "holder_birthdate")),
+        "holder_class_groups": resolve_class_groups(_getlist(data, "holder_class_groups")),
+        "dependent_birthdate": _parse_birthdate(_get(data, "dependent_birthdate")),
+        "dependent_class_groups": resolve_class_groups(_getlist(data, "dependent_class_groups")),
+        "student_birthdate": _parse_birthdate(_get(data, "student_birthdate")),
+        "student_class_groups": resolve_class_groups(_getlist(data, "student_class_groups")),
+        "extra_dependents": extra_dependents,
+    }

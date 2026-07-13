@@ -14,10 +14,6 @@ from system.forms import PersonForm, PersonListFilterForm, PersonTypeForm
 from system.models import (
     AuditAction,
     AuditModule,
-    ClassEnrollment,
-    ClassGroup,
-    ClassInstructorAssignment,
-    ClassSchedule,
     Graduation,
     IbjjfAgeCategory,
     Person,
@@ -40,18 +36,12 @@ from system.services.graduation import compute_graduation_progress, get_graduati
 from system.services.membership import get_active_membership, get_membership_owner
 from system.services.veteran_plan import approve_veteran_plan, revoke_veteran_plan
 from system.constants import (
-    ADMINISTRATIVE_PERSON_TYPE_CODES,
     CLASS_ENROLLMENT_PERSON_TYPE_CODES,
     INSTRUCTOR_PERSON_TYPE_CODES,
     PEOPLE_SUPPORT_PERSON_TYPE_CODES,
     PortalCapability,
 )
-from system.views.portal_mixins import PortalRoleRequiredMixin
-
-
-class AdministrativeRequiredMixin(PortalRoleRequiredMixin):
-    allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
-    required_capabilities = (PortalCapability.MANAGE_ACADEMY,)
+from system.views.portal_mixins import AdministrativeRequiredMixin, PortalRoleRequiredMixin
 
 
 class PeopleSupportRequiredMixin(PortalRoleRequiredMixin):
@@ -68,8 +58,6 @@ def _can_manage_people(request):
 
 
 class ModalCrudMixin:
-    """Renderiza a variante modal (iframe) quando a rota recebe ?modal=1."""
-
     modal_template_name = None
     modal_name = ""
 

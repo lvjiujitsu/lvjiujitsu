@@ -47,8 +47,6 @@ def _is_authorized_for_order(request, order):
 
 
 class PaymentMethodChoiceView(View):
-    """Direciona o pedido pendente para o checkout Asaas adequado."""
-
     def get(self, request, order_id, *args, **kwargs):
         try:
             order = RegistrationOrder.objects.select_related(
@@ -67,7 +65,6 @@ class PaymentMethodChoiceView(View):
             return redirect("system:dashboard-redirect")
         gateway_code = _resolve_order_gateway_code(order)
         if gateway_code == "stripe_card":
-            from system.services.plan_change import create_plan_change_stripe_order
             from system.services.stripe_checkout import (
                 StripeCheckoutError,
                 create_subscription_session_for_plan_change,
@@ -126,8 +123,6 @@ class DeferPaymentView(View):
         request.session["plan_order_id"] = order.pk
         request.session.pop("post_materials_payment_complete", None)
         request.session.pop("materials_order_id", None)
-        if not order.person.is_active:
-            request.session["pending_registration_person_id"] = order.person.pk
         messages.info(
             request,
             f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
@@ -172,7 +167,6 @@ class PaymentSuccessView(View):
             except RegistrationOrder.DoesNotExist:
                 order = None
 
-        # Fallback: Asaas passes ?id=pay_xxx on successUrl redirect — recover order from it
         if order is None:
             asaas_payment_id = request.GET.get("id")
             if asaas_payment_id:
@@ -185,19 +179,6 @@ class PaymentSuccessView(View):
 
         if order is not None:
             person = order.person
-
-            if not person.is_active:
-                if order.plan_id is None:
-                    request.session["post_materials_payment_complete"] = True
-                    request.session["materials_order_id"] = order.pk
-                else:
-                    request.session["post_plan_payment_complete"] = True
-                    request.session["plan_order_id"] = order.pk
-                    request.session["pending_registration_person_id"] = person.pk
-                    request.session.pop("post_materials_payment_complete", None)
-                    request.session.pop("materials_order_id", None)
-                messages.success(request, "Pagamento confirmado!")
-                return redirect("system:register")
 
             portal_account = PortalAccount.objects.filter(
                 person=person, is_active=True
@@ -220,7 +201,6 @@ class PaymentSuccessView(View):
         if pre_registration_id and stage in ("plan", "materials"):
             pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
 
-        # Fallback: Asaas pode perder os query params originais e só enviar ?id=pay_xxx
         if pre_registration is None:
             asaas_payment_id = request.GET.get("id") or ""
             if asaas_payment_id:
@@ -238,7 +218,6 @@ class PaymentSuccessView(View):
                         pre_registration = pr
                         stage = "materials"
 
-        # Fallback: Stripe redirects with session_id → match via plan_payment snapshot
         if pre_registration is None:
             stripe_session_id = request.GET.get("session_id") or ""
             if stripe_session_id:

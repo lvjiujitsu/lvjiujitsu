@@ -11,10 +11,8 @@ from system.models import (
     Person,
 )
 from system.services.class_catalog import prepare_class_group_for_display
-from system.views.person_views import (
-    AdministrativeRequiredMixin,
-    ModalFormMixin,
-)
+from system.views.person_views import ModalFormMixin
+from system.views.portal_mixins import AdministrativeRequiredMixin
 
 
 class ClassCategoryListView(AdministrativeRequiredMixin, ListView):

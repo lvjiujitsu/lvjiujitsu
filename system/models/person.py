@@ -230,21 +230,6 @@ class Person(TimeStampedModel):
         )
         return age if has_had_birthday else age - 1
 
-    @property
-    def current_ibjjf_category(self):
-        age = self.get_age()
-        if age is None:
-            return None
-
-        from .category import IbjjfAgeCategory
-
-        categories = IbjjfAgeCategory.objects.filter(is_active=True).order_by("display_order")
-        for category in categories:
-            if category.matches_age(age):
-                return category
-        return None
-
-
 class PersonOperationalRole(TimeStampedModel):
     person = models.ForeignKey(
         Person,

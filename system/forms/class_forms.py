@@ -6,7 +6,6 @@ from django.forms import BaseInlineFormSet, inlineformset_factory
 from system.models import (
     ClassCategory,
     ClassGroup,
-    ClassInstructorAssignment,
     ClassSchedule,
     Person,
     SpecialClass,
@@ -84,40 +83,6 @@ class ClassGroupForm(forms.ModelForm):
             )
 
         return cleaned_data
-
-    def save(self, commit=True):
-        class_group = super().save(commit=commit)
-        if commit:
-            self.save_related(class_group)
-        else:
-            self._pending_assistant_staff = self.cleaned_data.get("assistant_staff")
-        return class_group
-
-    def save_m2m(self):
-        super().save_m2m()
-        if hasattr(self, "_pending_assistant_staff"):
-            self.save_related(self.instance)
-
-    def save_related(self, class_group):
-        self._save_assistant_staff(class_group)
-
-    def _save_assistant_staff(self, class_group):
-        selected_people = list(self.cleaned_data.get("assistant_staff") or [])
-        selected_ids = {person.id for person in selected_people}
-
-        ClassInstructorAssignment.objects.filter(class_group=class_group).exclude(
-            person_id__in=selected_ids
-        ).delete()
-
-        for person in selected_people:
-            ClassInstructorAssignment.objects.update_or_create(
-                class_group=class_group,
-                person=person,
-                defaults={
-                    "is_primary": False,
-                    "notes": "Vínculo auxiliar configurado pelo cadastro de turma.",
-                },
-            )
 
     def _build_category_queryset(self):
         current_category_id = getattr(self.instance, "class_category_id", None)
