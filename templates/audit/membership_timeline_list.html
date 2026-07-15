@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'system/css/audit/membership_timeline.css' %}?v=1">
 </head>
 <body>
 
@@ -76,7 +77,7 @@
         {% if events %}
         <ul class="entity-list" aria-label="Histórico de assinaturas e família">
           {% for event in events %}
-          <li class="entity-card">
+          <li class="entity-card membership-timeline-card">
             <div class="entity-card__body">
               <div class="entity-card__name">{{ event.person_name }}</div>
               <div class="entity-card__meta">{{ event.description }} · {{ event.created_at|date:"d/m/Y H:i" }}</div>

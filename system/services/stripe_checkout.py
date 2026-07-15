@@ -112,12 +112,56 @@ def create_billing_portal_session(membership, request):
     if not membership.stripe_customer_id:
         raise StripeCheckoutError("Assinatura sem cliente Stripe vinculado.")
 
-    return_url = request.build_absolute_uri(reverse("system:home")) + "?card_update=done"
+    return_url = request.build_absolute_uri(
+        reverse("system:membership-update-card")
+    ) + "?card_update=confirm"
     return client.billing_portal.Session.create(
         customer=membership.stripe_customer_id,
         return_url=return_url,
         flow_data={"type": "payment_method_update"},
     )
+
+
+def get_membership_default_payment_method_id(membership):
+    client = _get_client()
+    try:
+        subscription = client.Subscription.retrieve(membership.stripe_subscription_id)
+        subscription_payment_method = _stripe_object_id(
+            _stripe_value(subscription, "default_payment_method")
+        )
+        if subscription_payment_method:
+            return subscription_payment_method
+
+        customer = client.Customer.retrieve(membership.stripe_customer_id)
+        invoice_settings = _stripe_value(customer, "invoice_settings") or {}
+        return _stripe_object_id(
+            _stripe_value(invoice_settings, "default_payment_method")
+        )
+    except stripe.error.StripeError as exc:
+        logger.exception(
+            "Falha ao consultar forma de pagamento Stripe da matrícula %s",
+            membership.pk,
+        )
+        raise StripeCheckoutError(
+            "Não foi possível validar a forma de pagamento na Stripe."
+        ) from exc
+
+
+def _stripe_object_id(value):
+    if not value:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return value.get("id") or ""
+    return getattr(value, "id", "") or ""
+
+
+def _stripe_value(container, key):
+    try:
+        return container[key]
+    except (KeyError, TypeError):
+        return getattr(container, key, None)
 
 
 def create_subscription_session_for_plan_change(order, request):

@@ -87,6 +87,27 @@ class ClassCatalogRequestViewPermissionTestCase(TestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(detail_response.status_code, 200)
 
+    def test_detail_shows_operational_financial_arrangement(self):
+        self.request.payload = {
+            "payout": {
+                "method": "pix",
+                "pix_key_type": "cpf",
+                "pix_key": "744.126.528-23",
+                "financial_arrangement": "paid_fixed",
+                "fixed_amount": "300.00",
+                "student_percentage": "",
+            }
+        }
+        self.request.save(update_fields=("payload", "updated_at"))
+        self._login(self.manager_account)
+
+        response = self.client.get(
+            reverse("system:class-catalog-request-detail", kwargs={"pk": self.request.pk})
+        )
+
+        self.assertContains(response, "Condição: Valor fixo")
+        self.assertContains(response, "R$ 300,00")
+
     def test_instructor_without_manage_capability_is_blocked_from_queue_and_detail(self):
         self._login(self.instructor_account)
 

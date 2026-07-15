@@ -64,6 +64,9 @@
               {% else %}
                 Informar depois
               {% endif %}
+              {% if financial_arrangement_label %}
+                <br>Condição: {{ financial_arrangement_label }}{% if class_request.payload.payout.fixed_amount %} · R$ {{ class_request.payload.payout.fixed_amount|floatformat:2 }}{% endif %}{% if class_request.payload.payout.student_percentage %} · {{ class_request.payload.payout.student_percentage|floatformat:2 }}% por aluno{% endif %}
+              {% endif %}
             </dd>
           </div>
           {% endif %}

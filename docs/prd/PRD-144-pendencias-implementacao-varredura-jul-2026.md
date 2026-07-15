@@ -582,3 +582,17 @@ _Numeração PRD-145+ sujeita a conferência em `docs/prd/README.md` antes de cr
 ## Final status
 
 **Concluída com limitações** — consolidador read-only entregue: inventário completo, matriz P0–P3, top 20 bloqueadores e roteamento de PRDs-filhas. Nenhuma onda de implementação executada sob PRD-144; ~85% do débito estrutural+frontend permanece pendente.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- A ressalva “nenhuma onda executada sob PRD-144” continua histórica, mas P0 e parte
+  de P1 foram implementadas depois e estão marcadas no plano desta PRD.
+- A PRD-145 substituiu a sugestão antiga de numeração para “PRD-145 pagamento” e
+  consolidou a auditoria operacional autorizada pelo usuário.
+- Lacunas observadas e corrigidas: solicitações operacionais não persistidas,
+  dados de repasse do professor omitidos, dependentes inativos após finalização e
+  senhas mantidas em snapshots terminais.
+- P2/P3 estrutural, índices e backfill HG seguem pendentes; não são pré-condição dos
+  sete cenários homologados nesta rodada.
+- Estado reconciliado: **consolidação concluída; P0/P1 parcial executado; P2/P3
+  pendente**.

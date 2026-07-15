@@ -524,3 +524,13 @@ Nenhum — escopo read-only cumprido.
 ## Final status
 
 **Concluída** — auditoria estática entregue; proposta de correção consolidada (jul/2026). Implementação pendente de aprovação por onda.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- O status acima descreve corretamente a entrega da auditoria, não a conclusão de
+  todas as ondas.
+- P0 e parte funcional de P1 foram implementadas posteriormente, conforme a seção
+  `Implemented`; P2 estrutural continua pendente.
+- Evidência atual: `/register/`, `/home/` e modal de dependente renderizados em
+  1440×900 e 390×844, temas claro/escuro, sem erros ou avisos no console.
+- Estado reconciliado: **auditoria concluída; implementação parcial**.

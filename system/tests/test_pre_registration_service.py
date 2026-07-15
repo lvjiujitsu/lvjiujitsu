@@ -114,8 +114,10 @@ class FinalizePreRegistrationServiceTestCase(TestCase):
 
         self.assertTrue(result["ok"])
         guardian = Person.objects.get(cpf="533.976.299-85")
+        dependent = Person.objects.get(cpf="084.598.961-88")
         self.assertIsNone(guardian.birth_date)
-        self.assertTrue(Person.objects.filter(cpf="084.598.961-88").exists())
+        self.assertTrue(dependent.is_active)
+        self.assertTrue(dependent.access_account.is_active)
 
     def test_finalize_returns_error_without_creating_person_on_invalid_snapshot(self):
         pre_registration = PreRegistration.objects.create(

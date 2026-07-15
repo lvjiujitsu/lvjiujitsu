@@ -1,6 +1,6 @@
       <ul class="class-list" aria-label="Aulas de hoje">
         {% for item in class_items %}
-        <li class="class-item{% if item.is_cancelled %} class-item--cancelled{% endif %}">
+        <li class="class-item{% if item.is_cancelled %} class-item--cancelled{% endif %}"{% if item.entry_role == 'instructor' %} data-approved-count="{{ item.approved_count|default:0 }}" data-pending-count="{{ item.pending_count|default:0 }}"{% endif %}>
           <span class="class-item__time" aria-label="Horário">{{ item.start_time|default:"—" }}</span>
           <span class="class-item__dot" aria-hidden="true"></span>
           <div class="class-item__info">
@@ -8,7 +8,7 @@
               {{ item.group_name|default:"Aula" }}{% if item.category_name %} · {{ item.category_name }}{% endif %}
             </div>
             {% if item.entry_role == 'instructor' %}
-            <div class="class-item__sub">
+            <div class="class-item__sub" data-presence-summary>
               {% if item.is_cancelled %}
                 {{ item.cancellation_reason|default:"Cancelada" }}
               {% else %}
@@ -147,7 +147,7 @@
                       data-checkins-id="cs-{{ section_slug }}-{{ forloop.counter }}"
                       aria-haspopup="dialog">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span>{{ item.approved_count|default:0 }}</span>
+                <span data-approved-count-label>{{ item.approved_count|default:0 }}</span>
               </button>
             {% elif item.entry_role == 'overview' %}
               {% if item.is_cancelled %}

@@ -200,6 +200,8 @@ def _resolve_or_create_person_for_request(access_request, *, grant_full_administ
         person_type = None
         if grant_full_administrative:
             person_type = ensure_default_person_types()[PersonTypeCode.ADMINISTRATIVE_ASSISTANT]
+        elif (access_request.request_payload or {}).get("training_intent") == "student":
+            person_type = ensure_default_person_types()[PersonTypeCode.STUDENT]
         person = Person.objects.create(
             full_name=access_request.full_name,
             cpf=formatted_cpf,

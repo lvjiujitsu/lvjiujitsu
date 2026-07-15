@@ -241,6 +241,16 @@ A home é uma única superfície por permissão (PRD-043), não um dashboard por
 - Cadastro público (wizard)
 - Webhooks (Stripe, Asaas)
 
+Contrato do wizard público em `/register/`:
+
+- aluno e responsável seguem para plano/pagamento; `Person` e contas só são ativados
+  depois da confirmação e finalização;
+- administrativo e professor encerram com solicitação pendente, sem criar `Person`;
+- a aprovação administrativa cria o perfil e os papéis autorizados;
+- a aprovação da proposta de professor cria professor, turma/horários e dados de
+  recebimento informados na solicitação;
+- snapshots em estado terminal não conservam senhas em texto puro.
+
 ---
 
 ## 10. Componentes mínimos obrigatórios
@@ -573,4 +583,7 @@ Regra portada do Visary (PRD-068).
              `theme_boot.js`/`theme_toggle.js`/`crud_modal.js` normalizado para `20260709-1` em
              todos os 44 templates que os referenciam (M-02/M-03). §10 atualizado para refletir
              rollout parcial.
+[2026-07-13] PRD-145: contrato terminal do wizard público documentado para aluno,
+             responsável, administrativo e professor; snapshots terminais não podem
+             conservar senhas em texto puro.
 ```

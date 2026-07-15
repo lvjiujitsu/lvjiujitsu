@@ -53,13 +53,17 @@ class RegistrationFinalizeService:
                 "already_finalized": False,
             }
 
-        if not primary_person.is_active:
-            primary_person.is_active = True
-            primary_person.save(update_fields=["is_active", "updated_at"])
+        people_to_activate = [primary_person, *created_people.get("dependents", [])]
+        for person in people_to_activate:
+            if not person.is_active:
+                person.is_active = True
+                person.save(update_fields=["is_active", "updated_at"])
+            account = getattr(person, "access_account", None)
+            if account and not account.is_active:
+                account.is_active = True
+                account.save(update_fields=["is_active", "updated_at"])
+
         portal_account = getattr(primary_person, "access_account", None)
-        if portal_account and not portal_account.is_active:
-            portal_account.is_active = True
-            portal_account.save(update_fields=["is_active", "updated_at"])
 
         pre_registration.mark_finalized(primary_person)
 

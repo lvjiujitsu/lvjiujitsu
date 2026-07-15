@@ -85,10 +85,32 @@
     var button = document.getElementById('dep-wizard-next-btn');
     if (!form || !button) return;
     form.addEventListener('submit', function () {
+      if (
+        form.querySelector('input[name="_modal"]') &&
+        modalSubmissionStartsCheckout(form)
+      ) {
+        form.target = '_top';
+      } else {
+        form.removeAttribute('target');
+      }
       if (button.type !== 'submit') return;
       button.disabled = true;
       button.textContent = 'Enviando...';
     });
+  }
+
+  function modalSubmissionStartsCheckout(form) {
+    var paymentConfirmed = form.getAttribute('data-payment-confirmed') === 'true';
+    var financialMode = getVal('id_financial_mode');
+    if (!paymentConfirmed && financialMode !== 'family_existing') return true;
+
+    var materialsConfirmed = form.getAttribute('data-materials-confirmed') === 'true';
+    var materialsAction = getVal('id_materials_checkout_action');
+    if (materialsConfirmed || materialsAction === 'pay_later') return false;
+    return Array.prototype.some.call(
+      form.querySelectorAll('input[id^="id_material_variant_"]'),
+      function (input) { return (parseInt(input.value, 10) || 0) > 0; }
+    );
   }
 
   function bindKinshipOtherToggle() {
@@ -1269,6 +1291,12 @@
     function startingIndex() {
       var paymentConfirmed = form.getAttribute('data-payment-confirmed') === 'true';
       var materialsConfirmed = form.getAttribute('data-materials-confirmed') === 'true';
+      if (
+        (paymentConfirmed || materialsConfirmed) &&
+        !getVal('id_dependent_password')
+      ) {
+        return 0;
+      }
       if (materialsConfirmed) {
         var reviewIdx = keyIndex('review');
         return reviewIdx !== -1 ? reviewIdx : total - 1;

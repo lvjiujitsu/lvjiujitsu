@@ -153,6 +153,37 @@ class AdministrativeAccessRequestServiceTestCase(TestCase):
             ).exists()
         )
 
+    def test_approve_public_student_intent_creates_student_with_operational_role(self):
+        request = create_administrative_access_request(
+            origin=AdministrativeAccessRequestOrigin.PUBLIC_REGISTRATION,
+            full_name="Aluno Administrativo Novo",
+            cpf="71320260705",
+            email="student.admin@example.com",
+            phone="11970000007",
+            requested_role_codes=[OperationalRoleCode.PEOPLE_SUPPORT],
+            justification="Treinar e apoiar o cadastro de pessoas.",
+            password="SenhaForte123",
+            request_payload={"training_intent": "student"},
+        )
+
+        approve_administrative_access_request(
+            request.pk,
+            approved_by=self.approver,
+            approved_role_ids=[self.people_support_role.pk],
+            grant_full_administrative=False,
+        )
+
+        person = Person.objects.get(cpf="713.202.607-05")
+        self.assertEqual(person.person_type, self.student_type)
+        self.assertTrue(person.access_account.check_password("SenhaForte123"))
+        self.assertTrue(
+            PersonOperationalRole.objects.filter(
+                person=person,
+                role=self.people_support_role,
+                is_active=True,
+            ).exists()
+        )
+
     def test_approve_full_administrative_creates_person_and_account(self):
         request = create_administrative_access_request(
             origin=AdministrativeAccessRequestOrigin.PUBLIC_REGISTRATION,

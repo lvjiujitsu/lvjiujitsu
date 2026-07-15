@@ -169,3 +169,7 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-142-critica-backend-performance.md](PRD-142-critica-backend-performance.md) | Crítica backend — performance, N+1, índices ausentes e testes de query budget (read-only) |
 | [PRD-143-critica-views-models-forms-mvt.md](PRD-143-critica-views-models-forms-mvt.md) | Crítica MVT — views, models e forms (god-modules, violações, top 30 achados, read-only) |
 | [PRD-144-pendencias-implementacao-varredura-jul-2026.md](PRD-144-pendencias-implementacao-varredura-jul-2026.md) | Pendências pós-varredura jul/2026 — status implementação PRD-138…143, inventário, matriz P0–P3 e top 20 bloqueadores (read-only) |
+| [PRD-145-auditoria-operacional-cadastros-documentacao.md](PRD-145-auditoria-operacional-cadastros-documentacao.md) | Auditoria operacional de cadastros, pagamentos sandbox, PRDs recentes e documentação externa |
+| [PRD-146-professor-publico-vinculo-turmas-existentes.md](PRD-146-professor-publico-vinculo-turmas-existentes.md) | Professor público e vínculo com turmas existentes — decisão de aprovação pendente |
+| [PRD-147-homologacao-funcional-pos-cadastro.md](PRD-147-homologacao-funcional-pos-cadastro.md) | Homologação funcional pós-cadastro — aula, pausa, plano, cartão, dependentes e histórico |
+| [PRD-148-repasse-professor-cadastro-publico.md](PRD-148-repasse-professor-cadastro-publico.md) | Ativação do repasse do professor cadastrado publicamente — decisões financeiras pendentes |

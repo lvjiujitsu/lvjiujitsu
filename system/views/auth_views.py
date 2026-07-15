@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
@@ -52,6 +53,9 @@ from system.services.registration_checkout import (
 )
 from system.services.registration_validation import (
     build_eligibility_context_from_wizard_data,
+)
+from system.services.operational_registration import (
+    submit_operational_pre_registration,
 )
 from system.utils import ensure_formatted_cpf
 
@@ -112,6 +116,14 @@ class PortalRegisterView(FormView):
         checkout_action = form.cleaned_data.get("checkout_action") or CheckoutAction.PAY_LATER
         if checkout_action == CheckoutAction.PAY_LATER:
             if self._is_operational_pre_registration_without_plan(form.cleaned_data):
+                try:
+                    submit_operational_pre_registration(
+                        pre_registration,
+                        form.cleaned_data,
+                    )
+                except ValidationError as exc:
+                    messages.error(self.request, exc.messages[0])
+                    return redirect("system:register")
                 self.request.session.pop("pending_pre_registration_id", None)
                 messages.success(
                     self.request,

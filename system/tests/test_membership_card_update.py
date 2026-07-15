@@ -22,6 +22,10 @@ from system.models import (
     PlanTier,
     PortalAccount,
 )
+from system.models.membership_timeline import (
+    MembershipTimelineEvent,
+    MembershipTimelineEventType,
+)
 from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod, PlanWeeklyFrequency
 from system.models.registration_order import OrderKind, PaymentStatus, RegistrationOrder
 from system.services import PORTAL_ACCOUNT_SESSION_KEY
@@ -31,7 +35,11 @@ from system.services.membership import (
     mark_invoice_failed,
     upsert_membership_from_stripe_subscription,
 )
-from system.services.stripe_checkout import StripeCheckoutError, create_billing_portal_session
+from system.services.stripe_checkout import (
+    StripeCheckoutError,
+    create_billing_portal_session,
+    get_membership_default_payment_method_id,
+)
 from system.services.stripe_webhooks import _handle_pre_registration_checkout_completed
 
 
@@ -210,6 +218,26 @@ class CreateBillingPortalSessionTestCase(TestCase):
         self.assertEqual(call_kwargs["customer"], "cus_portal_test")
         self.assertEqual(call_kwargs["flow_data"], {"type": "payment_method_update"})
 
+    @patch("system.services.stripe_checkout._get_client")
+    def test_reads_default_payment_method_from_real_stripe_objects(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.Subscription.retrieve.return_value = stripe.Subscription.construct_from(
+            {"id": "sub_portal_test", "default_payment_method": None},
+            "sk_test_dummy",
+        )
+        mock_client.Customer.retrieve.return_value = stripe.Customer.construct_from(
+            {
+                "id": "cus_portal_test",
+                "invoice_settings": {"default_payment_method": "pm_customer"},
+            },
+            "sk_test_dummy",
+        )
+        mock_get_client.return_value = mock_client
+
+        payment_method_id = get_membership_default_payment_method_id(self.membership)
+
+        self.assertEqual(payment_method_id, "pm_customer")
+
 
 class MembershipUpdateCardViewTestCase(TestCase):
     def setUp(self):
@@ -240,14 +268,23 @@ class MembershipUpdateCardViewTestCase(TestCase):
         session[PORTAL_ACCOUNT_SESSION_KEY] = self.account.pk
         session.save()
 
-    @patch("system.services.stripe_checkout._get_client")
-    def test_redirects_to_billing_portal_for_stripe_membership(self, mock_get_client):
+    def _create_stripe_membership(self):
         now = timezone.now()
-        Membership.objects.create(
+        return Membership.objects.create(
             person=self.person, plan_price=self.price_stripe, status=MembershipStatus.ACTIVE,
             current_period_start=now, current_period_end=now + timedelta(days=30),
             stripe_subscription_id="sub_view_test", stripe_customer_id="cus_view_test",
         )
+
+    @patch(
+        "system.views.plan_change_views.get_membership_default_payment_method_id",
+        return_value="pm_before",
+    )
+    @patch("system.services.stripe_checkout._get_client")
+    def test_redirects_to_billing_portal_without_recording_update(
+        self, mock_get_client, _mock_payment_method
+    ):
+        membership = self._create_stripe_membership()
         mock_client = MagicMock()
         mock_client.billing_portal.Session.create.return_value = {
             "id": "bps_view_1", "url": "https://billing.stripe.com/p/session/view_1",
@@ -259,6 +296,82 @@ class MembershipUpdateCardViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "https://billing.stripe.com/p/session/view_1")
+        self.assertFalse(
+            MembershipTimelineEvent.objects.filter(
+                membership=membership,
+                event_type=MembershipTimelineEventType.CARD_UPDATED,
+            ).exists()
+        )
+        self.assertEqual(
+            self.client.session["pending_card_update"],
+            {
+                "membership_id": membership.pk,
+                "previous_payment_method_id": "pm_before",
+            },
+        )
+
+    @patch(
+        "system.views.plan_change_views.get_membership_default_payment_method_id",
+        return_value="pm_after",
+    )
+    def test_return_records_update_only_after_payment_method_changed(
+        self, _mock_payment_method
+    ):
+        membership = self._create_stripe_membership()
+        self._login()
+        session = self.client.session
+        session["pending_card_update"] = {
+            "membership_id": membership.pk,
+            "previous_payment_method_id": "pm_before",
+        }
+        session.save()
+
+        response = self.client.get(
+            reverse("system:membership-update-card"),
+            {"card_update": "confirm"},
+        )
+
+        self.assertRedirects(response, reverse("system:home"))
+        event = MembershipTimelineEvent.objects.get(
+            membership=membership,
+            event_type=MembershipTimelineEventType.CARD_UPDATED,
+        )
+        self.assertEqual(
+            event.context,
+            {
+                "previous_payment_method_id": "pm_before",
+                "payment_method_id": "pm_after",
+            },
+        )
+        self.assertNotIn("pending_card_update", self.client.session)
+
+    @patch(
+        "system.views.plan_change_views.get_membership_default_payment_method_id",
+        return_value="pm_before",
+    )
+    def test_return_without_change_does_not_record_update(self, _mock_payment_method):
+        membership = self._create_stripe_membership()
+        self._login()
+        session = self.client.session
+        session["pending_card_update"] = {
+            "membership_id": membership.pk,
+            "previous_payment_method_id": "pm_before",
+        }
+        session.save()
+
+        response = self.client.get(
+            reverse("system:membership-update-card"),
+            {"card_update": "confirm"},
+        )
+
+        self.assertRedirects(response, reverse("system:home"))
+        self.assertFalse(
+            MembershipTimelineEvent.objects.filter(
+                membership=membership,
+                event_type=MembershipTimelineEventType.CARD_UPDATED,
+            ).exists()
+        )
+        self.assertNotIn("pending_card_update", self.client.session)
 
     def test_redirects_home_when_not_stripe_membership(self):
         now = timezone.now()

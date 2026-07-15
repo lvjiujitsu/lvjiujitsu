@@ -549,3 +549,13 @@ Nenhuma — escopo read-only respeitado.
 ## Final status
 
 **Concluída** — auditoria estática entregue; proposta de correção consolidada (jul/2026). Implementação e medição runtime pendentes.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- O status histórico vale para a auditoria. As seções posteriores registram execução
+  de correções P0/P1/P2, mas não autorizam concluir índices ou medições em HG.
+- A homologação PRD-145 executou 72 testes focados sem regressão e validou o ORM dos
+  perfis cadastrados; a suíte ampla é registrada na própria PRD-145.
+- Índices, `EXPLAIN ANALYZE` e backfill HG permanecem não executados por estarem fora
+  do ambiente autorizado.
+- Estado reconciliado: **auditoria concluída; implementação local parcial; HG pendente**.

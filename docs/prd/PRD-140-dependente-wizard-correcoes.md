@@ -92,10 +92,23 @@ Autorizada pelo pedido atual.
 - Última etapa antes do envio: resumo revisável (Revisar e confirmar).
 
 ## Evidence
-- Pendente.
+
+- `system.tests.test_dependent_registration` incluído na suíte focada de 72 testes:
+  **72/72 OK** em 2026-07-13.
+- Browser interno em 1440×900 e 390×844: diálogo exibe título
+  “Adicionar dependente”, ação “Fechar”, progresso “Etapa 1 de 7” e CTA fixo.
+- O título e o “X” pertencem ao shell do diálogo em `home/dashboard.html`; o iframe
+  mantém apenas o conteúdo do wizard, sem duplicar cabeçalho.
+- Código confirma catálogo IBJJF no contexto, filtro de audiência e etapa 7
+  “Revisar e confirmar”.
 
 ## Implemented
-- Pendente.
+
+- [x] Cabeçalho do diálogo com título e fechamento.
+- [x] Catálogo IBJJF no contexto e filtros de turma/plano.
+- [x] Padding consistente no modal desktop/mobile.
+- [x] Etapa 7 de revisão antes da submissão.
 
 ## Final status
-Não concluída.
+
+**Concluída** — estado documental reconciliado pela PRD-145 em 2026-07-13.

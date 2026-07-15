@@ -1,0 +1,20 @@
+@media (max-width: 639px) {
+  .entity-card.membership-timeline-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .membership-timeline-card .entity-card__name,
+  .membership-timeline-card .entity-card__meta {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .membership-timeline-card .entity-card__badges {
+    align-self: flex-start;
+    margin-top: 0;
+  }
+}

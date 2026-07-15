@@ -23,6 +23,9 @@ class RegistrationFinalizeServiceTestCase(TestCase):
                 "holder_password_confirm": "Teste@12345",
                 "holder_has_martial_art": "no",
                 "checkout_action": "asaas_card",
+                "extra_dependents": [
+                    {"name": "Dependente", "dependent_password": "Teste@12345"}
+                ],
             },
         )
 
@@ -33,3 +36,9 @@ class RegistrationFinalizeServiceTestCase(TestCase):
         self.assertTrue(Person.objects.filter(cpf="390.533.447-05").exists())
         pre_registration.refresh_from_db()
         self.assertEqual(pre_registration.status, PreRegistrationStatus.FINALIZED)
+        self.assertNotIn("holder_password", pre_registration.form_snapshot)
+        self.assertNotIn("holder_password_confirm", pre_registration.form_snapshot)
+        self.assertNotIn(
+            "dependent_password",
+            pre_registration.form_snapshot["extra_dependents"][0],
+        )

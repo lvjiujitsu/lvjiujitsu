@@ -1243,10 +1243,13 @@ def perform_checkin(person, schedule_id):
     today = timezone.localdate()
     schedule = ClassSchedule.objects.select_related("class_group").get(pk=schedule_id)
 
+    if schedule.class_group_id not in _training_class_group_ids(person):
+        raise PermissionError("Você não está matriculado nesta turma.")
+
     session, _ = ClassSession.objects.get_or_create(
         schedule=schedule,
         date=today,
-        defaults={"status": SessionStatus.SCHEDULED},
+        defaults=_session_creation_defaults(),
     )
 
     if session.is_cancelled:

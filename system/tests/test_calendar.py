@@ -168,6 +168,52 @@ class CalendarServiceTestCase(TestCase):
         self.assertIsNone(checkin.approved_at)
         self.assertIsNone(checkin.approved_by)
 
+    def test_perform_checkin_creates_session_with_instructor_present_by_default(self):
+        checkin, _ = perform_checkin(self.person, self.schedule.pk)
+
+        self.assertTrue(checkin.session.instructor_present)
+        self.assertIsNotNone(checkin.session.instructor_checked_in_at)
+
+    def test_perform_checkin_blocks_schedule_outside_active_enrollments(self):
+        other_group = ClassGroup.objects.create(
+            display_name="Turma não matriculada",
+            class_category=self.category,
+        )
+        other_schedule = ClassSchedule.objects.create(
+            class_group=other_group,
+            weekday=self.schedule.weekday,
+            start_time=time(20, 0),
+            training_style=TrainingStyle.GI,
+        )
+
+        with self.assertRaises(PermissionError):
+            perform_checkin(self.person, other_schedule.pk)
+
+        self.assertFalse(ClassSession.objects.filter(schedule=other_schedule).exists())
+
+    def test_student_checkin_view_blocks_schedule_outside_active_enrollments(self):
+        other_group = ClassGroup.objects.create(
+            display_name="Turma de terceiro",
+            class_category=self.category,
+        )
+        other_schedule = ClassSchedule.objects.create(
+            class_group=other_group,
+            weekday=self.schedule.weekday,
+            start_time=time(20, 0),
+            training_style=TrainingStyle.GI,
+        )
+        self._login_portal_account(self.account)
+
+        response = self.client.post(
+            reverse("system:student-checkin"),
+            data=json.dumps({"schedule_id": other_schedule.pk}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("matriculado", response.json()["error"])
+        self.assertFalse(ClassSession.objects.filter(schedule=other_schedule).exists())
+
     def test_perform_checkin_idempotent(self):
         perform_checkin(self.person, self.schedule.pk)
         checkin, created = perform_checkin(self.person, self.schedule.pk)
@@ -1480,6 +1526,34 @@ class InstructorSelfCheckinServiceTestCase(TestCase):
         self.assertIn("js-instructor-restore-class", content)
         self.assertIn("Aula cancelada", content)
 
+    def test_instructor_home_marks_presence_counters_for_live_update(self):
+        student_type = PersonType.objects.create(
+            code="student",
+            display_name="Aluno",
+        )
+        student = Person.objects.create(
+            full_name="Aluno Contador",
+            cpf="950.000.000-03",
+            person_type=student_type,
+            birth_date=date(2000, 1, 1),
+            biological_sex="male",
+        )
+        ClassEnrollment.objects.create(
+            class_group=self.group,
+            person=student,
+            status="active",
+        )
+        perform_checkin(student, self.schedule.pk)
+        self._login_portal_account(self.instructor_account)
+
+        response = self.client.get(reverse("system:home"))
+
+        content = response.content.decode("utf-8")
+        self.assertIn('data-approved-count="0"', content)
+        self.assertIn('data-pending-count="1"', content)
+        self.assertIn("data-presence-summary", content)
+        self.assertIn("data-approved-count-label", content)
+
 
 class AdministrativeProfileTestCase(TestCase):
     def setUp(self):
@@ -1601,8 +1675,13 @@ class AdministrativeProfileTestCase(TestCase):
     def test_instructor_entry_exposes_approval_fields(self):
         student = Person.objects.create(
             full_name="Aluno Kids", cpf="920.000.003-01",
-            person_type=self.student_type, birth_date=date(2000, 1, 1),
+            person_type=self.student_type, birth_date=date(2016, 1, 1),
             biological_sex="male",
+        )
+        ClassEnrollment.objects.create(
+            class_group=self.kids_group,
+            person=student,
+            status="active",
         )
         perform_checkin(student, self.kids_schedule.pk)
 

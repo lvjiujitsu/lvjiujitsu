@@ -324,6 +324,25 @@ class MembershipPauseCheckinBlockingTestCase(TestCase):
         checkin, created = perform_checkin(self.person, self.schedule.pk)
         self.assertTrue(created)
 
+    def test_checkin_allowed_after_approved_pause_end(self):
+        pause = self._approve_pause_covering_today()
+        first_unlocked_date = pause.requested_end_date + timedelta(days=1)
+
+        with (
+            patch(
+                "system.services.membership.timezone.localdate",
+                return_value=first_unlocked_date,
+            ),
+            patch(
+                "system.services.class_calendar.timezone.localdate",
+                return_value=first_unlocked_date,
+            ),
+        ):
+            checkin, created = perform_checkin(self.person, self.schedule.pk)
+
+        self.assertTrue(created)
+        self.assertEqual(checkin.session.date, first_unlocked_date)
+
 
 class MembershipPauseRequestCreateViewTestCase(TestCase):
     def setUp(self):

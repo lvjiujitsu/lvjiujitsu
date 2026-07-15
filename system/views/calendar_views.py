@@ -132,6 +132,8 @@ class StudentCheckinView(PortalLoginRequiredMixin, View):
 
         try:
             checkin, created = perform_checkin(person, schedule_id)
+        except PermissionError as e:
+            return JsonResponse({"error": str(e)}, status=403)
         except ValueError as e:
             return JsonResponse({"error": str(e)}, status=400)
         except Exception:

@@ -40,6 +40,7 @@ from system.models import (
 )
 from system.models.plan import BillingCycle, PlanAudience, PlanPaymentMethod
 from system.services import PORTAL_ACCOUNT_SESSION_KEY
+from system.services.asaas_client import AsaasClientError
 from system.services.registration_checkout import parse_selected_plan_payload
 
 
@@ -217,6 +218,76 @@ class DependentRegistrationFlowTestCase(TestCase):
             self.owner.pk,
         )
         mocked_payment.assert_called_once()
+
+    def test_gateway_error_is_rendered_in_modal_instead_of_raising(self):
+        self._login()
+        gateway_error = AsaasClientError(
+            "Asaas retornou 400",
+            status_code=400,
+            payload={
+                "errors": [
+                    {
+                        "code": "invalid_object",
+                        "description": "Domínio de retorno não autorizado.",
+                    }
+                ]
+            },
+        )
+
+        with patch(
+            "system.services.dependent_registration.create_pre_registration_plan_payment",
+            side_effect=gateway_error,
+        ):
+            response = self.client.post(
+                f"{reverse('system:dependent-add')}?modal=1",
+                data=self._payload(
+                    _modal="1",
+                    selected_plan=sp_id(self.individual_plan.pk),
+                    checkout_action=CheckoutAction.STRIPE_CARD,
+                ),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Domínio de retorno não autorizado.")
+        self.assertFalse(Person.objects.filter(cpf="529.982.247-25").exists())
+
+    def test_post_recovers_pending_registration_without_session_marker(self):
+        self._login()
+        payload = self._payload(
+            _modal="1",
+            selected_plan=sp_id(self.individual_plan.pk),
+            checkout_action=CheckoutAction.STRIPE_CARD,
+        )
+        with patch(
+            "system.services.dependent_registration.create_pre_registration_plan_payment",
+            return_value="https://checkout.stripe.test/first",
+        ):
+            self.client.post(
+                f"{reverse('system:dependent-add')}?modal=1",
+                data=payload,
+            )
+
+        pre_registration = PreRegistration.objects.get()
+        session = self.client.session
+        session.pop("pending_dependent_pre_registration_id", None)
+        session.save()
+
+        with patch(
+            "system.services.dependent_registration.create_pre_registration_plan_payment",
+            return_value="https://checkout.stripe.test/recovered",
+        ):
+            response = self.client.post(
+                f"{reverse('system:dependent-add')}?modal=1",
+                data=payload,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "https://checkout.stripe.test/first")
+        self.assertEqual(PreRegistration.objects.count(), 1)
+        self.assertEqual(
+            self.client.session["pending_dependent_pre_registration_id"],
+            pre_registration.pk,
+        )
 
     def test_family_upgrade_creates_pre_registration_without_person(self):
         self._login()

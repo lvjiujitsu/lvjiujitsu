@@ -1,15 +1,11 @@
 # Guia de Preenchimento e Teste de Cliente
 
-> **Nota de portabilidade:** este guia foi validado com as ferramentas do Claude Code
-> (`preview_start`, `claude-in-chrome`, `.claude/launch.json`). O procedimento e as
-> limitações de rede (bloqueio de navegação para domínio externo, `SITE_BASE_URL`
-> apontando para HG) são válidos para qualquer agente — Codex e Cursor usam o
-> equivalente descrito em `docs/PLATFORM-ADAPTERS.md` (browser interno da ferramenta,
-> configuração de execução do servidor local) no lugar dos comandos específicos do
-> Claude citados abaixo.
+> **Nota de portabilidade:** use o navegador interno e o adaptador de execução descritos
+> em `docs/PLATFORM-ADAPTERS.md`. Use as capacidades equivalentes da ferramenta
+> atual para execução, navegação e leitura do console.
 >
 > Roteiro operacional completo para cadastrar clientes de teste no wizard público
-> usando o **preview browser interno do Claude Code** (porta 8000, sem acesso a URLs externas).
+> usando o servidor local na porta 8000 e, quando necessário, um túnel HTTPS.
 >
 > Executado e validado em 2026-06-10. Atualizado em 2026-07-03.
 > CPF de Ana Teste Stripe corrigido para 960.013.389-14 (matematicamente válido).
@@ -25,24 +21,28 @@
 > scriptável, sem intervenção manual. Ver "Fluxo Asaas 100% via API (sem navegador)"
 > logo abaixo da tabela de estratégia por gateway. O navegador (interno) continua
 > útil só para uma conferência visual final, com um cliente novo — ver essa seção.
+>
+> **Atualizado em 2026-07-13**: o navegador interno do Codex percorreu checkout
+> hospedado Stripe e retorno via ngrok. O sandbox Asaas recusou callback para domínio
+> diferente do cadastrado na conta; alinhar `SITE_BASE_URL`, domínio do túnel e domínio
+> cadastrado antes do teste. Nunca registrar em documentação o `whsec_...` emitido pelo
+> Stripe CLI; um valor anteriormente exposto neste arquivo deve ser rotacionado.
 
 ---
 
-## Contexto e limitações do preview browser
+## Contexto e limitações do navegador interno
 
-O preview browser interno do Claude Code funciona em `http://localhost:8000` e **não
-navega para fora desse domínio** — nem por clique de formulário, nem por
-`window.location.href` via script. Um `POST` que responde com `302` para um domínio
-externo (`checkout.stripe.com`, `sandbox.asaas.com`) é abortado silenciosamente
-(`net::ERR_ABORTED`) e a página permanece na mesma URL. Isso é uma restrição do
-sandbox do preview, não um bug do LV JIU JITSU.
+A capacidade de navegar para checkout externo depende do adaptador. O navegador
+interno do Codex atualmente suporta o fluxo pelo domínio público do ngrok e o checkout
+hospedado Stripe; não assuma que outros adaptadores têm o mesmo comportamento. Sempre
+confirme a URL final, o retorno ao LV e o estado do gateway antes de declarar sucesso.
 
 **Limitações conhecidas:**
 
 | Situação | Comportamento | Solução neste guia |
 |---|---|---|
-| URL de gateway externo (Asaas, Stripe) | Bloqueada — o browser não redireciona para fora | Ver "Estratégia de teste por gateway" abaixo |
-| `SITE_BASE_URL` aponta para HG Render | `successUrl` de ambos os gateways gera link para HG, não para localhost | Simular o retorno via `/pagamentos/sucesso/?id=<pay_id>` ou `?session_id=<...>` |
+| URL de gateway externo (Asaas, Stripe) | Depende do adaptador e da política de navegação | Preferir o navegador interno atual; usar API/CLI somente como fallback documentado |
+| `SITE_BASE_URL` não coincide com o domínio cadastrado no Asaas | O Asaas rejeita ou retorna para o ambiente errado | Alinhar `SITE_BASE_URL`, `DJANGO_ALLOWED_HOSTS`, túnel e cadastro da conta sandbox antes do checkout |
 | `stripe trigger` usa session ID fictício | O `stripe_session_id` no banco fica diferente do original | Ler o ID correto no banco **após** o webhook e usar no redirect |
 | Selects HTML nativos | `el.value = 'x'` pode não acionar o listener JS | Usar `nativeSetter` (ver abaixo) |
 
@@ -53,32 +53,24 @@ conforme o gateway, e isso define a estratégia de teste de cada um:
 
 | Gateway | Como o wizard confirma o pagamento | Estratégia de teste |
 |---|---|---|
-| **Stripe** | Webhook `checkout.session.completed` grava `plan_paid=True` no `PreRegistration` (ver `system/services/stripe_webhooks.py`) | **100% local, sem navegador.** Disparar o webhook com `stripe trigger` (Stripe CLI) apontando para `localhost:8000` — comandos de referência em `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-stripe-lvjiujitsu.md`. Ver "Hook de simulação Stripe" no Fluxo 2. |
-| **Asaas** | O wizard confirma via redirect `successUrl` (`/pagamentos/sucesso/`) — mas esse endpoint é um `GET` normal, chamável diretamente por HTTP sem navegador nenhum | **100% via API/`curl`, sem navegador nenhum** (interno ou externo) desde que exista um túnel HTTPS válido registrado na conta sandbox Asaas. Ver "Fluxo Asaas 100% via API (sem navegador)" abaixo — é o método **preferencial** a partir de 2026-07-06. O fluxo com navegador real (`claude-in-chrome`) documentado logo depois continua válido como alternativa/verificação visual manual. |
+| **Stripe** | Webhook `checkout.session.completed` grava `plan_paid=True` no `PreRegistration` (ver `system/services/stripe_webhooks.py`) | Preferir checkout hospedado com cartão de teste e retorno pelo túnel. `stripe trigger` é fallback para validar o handler isoladamente e não substitui a homologação visual do checkout. |
+| **Asaas** | O wizard confirma via redirect `successUrl` (`/pagamentos/sucesso/`) — mas esse endpoint é um `GET` normal, chamável diretamente por HTTP sem navegador nenhum | **100% via API/`curl`, sem navegador nenhum** (interno ou externo) desde que exista um túnel HTTPS válido registrado na conta sandbox Asaas. Ver "Fluxo Asaas 100% via API (sem navegador)" abaixo — é o método **preferencial** a partir de 2026-07-06. O fluxo com navegador continua válido como alternativa/verificação visual manual. |
 
-**Por que a diferença:** o Stripe expõe um mecanismo de simulação de eventos (`stripe
-trigger`) que dispara o mesmo webhook que a produção usaria, sem precisar de uma página
-de checkout real. A Asaas não tem equivalente — o único sinal de pagamento que o
-wizard aceita é o navegador realmente pousar na `successUrl`. Como o preview interno
-não sai de `localhost`, isso exige um navegador de verdade (`claude-in-chrome`) e a
-confirmação de quem está testando.
+**Por que a diferença:** o Stripe CLI simula eventos para testar o webhook isoladamente.
+O sandbox Asaas oferece um endpoint específico de confirmação de pagamento, mas o LV
+ainda precisa receber o retorno da `successUrl` para concluir o estado do wizard. A
+homologação completa combina estado confirmado no gateway, retorno ao LV e conferência
+no ORM.
 
 **Como o servidor é iniciado:**
 
-O arquivo `.claude/launch.json` configura o servidor Django para o preview:
+Use o adaptador da ferramenta ou o comando canônico abaixo:
 
-```json
-{
-  "configurations": [{
-    "name": "django",
-    "runtimeExecutable": "C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe",
-    "runtimeArgs": ["manage.py", "runserver", "localhost:8000", "--noreload"],
-    "port": 8000
-  }]
-}
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000 --noreload
 ```
 
-O preview é iniciado pelo Claude via `preview_start`. Se a porta 8000 já estiver em uso, identificar e encerrar o processo:
+Se a porta 8000 já estiver em uso, identifique o processo antes de decidir reiniciá-lo:
 
 ```powershell
 # Identificar PID na porta 8000
@@ -135,7 +127,8 @@ curl -s -o /dev/null -w "%{http_code}" -X GET http://localhost:8000/pagamentos/w
 
 ## Utilitário JavaScript reutilizável
 
-Todos os steps abaixo usam estas duas funções. Executar em `preview_eval` antes de começar ou incluir no início de cada bloco:
+Todos os steps abaixo usam estas duas funções. Execute no console controlado do
+navegador quando o adaptador permitir ou inclua no início de cada bloco:
 
 ```javascript
 // Define valor em input e dispara eventos (para que o JS do wizard detecte)
@@ -370,8 +363,7 @@ que carregue os mesmos cookies de sessão da etapa anterior.
    domínio do HG, o usuário precisa trocar temporariamente e reverter depois).
 3. `.env` local ajustado (com confirmação do usuário, é config compartilhada com HG/prod):
    `SITE_BASE_URL=https://<dominio-do-tunel>` e `DJANGO_ALLOWED_HOSTS` incluindo esse
-   domínio. Reiniciar o servidor Django (`preview_stop` + `preview_start`, ou matar a
-   porta 8000 manualmente) para carregar o novo valor.
+   domínio. Reiniciar o servidor Django para carregar o novo valor.
 
 **Passo 1 — Buscar a página, extrair CSRF token e IDs do catálogo:**
 
@@ -525,19 +517,18 @@ fluxo funcionar; o Passo 5 (`GET /pagamentos/sucesso/`) é autossuficiente.
 **Depois de validar**: se só este fluxo API era necessário, pode reverter `.env`
 (`SITE_BASE_URL`, `DJANGO_ALLOWED_HOSTS`) e encerrar o túnel. Se quiser também uma
 conferência visual, seguir para a seção seguinte usando o **navegador interno** (não é
-mais necessário o navegador externo/`claude-in-chrome`, já que a confirmação de
+necessário trocar de navegador quando o adaptador acessa a URL externa, já que a confirmação de
 pagamento não depende mais de abrir a `invoiceUrl`) — criar um **cliente novo** (CPF
 inédito) para não colidir com o registro já criado por este fluxo via API.
 
 ---
 
-### Confirmar pagamento Asaas — navegador real + confirmação do usuário
+### Confirmar pagamento Asaas — navegador interno e sandbox
 
-A Asaas **não tem** um equivalente ao `stripe trigger`: o wizard só confirma o
-pagamento quando o navegador realmente pousa na `successUrl` após o pagamento ser
-concluído na página hospedada da Asaas (sandbox). Como o preview interno não navega
-para fora de `localhost`, este passo usa o **navegador Chrome real conectado via
-`claude-in-chrome`** — nunca o preview — e depende da sua confirmação interativa.
+O Asaas não oferece um gerador de eventos idêntico ao `stripe trigger`, mas o sandbox
+possui o endpoint oficial `POST /sandbox/payment/{id}/confirm`. Depois de confirmar o
+pagamento no gateway, o wizard ainda precisa receber a `successUrl`. O domínio dessa
+URL deve coincidir com o domínio cadastrado na conta sandbox.
 
 **Passo 1 — Obter a `invoiceUrl` real sem duplicar o redirect do browser:**
 
@@ -557,26 +548,24 @@ print('invoiceUrl:', url)
 
 > Trocar `CheckoutAction.PIX` por `CheckoutAction.ASAAS_CARD` para o fluxo de cartão Asaas.
 
-**Passo 2 — Abrir a `invoiceUrl` no Chrome real (não no preview) e pedir confirmação:**
+**Passo 2 — Abrir a `invoiceUrl` no navegador disponível:**
 
-Usar as ferramentas `mcp__claude-in-chrome__*` (não `preview_*`) para navegar até a
-`invoiceUrl` impressa acima. Antes de usar, chamar `tabs_context_mcp` para garantir que
-a extensão está conectada — se não estiver, pedir ao usuário para abrir o Chrome com a
-extensão logada e tentar de novo.
+Preferir o navegador interno definido em `docs/PLATFORM-ADAPTERS.md`. Se o adaptador
+não permitir domínio externo, usar o Chrome conectado ou confirmar o pagamento pelo
+endpoint oficial do sandbox.
 
 Depois de abrir a página:
 1. Perguntar ao usuário se ele quer pagar com o cartão de teste sandbox da Asaas ou
    escanear o PIX de teste (a Asaas sandbox aceita cartões e chaves fictícias — consultar
    a documentação da Asaas para os valores atuais de teste, pois eles mudam).
-2. **Aguardar a confirmação explícita do usuário** de que o pagamento sandbox foi
-   concluído na página da Asaas antes de prosseguir. Não presumir sucesso.
+2. Confirmar o estado no próprio sandbox ou consultar a API antes de prosseguir. Não
+   inferir sucesso apenas pelo redirect.
 
 **Passo 3 — Refletir a confirmação no wizard local:**
 
-Como `SITE_BASE_URL` aponta para o HG Render (não para `localhost`), o redirect real
-da Asaas não chega ao preview interno mesmo depois do pagamento confirmado no passo 2.
-Simular o retorno manualmente no preview, usando o `asaas_payment_id` gravado no
-snapshot:
+Se `SITE_BASE_URL` apontar para outro ambiente, o redirect não chega ao servidor local.
+Corrija a configuração antes do checkout ou, somente em homologação local, acesse o
+retorno manual com o `asaas_payment_id` gravado no snapshot:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py shell -c "
@@ -588,15 +577,15 @@ print('asaas_payment_id:', snap.get('plan_payment', {}).get('asaas_payment_id'))
 ```
 
 ```javascript
-// No preview_eval (navegador interno) — substituir <pay_id> pelo valor acima
+// No navegador interno — substituir <pay_id> pelo valor acima
 window.location.href = '/pagamentos/sucesso/?id=<pay_id>';
 ```
 
-**Comportamento esperado no preview:**
+**Comportamento esperado no navegador:**
 - Redireciona para `/register/`
 - Aparece o alerta verde **"Pagamento confirmado!"**
 - O wizard avança para o modo pós-pagamento:
-  - Barra de progresso mostra Etapa 6 de 8
+  - Barra de progresso avança para o estado pós-pagamento
   - Step-plan exibe banner **"Pagamento confirmado"** com o nome e valor do plano
   - Botão "Continuar para materiais" visível
   - Filtros e cards de plano ocultados
@@ -818,15 +807,14 @@ stripe listen --forward-to http://127.0.0.1:8000/pagamentos/webhook/stripe/
 
 Saída esperada (o `whsec_...` deve bater com `STRIPE_WEBHOOK_SECRET` no `.env`):
 ```
-> Ready! You are using Stripe API Version [2026-03-25.dahlia]. Your webhook signing secret is whsec_74ab90bcded99bd0491f974630baa81a030722ceaa5bebd01d9f9d2085cc78a2 (^C to quit)
+> Ready! You are using Stripe API Version [versão atual]. Your webhook signing secret is whsec_... (^C to quit)
 2026-06-10 18:58:58   --> checkout.session.completed [evt_1Tgu9HItFp0xr82sDBRv8AsX]
 2026-06-10 18:58:58  <--  [200] POST http://127.0.0.1:8000/pagamentos/webhook/stripe/ [evt_1Tgu9HItFp0xr82sDBRv8AsX]
 ```
 
 > Se `STRIPE_WEBHOOK_SECRET` no `.env` não corresponder ao `whsec_...` impresso aqui,
 > copiar o valor exibido, atualizar o `.env` e reiniciar o servidor Django
-> (`--noreload` exige matar a porta 8000 e rodar `preview_start` de novo — ver
-> memória `feedback_preview_server_noreload`).
+> (`--noreload` exige encerrar o processo na porta 8000 e iniciar o comando novamente).
 
 **Passo 3 — Disparar o evento `checkout.session.completed` (em outro terminal):**
 
@@ -1106,7 +1094,7 @@ Após cada `click()` de avançar, inspecionar o console antes de continuar:
 ```javascript
 // Executar após cada transição
 (function checkConsole() {
-  // Esta função não captura erros passados — usar preview_console_logs no fluxo
+  // Esta função não captura erros passados — consultar os logs do console no fluxo
   // Para verificar ausência de erros no DOM:
   return document.querySelectorAll('[id$="-error"]:not([hidden])').length === 0
     ? 'OK — sem erros visíveis'
@@ -1131,7 +1119,7 @@ Após cada `click()` de avançar, inspecionar o console antes de continuar:
 
 ### Verificar ausência de erros de console críticos
 
-Usar `preview_console_logs` ou o seguinte snippet **a cada step** para detectar erros JS:
+Use a leitura de console do navegador ou o seguinte snippet **a cada step** para detectar erros JS:
 
 ```javascript
 // Verificar se há erros de importação de módulo ou sintaxe fatal

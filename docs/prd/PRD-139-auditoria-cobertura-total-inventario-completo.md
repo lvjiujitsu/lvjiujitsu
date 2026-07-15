@@ -511,3 +511,13 @@ Nenhuma — esta PRD é documental.
 ## Final status
 
 **Concluída com limitações** — inventário 100% arquivo-a-arquivo entregue; consolida PRD-138 e quatro auditorias read-only; nenhum teste executado; implementação das ondas pendente de aprovação explícita.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- A PRD-140 foi criada e sua implementação foi reconciliada como concluída.
+- A afirmação “nenhum teste executado” vale apenas para a auditoria original; a
+  implementação subsequente possui evidência nas PRDs 140–145.
+- Decisões de admin, CI e ondas estruturais que não participam dos cadastros
+  homologados permanecem pendentes.
+- Estado reconciliado: **inventário concluído; execução posterior parcial e
+  documentada**.

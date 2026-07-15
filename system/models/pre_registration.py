@@ -3,6 +3,18 @@ from django.db import models
 from .common import TimeStampedModel
 
 
+def _scrub_password_fields(value):
+    if isinstance(value, dict):
+        return {
+            key: _scrub_password_fields(child)
+            for key, child in value.items()
+            if "password" not in str(key).lower()
+        }
+    if isinstance(value, list):
+        return [_scrub_password_fields(child) for child in value]
+    return value
+
+
 class PreRegistrationStatus(models.TextChoices):
     DRAFT = "draft", "Rascunho"
     AWAITING_PAYMENT = "awaiting_payment", "Aguardando pagamento"
@@ -143,8 +155,17 @@ class PreRegistration(TimeStampedModel):
     def mark_finalized(self, person) -> None:
         self.status = PreRegistrationStatus.FINALIZED
         self.finalized_person = person
-        self.save(update_fields=["status", "finalized_person", "updated_at"])
+        self.form_snapshot = _scrub_password_fields(self.form_snapshot or {})
+        self.save(
+            update_fields=[
+                "status",
+                "finalized_person",
+                "form_snapshot",
+                "updated_at",
+            ]
+        )
 
     def mark_abandoned(self) -> None:
         self.status = PreRegistrationStatus.ABANDONED
-        self.save(update_fields=["status", "updated_at"])
+        self.form_snapshot = _scrub_password_fields(self.form_snapshot or {})
+        self.save(update_fields=["status", "form_snapshot", "updated_at"])

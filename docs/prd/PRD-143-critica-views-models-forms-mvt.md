@@ -449,3 +449,14 @@ Plano acionável alinhado a PRD-138 Ondas 2 e 4. **Bloqueia PRD-141 P1** (remoç
 ## Final status
 
 **Concluída** — auditoria read-only e proposta de correção consolidada (jul/2026). Implementação de código não iniciada.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- “Implementação de código não iniciada” corresponde ao fechamento original e ficou
+  obsoleto após as ondas descritas na seção `Implemented`.
+- A PRD-145 confirmou o uso de services para solicitações administrativas e de turma,
+  views finas para decisão HTTP e persistência transacional testada.
+- A decomposição completa dos módulos grandes e a migração `Membership` permanecem
+  fora do escopo desta rodada.
+- Estado reconciliado: **auditoria concluída; ondas registradas implementadas;
+  refatorações estruturais restantes pendentes**.

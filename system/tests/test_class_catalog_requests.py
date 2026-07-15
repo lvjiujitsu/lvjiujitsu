@@ -242,10 +242,14 @@ class ClassCatalogRequestServiceTestCase(TestCase):
                 "pix_key": "935.411.347-80",
                 "holder_name": "Professor PIX",
                 "holder_document": "935.411.347-80",
+                "financial_arrangement": "paid_fixed",
+                "fixed_amount": "300.00",
             },
         )
 
         self.assertEqual(request.payload["payout"]["method"], "pix")
+        self.assertEqual(request.payload["payout"]["financial_arrangement"], "paid_fixed")
+        self.assertEqual(request.payload["payout"]["fixed_amount"], "300.00")
         approve_class_catalog_request(request.pk, approved_by=self.approver)
 
         teacher = Person.objects.get(cpf="935.411.347-80")

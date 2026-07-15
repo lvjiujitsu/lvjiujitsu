@@ -13,7 +13,9 @@ from system.forms import DependentProfileForm, DependentRegistrationForm
 from system.models import AuditAction, AuditModule
 from system.models.person import PersonRelationship, PersonRelationshipKind
 from system.services.audit import record_audit_event
+from system.services.asaas_client import AsaasClientError
 from system.services.dependent_registration import (
+    find_dependent_pre_registration,
     get_pending_dependent_pre_registration,
     initial_from_pre_registration,
     is_dependent_materials_confirmed,
@@ -29,6 +31,7 @@ from system.services.registration_checkout import (
     get_public_registration_plan_catalog_payload,
 )
 from system.selectors.plan_eligibility import build_eligibility_context_for_person
+from system.utils import ensure_formatted_cpf
 from system.views.portal_mixins import PortalLoginRequiredMixin
 
 
@@ -53,6 +56,8 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         owner = self._get_owner()
         pending = get_pending_dependent_pre_registration(request.session, owner)
+        if pending is None:
+            pending = self._recover_pending(request, owner)
         post_data = request.POST
         if is_dependent_payment_confirmed(pending):
             post_data = request.POST.copy()
@@ -65,10 +70,30 @@ class DependentRegistrationView(PortalLoginRequiredMixin, TemplateView):
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form, pending=pending))
 
-        result = process_dependent_registration_submission(
-            owner=owner, form=form, pending=pending, session=request.session,
-        )
+        try:
+            result = process_dependent_registration_submission(
+                owner=owner, form=form, pending=pending, session=request.session,
+            )
+        except (AsaasClientError, ValueError) as exc:
+            form.add_error(None, _dependent_checkout_error_message(exc))
+            return self.render_to_response(
+                self.get_context_data(form=form, pending=pending)
+            )
         return self._respond_to_submission_result(request, result, form, pending)
+
+    def _recover_pending(self, request, owner):
+        try:
+            dependent_cpf = ensure_formatted_cpf(
+                request.POST.get("dependent_cpf") or ""
+            )
+        except ValueError:
+            return None
+        pending = find_dependent_pre_registration(owner, dependent_cpf)
+        if pending is not None and pending.session_key != (request.session.session_key or ""):
+            return None
+        if pending is not None:
+            request.session["pending_dependent_pre_registration_id"] = pending.pk
+        return pending
 
     def _respond_to_submission_result(self, request, result, form, pending):
         kind = result["kind"]
@@ -218,6 +243,18 @@ class DependentProfileUpdateView(PortalLoginRequiredMixin, View):
             "message": "Cadastro atualizado.",
             "person": _dependent_profile_payload(updated_dependent),
         })
+
+
+def _dependent_checkout_error_message(error):
+    if isinstance(error, AsaasClientError):
+        payload = error.payload if isinstance(error.payload, dict) else {}
+        errors = payload.get("errors") or []
+        if errors and isinstance(errors[0], dict):
+            description = errors[0].get("description")
+            if description:
+                return description
+        return "Não foi possível iniciar o pagamento no Asaas. Tente novamente."
+    return str(error)
 
 
 def _dependent_form_errors(form):

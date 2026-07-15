@@ -589,3 +589,5 @@ class TimelineViewsSmokeTestCase(TestCase):
         response = self.client.get(reverse("system:membership-timeline-admin-list"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Stripe Billing Portal")
+        self.assertContains(response, 'class="entity-card membership-timeline-card"')
+        self.assertContains(response, "/static/system/css/audit/membership_timeline.css?v=1")

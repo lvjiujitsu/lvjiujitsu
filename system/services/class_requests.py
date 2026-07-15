@@ -621,6 +621,17 @@ def _normalize_payout_payload(payout_data):
     pix_key_type = (payout_data.get("pix_key_type") or "").strip()
     pix_key = (payout_data.get("pix_key") or "").strip()
     bank_account_details = (payout_data.get("bank_account_details") or "").strip()
+    financial_arrangement = (payout_data.get("financial_arrangement") or "").strip()
+    if financial_arrangement not in {
+        "",
+        "pays_monthly",
+        "barter",
+        "volunteer",
+        "paid_fixed",
+        "paid_per_student",
+        "paid_mixed",
+    }:
+        raise ValidationError("Informe uma condição financeira válida para o professor.")
     if method == "pix" and (not pix_key_type or not pix_key):
         raise ValidationError("Informe tipo e chave PIX para recebimento do professor.")
     if method == "bank_account" and not bank_account_details:
@@ -632,6 +643,9 @@ def _normalize_payout_payload(payout_data):
         "bank_account_details": bank_account_details if method == "bank_account" else "",
         "holder_name": (payout_data.get("holder_name") or "").strip(),
         "holder_document": (payout_data.get("holder_document") or "").strip(),
+        "financial_arrangement": financial_arrangement,
+        "fixed_amount": (payout_data.get("fixed_amount") or "").strip(),
+        "student_percentage": (payout_data.get("student_percentage") or "").strip(),
     }
 
 

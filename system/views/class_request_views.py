@@ -30,6 +30,16 @@ from system.services.class_requests import (
 from system.views.portal_mixins import PortalLoginRequiredMixin, PortalRoleRequiredMixin
 
 
+OPERATIONAL_FINANCIAL_ARRANGEMENT_LABELS = {
+    "pays_monthly": "Paga mensalidade",
+    "barter": "Permuta",
+    "volunteer": "Sem mensalidade e sem recebimento",
+    "paid_fixed": "Valor fixo",
+    "paid_per_student": "Percentual por aluno",
+    "paid_mixed": "Valor fixo e percentual por aluno",
+}
+
+
 class ExistingTeacherClassCatalogRequestCreateView(PortalRoleRequiredMixin, FormView):
     form_class = ExistingTeacherClassCatalogRequestForm
     template_name = "class_requests/request_form.html"
@@ -145,6 +155,12 @@ class ClassCatalogRequestDetailView(PortalRoleRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["decision_form"] = kwargs.get("decision_form") or ClassCatalogDecisionForm(
             catalog_request=self.object,
+        )
+        payout = (self.object.payload or {}).get("payout") or {}
+        context["financial_arrangement_label"] = (
+            OPERATIONAL_FINANCIAL_ARRANGEMENT_LABELS.get(
+                payout.get("financial_arrangement") or ""
+            )
         )
         return context
 

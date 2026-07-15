@@ -316,6 +316,25 @@
           var sourceBtn = sourceRow.querySelector('.js-approve-checkin');
           if (sourceBtn) sourceBtn.replaceWith(createStatusPill('Confirmado', 'success'));
         }
+
+        var classItem = sourceRow ? sourceRow.closest('.class-item') : null;
+        if (classItem) {
+          var approvedCount = parseInt(classItem.getAttribute('data-approved-count') || '0', 10) + 1;
+          var pendingCount = Math.max(0, parseInt(classItem.getAttribute('data-pending-count') || '0', 10) - 1);
+          classItem.setAttribute('data-approved-count', String(approvedCount));
+          classItem.setAttribute('data-pending-count', String(pendingCount));
+
+          var summary = classItem.querySelector('[data-presence-summary]');
+          if (summary) {
+            summary.textContent = approvedCount + ' confirmado' + (approvedCount === 1 ? '' : 's');
+            if (pendingCount > 0) {
+              summary.textContent += ' · ' + pendingCount + ' pendente' + (pendingCount === 1 ? '' : 's');
+            }
+          }
+
+          var approvedLabel = classItem.querySelector('[data-approved-count-label]');
+          if (approvedLabel) approvedLabel.textContent = String(approvedCount);
+        }
       })
       .catch(function () {
         button.disabled = false;

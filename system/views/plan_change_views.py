@@ -22,6 +22,7 @@ from system.services.stripe_checkout import (
     StripeCheckoutError,
     create_billing_portal_session,
     create_subscription_session_for_plan_change,
+    get_membership_default_payment_method_id,
 )
 from system.views.portal_mixins import PortalRoleRequiredMixin
 
@@ -29,6 +30,7 @@ from system.views.portal_mixins import PortalRoleRequiredMixin
 LEFTOVER_ACTION_KEEP = "keep_credit"
 LEFTOVER_ACTION_REFUND = "refund"
 VALID_LEFTOVER_ACTIONS = (LEFTOVER_ACTION_KEEP, LEFTOVER_ACTION_REFUND)
+CARD_UPDATE_SESSION_KEY = "pending_card_update"
 
 
 class PlanChangeSelectView(PortalRoleRequiredMixin, View):
@@ -136,10 +138,41 @@ class MembershipUpdateCardView(PortalRoleRequiredMixin, View):
             messages.error(request, "Nenhuma assinatura recorrente Stripe encontrada.")
             return redirect("system:home")
 
+        if request.GET.get("card_update") == "confirm":
+            return self._confirm_update(request, person, membership)
+
         try:
+            previous_payment_method_id = get_membership_default_payment_method_id(
+                membership
+            )
             session = create_billing_portal_session(membership, request)
         except StripeCheckoutError as exc:
             messages.error(request, str(exc))
+            return redirect("system:home")
+
+        request.session[CARD_UPDATE_SESSION_KEY] = {
+            "membership_id": membership.pk,
+            "previous_payment_method_id": previous_payment_method_id,
+        }
+        return redirect(session["url"])
+
+    def _confirm_update(self, request, person, membership):
+        pending_update = request.session.pop(CARD_UPDATE_SESSION_KEY, None)
+        if not pending_update or pending_update.get("membership_id") != membership.pk:
+            messages.error(request, "Não foi possível validar a troca do cartão.")
+            return redirect("system:home")
+
+        try:
+            payment_method_id = get_membership_default_payment_method_id(membership)
+        except StripeCheckoutError as exc:
+            messages.error(request, str(exc))
+            return redirect("system:home")
+
+        previous_payment_method_id = pending_update.get(
+            "previous_payment_method_id"
+        ) or ""
+        if not payment_method_id or payment_method_id == previous_payment_method_id:
+            messages.info(request, "Nenhuma alteração de cartão foi identificada.")
             return redirect("system:home")
 
         from system.models.membership_timeline import MembershipTimelineEventType
@@ -150,5 +183,10 @@ class MembershipUpdateCardView(PortalRoleRequiredMixin, View):
             MembershipTimelineEventType.CARD_UPDATED,
             membership=membership,
             actor=person,
+            context={
+                "previous_payment_method_id": previous_payment_method_id,
+                "payment_method_id": payment_method_id,
+            },
         )
-        return redirect(session["url"])
+        messages.success(request, "Cartão atualizado com sucesso.")
+        return redirect("system:home")

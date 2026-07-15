@@ -424,3 +424,12 @@ Nenhuma — esta PRD é documental.
 ## Final status
 
 **Concluída com limitações** — auditoria read-only e PRD mestre entregues; implementação das ondas 1–5 pendente de aprovação explícita por onda.
+
+## Reconciliação PRD-145 — 2026-07-13
+
+- A auditoria mestre permanece concluída; ondas posteriores foram parcialmente
+  executadas nas PRDs 141–144 e não tornam concluído o débito estrutural inteiro.
+- Os fluxos públicos e operacionais exercitados nesta rodada têm evidência de browser,
+  gateway, ORM e testes na PRD-145.
+- Estado reconciliado: **auditoria concluída; execução parcial rastreada nas PRDs
+  seguintes**.
