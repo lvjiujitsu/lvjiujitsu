@@ -2,11 +2,25 @@
   'use strict';
 
   var Wz = window.LV && window.LV.Wizard;
-  if (!Wz) {
+  var DOM = window.LV && window.LV.DOM;
+  if (!Wz || !DOM) {
     if (typeof console !== 'undefined' && console.error) {
-      console.error('[LV register] wizard_shared.js é obrigatório');
+      console.error('[LV register] wizard_shared.js e dom_utils.js são obrigatórios');
     }
     return;
+  }
+
+  var el = DOM.el;
+  var clearChildren = DOM.clearChildren;
+
+  function fillMarkup(node, html) {
+    clearChildren(node);
+    if (html) node.appendChild(DOM.parseMarkup(html));
+  }
+
+  function svgIcon(markup) {
+    var frag = DOM.parseMarkup(markup);
+    return frag.firstChild;
   }
 
   var wizardForm = document.getElementById('wizard-form');
@@ -1511,7 +1525,7 @@
     ensurePlanSelections();
     var persons = getTrainingPersonsForPlans();
     if (persons.length <= 1) {
-      area.innerHTML = '';
+      clearChildren(area);
       return;
     }
     var html = '<div class="plan-filter-section"><p class="plan-filter-label">Plano por aluno</p><div class="plan-filter-row">';
@@ -1523,7 +1537,7 @@
       html += '</button>';
     });
     html += '</div></div>';
-    area.innerHTML = html;
+    fillMarkup(area, html);
     area.querySelectorAll('[data-plan-person]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         currentPlanPersonIndex = parseInt(this.getAttribute('data-plan-person'), 10);
@@ -1544,7 +1558,7 @@
     var methods = planMethods();
 
     var eligible = getEligiblePlansForCurrentPerson();
-    if (eligible.length === 0) { area.innerHTML = ''; return; }
+    if (eligible.length === 0) { clearChildren(area); return; }
 
     if (freqs.length === 1   && planFilter.frequency === null) planFilter.frequency = freqs[0];
     if (methods.length === 1 && planFilter.method   === null)  planFilter.method   = methods[0];
@@ -1580,7 +1594,7 @@
       html += '</div></div>';
     }
 
-    area.innerHTML = html;
+    fillMarkup(area, html);
     area.querySelectorAll('.plan-filter-pill').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var key = btn.getAttribute('data-filter');
@@ -1654,7 +1668,7 @@
       html += '</div></button>';
     });
     html += '</div>';
-    area.innerHTML = html;
+    fillMarkup(area, html);
 
     area.querySelectorAll('.plan-card').forEach(function (card) {
       card.addEventListener('click', function () {
@@ -1839,7 +1853,7 @@
   var teacherScheduleJustification = document.getElementById('ui-teacher-schedule-justification');
 
   function getTeacherMode() {
-    return getCheckedValue('teacher-assignment-mode', 'existing');
+    return getCheckedValue('teacher-assignment-mode', 'propose');
   }
 
   function buildClassGroupScheduleLabel(group) {
@@ -1854,8 +1868,10 @@
     var teacherNames = Array.isArray(group.teacher_names) ? group.teacher_names : [];
     if (!teacherNames.length && group.teacher_name) teacherNames = [group.teacher_name];
     var schedules = Array.isArray(group.schedules) ? group.schedules : [];
+    var classGroupId = group.class_group_id || group.id;
     return {
-      id: group.id,
+      id: classGroupId,
+      class_group_id: classGroupId,
       label: buildClassGroupScheduleLabel(group),
       category_name: group.category_name || '',
       display_name: group.display_name || '',
@@ -1880,13 +1896,13 @@
     catalogGroups.forEach(function (group) {
       var payload = buildTeacherExistingClassPayload(group);
       var selected = state.teacherExistingClassSelections.some(function (item) {
-        return String(item.id) === String(group.id);
+        return String(item.class_group_id || item.id) === String(group.class_group_id || group.id);
       });
       var input = el('input', {
         attrs: {
           type: 'checkbox',
           name: 'teacher-existing-class-group',
-          value: String(group.id),
+          value: String(group.class_group_id || group.id),
         },
       });
       input.checked = selected;
@@ -1931,15 +1947,16 @@
     if (!teacherScheduleCategory) return;
     var current = teacherScheduleCategory.value;
     var seen = {};
-    teacherScheduleCategory.innerHTML = '<option value="">Selecione</option>';
+    var categoryOptions = [{ value: '', label: 'Selecione' }];
     catalogGroups.forEach(function (group) {
       if (!group.category_id || seen[group.category_id]) return;
       seen[group.category_id] = true;
-      var option = document.createElement('option');
-      option.value = String(group.category_id);
-      option.textContent = group.category_name || ('Categoria ' + group.category_id);
-      teacherScheduleCategory.appendChild(option);
+      categoryOptions.push({
+        value: String(group.category_id),
+        label: group.category_name || ('Categoria ' + group.category_id),
+      });
     });
+    DOM.setSelectOptions(teacherScheduleCategory, categoryOptions);
     teacherScheduleCategory.value = current;
   }
 
@@ -2284,7 +2301,7 @@
 
   function renderClassCatalog(groups, selectedIds, classPersonIdx) {
     if (!elClassCatalog) return;
-    elClassCatalog.innerHTML = '';
+    clearChildren(elClassCatalog);
 
     if (!groups || groups.length === 0) {
       var empty = document.createElement('p');
@@ -2302,30 +2319,31 @@
       card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
       card.setAttribute('data-group-id', group.id);
 
-      var titleText = escHtml(group.category_name) +
-        (group.display_name ? ' · ' + escHtml(group.display_name) : '');
+      var titleText = (group.category_name || '') +
+        (group.display_name ? ' · ' + group.display_name : '');
 
-      var scheduleHtml = '';
+      var bodyChildren = [
+        el('p', { className: 'class-card__title', text: titleText }),
+      ];
       var sections = group.compact_schedule_sections || [];
       if (sections.length) {
-        var rows = sections.map(function (sec) {
+        var scheduleTable = el('div', { className: 'class-card__schedule-table' });
+        sections.forEach(function (sec) {
           var abbrev = WEEKDAY_ABBREV[sec.weekday_label] || sec.weekday_label.substring(0, 3);
-          var times = sec.entries.map(function (e) { return escHtml(e.time_label); }).join('  ·  ');
-          return '<div class="class-card__day-row">' +
-            '<span class="class-card__day-name">' + escHtml(abbrev) + '</span>' +
-            '<span class="class-card__day-times">' + times + '</span>' +
-            '</div>';
-        }).join('');
-        scheduleHtml = '<div class="class-card__divider"></div>' +
-          '<div class="class-card__schedule-table">' + rows + '</div>';
+          var times = sec.entries.map(function (e) { return e.time_label; }).join('  ·  ');
+          scheduleTable.appendChild(el('div', { className: 'class-card__day-row' }, [
+            el('span', { className: 'class-card__day-name', text: abbrev }),
+            el('span', { className: 'class-card__day-times', text: times }),
+          ]));
+        });
+        bodyChildren.unshift(el('div', { className: 'class-card__divider' }));
+        bodyChildren.push(scheduleTable);
       }
 
-      card.innerHTML =
-        '<div class="class-card__radio"><div class="class-card__radio-dot"></div></div>' +
-        '<div class="class-card__body">' +
-          '<p class="class-card__title">' + titleText + '</p>' +
-          scheduleHtml +
-        '</div>';
+      card.appendChild(el('div', { className: 'class-card__radio' }, [
+        el('div', { className: 'class-card__radio-dot' }),
+      ]));
+      card.appendChild(el('div', { className: 'class-card__body' }, bodyChildren));
 
       card.addEventListener('click', function () {
         selectClassGroup(classPersonIdx, group.id);
@@ -2333,31 +2351,6 @@
 
       elClassCatalog.appendChild(card);
     });
-  }
-
-  function el(tag, opts, children) {
-    var node = document.createElement(tag);
-    opts = opts || {};
-    if (opts.className) node.className = opts.className;
-    if (opts.text !== undefined && opts.text !== null) node.textContent = opts.text;
-    if (opts.attrs) {
-      Object.keys(opts.attrs).forEach(function (key) { node.setAttribute(key, opts.attrs[key]); });
-    }
-    (children || []).forEach(function (child) {
-      if (child) node.appendChild(child);
-    });
-    return node;
-  }
-
-  function clearChildren(node) {
-    if (!node) return;
-    while (node.firstChild) node.removeChild(node.firstChild);
-  }
-
-  function svgIcon(markup) {
-    var template = document.createElement('template');
-    template.innerHTML = markup;
-    return template.content.firstChild;
   }
 
   function selectClassGroup(classPersonIdx, groupId) {
@@ -2877,7 +2870,7 @@
       html += '</div>';
       html += '</div>';
     });
-    area.innerHTML = html;
+    fillMarkup(area, html);
 
     area.querySelectorAll('.prod-card__add-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -2894,8 +2887,11 @@
     if (viewCartBtn) {
       viewCartBtn.hidden = cartCount === 0;
       if (cartCount > 0) {
-        viewCartBtn.innerHTML = 'Ver carrinho (' + cartCount + ' item' + (cartCount !== 1 ? 'ns' : '') + ')' +
-          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        DOM.setButtonTextWithSvg(
+          viewCartBtn,
+          'Ver carrinho (' + cartCount + ' item' + (cartCount !== 1 ? 'ns' : '') + ')',
+          ARROW_SVG
+        );
       }
     }
   }
@@ -3030,7 +3026,7 @@
     }
     html += '</div>';
 
-    area.innerHTML = html;
+    fillMarkup(area, html);
 
     area.querySelectorAll('.color-pill[data-color]').forEach(function (pill) {
       pill.addEventListener('click', function () {
@@ -3094,7 +3090,7 @@
     html += '</div>';
     html += '<div class="cart-total-row"><span>Total</span><strong>' + fmtCurrency(getCartTotal()) + '</strong></div>';
 
-    area.innerHTML = html;
+    fillMarkup(area, html);
 
     area.querySelectorAll('.cart-item__remove').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -3268,6 +3264,8 @@
   }
 
   var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  var ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+  var ARROW_SVG_BTN = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
 
   function renderPlanConfirmed() {
     var summaryArea = document.getElementById('plan-confirmed-summary-area');
@@ -3290,12 +3288,16 @@
       html += '</div></div>';
     }
 
-    if (summaryArea) summaryArea.innerHTML = html;
+    if (summaryArea) fillMarkup(summaryArea, html);
 
     if (actionsArea) {
-      actionsArea.innerHTML = '<button type="button" class="btn-checkout-pay" id="btn-plan-confirmed-continue">' +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
-        ' Continuar para materiais</button>';
+      clearChildren(actionsArea);
+      var continueBtn = el('button', {
+        className: 'btn-checkout-pay',
+        attrs: { type: 'button', id: 'btn-plan-confirmed-continue' },
+      });
+      DOM.setButtonTextWithSvg(continueBtn, ' Continuar para materiais', ARROW_SVG_BTN, { svgFirst: true });
+      actionsArea.appendChild(continueBtn);
       var btn = document.getElementById('btn-plan-confirmed-continue');
       if (btn) {
         btn.addEventListener('click', function () {
@@ -3335,10 +3337,10 @@
 
     html += '<div class="checkout-actions" style="margin-top:1rem">';
     html += '<button type="button" class="btn-checkout-pay" id="btn-materials-confirmed-continue">';
-    html += '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+    html += ARROW_SVG_BTN;
     html += ' Continuar para o resumo</button></div>';
 
-    if (confirmArea) confirmArea.innerHTML = html;
+    if (confirmArea) fillMarkup(confirmArea, html);
 
     var btn = document.getElementById('btn-materials-confirmed-continue');
     if (btn) {
@@ -3394,8 +3396,8 @@
       }
     }
 
-    if (filtersArea) filtersArea.innerHTML = html;
-    if (cardsArea)   cardsArea.innerHTML   = '';
+    if (filtersArea) fillMarkup(filtersArea, html);
+    if (cardsArea)   clearChildren(cardsArea);
 
     var trialBtnEl = document.getElementById('btn-trial-class');
     if (trialBtnEl) trialBtnEl.hidden = true;
@@ -3406,9 +3408,7 @@
 
     var nextBtn = document.getElementById('step-plan-next');
     if (nextBtn) {
-      nextBtn.innerHTML =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
-        ' Continuar para materiais';
+      DOM.setButtonTextWithSvg(nextBtn, ' Continuar para materiais', ARROW_SVG, { svgFirst: true });
       nextBtn.disabled = false;
       nextBtn.onclick  = function (e) {
         e.stopImmediatePropagation();
@@ -3521,6 +3521,7 @@
       var parsed = JSON.parse(elExtraDepInput.value || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
+      Wz.warn('form', 'Falha ao ler extra_dependents_payload', e);
       return [];
     }
   }
@@ -3627,6 +3628,7 @@
       return true;
     } catch (e) {
       _wizardRestoring = false;
+      Wz.warn('storage', 'Falha ao restaurar estado do wizard', e);
       return false;
     }
   }
@@ -3647,6 +3649,7 @@
     try {
       queryProfile = new URLSearchParams(window.location.search).get('profile') || '';
     } catch (e) {
+      Wz.warn('url', 'Falha ao ler profile da query string', e);
       queryProfile = '';
     }
     if (isOperationalProfile(queryProfile)) {

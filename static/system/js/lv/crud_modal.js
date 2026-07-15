@@ -3,11 +3,17 @@
     var frame = dialog.querySelector('[data-crud-modal-frame]');
     if (!frame) return;
 
+    if (window.LV && window.LV.Modal) {
+      window.LV.Modal.bindBackdropClose(dialog);
+    }
+
     document.querySelectorAll('[data-crud-modal-open]').forEach(function (trigger) {
       trigger.addEventListener('click', function (event) {
         event.preventDefault();
         frame.src = trigger.getAttribute('data-crud-modal-open');
-        if (typeof dialog.showModal === 'function') {
+        if (window.LV && window.LV.Modal) {
+          window.LV.Modal.openDialog(dialog);
+        } else if (typeof dialog.showModal === 'function') {
           dialog.showModal();
         } else {
           dialog.setAttribute('open', '');

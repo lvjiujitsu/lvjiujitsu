@@ -17,8 +17,13 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
 
         self.assertNotIn("SENTINEL_TEST_XZ99", template)
         self.assertIn("register.css' %}?v=26", template)
+        self.assertIn("dom_utils.js' %}?v=1", template)
         self.assertIn("wizard_shared.js' %}?v=1", template)
-        self.assertIn("register.js' %}?v=53", template)
+        self.assertIn("register.js' %}?v=56", template)
+        self.assertIn('value="existing"', template)
+        self.assertIn('value="propose" checked', template)
+        self.assertNotIn("operational-choice--disabled", template)
+        self.assertNotIn("PRD-146", template)
         self.assertIn('data-eligibility-url="{% url \'system:registration-eligibility\' %}"', template)
         self.assertIn('data-validate-coupon-url="{% url \'system:validate-coupon\' %}"', template)
         self.assertIn('id="profile-card-teacher-request"', template)
@@ -44,6 +49,7 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertIn("step-administrative-access", script)
         self.assertIn("step-operational-finance", script)
         self.assertIn("function renderTeacherExistingClassList", script)
+        self.assertIn("getCheckedValue('teacher-assignment-mode', 'propose')", script)
         self.assertIn("function isPaidOperationalArrangement", script)
         self.assertIn("teacher_existing_class_groups_payload", script)
         self.assertNotIn("window.location.href", script)
@@ -81,6 +87,19 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertNotIn(".innerHTML", confirm_body)
         self.assertIn("el(", review_body)
         self.assertIn("el(", confirm_body)
+
+    def test_no_innerhtml_in_wizard_scripts(self):
+        root = Path(__file__).resolve().parents[2]
+        script_paths = [
+            root / "static" / "system" / "js" / "auth" / "register.js",
+            root / "static" / "system" / "js" / "dependents" / "dependent_registration.js",
+            root / "static" / "system" / "js" / "home" / "dashboard.js",
+            root / "static" / "system" / "js" / "home" / "dashboard_modals.js",
+        ]
+        for script_path in script_paths:
+            script = script_path.read_text(encoding="utf-8")
+            with self.subTest(script=script_path.name):
+                self.assertNotIn(".innerHTML", script)
 
     def test_public_request_wizard_is_not_part_of_registration_contract(self):
         root = Path(__file__).resolve().parents[2]

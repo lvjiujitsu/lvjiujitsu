@@ -1,32 +1,15 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Solicitação de turma — LV Jiu Jitsu</title>
-  {% load static %}
-  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260709-1"></script>
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+{% extends "lv/base.html" %}
+{% load static %}
+
+{% block title %}Solicitação de turma — LV Jiu Jitsu{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=2">
-</head>
-<body>
-  <header class="topbar" role="banner">
-    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
-    </a>
-    <nav class="topbar__actions" aria-label="Ações do usuário">
-      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">◐</button>
-    </nav>
-  </header>
+{% endblock %}
 
-  <main class="page" id="main-content">
-    {% if messages %}
-    <div class="system-messages" role="alert">
-      {% for message in messages %}<div class="system-message system-message--{{ message.tags }}">{{ message }}</div>{% endfor %}
-    </div>
-    {% endif %}
-    <div class="page-header">
+{% block content %}
+<div class="page-header">
       <p class="page-header__eyebrow"><a href="{% url 'system:class-catalog-request-list' %}">← Solicitações</a></p>
       <div class="page-header__row">
         <div>
@@ -113,8 +96,25 @@
         <button class="btn btn--primary" type="submit" name="action" value="approve">Aprovar</button>
       </div>
     </form>
+    {% elif class_request.status == 'approved' and can_activate_payroll and payroll_activation_form %}
+    <form method="post" class="form-card" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <h2 class="form-group__title">Ativar repasse</h2>
+        <p class="form-field__hint">Revise a proposta financeira do cadastro e confirme o dia de pagamento antes de ativar a folha.</p>
+        <div class="form-grid">
+          {% for field in payroll_activation_form %}
+          <div class="form-field{% if field.name == 'payroll_activation_notes' %} form-field--full{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit" name="action" value="activate_payroll">Ativar repasse</button>
+      </div>
+    </form>
     {% endif %}
-  </main>
-  <script src="{% static 'system/js/lv/theme_toggle.js' %}?v=20260709-1"></script>
-</body>
-</html>
+{% endblock %}

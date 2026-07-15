@@ -12,12 +12,18 @@ from system.forms import (
 )
 from system.forms.class_request_forms import (
     ClassCatalogExtraScheduleFormSet,
+    PayrollActivationForm,
     extract_extra_schedules,
 )
 from system.models import (
     ClassCatalogRequest,
     ClassCatalogRequestStatus,
     ClassCatalogRequestType,
+)
+from system.services.payroll_activation import (
+    activate_payroll_from_class_request,
+    build_payroll_activation_initial,
+    can_activate_payroll_from_request,
 )
 from system.services.class_requests import (
     CLASS_CATALOG_DECISION_CAPABILITIES,
@@ -162,11 +168,19 @@ class ClassCatalogRequestDetailView(PortalRoleRequiredMixin, DetailView):
                 payout.get("financial_arrangement") or ""
             )
         )
+        context["can_activate_payroll"] = can_activate_payroll_from_request(self.object)
+        context["payroll_activation_form"] = kwargs.get("payroll_activation_form") or (
+            PayrollActivationForm(initial=build_payroll_activation_initial(self.object))
+            if context["can_activate_payroll"]
+            else None
+        )
         return context
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get("action")
+        if action == "activate_payroll":
+            return self._activate_payroll(request)
         if action == "reject":
             return self._reject(request)
         if action == "cancel":
@@ -207,6 +221,30 @@ class ClassCatalogRequestDetailView(PortalRoleRequiredMixin, DetailView):
             _add_validation_error(form, error)
             return self.render_to_response(self.get_context_data(decision_form=form))
         messages.success(request, "Solicitação de turma/horário aprovada.")
+        return redirect("system:class-catalog-request-detail", pk=self.object.pk)
+
+    def _activate_payroll(self, request):
+        form = PayrollActivationForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(
+                self.get_context_data(payroll_activation_form=form)
+            )
+        try:
+            activate_payroll_from_class_request(
+                self.object,
+                activated_by=getattr(request, "portal_person", None),
+                payment_day=form.cleaned_data["payroll_payment_day"],
+                decision_notes=form.cleaned_data.get("payroll_activation_notes", ""),
+            )
+        except ValidationError as error:
+            messages.error(
+                request,
+                "; ".join(getattr(error, "messages", None) or [str(error)]),
+            )
+            return self.render_to_response(
+                self.get_context_data(payroll_activation_form=form)
+            )
+        messages.success(request, "Configuração de repasse ativada para o professor.")
         return redirect("system:class-catalog-request-detail", pk=self.object.pk)
 
     def _reject(self, request):

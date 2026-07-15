@@ -149,6 +149,16 @@ class ClassEnrollment(TimeStampedModel):
 
     class Meta:
         ordering = ("class_group__display_name", "person__full_name")
+        indexes = [
+            models.Index(
+                fields=["person", "status"],
+                name="classenroll_person_status_idx",
+            ),
+            models.Index(
+                fields=["class_group", "status"],
+                name="classenroll_group_status_idx",
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("class_group", "person"),

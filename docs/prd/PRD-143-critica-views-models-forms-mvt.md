@@ -448,7 +448,9 @@ Plano acionável alinhado a PRD-138 Ondas 2 e 4. **Bloqueia PRD-141 P1** (remoç
 
 ## Final status
 
-**Concluída** — auditoria read-only e proposta de correção consolidada (jul/2026). Implementação de código não iniciada.
+**Concluída** — auditoria read-only e proposta de correção consolidada (jul/2026).
+Implementação parcial das ondas ocorreu via **PRD-144** (P0/P1); o fechamento
+original “código não iniciado” está obsoleto (ver reconciliação PRD-145 abaixo).
 
 ## Reconciliação PRD-145 — 2026-07-13
 

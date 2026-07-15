@@ -35,11 +35,7 @@ Pré-requisitos: Python 3.12, PowerShell, `.venv` na raiz do repo.
 .\.venv\Scripts\python.exe manage.py runserver localhost:8000
 ```
 
-Instalar dependências de desenvolvimento (ferramentas de validação de governança, como o validador de skills) somente quando necessário:
-
-```powershell
-.\.venv\Scripts\pip.exe install -r requirements-dev.txt
-```
+Um único arquivo de dependências (`requirements.txt`) cobre local e deploy (inclui PyYAML para o validador de skills). Ver PRD-149.
 
 Variáveis de ambiente locais ficam em `.env`. Ver `.env.example` para o contrato versionável.
 

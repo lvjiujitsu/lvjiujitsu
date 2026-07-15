@@ -2,9 +2,10 @@
   'use strict';
 
   var Wz = window.LV && window.LV.Wizard;
-  if (!Wz) {
+  var DOM = window.LV && window.LV.DOM;
+  if (!Wz || !DOM) {
     if (typeof console !== 'undefined' && console.error) {
-      console.error('[LV dependent] wizard_shared.js é obrigatório');
+      console.error('[LV dependent] wizard_shared.js e dom_utils.js são obrigatórios');
     }
     return;
   }
@@ -12,6 +13,13 @@
   var depWizardForm = document.getElementById('dep-wizard-form');
   var wizardEndpoints = Wz.getFormEndpoints(depWizardForm);
   var escHtml = Wz.escapeHtml;
+  var el = DOM.el;
+  var clearChildren = DOM.clearChildren;
+
+  function fillMarkup(node, html) {
+    clearChildren(node);
+    if (html) node.appendChild(DOM.parseMarkup(html));
+  }
 
   function notifyParent(type) {
     if (window.parent === window) return;
@@ -162,6 +170,7 @@
   var depProductCatalog = Wz.readJsonScript('dep-product-catalog-json') || [];
 
   var CHECK_CIRCLE = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  var ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
 
   function resolveAudience(birthdateStr) {
     return Wz.resolveAudience(birthdateStr, ibjjfCategories);
@@ -208,7 +217,7 @@
 
     function render() {
       var groups = filterGroupsByPerson(catalog, getDependentPerson());
-      container.innerHTML = '';
+      clearChildren(container);
       if (!groups.length) {
         var empty = document.createElement('p');
         empty.className = 'class-catalog--empty';
@@ -225,30 +234,31 @@
         card.className = 'class-card' + (isSelected ? ' class-card--selected' : '');
         card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
 
-        var titleText = escHtml(group.category_name) +
-          (group.display_name ? ' · ' + escHtml(group.display_name) : '');
+        var titleText = (group.category_name || '') +
+          (group.display_name ? ' · ' + group.display_name : '');
 
-        var scheduleHtml = '';
+        var bodyChildren = [
+          el('p', { className: 'class-card__title', text: titleText }),
+        ];
         var sections = group.compact_schedule_sections || [];
         if (sections.length) {
-          var rows = sections.map(function (sec) {
+          var scheduleTable = el('div', { className: 'class-card__schedule-table' });
+          sections.forEach(function (sec) {
             var abbrev = WEEKDAY_ABBREV[sec.weekday_label] || String(sec.weekday_label).substring(0, 3);
-            var times = (sec.entries || []).map(function (e) { return escHtml(e.time_label); }).join('  ·  ');
-            return '<div class="class-card__day-row">' +
-              '<span class="class-card__day-name">' + escHtml(abbrev) + '</span>' +
-              '<span class="class-card__day-times">' + times + '</span>' +
-              '</div>';
-          }).join('');
-          scheduleHtml = '<div class="class-card__divider"></div>' +
-            '<div class="class-card__schedule-table">' + rows + '</div>';
+            var times = (sec.entries || []).map(function (e) { return e.time_label; }).join('  ·  ');
+            scheduleTable.appendChild(el('div', { className: 'class-card__day-row' }, [
+              el('span', { className: 'class-card__day-name', text: abbrev }),
+              el('span', { className: 'class-card__day-times', text: times }),
+            ]));
+          });
+          bodyChildren.unshift(el('div', { className: 'class-card__divider' }));
+          bodyChildren.push(scheduleTable);
         }
 
-        card.innerHTML =
-          '<div class="class-card__radio"><div class="class-card__radio-dot"></div></div>' +
-          '<div class="class-card__body">' +
-            '<p class="class-card__title">' + titleText + '</p>' +
-            scheduleHtml +
-          '</div>';
+        card.appendChild(el('div', { className: 'class-card__radio' }, [
+          el('div', { className: 'class-card__radio-dot' }),
+        ]));
+        card.appendChild(el('div', { className: 'class-card__body' }, bodyChildren));
 
         card.addEventListener('click', function () {
           var id = String(group.id);
@@ -485,7 +495,7 @@
         });
         html += '</div></div>';
       }
-      filtersArea.innerHTML = html;
+      fillMarkup(filtersArea, html);
       filtersArea.querySelectorAll('.plan-filter-pill').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var key = btn.getAttribute('data-filter');
@@ -617,7 +627,7 @@
         html += renderPlanCard(plan);
       });
       html += '</div>';
-      cardsArea.innerHTML = html;
+      fillMarkup(cardsArea, html);
       var existingCard = cardsArea.querySelector('[data-family-existing="true"]');
       if (existingCard) {
         existingCard.addEventListener('click', selectExistingFamilyPlan);
@@ -710,8 +720,8 @@
         html += '<p class="checkout-summary__plan-meta">Total: ' + fmtPrice(price) + '/' + escHtml(cycle) + '</p>';
         html += '</div></div>';
       }
-      if (filtersArea) filtersArea.innerHTML = html;
-      if (cardsArea) cardsArea.innerHTML = '';
+      if (filtersArea) fillMarkup(filtersArea, html);
+      if (cardsArea) clearChildren(cardsArea);
     }
 
     function refresh() {
@@ -840,7 +850,13 @@
     function renderCatalog() {
       if (!catalogArea) return;
       if (!depProductCatalog.length) {
-        catalogArea.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:2rem 0">Nenhum produto disponível no momento.</p>';
+        clearChildren(catalogArea);
+        var emptyCatalog = el('p', {
+          className: 'wizard-step__subtitle',
+          attrs: { style: 'text-align:center;padding:2rem 0' },
+          text: 'Nenhum produto disponível no momento.',
+        });
+        catalogArea.appendChild(emptyCatalog);
         if (viewCartBtn) viewCartBtn.hidden = true;
         return;
       }
@@ -873,7 +889,7 @@
         }
         html += '</div></div>';
       });
-      catalogArea.innerHTML = html;
+      fillMarkup(catalogArea, html);
 
       catalogArea.querySelectorAll('.prod-card__add-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -887,8 +903,11 @@
       if (viewCartBtn) {
         viewCartBtn.hidden = cartCount === 0;
         if (cartCount > 0) {
-          viewCartBtn.innerHTML = 'Ver carrinho (' + cartCount + ' item' + (cartCount !== 1 ? 'ns' : '') + ')' +
-            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+          DOM.setButtonTextWithSvg(
+            viewCartBtn,
+            'Ver carrinho (' + cartCount + ' item' + (cartCount !== 1 ? 'ns' : '') + ')',
+            ARROW_SVG
+          );
         }
       }
     }
@@ -1009,7 +1028,7 @@
       }
       html += '</div>';
 
-      configureArea.innerHTML = html;
+      fillMarkup(configureArea, html);
 
       configureArea.querySelectorAll('.color-pill[data-color]').forEach(function (pill) {
         pill.addEventListener('click', function () {
@@ -1044,7 +1063,13 @@
     function renderCart() {
       if (!cartArea) return;
       if (!cart.length) {
-        cartArea.innerHTML = '<p class="wizard-step__subtitle" style="text-align:center;padding:1.5rem 0">Carrinho vazio.</p>';
+        clearChildren(cartArea);
+        var emptyCart = el('p', {
+          className: 'wizard-step__subtitle',
+          attrs: { style: 'text-align:center;padding:1.5rem 0' },
+          text: 'Carrinho vazio.',
+        });
+        cartArea.appendChild(emptyCart);
         return;
       }
       var html = '<div class="cart-item-list">';
@@ -1060,7 +1085,7 @@
       });
       html += '</div>';
       html += '<div class="cart-total-row"><span>Total</span><strong>' + fmtPrice(getCartTotal()) + '</strong></div>';
-      cartArea.innerHTML = html;
+      fillMarkup(cartArea, html);
 
       cartArea.querySelectorAll('.cart-item__remove').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -1102,7 +1127,7 @@
         html += '<p class="checkout-summary__plan-meta" style="margin-top:.5rem">Total: ' + fmtPrice(getCartTotal()) + '</p>';
         html += '</div></div>';
       }
-      confirmArea.innerHTML = html;
+      fillMarkup(confirmArea, html);
     }
 
     function bindButtons() {
@@ -1152,7 +1177,7 @@
         return;
       }
 
-      if (confirmArea) confirmArea.innerHTML = '';
+      if (confirmArea) clearChildren(confirmArea);
       if (!hasProductsUi) return;
       showSubview('catalog');
       renderCatalog();

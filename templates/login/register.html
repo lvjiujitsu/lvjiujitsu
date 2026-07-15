@@ -7,6 +7,7 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
+  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
 
   {# Dados de contexto do servidor — lidos pelo JS. json_script escapa com segurança (sem |safe). #}
@@ -709,20 +710,20 @@
       <section class="wizard-step" id="step-teacher-schedule" data-step="teacher-schedule" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Vínculo com horário</h1>
-          <p class="wizard-step__subtitle">Selecione uma turma ativa ou proponha um novo horário</p>
+          <p class="wizard-step__subtitle">Escolha turmas existentes ou proponha um novo horário</p>
         </div>
 
         <div class="operational-panel">
           <div class="operational-option-group" role="radiogroup" aria-label="Tipo de vínculo do professor">
             <label class="operational-choice">
-              <input type="radio" name="teacher-assignment-mode" value="existing" checked>
+              <input type="radio" name="teacher-assignment-mode" value="existing">
               <span class="operational-choice__body">
-                <strong>Selecionar horário existente</strong>
-                <small>Turmas com professor atual ficam pendentes de troca; turmas sem professor seguem para aprovação da gestão.</small>
+                <strong>Selecionar turma existente</strong>
+                <small>Vincular-se a uma ou mais turmas ativas para aprovação da gestão.</small>
               </span>
             </label>
             <label class="operational-choice">
-              <input type="radio" name="teacher-assignment-mode" value="propose">
+              <input type="radio" name="teacher-assignment-mode" value="propose" checked>
               <span class="operational-choice__body">
                 <strong>Criar proposta de horário</strong>
                 <small>Informar os dados para aprovação da gestão.</small>
@@ -730,7 +731,7 @@
             </label>
           </div>
 
-          <div class="form-field" id="teacher-existing-schedule-field">
+          <div class="form-field" id="teacher-existing-schedule-field" hidden>
             <label class="form-label">Turmas ativas</label>
             <div class="teacher-class-list" id="teacher-existing-class-list"></div>
             <p class="form-field__hint">
@@ -739,7 +740,7 @@
             <p class="form-field__error" id="teacher-existing-class-error" hidden></p>
           </div>
 
-          <div class="teacher-proposed-schedule" id="teacher-proposed-schedule-field" hidden>
+          <div class="teacher-proposed-schedule" id="teacher-proposed-schedule-field">
             <button type="button" class="btn-checkout-later" id="teacher-open-schedule-modal">Criar horário</button>
             <div class="teacher-proposed-schedule__summary" id="teacher-proposed-schedule-summary">
               Nenhum horário proposto.
@@ -1172,7 +1173,8 @@
   </div>{# /wizard-shell #}
 
   <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
+  <script src="{% static 'system/js/lv/dom_utils.js' %}?v=1"></script>
   <script src="{% static 'system/js/auth/wizard_shared.js' %}?v=1"></script>
-  <script src="{% static 'system/js/auth/register.js' %}?v=53" defer></script>
+  <script src="{% static 'system/js/auth/register.js' %}?v=56" defer></script>
 </body>
 </html>

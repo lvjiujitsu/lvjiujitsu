@@ -1,3 +1,6 @@
+import json
+import uuid
+
 from datetime import time
 
 from django.contrib.auth.hashers import make_password
@@ -20,6 +23,7 @@ from system.models import (
     TeacherBankAccount,
 )
 from system.services.registration import ensure_default_person_types
+from system.services.class_overview import resolve_class_group_selection
 from system.utils import ensure_formatted_cpf
 
 
@@ -146,6 +150,99 @@ def create_new_teacher_class_request(
     return request
 
 
+def create_public_teacher_join_requests(
+    *,
+    full_name,
+    cpf,
+    email,
+    phone,
+    password,
+    class_groups_payload,
+    justification="",
+    martial_art="",
+    martial_art_graduation="",
+    jiu_jitsu_belt="",
+    jiu_jitsu_stripes=None,
+    payout_data=None,
+):
+    formatted_cpf = ensure_formatted_cpf(cpf)
+    if not password:
+        raise ValidationError("Informe uma senha inicial para o professor.")
+    if isinstance(class_groups_payload, str):
+        try:
+            selection_items = json.loads(class_groups_payload or "[]")
+        except json.JSONDecodeError as error:
+            raise ValidationError("Selecione turmas ativas válidas.") from error
+    else:
+        selection_items = class_groups_payload or []
+
+    raw_values = []
+    for item in selection_items:
+        if isinstance(item, dict):
+            raw_values.append(str(item.get("id") or item.get("class_group_id") or ""))
+        else:
+            raw_values.append(str(item))
+    raw_values = [value for value in raw_values if value]
+
+    class_groups = resolve_class_group_selection(raw_values)
+    if not class_groups:
+        raise ValidationError("Selecione ao menos uma turma ativa.")
+
+    submission_batch_id = uuid.uuid4().hex
+    created_requests = []
+    for class_group in class_groups:
+        if _has_pending_join_request(formatted_cpf, class_group.pk):
+            raise ValidationError(
+                f"Já existe uma solicitação pendente para a turma {class_group.display_name}."
+            )
+        current_teacher = class_group.main_teacher
+        current_teacher_id = getattr(current_teacher, "pk", None)
+        requested_role = "assistant" if current_teacher_id else "primary"
+        request = ClassCatalogRequest.objects.create(
+            origin=ClassCatalogRequestOrigin.PUBLIC_REGISTRATION,
+            status=ClassCatalogRequestStatus.PENDING,
+            request_type=ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS,
+            target_class_group=class_group,
+            class_category=class_group.class_category,
+            display_name=class_group.display_name,
+            full_name=(full_name or "").strip(),
+            cpf=formatted_cpf,
+            email=(email or "").strip(),
+            phone=(phone or "").strip(),
+            password_hash=make_password(password),
+            martial_art=martial_art or "",
+            martial_art_graduation=martial_art_graduation or "",
+            jiu_jitsu_belt=jiu_jitsu_belt or "",
+            jiu_jitsu_stripes=jiu_jitsu_stripes,
+            justification=(
+                (justification or "").strip()
+                or "Solicitação de vínculo enviada pelo cadastro público."
+            ),
+        )
+        payload = _payload_to_json(
+            {
+                "class_group": class_group,
+                "class_category": class_group.class_category,
+                "display_name": class_group.display_name,
+            }
+        )
+        payload["requested_role"] = requested_role
+        payload["approval_scope"] = (
+            "admin_and_current_teacher" if current_teacher_id else "admin_only"
+        )
+        payload["current_teacher_id"] = current_teacher_id
+        payload["current_teacher_name"] = (
+            current_teacher.full_name if current_teacher is not None else ""
+        )
+        payload["submission_batch_id"] = submission_batch_id
+        if payout_data is not None:
+            payload["payout"] = _normalize_payout_payload(payout_data)
+        request.payload = payload
+        request.save(update_fields=("payload", "updated_at"))
+        created_requests.append(request)
+    return created_requests
+
+
 @transaction.atomic
 def approve_class_catalog_request(
     request_id,
@@ -190,6 +287,13 @@ def approve_class_catalog_request(
     elif catalog_request.request_type == ClassCatalogRequestType.NEW_CLASS_GROUP:
         created_teacher = catalog_request.teacher_person
         created_group = _approve_new_class_group(catalog_request, approved, created_teacher)
+    elif catalog_request.request_type == ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS:
+        created_teacher = _resolve_or_create_instructor(catalog_request)
+        created_group = _approve_teacher_join_existing(
+            catalog_request,
+            approved,
+            created_teacher,
+        )
     else:
         created_teacher = _resolve_or_create_instructor(catalog_request)
         created_group = _approve_new_class_group(catalog_request, approved, created_teacher)
@@ -366,6 +470,37 @@ def _approve_new_class_group(catalog_request, approved, teacher):
     return class_group
 
 
+def _approve_teacher_join_existing(catalog_request, approved, teacher):
+    class_group = approved["class_group"]
+    if class_group is None:
+        raise ValidationError("Selecione a turma de vínculo.")
+    locked_group = (
+        ClassGroup.objects.select_for_update()
+        .select_related("main_teacher")
+        .get(pk=class_group.pk)
+    )
+    if not locked_group.is_active:
+        raise ValidationError("A turma selecionada não está mais ativa.")
+    requested_role = (catalog_request.payload or {}).get("requested_role") or "assistant"
+    if requested_role == "primary" or locked_group.main_teacher_id is None:
+        if (
+            locked_group.main_teacher_id
+            and locked_group.main_teacher_id != teacher.pk
+        ):
+            raise ValidationError(
+                "A turma já possui professor principal. Aprove como assistente ou recuse."
+            )
+        locked_group.main_teacher = teacher
+        locked_group.save(update_fields=("main_teacher", "updated_at"))
+        return locked_group
+    ClassInstructorAssignment.objects.update_or_create(
+        class_group=locked_group,
+        person=teacher,
+        defaults={"is_primary": False},
+    )
+    return locked_group
+
+
 def _resolve_or_create_instructor(catalog_request):
     person_types = ensure_default_person_types()
     instructor_type = person_types[PersonTypeCode.INSTRUCTOR]
@@ -429,6 +564,14 @@ def _resolve_approved_payload(
     resolved_start_time = start_time or catalog_request.start_time
     resolved_duration = duration_minutes or catalog_request.duration_minutes
     resolved_capacity = default_capacity if default_capacity is not None else catalog_request.default_capacity
+
+    if catalog_request.request_type == ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS:
+        resolved_group = class_group or catalog_request.target_class_group
+        if resolved_group is None:
+            raise ValidationError("Selecione a turma de vínculo.")
+        if not resolved_group.is_active:
+            raise ValidationError("A turma selecionada não está mais ativa.")
+        return {"class_group": resolved_group}
 
     if catalog_request.request_type == ClassCatalogRequestType.NEW_SCHEDULE and resolved_group is None:
         raise ValidationError("Selecione a turma que receberá o novo horário.")
@@ -565,9 +708,21 @@ def _deserialize_extra_schedules(stored_extra_schedules):
 
 def _has_pending_new_teacher_request(cpf):
     return ClassCatalogRequest.objects.filter(
-        request_type=ClassCatalogRequestType.NEW_TEACHER_WITH_SCHEDULE,
+        request_type__in=(
+            ClassCatalogRequestType.NEW_TEACHER_WITH_SCHEDULE,
+            ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS,
+        ),
         status=ClassCatalogRequestStatus.PENDING,
         cpf=cpf,
+    ).exists()
+
+
+def _has_pending_join_request(cpf, class_group_id):
+    return ClassCatalogRequest.objects.filter(
+        request_type=ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS,
+        status=ClassCatalogRequestStatus.PENDING,
+        cpf=cpf,
+        target_class_group_id=class_group_id,
     ).exists()
 
 

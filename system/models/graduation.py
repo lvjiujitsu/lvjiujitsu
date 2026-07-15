@@ -153,6 +153,12 @@ class Graduation(TimeStampedModel):
         ordering = ("-awarded_at", "-created_at")
         verbose_name = "Graduação"
         verbose_name_plural = "Graduações"
+        indexes = [
+            models.Index(
+                fields=["person", "-awarded_at"],
+                name="graduation_person_awarded_idx",
+            ),
+        ]
 
     def __str__(self):
         return (

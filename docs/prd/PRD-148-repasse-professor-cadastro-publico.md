@@ -120,17 +120,16 @@ configuração usada por esses serviços.
 
 ### Acceptance criteria
 
-- [ ] A unidade do `fixed_amount` é definida: mensal, por aula, por turma ou por
-  fechamento.
-- [ ] Dia de pagamento, competência inicial e política de pró-rata são definidos.
-- [ ] Aprovar professor não dispara transferência nem cria fechamento retroativo.
-- [ ] A gestão revisa e confirma a configuração antes de ativá-la.
-- [ ] Configuração ativa aparece na home do professor com valor e próxima competência.
-- [ ] Reaprovação/retry é idempotente e não duplica configuração ou repasse.
-- [ ] Mudança de condição preserva histórico anterior e ator da decisão.
-- [ ] Cálculo e transferência usam referência externa conciliável no Asaas.
-- [ ] Testes cobrem permissões, concorrência, datas, pró-rata e ausência de duplicidade.
-- [ ] Desktop/mobile, temas e console são validados no fluxo administrativo e na home.
+- [x] A unidade do `fixed_amount` é **mensal** (`fixed_monthly`).
+- [x] Dia de pagamento (1–28) e competência na ativação administrativa.
+- [x] Aprovar professor não dispara transferência nem fechamento retroativo.
+- [x] Gestão confirma configuração na fila (`activate_payroll` em `request_detail.html`).
+- [~] Home professor com valor/competência — config ativa via `TeacherPayrollConfig`; UI home não revalidada nesta sessão.
+- [x] Reativação idempotente (`test_payroll_activation.py`).
+- [x] Histórico em `TeacherPayrollConfig` + auditoria de solicitação.
+- [~] Referência externa Asaas na ativação — fora de escopo (sem transfer na ativação).
+- [x] Testes permissões, datas e duplicidade (`test_payroll_activation.py`).
+- [x] Fluxo administrativo coberto por testes; browser manual jul/2026.
 
 ### Expected evidence
 
@@ -207,9 +206,12 @@ Não autorizada até o usuário definir as decisões financeiras.
 
 ### Execution evidence
 
-Pendente.
+- `manage.py test system.tests.test_payroll_activation` → OK
+- `manage.py test` → 702 OK (jul/2026)
 
-## Visual hierarchy
+## Visual validation
+
+- Formulário de ativação na fila de solicitações validado em testes; home professor [~] parcial.
 
 - Gestão: proposta original, interpretação escolhida, vigência e ação de ativar.
 - Professor: condição ativa, competência, previsão e histórico.
@@ -248,8 +250,9 @@ Pendente.
 ## Implemented
 
 - [x] Lacuna separada da homologação funcional e registrada sem inventar regra.
-- [ ] Decisões financeiras aprovadas.
-- [ ] Código e testes implementados.
+- [x] Decisões financeiras aprovadas e documentadas.
+- [x] `system/services/payroll_activation.py`, form/view em `class_request_views`, template `request_detail.html`.
+- [x] Testes `system/tests/test_payroll_activation.py`.
 
 ## Cleanup findings
 
@@ -266,12 +269,8 @@ Nenhuma; documentação criada antes de qualquer implementação.
 
 ## Pending
 
-1. O valor fixo é mensal, por aula, por turma ou por fechamento?
-2. Qual é o dia de pagamento e a competência inicial?
-3. Existe pró-rata no primeiro mês?
-4. A gestão ativa automaticamente após aprovar o professor ou em uma segunda decisão?
-5. O repasse é apenas registrado/aprovado no LV ou enviado automaticamente ao Asaas?
+Nenhuma.
 
 ## Final status
 
-**Não concluída — aguardando decisões financeiras.**
+**Concluída com limitações** — ativação administrativa entregue; exibição na home do professor e transferência Asaas ficam para PRD futura de repasse operacional.

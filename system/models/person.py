@@ -331,6 +331,16 @@ class PersonRelationship(TimeStampedModel):
 
     class Meta:
         ordering = ("source_person__full_name", "target_person__full_name")
+        indexes = [
+            models.Index(
+                fields=["source_person", "relationship_kind"],
+                name="personrel_source_kind_idx",
+            ),
+            models.Index(
+                fields=["target_person", "relationship_kind"],
+                name="personrel_target_kind_idx",
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("source_person", "target_person", "relationship_kind"),

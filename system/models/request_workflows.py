@@ -88,6 +88,10 @@ class ClassCatalogRequestType(models.TextChoices):
     NEW_SCHEDULE = "new_schedule", "Novo horario"
     NEW_CLASS_GROUP = "new_class_group", "Nova turma"
     NEW_TEACHER_WITH_SCHEDULE = "new_teacher_with_schedule", "Professor novo com horario"
+    TEACHER_JOIN_EXISTING_CLASS = (
+        "teacher_join_existing_class",
+        "Professor novo em turma existente",
+    )
 
 
 class ClassCatalogRequestOrigin(models.TextChoices):

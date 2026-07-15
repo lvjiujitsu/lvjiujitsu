@@ -313,14 +313,20 @@ def build_plan_catalog(person, membership):
     plan_prices = get_eligible_plan_prices(eligibility).exclude(pk=membership.plan_price_id)
 
     catalog = []
+    proration_cache = {}
     if current_plan is not None:
         catalog.append(serialize_plan_with_proration(current_plan, None, is_current=True))
     for plan in list(legacy_plans) + list(plan_prices):
-        if _catalog_id_for_plan(plan) == current_catalog_id:
+        catalog_id = _catalog_id_for_plan(plan)
+        if catalog_id == current_catalog_id:
             continue
-        try:
-            proration = calculate_plan_change(membership, plan)
-        except PlanChangeError:
+        if catalog_id not in proration_cache:
+            try:
+                proration_cache[catalog_id] = calculate_plan_change(membership, plan)
+            except PlanChangeError:
+                proration_cache[catalog_id] = None
+        proration = proration_cache[catalog_id]
+        if proration is None:
             continue
         catalog.append(serialize_plan_with_proration(plan, proration))
     return catalog

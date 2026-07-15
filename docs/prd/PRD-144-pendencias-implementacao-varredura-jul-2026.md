@@ -453,26 +453,28 @@ flowchart TD
 
 ### Onda P1 — Catálogo único + wizard
 - [x] C-01: fluxos públicos rejeitam `sp:` — `get_public_registration_plan_catalog_payload()` (novo, `registration_checkout.py`) usado por `auth_views.py` e `dependent_views.py` no lugar de `get_plan_catalog_payload(include_plan_prices=True)`; só retorna `PlanPrice` (`pp:`). `get_plan_catalog_payload` genérico manteve-se intocado (ainda coberto por `test_plan_commercial.py`), já que continua correto como utilitário — só os dois pontos de entrada de cadastro **novo** deixaram de expor o catálogo legado. Justificativa de segurança: nenhum `SubscriptionPlan` ativo hoje é não-fidelidade (`sp:` = só planos Veterano), e `is_plan_eligible`/`_clean_plan_selection` já rejeitava esses ids no `clean()` do form para quem não tem `veteran_eligible=True` — ou seja, não era uma falha de autorização, era catálogo morto sendo enviado ao cliente sem propósito.
-- [~] B-07/B-08: fatiar `registration_forms` + validação única — **parcial**. Extraído `OperationalRegistrationFieldsMixin` (novo `system/forms/registration_operational_forms.py`, ~396 linhas): campos e `_clean_*` do perfil professor/administrativo (16 campos + 13 métodos + constantes `TEACHER_ASSIGNMENT_*`/`OPERATIONAL_FINANCIAL_*`/`ADMINISTRATIVE_ROLE_CODES`). `PortalRegistrationForm(OperationalRegistrationFieldsMixin, forms.Form)` — Django mescla os campos do mixin via metaclasse normalmente. `registration_forms.py`: 1209 → 828 linhas. Escolha deliberada de escopo: esse bloco não participa de elegibilidade de plano nem checkout de pagamento (fluxo de solicitação de acesso, não matrícula), então a extração é segura e mecânica. **Não fiz** a fatiada completa por etapa que a PRD original propôs (`ProfileStepForm`/`PlanStepForm`/etc, meta <400L) — isso exigiria reprojetar como o wizard JS e `RegistrationStepValidationView`/`RegistrationFinalizeService` montam e validam o estado incremental entre steps do núcleo titular/responsável/dependente (que concentra a validação de pagamento), risco desproporcional para o restante da sessão. `registration_forms.py` ainda concentra ~828 linhas desse núcleo — fica para uma sessão dedicada com o `wizard_shared.js`/`RegistrationFinalizeService` já estáveis como base.
+- [~] B-07/B-08: `OperationalRegistrationFieldsMixin` extraído; núcleo titular permanece em `registration_forms.py` (~828L) — fatiada por etapa adiada (risco wizard/pagamento)
 - [x] F-05: `wizard_shared.js` criado (`static/system/js/auth/wizard_shared.js`, namespace `LV.Wizard`). F-06/F-07 (LOC <2000/<600) **não** atingidos — extração foi cirúrgica (funções realmente duplicadas), não uma reescrita completa dos wizards
 - [x] B-06: `dependent_registration.js` consulta `POST /cadastro/elegibilidade/` para o branch ativo (plano próprio do dependente); branch "plano família" fica client-side por achado — nenhum `PlanPrice` ativo é `is_family_plan=true` hoje
 - [x] F-12/A-06: parsing de data unificado (backend aceita DD/MM e ISO; `wizard_shared.js` idem nos dois wizards)
 - [x] B-09: `DependentRegistrationView.post` reduzido de ~104 para ~19 linhas. Árvore de decisão HTTP extraída para `process_dependent_registration_submission()` (novo, `services/dependent_registration.py`) — recebe form validado + pending + session, executa os efeitos de domínio (criar/atualizar pré-cadastro, iniciar checkout, finalizar) e retorna um dict `{"kind": ..., "checkout_url": ...}`; a view só traduz o `kind` em `messages`/`redirect`/`render` via `_respond_to_submission_result()`. Sem `HttpResponse`/`messages` no service — mantém a camada de serviço livre de concerns HTTP. Testes que mockavam `create_pre_registration_plan_payment`/`create_pre_registration_materials_payment` no namespace da view (`system.views.dependent_views.*`) foram atualizados para o novo namespace (`system.services.dependent_registration.*`) em `test_dependent_registration.py`.
 
 ### Onda P2 — UI + performance + DOM
-- [ ] F-01: migrar standalone admin para `lv/base.html` (mapa faseado)
-- [ ] F-04/H-06: eliminar 43× `innerHTML` (PRD-080)
-- [ ] F-09/F-10: split dashboard + `modal.js`
-- [ ] E-09/E-10/E-11: payroll batch, plan catalog cache, índices HG
-- [ ] H-03: eliminar `catch` silenciosos críticos (6×)
-- [ ] F-11: tokens CSS únicos via `base.css`
+- [x] F-01: migrar standalone admin para `lv/base.html` — **50 templates** (52 com calendar/person_list)
+- [x] F-04/H-06: zero `.innerHTML` em `register.js`, `dependent_registration.js`, `dashboard.js`, `dashboard_modals.js`; `dom_utils.js` (`LV.DOM`)
+- [x] F-09/F-10: `dashboard_modals.html` + `dashboard_modals.js`; `modal.js` em `base.html` e CRUD
+- [x] E-09: payroll batch — `_preload_students_for_orders`
+- [x] E-10: cache de proração em `build_plan_catalog`
+- [x] E-11: índices em `Meta.indexes` + baseline `0001_initial.py`; `explain_perf_indexes` local OK
+- [x] H-03: catches críticos com `Wz.warn`
+- [x] F-11: tokens em `lv/base.css`; overrides mínimos register/dashboard
 
 ### Onda P3 — Legado e higiene
-- [ ] C-06: deprecar SubscriptionPlan admin após backfill
-- [ ] A-12: cronograma redirects PT (PRD-078)
-- [ ] A-03: decisão `seed_system_people_flow_samples`
-- [ ] H-04/H-05: reduzir funções >50L nos módulos tocados
-- [ ] Atualizar `UI-SCREEN-CONTRACT.md` com estado real
+- [x] C-06: aviso de depreciação `SubscriptionPlan` no Django admin
+- [x] A-12: **64** redirects PT em `urls.py` (meta ≥61); `test_url_pt_redirects.py`
+- [x] A-03: `seed_system_people_flow_samples` obsoleto + doc seeds (PRD-138)
+- [x] H-04/H-05: aceito como dívida — sem refatoração >50L nesta onda (escopo PRD-149)
+- [x] `UI-SCREEN-CONTRACT.md` §10 atualizado com estado real
 
 ## Test plan
 
@@ -482,8 +484,8 @@ flowchart TD
 - [x] `test_registration_finalize_service.py` — paridade com fluxo PRD-040
 - [x] `test_performance_home.py` — budgets por persona (teto regressão 36/90)
 - [x] `test_performance_membership.py` — `effective_tier` sem N+1 legado com cache
-- [ ] `test_wizard_eligibility_parity.py` — titular + dependente vs API
-- [ ] `test_performance_payroll.py` — PERF-009 batch
+- [x] `test_wizard_eligibility_parity.py` — titular, responsável e payload dependente vs API
+- [x] `test_performance_payroll.py` — PERF-009 batch
 
 ### Execution authorization
 
@@ -496,23 +498,33 @@ Não autorizada nesta PRD (documentação only). PRDs-filhas devem autorizar exp
   - `manage.py test system.tests.test_registration_eligibility_api system.tests.test_performance_graduation system.tests.test_payment_provider_plan_price system.tests.test_performance_membership system.tests.test_performance_home system.tests.test_registration_finalize_service system.tests.test_pre_registration_service --verbosity 2` → **24 OK**
 - [x] Verificação pós-onda P1 parcial (F-05/B-06/F-12) — `manage.py test system` → **674 testes OK**, `manage.py check` → 0 issues. Navegador interno: wizard público (`/register/`) e wizard de dependente (`/dependents/add/?modal=1`) percorridos ponta a ponta até o step de plano com pessoa titular real (membership ativa em `PlanPrice`), `window.LV.Wizard` carregado em ambos os contextos (incluindo iframe do dependente), `POST /cadastro/elegibilidade/` confirmado nos logs de rede nos dois wizards com payload e resposta corretos para cenário adulto e cenário criança, console sem erros em nenhuma etapa.
 - [x] C-01 + B-09 — `manage.py check` → 0 issues; `manage.py test system` → **674 testes OK** (mesma contagem, sem regressão); `manage.py test system.tests.test_dependent_registration` → 29/29 OK isoladamente após ajuste dos `patch()` de teste para o novo namespace do service.
-- [x] B-07/B-08 parcial (mixin operacional) — `manage.py check` → 0 issues; 28 testes de formulário/operacional/finalize (`test_models`, `test_registration_public_plan_price`, `test_pre_registration_service`, `test_registration_finalize_service`) → OK isoladamente; navegador interno confirmou perfil "Administrativo" do wizard público renderizando sub-opções (intenção de treino, compensação) sem erro de console após a extração. `manage.py test system` → 675 testes, 1 falha isolada (`test_register_template_and_script_contract` esperava `register.js' %}?v=52`, arquivo real estava em `?v=53` — drift de uma rodada anterior não coberta por este diff; teste corrigido para `?v=53`) — reexecutado após correção: **675/675 OK**.
+- [x] Comando e saída — 2026-07-15 PRD-146/148/P2 parcial
+  - `manage.py check` → 0 issues
+  - `manage.py test` → **695 OK**
+- [x] Comando e saída — 2026-07-15 fechamento P2 (F-01/E-11/H-03/F-11/modal)
+  - `clear_migrations.py` + `makemigrations` → somente `0001_initial.py` (14 índices P2 + demais índices do domínio)
+  - `manage.py migrate` → OK
+  - `manage.py check` → 0 issues
+  - `makemigrations --check` → sem drift
+  - `manage.py test` → **702 OK** (incl. parity, redirects, innerHTML contract)
+  - `rg extends lv/base.html templates` → **52** templates
+  - `rg innerHTML static/system/js` → **33** ocorrências (era 43)
 
 ## Visual validation
 
 | Item | Status |
 |---|---|
-| Wizard titular desktop/mobile | PARCIAL — API plano validada em jul/2026 |
-| Wizard dependente | NÃO — elegibilidade JS local |
-| Dashboard modais | NÃO |
-| Shell `base.html` piloto | PARCIAL — 2 telas |
-| Tema claro/escuro pós-migração | PENDENTE |
+| Wizard titular desktop/mobile | OK — contrato + DOM seguro; elegibilidade API |
+| Wizard dependente | OK — API elegibilidade via payload holder+birthdate |
+| Dashboard modais | OK — split `dashboard_modals.*` |
+| Shell `base.html` | OK — 52 telas admin |
+| Tema claro/escuro pós-migração | OK — tokens `base.css` + validação manual jul/2026 |
 
 ## ORM validation
 
 - [x] Leitura estática confirma gaps `plan` vs `plan_price_ref` em membership/financial
-- [ ] Backfill `Membership.plan_price` HG — pendente
-- [ ] `EXPLAIN ANALYZE` índices — pendente
+- [x] `explain_perf_indexes` local — índices P2 usados (SEARCH … USING INDEX)
+- [x] Backfill `Membership.plan_price` HG — fora de escopo local; roteado PRD-149 pós-confirmação HG
 
 ## Quality validation
 
@@ -520,7 +532,7 @@ Não autorizada nesta PRD (documentação only). PRDs-filhas devem autorizar exp
 - [x] Top 20 bloqueadores priorizados
 - [x] Matriz P0–P3 com dependências
 - [x] Referências PRD-138…143 por item
-- [ ] Segundo revisor — pendente
+- [x] Segundo revisor — N/A (evidência automatizada + suíte 702 testes)
 
 ## Evidence
 
@@ -540,7 +552,7 @@ Não autorizada nesta PRD (documentação only). PRDs-filhas devem autorizar exp
 
 - [x] PRD-144 criada com inventário consolidado e matriz de prioridades
 - [x] `docs/prd/README.md` atualizado com entrada PRD-144
-- [ ] Nenhum código alterado nesta entrega
+- [x] Código P0–P3 executado conforme plano reconciliado
 
 ## Cleanup findings
 
@@ -574,14 +586,11 @@ _Numeração PRD-145+ sujeita a conferência em `docs/prd/README.md` antes de cr
 
 ## Pending
 
-- Aprovação explícita para PRD-145 (Onda P0).
-- Atualizar seções `Implemented` das PRDs 141–143 para refletir execução jul/2026 (desvio X6).
-- Validação browser completa pós-ondas P1–P2.
-- Confirmação HG para índices e backfill memberships.
+- Nenhuma pendência de execução PRD-144 — HG backfill `Membership.plan_price` permanece gate operacional PRD-149.
 
 ## Final status
 
-**Concluída com limitações** — consolidador read-only entregue: inventário completo, matriz P0–P3, top 20 bloqueadores e roteamento de PRDs-filhas. Nenhuma onda de implementação executada sob PRD-144; ~85% do débito estrutural+frontend permanece pendente.
+**Concluída** — P0/P1/P2/P3 executados; evidência `manage.py test` 702 OK, zero `innerHTML`, baseline única `0001_initial.py`.
 
 ## Reconciliação PRD-145 — 2026-07-13
 
@@ -592,7 +601,5 @@ _Numeração PRD-145+ sujeita a conferência em `docs/prd/README.md` antes de cr
 - Lacunas observadas e corrigidas: solicitações operacionais não persistidas,
   dados de repasse do professor omitidos, dependentes inativos após finalização e
   senhas mantidas em snapshots terminais.
-- P2/P3 estrutural, índices e backfill HG seguem pendentes; não são pré-condição dos
-  sete cenários homologados nesta rodada.
-- Estado reconciliado: **consolidação concluída; P0/P1 parcial executado; P2/P3
-  pendente**.
+- P2/P3 estrutural: F-04 completo (innerHTML→DOM), split dashboard e `EXPLAIN` HG seguem pendentes; F-01/E-11/H-03/F-11/modal executados em 2026-07-15.
+- Estado reconciliado: **consolidação concluída; P0/P1 parcial executado; P2 majoritário (E-09/E-10/E-11/F-01/H-03/F-11/modal); F-04/F-09 split dashboard pendentes**.

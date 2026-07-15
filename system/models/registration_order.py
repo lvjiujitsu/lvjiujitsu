@@ -193,6 +193,21 @@ class RegistrationOrder(TimeStampedModel):
         ordering = ("-created_at",)
         verbose_name = "Pedido de matrícula"
         verbose_name_plural = "Pedidos de matrícula"
+        indexes = [
+            models.Index(
+                fields=["person", "payment_status"],
+                name="regorder_person_paystat_idx",
+            ),
+            models.Index(fields=["paid_at"], name="regorder_paid_at_idx"),
+            models.Index(
+                fields=["person", "plan_price_ref", "payment_status"],
+                name="regorder_person_pplan_pay_idx",
+            ),
+            models.Index(
+                fields=["payment_status", "paid_at"],
+                name="regorder_paystat_paid_at_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"Pedido #{self.pk} — {self.person.full_name}"

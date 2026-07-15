@@ -46,6 +46,16 @@ class ClassSchedule(TimeStampedModel):
 
     class Meta:
         ordering = ("class_group__display_name", "display_order", "start_time")
+        indexes = [
+            models.Index(
+                fields=["weekday", "is_active"],
+                name="classsched_weekday_active_idx",
+            ),
+            models.Index(
+                fields=["class_group", "weekday", "is_active"],
+                name="classsched_group_weekday_idx",
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("class_group", "weekday", "training_style", "start_time"),

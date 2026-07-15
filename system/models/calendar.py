@@ -72,6 +72,9 @@ class ClassSession(TimeStampedModel):
         ordering = ("date", "schedule__start_time")
         verbose_name = "Sessão de aula"
         verbose_name_plural = "Sessões de aula"
+        indexes = [
+            models.Index(fields=["date"], name="classsession_date_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("schedule", "date"),
@@ -121,6 +124,12 @@ class ClassCheckin(TimeStampedModel):
         ordering = ("-checked_in_at",)
         verbose_name = "Check-in"
         verbose_name_plural = "Check-ins"
+        indexes = [
+            models.Index(
+                fields=["person", "status"],
+                name="classcheckin_person_status_idx",
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("session", "person"),
@@ -184,6 +193,13 @@ class SpecialClass(TimeStampedModel):
         ordering = ("date", "start_time")
         verbose_name = "Aulão"
         verbose_name_plural = "Aulões"
+        indexes = [
+            models.Index(fields=["date"], name="specialclass_date_idx"),
+            models.Index(
+                fields=["teacher", "date"],
+                name="specialclass_teacher_date_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.title} — {self.date.strftime('%d/%m/%Y')} {self.start_time.strftime('%H:%M')}"

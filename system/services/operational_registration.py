@@ -12,7 +12,10 @@ from system.models import (
     ClassCategory,
 )
 from system.services.access_requests import create_administrative_access_request
-from system.services.class_requests import create_new_teacher_class_request
+from system.services.class_requests import (
+    create_new_teacher_class_request,
+    create_public_teacher_join_requests,
+)
 
 
 @transaction.atomic
@@ -34,10 +37,19 @@ def submit_operational_pre_registration(pre_registration, cleaned_data):
         raise ValidationError("Perfil operacional inválido.")
 
     snapshot = dict(pre_registration.form_snapshot or {})
-    snapshot["operational_submission"] = {
-        "kind": kind,
-        "request_id": submission.pk,
-    }
+    if kind == "class_catalog" and isinstance(submission, list):
+        submission_meta = {
+            "kind": kind,
+            "request_ids": [item.pk for item in submission],
+            "request_id": submission[0].pk,
+        }
+        submission = submission[0]
+    else:
+        submission_meta = {
+            "kind": kind,
+            "request_id": submission.pk,
+        }
+    snapshot["operational_submission"] = submission_meta
     pre_registration.form_snapshot = snapshot
     pre_registration.mark_finalized(None)
     return submission
@@ -73,9 +85,33 @@ def _create_administrative_request(cleaned_data):
 
 
 def _create_teacher_request(cleaned_data):
-    if cleaned_data.get("teacher_assignment_mode") != "propose":
+    mode = cleaned_data.get("teacher_assignment_mode") or "propose"
+    payout_data = _teacher_payout_data(cleaned_data)
+    common_kwargs = {
+        "full_name": cleaned_data.get("other_name", ""),
+        "cpf": cleaned_data.get("other_cpf", ""),
+        "email": cleaned_data.get("other_email", ""),
+        "phone": cleaned_data.get("other_phone", ""),
+        "password": cleaned_data.get("other_password", ""),
+        "martial_art": cleaned_data.get("other_martial_art", ""),
+        "martial_art_graduation": cleaned_data.get("other_martial_art_graduation", ""),
+        "jiu_jitsu_belt": cleaned_data.get("other_jiu_jitsu_belt", ""),
+        "jiu_jitsu_stripes": cleaned_data.get("other_jiu_jitsu_stripes"),
+        "payout_data": payout_data,
+    }
+    if mode == "existing":
+        return create_public_teacher_join_requests(
+            class_groups_payload=cleaned_data.get("teacher_existing_class_groups_payload")
+            or "[]",
+            justification=(
+                cleaned_data.get("operational_compensation_notes")
+                or "Solicitação enviada pelo cadastro público."
+            ),
+            **common_kwargs,
+        )
+    if mode != "propose":
         raise ValidationError(
-            "Para o cadastro público de professor, crie uma proposta de horário."
+            "Para o cadastro público de professor, selecione turma existente ou proponha horário."
         )
 
     try:
@@ -106,16 +142,8 @@ def _create_teacher_request(cleaned_data):
         }
         for weekday in weekdays[1:]
     ]
-    payout_method = cleaned_data.get("operational_payout_method") or "none"
-    if payout_method == "bank":
-        payout_method = "bank_account"
 
     return create_new_teacher_class_request(
-        full_name=cleaned_data.get("other_name", ""),
-        cpf=cleaned_data.get("other_cpf", ""),
-        email=cleaned_data.get("other_email", ""),
-        phone=cleaned_data.get("other_phone", ""),
-        password=cleaned_data.get("other_password", ""),
         class_category=category,
         display_name=schedule.get("display_name") or "",
         weekday=weekdays[0],
@@ -123,32 +151,31 @@ def _create_teacher_request(cleaned_data):
         start_time=start_time,
         duration_minutes=duration_minutes,
         default_capacity=default_capacity,
+        extra_schedules=extra_schedules,
         justification=(
             schedule.get("justification")
-            or cleaned_data.get("operational_compensation_notes")
+            or common_kwargs["justification"]
             or "Proposta enviada pelo cadastro público."
         ),
-        martial_art=cleaned_data.get("other_martial_art", ""),
-        martial_art_graduation=cleaned_data.get("other_martial_art_graduation", ""),
-        jiu_jitsu_belt=cleaned_data.get("other_jiu_jitsu_belt", ""),
-        jiu_jitsu_stripes=cleaned_data.get("other_jiu_jitsu_stripes"),
-        extra_schedules=extra_schedules,
-        payout_data={
-            "method": payout_method,
-            "pix_key_type": cleaned_data.get("operational_pix_key_type") or "",
-            "pix_key": cleaned_data.get("operational_pix_key") or "",
-            "bank_account_details": cleaned_data.get("operational_bank_details") or "",
-            "holder_name": cleaned_data.get("other_name", ""),
-            "holder_document": cleaned_data.get("other_cpf", ""),
-            "financial_arrangement": (
-                cleaned_data.get("operational_financial_arrangement") or ""
-            ),
-            "fixed_amount": cleaned_data.get("operational_fixed_amount") or "",
-            "student_percentage": (
-                cleaned_data.get("operational_student_percentage") or ""
-            ),
-        },
+        **common_kwargs,
     )
+
+
+def _teacher_payout_data(cleaned_data):
+    payout_method = cleaned_data.get("operational_payout_method") or "none"
+    if payout_method == "bank":
+        payout_method = "bank_account"
+    return {
+        "method": payout_method,
+        "pix_key_type": cleaned_data.get("operational_pix_key_type") or "",
+        "pix_key": cleaned_data.get("operational_pix_key") or "",
+        "bank_account_details": cleaned_data.get("operational_bank_details") or "",
+        "holder_name": cleaned_data.get("other_name", ""),
+        "holder_document": cleaned_data.get("other_cpf", ""),
+        "financial_arrangement": cleaned_data.get("operational_financial_arrangement") or "",
+        "fixed_amount": cleaned_data.get("operational_fixed_amount") or "",
+        "student_percentage": cleaned_data.get("operational_student_percentage") or "",
+    }
 
 
 def _positive_int(value, *, default):

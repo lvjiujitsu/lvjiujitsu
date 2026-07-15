@@ -1,0 +1,628 @@
+  {% if client_person %}
+  <div class="modal-overlay" id="client-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="client-profile-modal-title">
+    <div class="modal client-profile-modal">
+      <div class="modal__header profile-modal__header">
+        <div class="profile-modal__identity">
+          <span class="avatar-circle avatar-circle--lg" data-client-profile-avatar aria-hidden="true">{{ client_person.full_name|first|upper }}</span>
+          <div>
+            <p class="client-profile-modal__eyebrow">Dados do cliente</p>
+            <h2 class="modal__title" id="client-profile-modal-title" data-client-profile-name>{{ client_person.full_name }}</h2>
+            <div class="role-badges" aria-label="Perfis ativos" data-client-profile-role-badges>
+              {% if role_labels %}
+              {% for label in role_labels %}
+              <span class="role-badge{% if label == 'Aluno' %} role-badge--primary{% endif %}">{{ label }}</span>
+              {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <button class="modal__close js-close-client-profile" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="client-profile">
+        {% if profile_tabs|length > 1 %}
+        <div class="tabs" role="tablist" aria-label="Dependentes" data-tab-group="client-profile">
+          {% for tab in profile_tabs %}
+          <button
+            class="tab-btn {% if tab.is_active_tab %}tab-btn--active{% endif %}"
+            role="tab"
+            aria-selected="{% if tab.is_active_tab %}true{% else %}false{% endif %}"
+            aria-controls="client-profile-tab-panel-{{ forloop.counter }}"
+            id="client-profile-tab-{{ forloop.counter }}"
+            data-tab="{{ forloop.counter }}"
+            data-person-id="{{ tab.person.pk }}"
+            type="button"
+          >{{ tab.person.full_name|truncatewords:1|cut:" …" }}</button>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for tab in profile_tabs %}
+        <div
+          class="tab-panel {% if tab.is_active_tab %}tab-panel--active{% endif %}"
+          id="client-profile-tab-panel-{{ forloop.counter }}"
+          role="tabpanel"
+          aria-labelledby="client-profile-tab-{{ forloop.counter }}"
+          data-tab-group="client-profile"
+          data-tab="{{ forloop.counter }}"
+          data-person-full-name="{{ tab.person.full_name }}"
+          data-person-role="{% if tab.is_owner %}Titular{% else %}Dependente{% endif %}"
+        >
+          <div class="client-profile__view" data-client-profile-view>
+            <dl class="client-profile__grid">
+              <div>
+                <dt>CPF</dt>
+                <dd data-client-profile-cpf>{{ tab.person.cpf|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>E-mail</dt>
+                <dd data-client-profile-email>{{ tab.person.email|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>Telefone</dt>
+                <dd data-client-profile-phone>{{ tab.person.phone|default:"—" }}</dd>
+              </div>
+              <div>
+                <dt>Nascimento</dt>
+                <dd data-client-profile-birth-date>{{ tab.person.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+              </div>
+              {% if tab.is_owner %}
+              <div class="client-profile__grid-wide">
+                <dt>Endereço</dt>
+                <dd data-client-profile-address>{% if tab.person.address or tab.person.city %}{{ tab.person.address }}{% if tab.person.address_number %}, {{ tab.person.address_number }}{% endif %}{% if tab.person.address_complement %}, {{ tab.person.address_complement }}{% endif %}{% if tab.person.address_neighborhood %} · {{ tab.person.address_neighborhood }}{% endif %}{% if tab.person.city %} · {{ tab.person.city }}{% endif %}{% else %}—{% endif %}</dd>
+              </div>
+              {% endif %}
+            </dl>
+            <div class="client-profile__actions">
+              <button class="btn btn--secondary btn--sm js-client-profile-edit" type="button">Editar cadastro</button>
+              {% if tab.is_owner %}
+              <button class="btn btn--danger-outline btn--sm js-client-profile-delete-open" type="button">Excluir cadastro</button>
+              {% else %}
+              <form class="entity-action-form js-dependent-remove-form" method="post" action="{{ tab.remove_url }}" data-confirm-message="Remover {{ tab.person.full_name }} dos seus dependentes? O histórico da pessoa será preservado.">
+                {% csrf_token %}
+                <button class="btn btn--danger-outline btn--sm" type="submit">Excluir dependente</button>
+              </form>
+              {% endif %}
+            </div>
+            <section class="client-profile__section" aria-label="{% if tab.is_owner %}Plano do titular{% else %}Mensalidade do dependente{% endif %}">
+              <span class="client-profile__label">{% if tab.is_owner %}Plano do titular{% else %}Mensalidade{% endif %}</span>
+              {% if tab.active_membership %}
+              <strong>{{ tab.active_membership.effective_display_name }}</strong>
+              {% if tab.active_membership.family_discount_applied and tab.active_membership.billed_price is not None %}
+              <p class="client-profile__price-wrap">
+                <span class="client-profile__price client-profile__price--original">R$ {{ tab.active_membership.effective_full_price|floatformat:2 }}</span>
+                <span class="client-profile__price client-profile__price--discounted">R$ {{ tab.active_membership.billed_price|floatformat:2 }}</span>
+                <span class="badge badge--warning">Desconto família</span>
+              </p>
+              {% endif %}
+              <small>{{ tab.active_membership.get_status_display }}{% if tab.active_membership.current_period_end %} · até {{ tab.active_membership.current_period_end|date:"d/m/Y" }}{% endif %}</small>
+              {% if not tab.is_owner and tab.billing_owner and tab.billing_owner != tab.person %}
+              <small>Vinculada ao responsável {{ tab.billing_owner.full_name }}.</small>
+              {% endif %}
+              {% elif tab.pending_order %}
+              <strong>Pagamento pendente</strong>
+              <small>Conclua o pagamento para ativar a mensalidade.</small>
+              {% else %}
+              <strong>Nenhum plano ativo</strong>
+              <small>Sem mensalidade registrada{% if tab.is_owner %} para o titular{% endif %}.</small>
+              {% endif %}
+            </section>
+          </div>
+
+          <form class="client-profile-form js-client-profile-form" method="post" action="{{ tab.update_url }}" hidden novalidate>
+            {% csrf_token %}
+            <div class="client-profile-form__message" role="status" aria-live="polite" hidden></div>
+            <div class="client-profile-form__grid">
+              {% for field in tab.form %}
+              <div class="form-field{% if field.name == 'allergies' or field.name == 'previous_injuries' or field.name == 'emergency_contact' or field.name == 'address' or field.name == 'martial_art_graduation' or field.name == 'previous_academy' %} client-profile-form__wide{% endif %}">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.field.widget.input_type == "select" %}
+                <div class="form-select-wrapper">{{ field }}</div>
+                {% else %}
+                {{ field }}
+                {% endif %}
+                <p class="form-field__error" data-client-profile-error="{{ field.name }}"></p>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="client-profile__actions client-profile__actions--form">
+              <button class="btn btn--primary btn--sm" type="submit">Salvar alterações</button>
+              <button class="btn btn--secondary btn--sm js-client-profile-cancel" type="button">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        {% endfor %}
+
+        <form class="client-profile-delete js-client-profile-delete" method="post" action="{{ client_profile_deactivate_url }}" hidden novalidate>
+          {% csrf_token %}
+          <span class="client-profile__label">Zona de exclusão</span>
+          <strong>Excluir cadastro</strong>
+          <small>Seu acesso será encerrado e o cadastro ficará inativo. Histórico financeiro, compras, presenças e graduação permanecem preservados para auditoria da academia.</small>
+          <label class="form-label" for="client-profile-delete-confirm">Digite ENCERRAR para confirmar</label>
+          <input class="form-input" id="client-profile-delete-confirm" name="confirm" autocomplete="off">
+          <p class="form-field__error" data-client-profile-delete-error></p>
+          <div class="client-profile__actions client-profile__actions--form">
+            <button class="btn btn--danger btn--sm" type="submit">Confirmar exclusão</button>
+            <button class="btn btn--secondary btn--sm js-client-profile-delete-cancel" type="button">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_dependents_area %}
+  <div
+    class="modal-overlay"
+    id="dependent-registration-modal"
+    hidden
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="dependent-registration-modal-title"
+    {% if dependent_modal_open %}data-open-on-load="true"{% endif %}
+  >
+    <div class="modal modal--wide dependent-modal">
+      <div class="modal__header">
+        <h2 class="modal__title dependent-modal__title" id="dependent-registration-modal-title">Adicionar dependente</h2>
+        <button class="modal__close js-close-dependent-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <iframe
+        class="dependent-modal__frame js-dependent-registration-frame"
+        title="Cadastro de dependente"
+        data-src="{{ dependent_add_modal_url }}"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="modal-overlay" id="calendar-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
+    <div class="modal modal--calendar">
+      <div class="modal__header">
+        <h2 class="modal__title" id="calendar-modal-title">Cronograma</h2>
+        <button class="modal__close js-close-calendar-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <iframe class="calendar-modal__frame js-calendar-frame" title="Cronograma da academia" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  {% if can_create_special_classes %}
+  <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-aulao-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="modal-aulao-title">Criar aulão</h2>
+        <button class="modal__close js-close-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form class="js-special-class-form" novalidate>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-title">Título</label>
+          <input class="modal__input" type="text" id="aulao-title" name="title" placeholder="Ex: Aulão de raspagem" autocomplete="off">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-date">Data</label>
+          <input class="modal__input" type="date" id="aulao-date" name="date" value="{{ today_iso }}">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-time">Horário</label>
+          <input class="modal__input" type="time" id="aulao-time" name="start_time">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="aulao-duration">Duração (minutos)</label>
+          <input class="modal__input" type="number" id="aulao-duration" name="duration_minutes" min="15" max="360" placeholder="Ex: 90">
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Criar aulão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_instructor_area %}
+  <div class="modal-overlay" id="substitute-teacher-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-substitute-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="modal-substitute-title">Indicar substituto</h2>
+        <button class="modal__close js-close-substitute-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form class="js-substitute-teacher-form" novalidate>
+        <input type="hidden" name="schedule_id" value="">
+        <input type="hidden" name="special_id" value="">
+        <input type="hidden" name="is_special" value="false">
+        <input type="hidden" name="presence_target" value="">
+        <div class="modal__field">
+          <label class="modal__label" for="substitute-teacher-id">Professor</label>
+          <select class="modal__select" id="substitute-teacher-id" name="substitute_teacher_id" required>
+            <option value="">Selecione</option>
+            {% for instructor in instructor_choices %}
+            <option value="{{ instructor.pk }}">{{ instructor.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-substitute-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Salvar substituto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if attendance_history_items %}
+  <div class="modal-overlay" id="attendance-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="attendance-history-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="attendance-history-title">Histórico de presenças</h2>
+        <button class="modal__close js-close-attendance-history-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="attendance-history-filters" aria-label="Filtros do histórico de presenças">
+        <div class="modal__field">
+          <label class="modal__label" for="attendance-history-class">Turma</label>
+          <select class="modal__select js-attendance-history-class" id="attendance-history-class">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="attendance-history-teacher">Professor</label>
+          <select class="modal__select js-attendance-history-teacher" id="attendance-history-teacher">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="attendance-history-month">Mês</label>
+          <select class="modal__select js-attendance-history-month" id="attendance-history-month">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="attendance-history-year">Ano</label>
+          <select class="modal__select js-attendance-history-year" id="attendance-history-year">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <button class="btn btn--secondary btn--sm js-attendance-history-clear" type="button">Limpar</button>
+      </div>
+      <ul class="attendance-history-list" aria-label="Histórico de presenças">
+        {% for entry in attendance_history_items %}
+        <li class="attendance-history-item"
+            data-attendance-history-item
+            data-person-filter="{{ entry.person_id|default:'' }}"
+            data-class-filter="{{ entry.group_name|default:'Aula' }}{% if entry.category_name %} · {{ entry.category_name }}{% endif %}"
+            data-teacher-filter="{% if entry.teacher_name %}{{ entry.teacher_name }}{% elif show_instructor_area and request.portal_person %}{{ request.portal_person.full_name }}{% endif %}"
+            data-month-filter="{{ entry.date|date:'m' }}"
+            data-month-label="{{ entry.date|date:'F' }}"
+            data-year-filter="{{ entry.date|date:'Y' }}">
+          <div class="attendance-history-item__date">
+            <span class="attendance-history-item__day">{{ entry.date|date:"d/m" }}</span>
+            <span class="attendance-history-item__time">{{ entry.start_time_label }}</span>
+          </div>
+          <div class="attendance-history-item__info">
+            <span class="attendance-history-item__class">{{ entry.group_name|default:"Aula" }}{% if entry.category_name %} · {{ entry.category_name }}{% endif %}</span>
+            {% if entry.teacher_name %}
+            <span class="attendance-history-item__meta">{{ entry.teacher_name }}</span>
+            {% endif %}
+            {% if entry.attendees %}
+            <span class="attendance-history-item__meta">{{ entry.attendees|length }} presente{{ entry.attendees|length|pluralize }}</span>
+            {% endif %}
+          </div>
+          <span class="status-pill status-pill--success" aria-label="Presença registrada">✓</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="modal-empty js-attendance-history-empty" hidden>Nenhuma presença encontrada.</p>
+      <div class="modal-pagination" aria-label="Paginação do histórico de presenças">
+        <button class="btn btn--secondary btn--sm js-attendance-history-prev" type="button">Anterior</button>
+        <span class="modal-pagination__status js-attendance-history-page" aria-live="polite">Página 1</span>
+        <button class="btn btn--secondary btn--sm js-attendance-history-next" type="button">Próxima</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if payment_history_items %}
+  <div class="modal-overlay" id="payment-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="payment-history-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="payment-history-title">Histórico de pagamentos</h2>
+        <button class="modal__close js-close-payment-history-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <ul class="attendance-history-list" aria-label="Histórico de pagamentos">
+        {% for entry in payment_history_items %}
+        <li class="attendance-history-item" data-payment-history-item data-person-filter="{{ entry.person_id }}">
+          <div class="attendance-history-item__date">
+            <span class="attendance-history-item__day">{{ entry.paid_at|date:"d/m/Y"|default:"—" }}</span>
+          </div>
+          <div class="attendance-history-item__info">
+            <span class="attendance-history-item__class">{{ entry.plan_name }}</span>
+            <span class="attendance-history-item__meta">R$ {{ entry.amount_paid|floatformat:2 }}</span>
+          </div>
+          {% if entry.status == "failed" %}
+          <span class="status-pill status-pill--danger" aria-label="Falhou">Falhou</span>
+          {% elif entry.amount_refunded > 0 %}
+          <span class="status-pill status-pill--warning" aria-label="Estornado">Estornado</span>
+          {% else %}
+          <span class="status-pill status-pill--success" aria-label="Pago">Pago</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="modal-empty js-payment-history-empty" hidden>Nenhum pagamento encontrado.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if membership_timeline_events %}
+  <div class="modal-overlay" id="membership-timeline-modal" hidden role="dialog" aria-modal="true" aria-labelledby="membership-timeline-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="membership-timeline-title">Histórico de alterações</h2>
+        <button class="modal__close js-close-membership-timeline-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <ul class="attendance-history-list" aria-label="Histórico de alterações">
+        {% for entry in membership_timeline_events %}
+        <li class="attendance-history-item">
+          <div class="attendance-history-item__date">
+            <span class="attendance-history-item__day">{{ entry.created_at|date:"d/m/Y" }}</span>
+            <span class="attendance-history-item__time">{{ entry.created_at|date:"H:i" }}</span>
+          </div>
+          <div class="attendance-history-item__info">
+            <span class="attendance-history-item__class">{{ entry.description }}</span>
+            <span class="attendance-history-item__meta">{{ entry.person_name }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="modal-empty" {% if membership_timeline_events %}hidden{% endif %}>Nenhum evento encontrado.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_instructor_area %}
+  <div class="modal-overlay" id="class-presence-modal" hidden role="dialog" aria-modal="true" aria-labelledby="presence-modal-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="presence-modal-title">Presenças</h2>
+        <button class="modal__close js-close-presence-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-checkin-list" id="presence-modal-body" role="list" aria-label="Lista de presenças">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if graduation_tabs %}
+  <div class="modal-overlay" id="grad-history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-grad-title">
+    <div class="modal modal--grad-history">
+      <div class="modal__header">
+        <h2 class="modal__title" id="modal-grad-title">Histórico de graduações</h2>
+        <button class="modal__close js-close-grad-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      {% for tab in graduation_tabs %}
+      {% if tab.graduation_history %}
+      <div class="grad-history-list" data-history-for="{{ forloop.counter }}" {% if not tab.is_active_tab %}hidden{% endif %}>
+        {% for entry in tab.graduation_history %}
+        <div class="grad-history-entry{% if entry.is_current %} grad-history-entry--current{% endif %}">
+          <span class="grad-history-entry__dot{% if entry.is_current %} grad-history-entry__dot--active{% endif %}" aria-hidden="true"></span>
+          {% if entry.belt_rank %}
+          <div class="grad-history-entry__belt" aria-hidden="true">
+            <svg class="grad-history-entry__belt-svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+              <defs><clipPath id="hbc-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"><rect x="0" y="0" width="320" height="36" rx="4" ry="4"/></clipPath></defs>
+              <g clip-path="url(#hbc-{{ forloop.parentloop.counter }}-{{ forloop.counter }})">
+                <rect x="0" y="0" width="320" height="36" fill="{{ entry.belt_rank.color_hex }}"/>
+                <rect x="232" y="0" width="88" height="36" fill="{{ entry.belt_rank.tip_color_hex }}"/>
+                {% for stripe in entry.belt_stripes %}{% if stripe.filled %}
+                <rect x="{{ stripe.x }}" y="5" width="12" height="26" fill="{{ entry.belt_rank.stripe_color_hex }}" rx="2" ry="2"/>
+                {% endif %}{% endfor %}
+              </g>
+            </svg>
+          </div>
+          {% endif %}
+          <div class="grad-history-entry__info">
+            <div class="grad-history-entry__rank">
+              {{ entry.belt_rank.display_name }}{% if entry.grade_number %} · {{ entry.grade_number }}º grau{% endif %}
+            </div>
+            <div class="grad-history-entry__dates">
+              {{ entry.awarded_at|date:"d/m/Y" }} → {{ entry.until_date|date:"d/m/Y" }}
+            </div>
+            <div class="grad-history-entry__period">
+              {{ entry.period_months }} {% if entry.period_months == 1 %}mês{% else %}meses{% endif %} / {{ entry.period_days }} dias
+            </div>
+            {% if entry.awarded_by %}
+            <div class="grad-history-entry__granter">Concedida por {{ entry.awarded_by.full_name }}</div>
+            {% endif %}
+            {% if entry.notes %}
+            <div class="grad-history-entry__notes">{{ entry.notes }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if plan_change_catalog %}
+  <div class="modal-overlay" id="plan-change-modal" hidden role="dialog" aria-modal="true" aria-labelledby="plan-change-modal-title">
+    <div class="modal modal--wide">
+      <div class="modal__header">
+        <h2 class="modal__title" id="plan-change-modal-title">Trocar plano</h2>
+        <button class="modal__close js-close-plan-change-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      {% if plan_change_summary %}
+      <p class="modal__label">
+        Saldo disponível no ciclo atual: <strong>R$ {{ plan_change_summary.available_credit }}</strong>
+        ({{ plan_change_summary.days_remaining }} dia{{ plan_change_summary.days_remaining|pluralize }} restante{{ plan_change_summary.days_remaining|pluralize }})
+      </p>
+      {% endif %}
+      <form class="js-plan-change-form" novalidate>
+        <div class="js-plan-change-filters">
+          {% if plan_change_filters.frequencies|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Frequência semanal</p>
+            <div class="plan-filter-row">
+              {% for freq in plan_change_filters.frequencies %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="frequency" data-value="{{ freq.value }}">{{ freq.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if plan_change_filters.cycles|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Período de cobrança</p>
+            <div class="plan-filter-row">
+              {% for cycle in plan_change_filters.cycles %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="cycle" data-value="{{ cycle.value }}">{{ cycle.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if plan_change_filters.methods|length > 1 %}
+          <div class="plan-filter-section">
+            <p class="plan-filter-label">Forma de pagamento</p>
+            <div class="plan-filter-row">
+              {% for method in plan_change_filters.methods %}
+              <button type="button" class="plan-filter-pill js-plan-change-filter-pill" data-filter="method" data-value="{{ method.value }}">{{ method.label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="plan-change-cards" role="radiogroup" aria-label="Planos disponíveis">
+          {% for plan in plan_change_catalog %}
+          <label
+            class="plan-change-card js-plan-change-card{% if plan.is_current %} plan-change-card--current{% endif %}"
+            data-plan-id="{{ plan.id }}"
+            data-weekly-frequency="{{ plan.weekly_frequency }}"
+            data-billing-cycle="{{ plan.billing_cycle }}"
+            data-payment-method="{{ plan.payment_method }}"
+          >
+            <input
+              type="radio"
+              name="selected_plan"
+              value="{{ plan.id }}"
+              class="plan-change-card__input"
+              data-is-upgrade="{{ plan.proration.is_upgrade|yesno:"1,0" }}"
+              data-has-leftover="{{ plan.proration.has_leftover|yesno:"1,0" }}"
+              data-additional-charge="{{ plan.proration.additional_charge }}"
+              data-leftover-credit="{{ plan.proration.leftover_credit }}"
+              {% if plan.is_current %}disabled{% endif %}
+              hidden
+            >
+            <span class="plan-change-card__radio" aria-hidden="true"><span class="plan-change-card__radio-dot"></span></span>
+            <span class="plan-change-card__body">
+              <span class="plan-change-card__tier">
+                {{ plan.name }}
+                {% if plan.is_current %}<span class="plan-change-card__badge">Plano atual</span>{% endif %}
+              </span>
+              <span class="plan-change-card__price-wrap">
+                <span class="plan-change-card__price">R$ {{ plan.price|floatformat:2 }}</span>
+                <span class="plan-change-card__price-cycle">/{{ plan.cycle|lower }}</span>
+              </span>
+              <span class="plan-change-card__meta">{{ plan.audience_label }} · {{ plan.weekly_frequency_label }}</span>
+              {% if plan.is_current %}
+              <span class="plan-change-card__proration plan-change-card__proration--neutral">Você já está neste plano</span>
+              {% elif plan.requires_checkout %}
+              <span class="plan-change-card__proration plan-change-card__proration--charge">Assinatura recorrente — você será redirecionado para o pagamento</span>
+              {% elif plan.proration.is_upgrade %}
+              <span class="plan-change-card__proration plan-change-card__proration--charge">+ R$ {{ plan.proration.additional_charge }} a pagar agora</span>
+              {% elif plan.proration.has_leftover %}
+              <span class="plan-change-card__proration plan-change-card__proration--save">Você economiza R$ {{ plan.proration.leftover_credit }} agora</span>
+              {% else %}
+              <span class="plan-change-card__proration plan-change-card__proration--neutral">Sem custo adicional agora</span>
+              {% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="system-message system-message--warning js-plan-change-upgrade-notice" role="status" hidden>
+          Esse plano exige pagamento da diferença agora. Você será redirecionado para a tela de pagamento.
+        </div>
+
+        <div class="modal__field js-plan-change-leftover-choice" hidden>
+          <label class="modal__label">Sobra do plano atual</label>
+          <label style="display:flex;align-items:center;gap:0.375rem;font-weight:400;">
+            <input type="radio" name="leftover_action" value="keep_credit" checked> Guardar como crédito na próxima renovação
+          </label>
+          <label style="display:flex;align-items:center;gap:0.375rem;font-weight:400;">
+            <input type="radio" name="leftover_action" value="refund"> Devolver agora (estorno)
+          </label>
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-plan-change-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit" disabled>Confirmar troca</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="modal-overlay" id="pause-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pause-modal-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="pause-modal-title">Pausar mensalidade</h2>
+        <button class="modal__close js-close-pause-modal" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="modal__label">
+        Trancamento sem atestado: até 30 dias por ano de matrícula, liberado só fora do período de carência.
+        Atestado médico: sempre permitido, sem cobrança no período informado, com a carência prorrogada pelo mesmo prazo.
+        Toda pausa passa por aprovação do administrativo.
+      </p>
+      <form class="js-pause-form" novalidate>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-kind">Tipo</label>
+          <select id="pause-kind" name="kind">
+            <option value="self_service">Trancamento (sem atestado)</option>
+            <option value="medical">Atestado médico</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-start-date">Início</label>
+          <input id="pause-start-date" name="start_date" type="date" required>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-end-date">Fim</label>
+          <input id="pause-end-date" name="end_date" type="date" required>
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="pause-reason-note">Observação</label>
+          <textarea id="pause-reason-note" name="reason_note" rows="3" placeholder="Ex.: número do atestado, motivo"></textarea>
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-pause-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Solicitar pausa</button>
+        </div>
+      </form>
+    </div>
+  </div>

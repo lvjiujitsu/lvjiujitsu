@@ -167,47 +167,50 @@ class OperationalRegistrationFieldsMixin(forms.Form):
         if fallback_id and not selected_payload:
             selected_payload = [{"id": fallback_id}]
 
-        selected_ids = []
-        normalized_payload = []
+        raw_values = []
         for item in selected_payload:
             if isinstance(item, dict):
-                raw_id = item.get("id") or item.get("class_group_id")
-            else:
-                raw_id = item
-            try:
-                selected_id = int(raw_id)
-            except (TypeError, ValueError):
-                self.add_error(
-                    "teacher_existing_class_groups_payload",
-                    "Selecione apenas turmas ativas válidas.",
+                raw_values.append(
+                    str(item.get("id") or item.get("class_group_id") or "")
                 )
-                return
-            if selected_id in selected_ids:
-                continue
-            selected_ids.append(selected_id)
-            normalized_payload.append(item if isinstance(item, dict) else {"id": selected_id})
+            else:
+                raw_values.append(str(item))
+        raw_values = [value for value in raw_values if value]
 
-        if not selected_ids:
+        from system.services.class_overview import resolve_class_group_selection
+
+        resolved_groups = resolve_class_group_selection(raw_values)
+        if not resolved_groups:
             self.add_error(
                 "teacher_existing_class_groups_payload",
                 "Selecione ao menos uma turma ativa.",
             )
             return
 
-        active_ids = set(
-            ClassGroup.objects.filter(pk__in=selected_ids, is_active=True).values_list("pk", flat=True)
-        )
-        if len(active_ids) != len(selected_ids):
-            self.add_error(
-                "teacher_existing_class_groups_payload",
-                "Selecione apenas turmas ativas válidas.",
+        normalized_payload = []
+        for class_group in resolved_groups:
+            source_item = next(
+                (
+                    item
+                    for item in selected_payload
+                    if isinstance(item, dict)
+                    and str(item.get("id") or item.get("class_group_id") or "")
+                    in raw_values
+                ),
+                {},
             )
-            return
+            normalized_payload.append(
+                {
+                    "id": class_group.pk,
+                    "class_group_id": class_group.pk,
+                    "label": source_item.get("label") or str(class_group),
+                    "teacher_names": source_item.get("teacher_names") or [],
+                    "approval_scope": source_item.get("approval_scope")
+                    or ("admin_and_current_teacher" if class_group.main_teacher_id else "admin_only"),
+                }
+            )
 
-        for item in normalized_payload:
-            if isinstance(item, dict):
-                item["id"] = int(item.get("id") or item.get("class_group_id"))
-        self.cleaned_data["teacher_existing_class_group"] = str(selected_ids[0])
+        self.cleaned_data["teacher_existing_class_group"] = str(resolved_groups[0].pk)
         self.cleaned_data["teacher_existing_class_groups_payload"] = json.dumps(
             normalized_payload,
             ensure_ascii=False,

@@ -255,6 +255,21 @@ class ClassCatalogDecisionForm(forms.Form):
         self.fields["class_category"].queryset = ClassCategory.objects.filter(
             is_active=True
         ).order_by("display_order", "display_name")
+        join_existing = (
+            catalog_request.request_type
+            == ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS
+        )
+        if join_existing:
+            for field_name in (
+                "class_category",
+                "display_name",
+                "weekday",
+                "training_style",
+                "start_time",
+                "duration_minutes",
+                "default_capacity",
+            ):
+                self.fields[field_name].required = False
         self.initial.update(
             {
                 "class_group": catalog_request.target_class_group_id,
@@ -270,6 +285,13 @@ class ClassCatalogDecisionForm(forms.Form):
 
     def clean(self):
         cleaned_data = super().clean()
+        if (
+            self.catalog_request.request_type
+            == ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS
+        ):
+            if cleaned_data.get("class_group") is None:
+                self.add_error("class_group", "Selecione a turma de vínculo.")
+            return cleaned_data
         if self.catalog_request.request_type == ClassCatalogRequestType.NEW_SCHEDULE:
             if cleaned_data.get("class_group") is None:
                 self.add_error("class_group", "Selecione a turma existente.")
@@ -343,6 +365,20 @@ def extract_extra_schedules(formset):
             }
         )
     return extra_schedules
+
+
+class PayrollActivationForm(forms.Form):
+    payroll_payment_day = forms.IntegerField(
+        min_value=1,
+        max_value=28,
+        label="Dia de pagamento",
+        initial=5,
+    )
+    payroll_activation_notes = forms.CharField(
+        required=False,
+        label="Observação da ativação",
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
 
 
 def _get_requester_class_groups(requester):

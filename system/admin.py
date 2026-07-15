@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils import timezone
 
 from system.models import (
@@ -304,6 +304,14 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         "is_active",
     )
     search_fields = ("display_name", "code")
+
+    def changelist_view(self, request, extra_context=None):
+        self.message_user(
+            request,
+            "SubscriptionPlan é legado (sp:). Use PlanTier/PlanPrice (pp:) para catálogo novo.",
+            level=messages.WARNING,
+        )
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 class RegistrationOrderItemInline(admin.TabularInline):

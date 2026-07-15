@@ -11,7 +11,9 @@ from system.models import (
     CategoryAudience,
     ClassCatalogRequest,
     ClassCatalogRequestStatus,
+    ClassCatalogRequestType,
     ClassCategory,
+    ClassGroup,
     Person,
     PersonType,
     PreRegistration,
@@ -177,3 +179,63 @@ class RegistrationWizardContractTestCase(TestCase):
         self.assertEqual(pre_registration.status, PreRegistrationStatus.FINALIZED)
         self.assertNotIn("other_password", pre_registration.form_snapshot)
         self.assertNotIn("other_password_confirm", pre_registration.form_snapshot)
+
+    def test_teacher_existing_mode_creates_pending_join_requests(self):
+        instructor_type = PersonType.objects.get(code=PersonTypeCode.INSTRUCTOR)
+        current_teacher = Person.objects.create(
+            full_name="Professor Atual Vínculo",
+            cpf="136.246.880-02",
+            person_type=instructor_type,
+            birth_date="1980-01-01",
+        )
+        category = ClassCategory.objects.create(
+            code="adult-existing-join",
+            display_name="Adulto Vínculo",
+            audience=CategoryAudience.ADULT,
+        )
+        class_group = ClassGroup.objects.create(
+            display_name="Adulto Noite Vínculo",
+            class_category=category,
+            main_teacher=current_teacher,
+        )
+        data = {
+            "registration_profile": "other",
+            "other_type_code": PersonTypeCode.INSTRUCTOR,
+            "other_name": "Professor Existing Aprovado",
+            "other_cpf": "74412652823",
+            "other_birthdate": "22/10/1988",
+            "other_biological_sex": "male",
+            "other_email": "teacher.existing.join@example.com",
+            "other_phone": "11970000010",
+            "other_password": "Teste@12345",
+            "other_password_confirm": "Teste@12345",
+            "other_has_martial_art": "no",
+            "teacher_assignment_mode": "existing",
+            "teacher_existing_class_groups_payload": json.dumps(
+                [
+                    {
+                        "id": class_group.pk,
+                        "class_group_id": class_group.pk,
+                        "label": "Adulto · Adulto Noite Vínculo",
+                        "teacher_names": ["Professor Atual Vínculo"],
+                        "approval_scope": "admin_and_current_teacher",
+                    }
+                ]
+            ),
+            "teacher_existing_class_group": str(class_group.pk),
+            "operational_financial_arrangement": "volunteer",
+            "checkout_action": "pay_later",
+        }
+
+        response = self.client.post(reverse("system:register"), data)
+
+        self.assertRedirects(response, reverse("system:login"))
+        self.assertFalse(Person.objects.filter(cpf="744.126.528-23").exists())
+        class_request = ClassCatalogRequest.objects.get(cpf="744.126.528-23")
+        self.assertEqual(
+            class_request.request_type,
+            ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS,
+        )
+        self.assertEqual(class_request.status, ClassCatalogRequestStatus.PENDING)
+        self.assertEqual(class_request.target_class_group_id, class_group.pk)
+        self.assertEqual(class_request.payload.get("requested_role"), "assistant")

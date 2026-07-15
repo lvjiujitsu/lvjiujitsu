@@ -56,7 +56,7 @@ system/
 ## 4. Comandos locais
 
 ```powershell
-.\.venv\Scripts\pip.exe install -r requirements-dev.txt
+.\.venv\Scripts\pip.exe install -r requirements.txt
 .\.venv\Scripts\python.exe manage.py runserver localhost:8000
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py showmigrations

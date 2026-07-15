@@ -255,14 +255,15 @@ Contrato do wizard público em `/register/`:
 
 ## 10. Componentes mínimos obrigatórios
 
-### Shell global (estado real — rollout parcial, PRD-141 Onda P0)
+### Shell global (estado real — jul/2026, PRD-144 P2)
 
-`templates/lv/base.html` **existe** desde jul/2026 (PRD-141 Onda P0) com blocos `title`, `extra_css`, `body_class`, `topbar`, `page_class`, `content`, `modals`, `extra_js`. Inclui favicon, meta viewport, `theme_boot.js`/`theme_toggle.js` versionados e mensagens do sistema. Ainda convivem quatro padrões enquanto a migração dos ~62 standalone não termina:
+`templates/lv/base.html` com blocos `title`, `extra_css`, `body_class`, `topbar`, `page_class`, `content`, `modals`, `extra_js`. Inclui favicon, meta viewport, `theme_boot.js`, `modal.js`, `theme_toggle.js` e mensagens do sistema.
 
-- **`lv/base.html`** (piloto: `templates/people/person_list.html`, `templates/calendar/calendar.html`) — shell único; tema/topbar/mensagens herdados, tela só declara `content`/`extra_css`/`extra_js`/`modals`.
-- **Standalone** (~60 restantes) — HTML completo próprio, tema aplicado por IIFE inline lendo `localStorage["lv-theme"]`. Migração faseada (admin → home → wizard) pendente, PRD-141 Onda P1/P2.
-- **Auth** — `{% extends "auth/base_auth.html" %}` (login, wizard de reset de senha).
-- **Modal CRUD** — `{% extends "lv/modal_frame.html" %}`, controlado por `static/system/js/lv/crud_modal.js` e `modal_child.js`; tema via `static/system/js/lv/theme_boot.js` e `theme_toggle.js`; tokens em `static/system/css/lv/base.css`.
+- **`lv/base.html`** — **52 telas** administrativas + calendário/pessoas.
+- **Standalone operacionais** — `home/dashboard.html`, `login/register.html`, wizard dependente; tokens via `lv/base.css` + overrides.
+- **Auth** — `{% extends "auth/base_auth.html" %}`.
+- **Modal CRUD** — `lv/modal_frame.html` + `crud_modal.js`; home usa `dashboard_modals.html` + `dashboard_modals.js`.
+- **DOM seguro** — wizards/dashboard sem `.innerHTML`; `static/system/js/lv/dom_utils.js` (`LV.DOM`).
 
 - Topbar com: logo LV, nome do portal, menu do usuário, alternância de tema.
 - Drawer/sidebar refletindo permissões reais — nunca mostra link inacessível.

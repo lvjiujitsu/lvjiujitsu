@@ -1,33 +1,15 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Pausas de mensalidade — LV Jiu Jitsu</title>
-  {% load static %}
-  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260709-1"></script>
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+{% extends "lv/base.html" %}
+{% load static %}
+
+{% block title %}Pausas de mensalidade — LV Jiu Jitsu{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'system/css/people/people.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'system/css/classes/classes.css' %}?v=2">
-</head>
-<body>
-  <header class="topbar" role="banner">
-    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
-    </a>
-    <nav class="topbar__actions" aria-label="Ações do usuário">
-      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">◐</button>
-      <a class="btn-icon" href="{% url 'system:logout' %}" aria-label="Sair">↗</a>
-    </nav>
-  </header>
+{% endblock %}
 
-  <main class="page" id="main-content">
-    {% if messages %}
-    <div class="system-messages" role="alert">
-      {% for message in messages %}<div class="system-message system-message--{{ message.tags }}">{{ message }}</div>{% endfor %}
-    </div>
-    {% endif %}
-    <div class="page-header">
+{% block content %}
+<div class="page-header">
       <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
       <div class="page-header__row">
         <div>
@@ -100,7 +82,4 @@
         {% endif %}
       </div>
     </section>
-  </main>
-  <script src="{% static 'system/js/lv/theme_toggle.js' %}?v=20260709-1"></script>
-</body>
-</html>
+{% endblock %}

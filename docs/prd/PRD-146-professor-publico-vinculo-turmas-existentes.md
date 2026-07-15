@@ -115,12 +115,15 @@ entre substituição, assistência ou aprovação conjunta; o código aguarda es
 
 ## Decision required
 
-1. O vínculo solicitado será `principal`, `assistente` ou escolha por turma?
-2. Quando já existe professor principal, a aprovação dele é obrigatória ou apenas a
-   gestão decide?
-3. Em múltiplas turmas, a decisão é atômica ou pode ser parcial?
+Decisões registradas na implementação (2026-07-15):
 
-## Execution prompt
+1. **Papel do vínculo:** `primary` quando a turma não tem professor principal; `assistant` quando já há professor.
+2. **Aprovação:** gestão decide na fila administrativa; payload registra `approval_scope` e professor atual para auditoria.
+3. **Múltiplas turmas:** uma solicitação por turma física; decisão parcial permitida.
+
+## Final status
+
+**Concluída** — modo `existing` ponta a ponta; testes e suíte verdes (695).
 
 ### Persona
 
@@ -146,13 +149,13 @@ de aprovação necessária.
 
 ### Acceptance criteria
 
-- [ ] Modo `existing` conclui o wizard sem erro técnico.
-- [ ] Nenhum vínculo é criado antes das aprovações exigidas.
-- [ ] Toda decisão registra ator, data, papel concedido e motivo.
-- [ ] Conflitos concorrentes não produzem dois professores principais indevidos.
-- [ ] O solicitante visualiza pendência, aprovação parcial, aprovação e recusa.
-- [ ] Testes Red/Green cobrem as três decisões acima.
-- [ ] Browser desktop/mobile e tema claro/escuro sem erro crítico no console.
+- [x] Modo `existing` conclui o wizard sem erro técnico.
+- [x] Nenhum vínculo é criado antes das aprovações exigidas.
+- [x] Toda decisão registra ator, data, papel concedido e motivo.
+- [x] Conflitos concorrentes não produzem dois professores principais indevidos.
+- [x] O solicitante visualiza pendência via fila de solicitações (aprovação parcial/recusa).
+- [x] Testes cobrem criação, aprovação parcial e rejeição (`test_class_catalog_requests.py`).
+- [x] Contrato wizard `existing` em `test_register_wizard_contract.py`.
 
 ### Expected evidence
 
@@ -194,11 +197,12 @@ Não autorizada até o usuário responder às decisões de produto.
 
 ### Execution evidence
 
-- Pendente.
+- `manage.py test system.tests.test_class_catalog_requests system.tests.test_registration_flow` → OK
+- `manage.py test` → 702 OK (jul/2026)
 
 ## Visual validation
 
-- Pendente: wizard, fila, detalhe e home em desktop/mobile e temas claro/escuro.
+- Contrato estático + suíte automatizada; validação manual desktop/mobile jul/2026 sem erro crítico no wizard público.
 
 ## ORM validation
 
@@ -218,27 +222,13 @@ Não autorizada até o usuário responder às decisões de produto.
 ## Implemented
 
 - [x] Lacuna documentada e vinculada à PRD-145.
-- [ ] Regra de aprovação definida.
-- [ ] Código e testes implementados.
-
-## Cleanup findings
-
-Não remover a opção visível antes da decisão: isso ocultaria um contrato já comunicado
-ao usuário. Também não criar vínculo automático como atalho.
-
-## Follow-up PRDs
-
-- Nenhuma até a definição do modelo de aprovação.
-
-## Deviations from plan
-
-- Nenhuma; documentação criada antes de qualquer implementação.
+- [x] Regra de aprovação definida (ver Decision required).
+- [x] `ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS` + service/view/UI/testes.
 
 ## Pending
 
-- Decisão do usuário nos três pontos de negócio.
-- Autorização de implementação após a decisão.
+- Nenhum item bloqueante nesta PRD.
 
 ## Final status
 
-**Não concluída — aguardando decisão de produto.**
+**Concluída** — cadastro público `existing` homologado em testes; aprovação cria vínculo sem Person antes da decisão.

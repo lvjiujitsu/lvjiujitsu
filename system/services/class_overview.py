@@ -107,6 +107,7 @@ def get_registration_catalog_payload():
         payload.append(
             {
                 "id": card.filter_value,
+                "class_group_id": card.pk,
                 "display_name": card.display_name,
                 "category_id": card.class_category.pk,
                 "category_name": card.class_category.display_name,

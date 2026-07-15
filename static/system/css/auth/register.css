@@ -1,48 +1,18 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   LV JIU JITSU — Register Wizard
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Register wizard — overrides (tokens base em lv/base.css) */
 
-/* ─── Tokens ────────────────────────────────────────────────────────────────── */
 :root {
   --bg: #f5f5f5;
-  --panel: #ffffff;
   --input-bg: #fafafa;
   --border: #e4e4e7;
   --border-soft: #f0f0f2;
-  --text: #18181b;
-  --muted: #71717a;
-  --brand-red: #c41230;
-  --brand-red-strong: #9b0e25;
-  --brand-red-muted: rgba(196, 18, 48, 0.1);
-  --focus-ring: rgba(196, 18, 48, 0.3);
-  --danger: #dc2626;
-  --danger-muted: rgba(220, 38, 38, 0.08);
-  --success: #16a34a;
-  --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
 html[data-theme="dark"] {
-  --bg: #09090b;
-  --panel: #111113;
   --input-bg: #18181b;
   --border: #2d2d30;
   --border-soft: #1f1f23;
-  --text: #fafafa;
-  --muted: #a1a1aa;
-  --brand-red: #e02244;
-  --brand-red-strong: #c41230;
-  --brand-red-muted: rgba(224, 34, 68, 0.12);
-  --focus-ring: rgba(224, 34, 68, 0.35);
-  --danger: #f87171;
-  --danger-muted: rgba(248, 113, 113, 0.1);
-  --card-shadow: 0 1px 6px rgba(0, 0, 0, 0.4), 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* ─── Reset ─────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-[hidden] { display: none !important; }
-html { font-size: 16px; color-scheme: light; -webkit-text-size-adjust: 100%; }
-html[data-theme="dark"] { color-scheme: dark; }
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
 a { color: var(--brand-red); text-decoration: none; }
 a:hover { text-decoration: underline; }

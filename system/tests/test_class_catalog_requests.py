@@ -22,6 +22,7 @@ from system.services.class_requests import (
     cancel_class_catalog_request,
     create_existing_teacher_class_request,
     create_new_teacher_class_request,
+    create_public_teacher_join_requests,
     reject_class_catalog_request,
 )
 
@@ -459,3 +460,54 @@ class ClassCatalogRequestServiceTestCase(TestCase):
                     },
                 ],
             )
+
+    def test_public_teacher_join_request_stays_pending_without_person(self):
+        requests = create_public_teacher_join_requests(
+            full_name="Professor Vínculo",
+            cpf="39053344705",
+            email="join.teacher@example.com",
+            phone="11970000011",
+            password="Teste@12345",
+            class_groups_payload=[
+                {
+                    "id": self.class_group.pk,
+                    "class_group_id": self.class_group.pk,
+                    "label": "Adulto · Jiu Jitsu",
+                }
+            ],
+        )
+
+        self.assertEqual(len(requests), 1)
+        request = requests[0]
+        self.assertEqual(request.request_type, ClassCatalogRequestType.TEACHER_JOIN_EXISTING_CLASS)
+        self.assertEqual(request.status, ClassCatalogRequestStatus.PENDING)
+        self.assertFalse(Person.objects.filter(cpf="390.533.447-05").exists())
+        self.assertEqual(request.payload.get("requested_role"), "assistant")
+
+    def test_approve_public_teacher_join_creates_assistant_assignment(self):
+        requests = create_public_teacher_join_requests(
+            full_name="Professor Aprovado Vínculo",
+            cpf="52998224725",
+            email="join.approved@example.com",
+            phone="11970000012",
+            password="Teste@12345",
+            class_groups_payload=[
+                {
+                    "id": self.class_group.pk,
+                    "class_group_id": self.class_group.pk,
+                }
+            ],
+        )
+        request = requests[0]
+
+        approve_class_catalog_request(request.pk, approved_by=self.approver)
+
+        person = Person.objects.get(cpf="529.982.247-25")
+        self.assertTrue(
+            ClassInstructorAssignment.objects.filter(
+                class_group=self.class_group,
+                person=person,
+                is_primary=False,
+            ).exists()
+        )
+        self.assertEqual(self.class_group.main_teacher_id, self.instructor.pk)

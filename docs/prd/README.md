@@ -173,3 +173,5 @@ Os números `022` e `055` eram gaps livres (nunca usados) e foram reaproveitados
 | [PRD-146-professor-publico-vinculo-turmas-existentes.md](PRD-146-professor-publico-vinculo-turmas-existentes.md) | Professor público e vínculo com turmas existentes — decisão de aprovação pendente |
 | [PRD-147-homologacao-funcional-pos-cadastro.md](PRD-147-homologacao-funcional-pos-cadastro.md) | Homologação funcional pós-cadastro — aula, pausa, plano, cartão, dependentes e histórico |
 | [PRD-148-repasse-professor-cadastro-publico.md](PRD-148-repasse-professor-cadastro-publico.md) | Ativação do repasse do professor cadastrado publicamente — decisões financeiras pendentes |
+| [PRD-149-requirements-unico-sem-dev.md](PRD-149-requirements-unico-sem-dev.md) | Requirements único — eliminar `requirements-dev.txt`; PyYAML no `requirements.txt` (impacto nulo no Render Free) |
+| [PRD-150-homologacao-cadastros-professor-propose-docs.md](PRD-150-homologacao-cadastros-professor-propose-docs.md) | Homologação de cadastros + professor público só `propose` até PRD-146 + alinhamento docs |

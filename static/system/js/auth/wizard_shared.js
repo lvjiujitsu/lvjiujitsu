@@ -147,6 +147,13 @@
     el.appendChild(p);
   }
 
+  function clearChildren(node) {
+    if (!node) return;
+    while (node.firstChild) {
+      node.removeChild(node.firstChild);
+    }
+  }
+
   window.LV.Wizard = {
     warn: warn,
     escapeHtml: escapeHtml,
@@ -159,5 +166,6 @@
     fetchEligibility: fetchEligibility,
     getFormEndpoints: getFormEndpoints,
     setElementText: setElementText,
+    clearChildren: clearChildren,
   };
 })();

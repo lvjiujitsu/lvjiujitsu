@@ -557,13 +557,16 @@ def _get_student_entry_orders(*, period_start, period_end):
 
 
 def _build_student_entries_from_orders(orders, group_ids, *, active_only):
+    if not orders:
+        return []
+    students_by_billing_person = _preload_students_for_orders(
+        orders,
+        group_ids,
+        active_only=active_only,
+    )
     entries = []
     for order in orders:
-        linked_students = _get_order_students_for_groups(
-            order.person,
-            group_ids,
-            active_only=active_only,
-        )
+        linked_students = students_by_billing_person.get(order.person_id, [])
         if not linked_students:
             continue
         order_amount = _money(order.net_amount if order.net_amount else order.total)
@@ -580,6 +583,54 @@ def _build_student_entries_from_orders(orders, group_ids, *, active_only):
                 }
             )
     return entries
+
+
+def _preload_students_for_orders(orders, group_ids, *, active_only):
+    from system.models import PersonRelationship
+
+    billing_person_ids = {order.person_id for order in orders}
+    dependent_map = {}
+    if billing_person_ids:
+        for source_id, target_id in PersonRelationship.objects.filter(
+            source_person_id__in=billing_person_ids,
+        ).values_list("source_person_id", "target_person_id"):
+            dependent_map.setdefault(source_id, set()).add(target_id)
+
+    candidate_ids = set(billing_person_ids)
+    for dependent_ids in dependent_map.values():
+        candidate_ids.update(dependent_ids)
+
+    enrollments = ClassEnrollment.objects.filter(
+        person_id__in=candidate_ids,
+        class_group_id__in=group_ids,
+    )
+    if active_only:
+        enrollments = enrollments.filter(status=EnrollmentStatus.ACTIVE)
+    enrollments = enrollments.select_related("person").order_by(
+        "person__full_name",
+        "person_id",
+    )
+
+    students_by_person = {}
+    for enrollment in enrollments:
+        bucket = students_by_person.setdefault(enrollment.person_id, [])
+        if enrollment.person_id not in {student.pk for student in bucket}:
+            bucket.append(enrollment.person)
+
+    students_by_billing_person = {}
+    for order in orders:
+        candidate_person_ids = {order.person_id}
+        candidate_person_ids.update(dependent_map.get(order.person_id, set()))
+        linked_students = []
+        seen = set()
+        for person_id in candidate_person_ids:
+            for student in students_by_person.get(person_id, []):
+                if student.pk in seen:
+                    continue
+                linked_students.append(student)
+                seen.add(student.pk)
+        students_by_billing_person[order.person_id] = linked_students
+    return students_by_billing_person
 
 
 def _get_refund_entries_for_rule(rule, group_ids, reference_month, person):
