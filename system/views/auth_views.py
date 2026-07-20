@@ -11,25 +11,28 @@ from django.views.generic import FormView, TemplateView
 
 from system.forms import (
     PortalAuthenticationForm,
+    PortalChangePasswordForm,
     PortalPasswordResetRequestForm,
     PortalRegistrationForm,
     PortalSetPasswordForm,
 )
 from system.constants import CheckoutAction, PersonTypeCode, RegistrationProfile
-from system.models import Person, PreRegistration
+from system.models import Person, PortalAccount, PreRegistration
 from system.models.coupon import DiscountType
 from system.selectors.plan_eligibility import (
     build_eligibility_context_for_registration,
     get_eligible_plan_prices,
 )
 from system.services import (
+    FORCED_PASSWORD_CHANGE_SESSION_KEY,
     asaas_client,
     authenticate_portal_identity,
-    create_password_reset_token,
+    change_own_password,
     get_valid_password_reset_token,
     login_portal_identity,
     logout_portal_identity,
     reset_portal_password,
+    reset_portal_password_to_default,
 )
 from system.services.coupon import CouponError, apply_coupon, validate_coupon
 from system.services.class_catalog import get_ibjjf_age_category_payload
@@ -330,6 +333,14 @@ class PortalLoginView(FormView):
             form.add_error(None, "CPF, acesso técnico ou senha inválidos.")
             return self.form_invalid(form)
 
+        if identity.get("blocked_reason") == "must_change_password":
+            self.request.session[FORCED_PASSWORD_CHANGE_SESSION_KEY] = identity["portal_account"].pk
+            messages.info(
+                self.request,
+                "Por segurança, defina uma nova senha para continuar.",
+            )
+            return redirect("system:password-change")
+
         if identity.get("blocked_reason") == "payment_pending":
             pending_order = identity.get("pending_order")
             if pending_order is not None:
@@ -374,12 +385,51 @@ class PortalPasswordResetView(FormView):
     success_url = reverse_lazy("system:password-reset-done")
 
     def form_valid(self, form):
-        create_password_reset_token(form.cleaned_data["cpf"], self.request)
+        reset_portal_password_to_default(form.cleaned_data["cpf"])
         return super().form_valid(form)
 
 
 class PortalPasswordResetDoneView(TemplateView):
     template_name = "login/password_reset_done.html"
+
+
+class PortalChangePasswordView(FormView):
+    form_class = PortalChangePasswordForm
+    template_name = "login/change_password_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.access_account = getattr(request, "portal_account", None)
+        self.is_mandatory = False
+        if self.access_account is None:
+            pending_id = request.session.get(FORCED_PASSWORD_CHANGE_SESSION_KEY)
+            if pending_id:
+                self.access_account = PortalAccount.objects.filter(
+                    pk=pending_id, is_active=True
+                ).first()
+                self.is_mandatory = True
+        if self.access_account is None:
+            return redirect("system:login")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["access_account"] = self.access_account
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["is_mandatory"] = self.is_mandatory
+        return context
+
+    def form_valid(self, form):
+        change_own_password(self.access_account, form.cleaned_data["new_password1"])
+        if self.is_mandatory:
+            self.request.session.pop(FORCED_PASSWORD_CHANGE_SESSION_KEY, None)
+            login_portal_identity(self.request, portal_account=self.access_account)
+            messages.success(self.request, "Senha atualizada. Bem-vindo(a)!")
+        else:
+            messages.success(self.request, "Senha atualizada com sucesso.")
+        return redirect("system:dashboard-redirect")
 
 
 class PortalPasswordResetConfirmView(FormView):

@@ -77,6 +77,7 @@
             <div class="client-profile__actions">
               <button class="btn btn--secondary btn--sm js-client-profile-edit" type="button">Editar cadastro</button>
               {% if tab.is_owner %}
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:password-change' %}">Trocar senha</a>
               <button class="btn btn--danger-outline btn--sm js-client-profile-delete-open" type="button">Excluir cadastro</button>
               {% else %}
               <form class="entity-action-form js-dependent-remove-form" method="post" action="{{ tab.remove_url }}" data-confirm-message="Remover {{ tab.person.full_name }} dos seus dependentes? O histórico da pessoa será preservado.">

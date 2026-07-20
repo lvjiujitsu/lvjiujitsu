@@ -94,3 +94,60 @@ class PortalSetPasswordForm(forms.Form):
             return cleaned_data
 
         return cleaned_data
+
+
+class PortalChangePasswordForm(forms.Form):
+    old_password = forms.CharField(
+        label="Senha antiga",
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "placeholder": "Digite a senha antiga",
+                "autocomplete": "current-password",
+                "autofocus": True,
+            }
+        ),
+    )
+    new_password1 = forms.CharField(
+        label="Nova senha",
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "placeholder": "Digite a nova senha",
+                "autocomplete": "new-password",
+            }
+        ),
+    )
+    new_password2 = forms.CharField(
+        label="Confirmar nova senha",
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "placeholder": "Repita a nova senha",
+                "autocomplete": "new-password",
+            }
+        ),
+    )
+
+    def __init__(self, *args, access_account=None, **kwargs):
+        self.access_account = access_account
+        super().__init__(*args, **kwargs)
+
+    def clean_old_password(self):
+        old_password = self.cleaned_data["old_password"]
+        if self.access_account is None or not self.access_account.check_password(old_password):
+            raise forms.ValidationError("Senha antiga incorreta.")
+        return old_password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password1 = cleaned_data.get("new_password1") or ""
+        new_password2 = cleaned_data.get("new_password2") or ""
+
+        if not new_password1 or not new_password2:
+            return cleaned_data
+
+        if new_password1 != new_password2:
+            self.add_error("new_password2", "As senhas não coincidem.")
+
+        return cleaned_data

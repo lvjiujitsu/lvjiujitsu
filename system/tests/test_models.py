@@ -18,7 +18,7 @@ from system.models import (
     PortalAccount,
     PortalPasswordResetToken,
 )
-from system.services.portal_auth import create_password_reset_token, reset_portal_password
+from system.services.portal_auth import reset_portal_password
 from system.services.registration import create_portal_registration
 
 
@@ -86,34 +86,6 @@ class PersonModelTestCase(TestCase):
 
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
-
-    @patch("system.services.portal_auth.send_mail")
-    def test_password_reset_token_request_invalidates_previous_active_tokens(self, mocked_send_mail):
-        person = Person.objects.create(
-            full_name="Carlos Silva",
-            cpf="529.982.247-25",
-            email="carlos@example.com",
-        )
-        access_account = PortalAccount(person=person)
-        access_account.set_password("123456")
-        access_account.save()
-        previous_token = PortalPasswordResetToken.objects.create(access_account=access_account)
-
-        request = self.request_factory.get("/templates/login/esqueci-a-senha.html")
-        request.META["HTTP_HOST"] = "testserver"
-        create_password_reset_token(person.cpf, request)
-
-        previous_token.refresh_from_db()
-        self.assertIsNotNone(previous_token.used_at)
-        self.assertEqual(PortalPasswordResetToken.objects.filter(access_account=access_account).count(), 2)
-        self.assertEqual(
-            PortalPasswordResetToken.objects.filter(
-                access_account=access_account,
-                used_at__isnull=True,
-            ).count(),
-            1,
-        )
-        mocked_send_mail.assert_called_once()
 
     def test_reset_password_marks_other_open_tokens_as_used(self):
         person = Person.objects.create(

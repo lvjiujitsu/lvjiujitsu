@@ -19,7 +19,7 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertIn("register.css' %}?v=26", template)
         self.assertIn("dom_utils.js' %}?v=1", template)
         self.assertIn("wizard_shared.js' %}?v=1", template)
-        self.assertIn("register.js' %}?v=56", template)
+        self.assertIn("register.js' %}?v=57", template)
         self.assertIn('value="existing"', template)
         self.assertIn('value="propose" checked', template)
         self.assertNotIn("operational-choice--disabled", template)
@@ -60,6 +60,10 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertIn("wizardEndpoints.eligibilityUrl", script)
         self.assertIn("wizardEndpoints.validateCouponUrl", script)
         self.assertIn("document.querySelectorAll('.wizard-step')", script)
+        # PRD-153: filtro de "Período de cobrança" deve valer também para
+        # planos recorrentes Stripe (sem bypass por gateway_code).
+        self.assertNotIn("if (!isStripe && planFilter.cycle", script)
+        self.assertIn("if (planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;", script)
 
     def test_user_data_render_functions_use_safe_dom_not_innerhtml(self):
         root = Path(__file__).resolve().parents[2]

@@ -5,10 +5,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from system.constants import PersonTypeCode
-from system.models import BiologicalSex, Person, PersonType
+from system.models import BiologicalSex, Person, PersonType, PortalAccount
 from system.models.membership import Membership, MembershipStatus
 from system.models.plan import SubscriptionPlan
-from system.services import TECHNICAL_ADMIN_SESSION_KEY
+from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_KEY
 
 
 class MembershipActionsUiTestCase(TestCase):
@@ -41,6 +41,9 @@ class MembershipActionsUiTestCase(TestCase):
             code="plan-membership-actions-fundacao-2",
             display_name="Plano Fundacao Assinatura 2",
             price="250.00",
+        )
+        self.student_account = PortalAccount.objects.create(
+            person=self.student, password_hash="hash"
         )
         self._login_technical_admin()
 
@@ -92,7 +95,44 @@ class MembershipActionsUiTestCase(TestCase):
         membership.refresh_from_db()
         self.assertEqual(membership.plan_id, self.plan.pk)
 
+    def test_student_is_blocked_from_cancel_membership_action(self):
+        membership = Membership.objects.create(
+            person=self.student,
+            plan=self.plan,
+            status=MembershipStatus.ACTIVE,
+        )
+        self._login_student()
+        response = self.client.post(
+            reverse("system:cancel-membership", kwargs={"membership_id": membership.pk}),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("system:dashboard-redirect"))
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, MembershipStatus.ACTIVE)
+
+    def test_student_is_blocked_from_change_membership_plan_action(self):
+        membership = Membership.objects.create(
+            person=self.student,
+            plan=self.plan,
+            status=MembershipStatus.ACTIVE,
+        )
+        self._login_student()
+        response = self.client.post(
+            reverse("system:change-membership-plan", kwargs={"membership_id": membership.pk}),
+            data={"plan_id": self.other_plan.pk},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("system:dashboard-redirect"))
+        membership.refresh_from_db()
+        self.assertEqual(membership.plan_id, self.plan.pk)
+
     def _login_technical_admin(self):
         session = self.client.session
         session[TECHNICAL_ADMIN_SESSION_KEY] = self.admin_user.pk
+        session.save()
+
+    def _login_student(self):
+        session = self.client.session
+        session.pop(TECHNICAL_ADMIN_SESSION_KEY, None)
+        session[PORTAL_ACCOUNT_SESSION_KEY] = self.student_account.pk
         session.save()

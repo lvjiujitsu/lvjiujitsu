@@ -1499,8 +1499,7 @@
     var filtered = getEligiblePlansForCurrentPerson().filter(function (p) {
       if (planFilter.frequency !== null && p.weekly_frequency !== planFilter.frequency) return false;
 
-      var isStripe = p.gateway_code === 'stripe_card';
-      if (!isStripe && planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;
+      if (planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;
       if (planFilter.method && p.payment_method !== planFilter.method) return false;
       return true;
     });

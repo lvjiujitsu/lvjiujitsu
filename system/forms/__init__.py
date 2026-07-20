@@ -1,5 +1,6 @@
 from .auth_forms import (
     PortalAuthenticationForm,
+    PortalChangePasswordForm,
     PortalPasswordResetRequestForm,
     PortalSetPasswordForm,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "PlanForm",
     "PlanListFilterForm",
     "PortalAuthenticationForm",
+    "PortalChangePasswordForm",
     "PortalPasswordResetRequestForm",
     "PortalRegistrationForm",
     "PortalSetPasswordForm",

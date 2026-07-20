@@ -2,32 +2,51 @@ from django.contrib import admin, messages
 from django.utils import timezone
 
 from system.models import (
+    AdministrativeAccessRequest,
+    AsaasWebhookEvent,
+    BeltRank,
+    ClassCatalogRequest,
     ClassCategory,
+    ClassCheckin,
     ClassEnrollment,
     ClassGroup,
     ClassInstructorAssignment,
     ClassSchedule,
+    ClassSession,
+    Coupon,
+    Graduation,
+    GraduationRule,
+    Holiday,
     IbjjfAgeCategory,
+    Membership,
+    MembershipCredit,
+    MembershipInvoice,
+    MembershipPauseRequest,
+    MembershipTimelineEvent,
+    OperationalAuditEntry,
     OperationalRole,
     Person,
     PersonOperationalRole,
     PersonRelationship,
     PersonType,
+    PlanPrice,
+    PlanTier,
     PortalAccount,
     PortalPasswordResetToken,
-    BeltRank,
-    ClassCheckin,
-    ClassSession,
-    Graduation,
-    GraduationRule,
-    Holiday,
+    PreRegistration,
     Product,
     ProductBackorder,
     ProductCategory,
     ProductVariant,
     RegistrationOrder,
     RegistrationOrderItem,
+    SpecialClass,
+    SpecialClassCheckin,
+    StripeWebhookEvent,
     SubscriptionPlan,
+    TeacherBankAccount,
+    TeacherPayout,
+    TeacherPayrollConfig,
     TrialAccessGrant,
 )
 
@@ -417,3 +436,255 @@ class ClassEnrollmentAdmin(admin.ModelAdmin):
     list_filter = ("status", "class_group")
     search_fields = ("person__full_name", "person__cpf", "class_group__display_name")
     autocomplete_fields = ("person", "class_group")
+
+
+@admin.register(PlanTier)
+class PlanTierAdmin(admin.ModelAdmin):
+    list_display = (
+        "display_name",
+        "code",
+        "audience",
+        "weekly_frequency",
+        "family_discount_percentage",
+        "display_order",
+        "is_active",
+    )
+    list_filter = ("audience", "weekly_frequency", "is_active")
+    search_fields = ("display_name", "code")
+
+
+@admin.register(PlanPrice)
+class PlanPriceAdmin(admin.ModelAdmin):
+    list_display = (
+        "tier",
+        "payment_method",
+        "billing_cycle",
+        "gateway_code",
+        "price",
+        "monthly_reference_price",
+        "is_active",
+        "effective_from",
+        "effective_until",
+    )
+    list_filter = ("payment_method", "billing_cycle", "is_active", "tier")
+    search_fields = ("tier__display_name", "gateway_code", "stripe_price_id")
+    autocomplete_fields = ("tier",)
+    readonly_fields = ("price", "monthly_reference_price", "stripe_synced_at")
+
+
+@admin.register(Membership)
+class MembershipAdmin(admin.ModelAdmin):
+    list_display = (
+        "person",
+        "effective_display_name",
+        "status",
+        "billed_price",
+        "family_discount_applied",
+        "created_via",
+        "current_period_end",
+        "cancel_at_period_end",
+    )
+    list_filter = ("status", "created_via", "family_discount_applied")
+    search_fields = (
+        "person__full_name",
+        "person__cpf",
+        "stripe_subscription_id",
+        "stripe_customer_id",
+    )
+    autocomplete_fields = ("person", "plan", "plan_price")
+
+
+@admin.register(MembershipCredit)
+class MembershipCreditAdmin(admin.ModelAdmin):
+    list_display = ("membership", "amount", "source", "status", "applied_at", "refunded_at")
+    list_filter = ("source", "status")
+    search_fields = ("membership__person__full_name", "membership__person__cpf")
+    autocomplete_fields = ("membership", "source_order")
+
+
+@admin.register(MembershipInvoice)
+class MembershipInvoiceAdmin(admin.ModelAdmin):
+    list_display = (
+        "membership",
+        "stripe_invoice_id",
+        "amount_paid",
+        "amount_refunded",
+        "status",
+        "paid_at",
+    )
+    list_filter = ("status",)
+    search_fields = ("membership__person__full_name", "stripe_invoice_id")
+    autocomplete_fields = ("membership",)
+
+
+@admin.register(MembershipPauseRequest)
+class MembershipPauseRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "membership",
+        "kind",
+        "status",
+        "requested_start_date",
+        "requested_end_date",
+        "decided_by",
+        "decided_at",
+    )
+    list_filter = ("kind", "status")
+    search_fields = ("membership__person__full_name", "membership__person__cpf")
+    autocomplete_fields = ("membership", "decided_by")
+
+
+@admin.register(MembershipTimelineEvent)
+class MembershipTimelineEventAdmin(admin.ModelAdmin):
+    list_display = ("person", "event_type", "membership", "actor", "actor_is_admin", "created_at")
+    list_filter = ("event_type", "actor_is_admin")
+    search_fields = ("person__full_name", "person__cpf")
+    autocomplete_fields = ("person", "membership", "actor")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(PreRegistration)
+class PreRegistrationAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "registration_profile",
+        "holder_cpf",
+        "holder_email",
+        "status",
+        "selected_plan",
+        "created_at",
+    )
+    list_filter = ("status", "registration_profile")
+    search_fields = ("holder_cpf", "holder_email", "session_key")
+    autocomplete_fields = ("selected_plan", "plan_order", "finalized_person")
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "discount_type",
+        "discount_value",
+        "max_uses",
+        "uses_count",
+        "valid_from",
+        "valid_until",
+        "is_active",
+    )
+    list_filter = ("discount_type", "is_active")
+    search_fields = ("code", "description")
+
+
+@admin.register(TeacherBankAccount)
+class TeacherBankAccountAdmin(admin.ModelAdmin):
+    list_display = ("person", "pix_key_type", "pix_key", "holder_name", "is_active")
+    list_filter = ("pix_key_type", "is_active")
+    search_fields = ("person__full_name", "person__cpf", "pix_key")
+    autocomplete_fields = ("person",)
+
+
+@admin.register(TeacherPayrollConfig)
+class TeacherPayrollConfigAdmin(admin.ModelAdmin):
+    list_display = ("person", "monthly_salary", "payment_day", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("person__full_name", "person__cpf")
+    autocomplete_fields = ("person",)
+
+
+@admin.register(TeacherPayout)
+class TeacherPayoutAdmin(admin.ModelAdmin):
+    list_display = (
+        "person",
+        "bank_account",
+        "kind",
+        "reference_month",
+        "amount",
+        "status",
+        "scheduled_for",
+        "paid_at",
+    )
+    list_filter = ("status", "kind")
+    search_fields = ("person__full_name", "person__cpf", "asaas_transfer_id")
+    autocomplete_fields = ("person", "bank_account", "approved_by")
+
+
+@admin.register(AsaasWebhookEvent)
+class AsaasWebhookEventAdmin(admin.ModelAdmin):
+    list_display = ("event_id", "event_type", "order", "payout", "created_at")
+    list_filter = ("event_type",)
+    search_fields = ("event_id", "order__person__full_name")
+    autocomplete_fields = ("order", "payout")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(StripeWebhookEvent)
+class StripeWebhookEventAdmin(admin.ModelAdmin):
+    list_display = ("event_id", "event_type", "order", "membership", "created_at")
+    list_filter = ("event_type",)
+    search_fields = ("event_id", "order__person__full_name")
+    autocomplete_fields = ("order", "membership")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(AdministrativeAccessRequest)
+class AdministrativeAccessRequestAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "cpf", "status", "origin", "person", "decided_by", "created_at")
+    list_filter = ("status", "origin")
+    search_fields = ("full_name", "cpf", "email")
+    autocomplete_fields = ("person", "approved_person", "decided_by")
+
+
+@admin.register(ClassCatalogRequest)
+class ClassCatalogRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "display_name",
+        "full_name",
+        "request_type",
+        "status",
+        "origin",
+        "teacher_person",
+        "target_class_group",
+        "created_at",
+    )
+    list_filter = ("status", "request_type", "origin")
+    search_fields = ("full_name", "cpf", "display_name")
+    autocomplete_fields = (
+        "requester_person",
+        "teacher_person",
+        "created_teacher",
+        "decided_by",
+        "target_class_group",
+        "created_class_group",
+        "class_category",
+    )
+
+
+@admin.register(OperationalAuditEntry)
+class OperationalAuditEntryAdmin(admin.ModelAdmin):
+    list_display = ("module", "action", "actor_label", "entity_label", "created_at")
+    list_filter = ("module", "action")
+    search_fields = ("actor_label", "entity_label", "summary")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(SpecialClass)
+class SpecialClassAdmin(admin.ModelAdmin):
+    list_display = ("title", "date", "start_time", "teacher", "status", "instructor_present")
+    list_filter = ("status", "date")
+    search_fields = ("title", "teacher__full_name")
+    autocomplete_fields = ("teacher", "substitute_teacher")
+
+
+@admin.register(SpecialClassCheckin)
+class SpecialClassCheckinAdmin(admin.ModelAdmin):
+    list_display = ("special_class", "person", "status", "checked_in_at", "approved_at")
+    list_filter = ("status",)
+    search_fields = ("person__full_name", "person__cpf")
+    autocomplete_fields = ("special_class", "person", "approved_by")

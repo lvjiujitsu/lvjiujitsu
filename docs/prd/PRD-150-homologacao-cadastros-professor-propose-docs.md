@@ -153,6 +153,28 @@ Autorizada pela solicitação atual (homologação + correção).
 - `manage.py check`
 - Teste focado registration/operational
 
+## Correção retroativa (2026-07-15, via PRD-151)
+
+A auditoria da PRD-151 encontrou que esta seção `Evidence`/`Implemented`
+ficou dessincronizada: a PRD-146 (implementada na mesma leva de commits,
+depois desta PRD) reverteu a decisão de esconder o modo `existing` do
+professor e o tornou uma opção real e testada. Hoje:
+
+- `templates/login/register.html` mostra `existing` visível, **sem**
+  `disabled`/`hidden` (só `propose` continua `checked` por padrão).
+- `register.js?v=56` (não `v=54`).
+- O teste real é
+  `system/tests/test_registration_flow.py::test_teacher_existing_mode_creates_pending_join_requests`
+  (cria `ClassCatalogRequest` do tipo `TEACHER_JOIN_EXISTING_CLASS`) — o
+  teste `test_teacher_existing_mode_is_rejected_on_public_registration`
+  citado abaixo **não existe** no código atual.
+- A suíte completa hoje é 702/702, não 690/690.
+
+A seção abaixo é mantida como registro histórico do que foi evidenciado no
+momento da execução desta PRD; **não reflete o comportamento atual**. Ver
+PRD-146 para o comportamento real do modo `existing` e PRD-151 para o
+registro desta correção.
+
 ## Evidence
 
 - `manage.py test` → **690/690 OK** (2026-07-15).

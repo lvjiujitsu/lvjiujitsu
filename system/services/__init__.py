@@ -1,12 +1,15 @@
 from .portal_auth import (
+    DEFAULT_TEMP_PASSWORD,
+    FORCED_PASSWORD_CHANGE_SESSION_KEY,
     PORTAL_ACCOUNT_SESSION_KEY,
     TECHNICAL_ADMIN_SESSION_KEY,
     authenticate_portal_identity,
-    create_password_reset_token,
+    change_own_password,
     get_valid_password_reset_token,
     login_portal_identity,
     logout_portal_identity,
     reset_portal_password,
+    reset_portal_password_to_default,
     resolve_portal_account_from_session,
     resolve_technical_admin_from_session,
 )
@@ -19,10 +22,12 @@ from .portal_capabilities import (
 from .registration import create_portal_registration, ensure_default_person_types
 
 __all__ = [
+    "DEFAULT_TEMP_PASSWORD",
+    "FORCED_PASSWORD_CHANGE_SESSION_KEY",
     "PORTAL_ACCOUNT_SESSION_KEY",
     "TECHNICAL_ADMIN_SESSION_KEY",
     "authenticate_portal_identity",
-    "create_password_reset_token",
+    "change_own_password",
     "create_portal_registration",
     "ensure_default_person_types",
     "ensure_default_operational_roles",
@@ -33,6 +38,7 @@ __all__ = [
     "logout_portal_identity",
     "person_has_any_capability",
     "reset_portal_password",
+    "reset_portal_password_to_default",
     "resolve_portal_account_from_session",
     "resolve_technical_admin_from_session",
 ]

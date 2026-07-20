@@ -180,32 +180,40 @@ O banco está vazio. Para testar os webhooks do Fluxo A, é necessário ao menos
 
 **Opção 1a — criar via shell (mais rápida para webhooks):**
 
+**Nota (2026-07-15, correção PRD-151):** o catálogo canônico dos fluxos
+públicos desde a PRD-127/129/130 é `PlanTier`/`PlanPrice`, não mais
+`SubscriptionPlan`. `RegistrationOrder.plan_price_ref` (FK para `PlanPrice`)
+é o campo usado pelo fluxo real — `plan` (`SubscriptionPlan`) é legado e só
+existe para pedidos antigos. Usar o snippet abaixo:
+
 ```powershell
 .\.venv\Scripts\python.exe manage.py shell -c "
 from system.models.registration_order import RegistrationOrder, PaymentStatus, PaymentProvider
-from system.models import Person, SubscriptionPlan
+from system.models import Person
+from system.models.plan import PlanPrice
 
-# Requer ao menos um Person e SubscriptionPlan no banco
+# Requer ao menos um Person e PlanPrice no banco
 # Se o banco estiver vazio, rodar primeiro:
 # .\.venv\Scripts\python.exe manage.py seed_system_initial_person_type
-# .\.venv\Scripts\python.exe manage.py seed_system_initial_subscription_plans
-# .\.venv\Scripts\python.exe manage.py seed_system_initial_subscription_plans_values
+# .\.venv\Scripts\python.exe manage.py seed_system_initial_plan_tiers
+# .\.venv\Scripts\python.exe manage.py seed_system_initial_plan_prices
 
 person = Person.objects.filter(is_active=True).first()
-plan = SubscriptionPlan.objects.filter(is_active=True).first()
+plan_price = PlanPrice.objects.filter(is_active=True).first()
 
-if person and plan:
+if person and plan_price:
     order = RegistrationOrder.objects.create(
         person=person,
-        plan=plan,
-        total=plan.price,
+        plan_price_ref=plan_price,
+        plan_price=plan_price.price,
+        total=plan_price.price,
         payment_status=PaymentStatus.PENDING,
         provider=PaymentProvider.ASAAS,
         asaas_payment_id='pay_test_webhook_001',
     )
     print(f'RegistrationOrder criado: pk={order.pk} asaas_id={order.asaas_payment_id}')
 else:
-    print('ERROR: Person ou SubscriptionPlan não encontrado — rodar seeds primeiro')
+    print('ERROR: Person ou PlanPrice não encontrado — rodar seeds primeiro')
 "
 ```
 

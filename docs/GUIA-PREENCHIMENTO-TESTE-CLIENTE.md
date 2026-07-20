@@ -125,6 +125,100 @@ curl -s -o /dev/null -w "%{http_code}" -X GET http://localhost:8000/pagamentos/w
 
 ---
 
+## Atualizar o domínio do túnel no painel Asaas sandbox
+
+A Asaas rejeita a criação de cobrança (`POST /payments`) com
+`{"code": "invalid_object", "description": "É necessário enviar uma URL que
+use o mesmo domínio cadastrado nas suas Minha Conta na aba Informações."}`
+sempre que o domínio do túnel ngrok ativo não bater com o campo **Site**
+cadastrado na conta sandbox. Como o ngrok free gera um domínio novo a cada
+reinício, esse campo precisa ser atualizado manualmente sempre que o túnel
+mudar.
+
+**Isso é uma ação manual do responsável pela conta Asaas — nenhum agente
+(Claude, Codex, Cursor) deve tentar logar no painel Asaas, ainda que
+credenciais sejam fornecidas no chat.** Login em painéis de terceiros com
+usuário/senha está fora do que qualquer agente executa neste projeto,
+independente de autorização explícita — é bloqueado na própria ferramenta,
+não uma preferência de governança que se possa flexibilizar. As credenciais
+da conta Asaas nunca devem ser gravadas em `.env`, `.env.hg` ou `.env.prod`.
+
+Passo a passo (feito pelo humano responsável pela conta):
+
+1. Confirmar o domínio do túnel ativo:
+   ```powershell
+   curl -s http://127.0.0.1:4040/api/tunnels
+   # Ler o valor de "public_url" (ex.: https://xxxxx.ngrok-free.dev)
+   ```
+2. Logar em `https://sandbox.asaas.com/login/auth` com a conta sandbox do
+   projeto.
+3. Ir em **Minha Conta → Informações → Site** (`https://sandbox.asaas.com/config/index`).
+4. Substituir o valor do campo **Site** pelo domínio do túnel ativo (esse
+   campo aceita só um valor — anotar o valor anterior para reverter depois
+   do teste, se necessário).
+5. Salvar.
+6. Confirmar no `.env` local que `SITE_BASE_URL` e `DJANGO_ALLOWED_HOSTS`
+   já apontam para o mesmo domínio do túnel (o agente pode ajustar isso,
+   é configuração local, não credencial de terceiro).
+7. Repetir o fluxo de cadastro/pagamento Asaas normalmente.
+8. Ao terminar os testes, reverter o campo **Site** para o domínio de
+   produção/HG, se esse for o padrão da conta.
+
+Ver também: `reference_asaas_sandbox_real_validation` na memória do agente
+(passo a passo do túnel + endpoint de simulação de pagamento sandbox).
+
+**Alternativa por API (feita pelo humano, nunca pelo agente):** a Asaas
+expõe `GET`/`POST /v3/myAccount/commercialInfo/`, autenticado por
+`ASAAS_API_KEY` (não por login/senha). O `POST` exige reenviar **todos**
+os campos comerciais de uma vez (CPF/CNPJ, endereço, renda, telefone,
+`site` etc.) — omitir um campo o apaga. Também pode disparar nova análise
+de conta com bloqueio temporário. Por isso é uma ação que o responsável
+pela conta deve executar e revisar diretamente, nunca delegada a um
+agente. Script de leitura (`GET`, seguro) em
+`scripts/asaas_get_commercial_info.ps1`.
+
+## E-mail de teste real sem credenciais (Mailinator)
+
+Para validar que um e-mail do sistema (senha temporária, notificação,
+recibo) chega de verdade — não só que `send_mail()` foi chamado — usar uma
+caixa pública descartável que **não exige login/senha para ler mensagens**.
+Isso é o que um agente pode fazer sozinho, sem esbarrar no limite de nunca
+autenticar em contas de terceiros.
+
+**Opção recomendada: Mailinator** (`https://mailinator.com`) — inbox
+pública, qualquer endereço `@mailinator.com` é lido só de conhecer o nome,
+sem criar conta.
+
+1. Escolher um endereço único (evitar reutilizar entre sessões, é público):
+   `algumnome-teste-<data>@mailinator.com`.
+2. Apontar o campo `email` da `Person` de teste para esse endereço:
+   ```powershell
+   .\.venv\Scripts\python.exe manage.py shell -c "
+   from system.models import Person
+   p = Person.objects.get(cpf='<CPF_DE_TESTE>')
+   p.email = 'algumnome-teste-<data>@mailinator.com'
+   p.save(update_fields=['email'])
+   "
+   ```
+3. Disparar a ação que envia o e-mail (ex.: `/password-reset/` no
+   navegador, ou chamando o service diretamente).
+4. Ler a caixa pública, sem login, em:
+   `https://www.mailinator.com/v4/public/inboxes.jsp?to=<nome-escolhido>`
+5. Restaurar o `email` da `Person` de teste ao valor original depois de
+   confirmar.
+
+**Alternativas** (mesma característica de inbox pública sem login) — nem
+sempre disponíveis, testar antes de depender:
+`1secmail.com` (API REST pública, `GET /api/v1/?action=getMessages`),
+`guerrillamail.com`. Evitar `mail.tm` e qualquer serviço que exija criar
+conta/senha para ler a caixa — isso um agente não pode fazer.
+
+**Nunca usar** um domínio real de terceiro (ex.: Gmail do usuário) como
+destinatário de teste sem que o próprio usuário confirme e leia a caixa —
+o agente não deve presumir acesso a caixas de e-mail reais de ninguém.
+
+---
+
 ## Utilitário JavaScript reutilizável
 
 Todos os steps abaixo usam estas duas funções. Execute no console controlado do
