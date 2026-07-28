@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- Cabeçalho da página -->
+
     <div class="page-header">
       <p class="page-header__eyebrow">
         {% if object %}
@@ -26,11 +26,9 @@
       </div>
     </div>
 
-    <!-- ─── Formulário ────────────────────────────────────────────────────────── -->
     <form method="post" novalidate>
       {% csrf_token %}
 
-      <!-- Erros gerais -->
       {% if form.non_field_errors %}
       <div class="system-messages" role="alert">
         {% for error in form.non_field_errors %}
@@ -39,7 +37,6 @@
       </div>
       {% endif %}
 
-      <!-- ─── Grupo: Identificação ────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">
           <div class="form-group__title">Identificação</div>
@@ -85,7 +82,6 @@
         </div>
       </div>
 
-      <!-- ─── Grupo: Saúde ─────────────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">
           <div class="form-group__title">Saúde e emergência</div>
@@ -119,7 +115,6 @@
         </div>
       </div>
 
-      <!-- ─── Grupo: Arte marcial ───────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">
           <div class="form-group__title">Arte marcial</div>
@@ -133,7 +128,6 @@
 
           </div>
 
-          <!-- Campos condicionais (visíveis quando "Sim" selecionado) -->
           <div id="martial-art-fields" style="margin-top:1rem;">
             <div class="form-grid">
 
@@ -184,7 +178,6 @@
         </div>
       </div>
 
-      <!-- ─── Grupo: Vínculo ────────────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">
           <div class="form-group__title">Vínculo e turmas</div>
@@ -221,7 +214,6 @@
         </div>
       </div>
 
-      <!-- ─── Grupo: Papéis operacionais (somente can_manage_people) ────────────── -->
       {% if can_manage_people %}
       <div class="form-card">
         <div class="form-group">
@@ -253,7 +245,6 @@
       </div>
       {% endif %}
 
-      <!-- ─── Grupo: Endereço ───────────────────────────────────────────────────── -->
       <div class="form-card">
         <div class="form-group">
           <div class="form-group__title">Endereço</div>
@@ -299,7 +290,6 @@
         </div>
       </div>
 
-      <!-- ─── Grupo: Repasse (somente can_manage_people) ───────────────────────── -->
       {% if can_manage_people %}
       <div class="form-card">
         <div class="form-group">
@@ -349,7 +339,6 @@
       </div>
       {% endif %}
 
-      <!-- ─── Ações ──────────────────────────────────────────────────────────────── -->
       <div class="form-actions">
         {% if object %}
         <a class="btn btn--secondary" href="{% url 'system:person-detail' pk=object.pk %}">Cancelar</a>
@@ -363,7 +352,7 @@
 {% endblock %}
 
 {% block modals %}
-<!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+
   <script>
     (function () {
       // Tema

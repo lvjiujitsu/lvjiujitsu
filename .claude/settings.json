@@ -9,7 +9,22 @@
       "Grep",
       "Glob",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_hover"
     ],
     "ask": [],
     "deny": []
@@ -17,5 +32,18 @@
   "env": {
     "PYTHONIOENCODING": "utf-8",
     "PYTHONUTF8": "1"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.venv/Scripts/python.exe ${CLAUDE_PROJECT_DIR}/.claude/hooks/verify.py",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
   }
 }

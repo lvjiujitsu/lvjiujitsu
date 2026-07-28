@@ -47,7 +47,7 @@ Autorizado pela solicitação atual ("finalize toda a implementação até não 
 - `system/tests/`
 
 ## Risks and edge cases
-- Nenhum: a mudança só bloqueia um caminho que já deveria estar bloqueado, replicando um padrão já validado no caminho irmão.
+- Nenhum: a mudança só bloqueia um caminho que já deveria estar bloqueado, replicando um padrão já validado.
 
 ## Rules and constraints
 - Mensagem de erro em pt-BR, mesmo padrão do aulão ("Esta aula foi cancelada.").

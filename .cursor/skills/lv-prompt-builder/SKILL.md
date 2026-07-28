@@ -7,39 +7,40 @@ disable-model-invocation: true
 
 # LV Prompt Builder
 
-Transforma um problema cru no melhor prompt de execução para o Claude operar o LV JIU JITSU com o mínimo de pausas. O produto é o prompt. Não cria PRD nem altera código.
+## Quando acionar
 
-## Receber
+Quando o usuário pedir para transformar um problema cru em um prompt de execução autossuficiente. O produto é o prompt; esta skill não implementa.
 
-1. Trate a entrada como problema a diagnosticar, não como ordem de implementação.
-2. GUARD: se o problema vier vazio, genérico ou ambíguo a ponto de não nomear o fluxo, faça UMA pergunta objetiva (tela/rota/erro/objetivo + arquivo) e pare.
-3. Não edite arquivos nesta skill.
-4. Leia `AGENTS.md`, `CLAUDE.md` e os contratos pertinentes: `docs/AGENT-WORKFLOW.md`, `docs/PRD-STANDARD.md`, `docs/PLATFORM-ADAPTERS.md` e, conforme o caso, `docs/UI-SCREEN-CONTRACT.md`, `docs/OPERACAO-BANCO-SEEDS.md`.
+## Passos
 
-## Classificar
+1. Tratar a entrada como problema a diagnosticar, não como ordem de implementação.
+2. Se estiver vazia ou ambígua a ponto de não nomear o fluxo, fazer uma pergunta objetiva e parar.
+3. Ler `AGENTS.md`, `CLAUDE.md` e contratos pertinentes sem editar arquivos.
+4. Classificar pela categoria de `docs/AGENT-WORKFLOW.md` e decidir PRD, UI, comportamento testável e pagamento.
+5. Ordenar skills: `lv-task-intake`, `lv-prd`, `lv-ui-delivery`, `lv-django-delivery`, `lv-cleanup-audit`, conforme aplicável.
+6. Listar arquivos e contratos a ler integralmente por camada.
+7. Consolidar autorização do escopo e gates restantes conforme `AGENTS.md`.
+8. Gerar bloco único no formato Execution prompt de `docs/PRD-STANDARD.md`.
+9. Não inventar arquivo, rota, skill, comando, fonte ou validação.
 
-1. Uma categoria de `docs/AGENT-WORKFLOW.md` §2.
-2. Precisa de PRD? (nº livre em `docs/prd/`).
-3. Tem UI? (gate de design).
-4. Tem comportamento testável? (models, forms, services, selectors, views, signals, commands).
-5. Toca pagamento/webhook (Asaas/Stripe)? (área sensível).
-6. Skills na ordem: `lv-task-intake`; `lv-prd` (se PRD); `lv-ui-delivery` (se UI); `lv-django-delivery` (se Django); `lv-cleanup-audit` ao final.
-7. Arquivos a ler integralmente + contratos adjacentes, por camada.
+## Saída
 
-## Decidir gates
+```text
+Execution prompt
+Persona: ...
+Action: ...
+Context: ...
+Constraints: ...
+Acceptance criteria: ...
+Test policy: ...
+Required skills: ...
+Authorizations and gates: ...
+Expected evidence: ...
+Output format: ...
+```
 
-Consolidar numa confirmação inicial: implementação do escopo; testes locais proporcionais; execução local de ORM, migrations, reset e seeds quando necessários; aprovação de design se a solicitação não autorizar implementação.
+## Parar quando
 
-Manter explícitos (pedir antes): cobrança/webhook real Asaas/Stripe, HG, produção, push e deploy.
-
-## Gerar o prompt
-
-Bloco único no formato Execution prompt de `docs/PRD-STANDARD.md`: Persona; Action; Context (arquivos + contratos + pesquisa); Constraints; Acceptance criteria; Test policy; Required skills (`lv-*`); Authorizations + gates; Expected evidence; Output format; Gate único.
-
-## Parar
-
-Entregar o prompt e parar. Listar os gates externos/remotos que ainda exigirão confirmação. Não implementar.
-
-## Restringir
-
-Não inventar arquivo, rota, skill, comando ou fonte. Não declarar validação não feita. Não expandir além do problema. Código em inglês; UI e comunicação em pt-BR.
+- O prompt autossuficiente estiver entregue com os gates externos restantes.
+- Se o problema estiver vazio ou materialmente ambíguo, parar após uma pergunta objetiva.
+- Não criar PRD, alterar código ou continuar para implementação.

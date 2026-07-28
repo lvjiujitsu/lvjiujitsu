@@ -24,15 +24,7 @@ class PreRegistrationStatus(models.TextChoices):
 
 
 class PreRegistration(TimeStampedModel):
-    """
-    Rascunho de cadastro coletado durante o wizard.
 
-    Os dados ficam aqui até o usuário finalizar o fluxo completo.
-    Somente após a finalização (e pagamento, quando exigido) os registros
-    são migrados para a tabela Person.
-    """
-
-    # ── Identificação da sessão ────────────────────────────────────────────────
     session_key = models.CharField(
         "Chave de sessão",
         max_length=40,
@@ -40,7 +32,6 @@ class PreRegistration(TimeStampedModel):
         db_index=True,
     )
 
-    # ── Campos-chave promovidos do JSON para consulta rápida ───────────────────
     registration_profile = models.CharField(
         "Perfil de cadastro",
         max_length=20,
@@ -58,7 +49,6 @@ class PreRegistration(TimeStampedModel):
         blank=True,
     )
 
-    # ── Snapshot completo de todos os campos do formulário ────────────────────
     form_snapshot = models.JSONField(
         "Dados do formulário",
         default=dict,
@@ -69,7 +59,6 @@ class PreRegistration(TimeStampedModel):
         ),
     )
 
-    # ── Plano e pagamento ──────────────────────────────────────────────────────
     selected_plan = models.ForeignKey(
         "system.SubscriptionPlan",
         verbose_name="Plano selecionado",
@@ -93,7 +82,6 @@ class PreRegistration(TimeStampedModel):
         related_name="pre_registration",
     )
 
-    # ── Status do fluxo ───────────────────────────────────────────────────────
     status = models.CharField(
         "Status",
         max_length=30,
@@ -102,7 +90,6 @@ class PreRegistration(TimeStampedModel):
         db_index=True,
     )
 
-    # ── Referência após migração para Person ──────────────────────────────────
     finalized_person = models.OneToOneField(
         "system.Person",
         verbose_name="Pessoa finalizada",
@@ -125,7 +112,6 @@ class PreRegistration(TimeStampedModel):
         cpf = self.holder_cpf or "—"
         return f"PreRegistration #{self.pk} | CPF {cpf} | {self.get_status_display()}"
 
-    # ── Propriedades de conveniência ──────────────────────────────────────────
 
     @property
     def is_finalized(self) -> bool:
@@ -142,7 +128,6 @@ class PreRegistration(TimeStampedModel):
     def is_awaiting_payment(self) -> bool:
         return self.status == PreRegistrationStatus.AWAITING_PAYMENT
 
-    # ── Mutações de status ────────────────────────────────────────────────────
 
     def mark_awaiting_payment(self) -> None:
         self.status = PreRegistrationStatus.AWAITING_PAYMENT

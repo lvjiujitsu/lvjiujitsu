@@ -10,7 +10,6 @@ from system.services.stripe_sync import StripeSyncError, sync_plan_to_stripe
 
 @override_settings(STRIPE_SECRET_KEY="sk_test_123", PAYMENT_CURRENCY="brl")
 class SyncPlanToStripeSubscriptionPlanTestCase(TestCase):
-    """Regressão: SubscriptionPlan (Veterano legado) continua sincronizando como antes."""
 
     def setUp(self):
         self.plan = SubscriptionPlan.objects.create(
@@ -66,8 +65,6 @@ class SyncPlanToStripeSubscriptionPlanTestCase(TestCase):
 
 @override_settings(STRIPE_SECRET_KEY="sk_test_123", PAYMENT_CURRENCY="brl")
 class SyncPlanToStripePlanPriceTestCase(TestCase):
-    """PRD-137: PlanPrice (catálogo novo) não tinha nenhum caminho de sincronização
-    Stripe — sync_plan_to_stripe operava só sobre SubscriptionPlan legado."""
 
     def setUp(self):
         self.tier = PlanTier.objects.create(

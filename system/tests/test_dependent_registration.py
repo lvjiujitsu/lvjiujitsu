@@ -1041,9 +1041,6 @@ class DependentCardStrategyTestCase(TestCase):
 
 
 class PlanPriceDependentRegistrationTestCase(TestCase):
-    """PRD-127: dependente escolhe um plano do novo catálogo PlanTier/PlanPrice
-    (sem card 'Família' separado) e o desconto familiar é aplicado
-    automaticamente quando o titular compartilha o mesmo tier."""
 
     def setUp(self):
         self.student_type = PersonType.objects.create(

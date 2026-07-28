@@ -163,7 +163,6 @@ class Command(BaseCommand):
         created = 0
         for entry in history:
             key = (entry["belt_rank_code"], entry["grade_number"], entry["awarded_at"] if isinstance(entry["awarded_at"], type(None)) else str(entry["awarded_at"]))
-            # Normalize to date string for comparison
             awarded_at_str = str(entry["awarded_at"])
             already_exists = any(
                 str(belt_rank_code) == entry["belt_rank_code"]

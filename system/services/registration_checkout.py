@@ -97,11 +97,6 @@ def build_catalog_plan_id(prefix, pk):
 
 
 def resolve_catalog_plan(catalog_id):
-    """Resolve um id de catálogo ('sp:<pk>' ou 'pp:<pk>') para o objeto real.
-
-    Retorna uma tupla (plan, plan_price) — exatamente um dos dois é não-nulo,
-    ou (None, None) se o id for inválido/não encontrado.
-    """
     if not catalog_id:
         return None, None
     prefix, _, raw_pk = str(catalog_id).partition(":")
@@ -133,13 +128,6 @@ def _build_installment_label_for_price(plan_price):
 
 
 def get_plan_catalog_payload(*, include_plan_prices=False):
-    """Catálogo de planos para o wizard público (padrão) ou para o wizard de
-    dependente (include_plan_prices=True), que também passa a receber os
-    planos do novo modelo PlanTier/PlanPrice (PRD-127) com ids prefixados
-    ('sp:<pk>' para SubscriptionPlan legado, 'pp:<pk>' para PlanPrice) para não
-    colidir com o catálogo legado, que mantém ids numéricos crus por
-    compatibilidade com o wizard público (`selected_plan` é IntegerField lá).
-    """
     payload = []
     payload.extend(_build_legacy_plan_catalog_payload(prefixed=include_plan_prices))
     if include_plan_prices:
@@ -148,14 +136,6 @@ def get_plan_catalog_payload(*, include_plan_prices=False):
 
 
 def get_public_registration_plan_catalog_payload():
-    """Catálogo de planos para cadastro novo (wizard público e dependente).
-
-    Só `PlanTier`/`PlanPrice` (PRD-127/144 C-01) — o catálogo legado
-    (`SubscriptionPlan`) hoje só contém o plano Veterano (fidelidade), que
-    exige tempo de matrícula e nunca é elegível para quem está se
-    cadastrando agora (`is_plan_eligible` já rejeitaria no `clean()` do
-    form). Expor esses ids ao cliente é ruído sem propósito de negócio.
-    """
     return _build_plan_price_catalog_payload()
 
 
@@ -233,10 +213,6 @@ def _build_plan_price_catalog_payload():
     cent = Decimal("0.01")
     payload = []
     for price in prices:
-        # Cada PlanPrice já representa um gateway/forma de pagamento específico
-        # (ex.: asaas_card e stripe_card podem coexistir no mesmo tier/ciclo com
-        # preços diferentes) — charge_pix/charge_card devem refletir só o preço
-        # desta própria linha, nunca o de uma linha "irmã" de outro gateway.
         own_price = str(price.price.quantize(cent))
         charge_pix = own_price if price.payment_method == PlanPaymentMethod.PIX else "0.00"
         charge_card = own_price if price.payment_method == PlanPaymentMethod.CREDIT_CARD else "0.00"
@@ -516,7 +492,6 @@ def _count_training_persons(cleaned_data):
     if profile == RegistrationProfile.GUARDIAN:
         primary = 1 if (cleaned_data.get("student_name") or cleaned_data.get("student_cpf")) else 0
         return max(primary + extra_count, 1)
-    # HOLDER: titular + dependente opcional
     deps = 1 if (cleaned_data.get("dependent_name") or cleaned_data.get("dependent_cpf")) else 0
     return max(1 + deps + extra_count, 1)
 
@@ -569,7 +544,6 @@ def _apply_fee_pass_through(base_amount, payment_provider):
 
 
 def gross_up_order_for_checkout(order, checkout_action):
-    """Aplica gross-up de taxa ao total do pedido de acordo com o método de pagamento escolhido."""
     payment_method = None
     if checkout_action == CheckoutAction.ASAAS_CARD:
         if not getattr(settings, "CREDIT_CARD_FEE_PASS_THROUGH", True):
@@ -677,7 +651,6 @@ def _get_order_note_lines(order):
 
 
 def ensure_pre_registration_asaas_customer(pre_registration):
-    """Garante um customer Asaas para o pré-cadastro, criando-o se necessário."""
     snapshot = pre_registration.form_snapshot or {}
     payment_meta = snapshot.get("asaas_customer") or {}
     if payment_meta.get("id"):
@@ -712,7 +685,6 @@ def _normalize_catalog_plan_id(value):
     text = str(value)
     if ":" in text:
         return text
-    # Compat: pré-cadastros antigos guardavam apenas o pk (int) do SubscriptionPlan.
     try:
         return build_catalog_plan_id(CATALOG_ID_PREFIX_SUBSCRIPTION_PLAN, int(text))
     except (TypeError, ValueError):
@@ -759,13 +731,6 @@ def compute_staggered_billing_cycle_anchor(owner_membership, plan):
 
 
 def create_pre_registration_plan_payment(pre_registration, checkout_action, *, card_strategy=None, owner=None):
-    """
-    Cria o pagamento da mensalidade do pré-cadastro (Asaas PIX/cartão ou Stripe assinatura)
-    e retorna a invoice_url/checkout_url para redirecionamento.
-
-    Levanta ValueError para erros de validação (planos inválidos, cupom inválido, etc.)
-    e asaas_client.AsaasClientError para falhas do gateway Asaas.
-    """
     from system.services.pre_registration import snapshot_scalar
     from system.services.stripe_checkout import (
         StripeCheckoutError,
@@ -792,7 +757,6 @@ def create_pre_registration_plan_payment(pre_registration, checkout_action, *, c
     if total <= 0:
         raise ValueError("Plano sem valor cobrável.")
 
-    # Aplicar cupom de desconto — válido para todos os gateways
     coupon_code = snapshot_scalar(snapshot, "coupon_code")
     coupon = None
     discount_amount = Decimal("0.00")
@@ -926,12 +890,6 @@ def create_pre_registration_plan_payment(pre_registration, checkout_action, *, c
 
 
 def create_pre_registration_materials_payment(pre_registration, items, checkout_action):
-    """
-    Cria o pagamento Asaas (PIX/cartão) dos materiais selecionados no pré-cadastro
-    e retorna a invoice_url para redirecionamento.
-
-    Levanta asaas_client.AsaasClientError para pedido sem valor ou falha do gateway.
-    """
     total = sum(
         (selection["product"].unit_price * selection["quantity"] for selection in items),
         Decimal("0.00"),

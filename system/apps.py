@@ -6,4 +6,4 @@ class SystemConfig(AppConfig):
     name = 'system'
 
     def ready(self):
-        from system import signals  # noqa: F401
+        from system import signals

@@ -51,12 +51,6 @@ ADMINISTRATIVE_ROLE_CODES = {
 
 
 class OperationalRegistrationFieldsMixin(forms.Form):
-    """Campos e validação do perfil operacional (professor/administrativo)
-    do wizard de cadastro público — extraído de `PortalRegistrationForm`
-    (PRD-143 #1/#10, PRD-144 B-07/B-08) por ser um concern autocontido: não
-    participa da elegibilidade de plano nem do checkout de pagamento, só do
-    fluxo de solicitação de acesso operacional (`registration_profile=other`
-    + `other_type_code` professor/administrativo)."""
 
     operational_training_intent = forms.CharField(required=False, max_length=40)
     operational_payment_condition = forms.CharField(required=False, max_length=40)

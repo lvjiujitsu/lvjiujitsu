@@ -3,11 +3,6 @@ def only_digits(value: str) -> str:
 
 
 def format_cpf_digits(value: str) -> str:
-    """Formats 11 digits as XXX.XXX.XXX-XX without validating check digits.
-
-    Use for internal lookups against data already stored in the database
-    (seeds, management commands, historical imports).
-    """
     digits = only_digits(value)
     if len(digits) != 11:
         raise ValueError("CPF deve conter 11 dígitos.")
@@ -21,10 +16,6 @@ def _cpf_check_digit(digits: list[int], length: int) -> int:
 
 
 def ensure_formatted_cpf(value: str) -> str:
-    """Validates CPF check digits then returns XXX.XXX.XXX-XX.
-
-    Use for all user-facing input (forms, views, API endpoints).
-    """
     digits = only_digits(value)
     if len(digits) != 11:
         raise ValueError("CPF deve conter 11 dígitos.")

@@ -1,10 +1,3 @@
-"""PRD-128: cenario N:N completo cobrindo o ciclo de vida real de uma familia.
-
-Titular contrata (PIX) -> adiciona dependente com assinatura Stripe recorrente
-propria (desconto familia aplica em ambos) -> tenta remover o dependente antes
-da carencia (bloqueado, vinculo preservado) -> a carencia termina (simulada via
-ORM) -> remove o dependente (permitido, desconto reverte para o titular).
-"""
 
 from datetime import date
 from decimal import Decimal
@@ -83,7 +76,6 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
     def test_contratar_aderir_bloquear_liberar_e_reverter_desconto(
         self, mocked_apply, mocked_remove
     ):
-        # 1) Titular contrata via PIX (nao Stripe, nao entra em carencia).
         owner_membership = Membership.objects.create(
             person=self.owner,
             plan_price=self.price_pix,
@@ -96,9 +88,6 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         self.assertFalse(owner_membership.family_discount_applied)
         self.assertEqual(owner_membership.billed_price, self.price_pix.price)
 
-        # 2) Titular adiciona dependente com assinatura Stripe recorrente
-        # propria (mesmo tier, gateway diferente) - o webhook ja teria
-        # sincronizado o stripe_subscription_id na pre-registration.
         pre_registration = PreRegistration.objects.create(
             registration_profile="dependent",
             holder_cpf=self.owner.cpf,
@@ -137,7 +126,6 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         self.assertEqual(dependent_membership.stripe_subscription_id, "sub_n2n_dependent")
         self.assertEqual(dependent_membership.plan_price_id, self.price_stripe_card.pk)
 
-        # Desconto familia deve aplicar em ambos (2 pessoas no mesmo tier).
         owner_membership.refresh_from_db()
         dependent_membership.refresh_from_db()
         self.assertTrue(owner_membership.family_discount_applied)
@@ -145,14 +133,9 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         expected_discounted = (self.price_pix.price * Decimal("0.82")).quantize(Decimal("0.01"))
         self.assertEqual(owner_membership.billed_price, expected_discounted)
 
-        # 3) Titular tenta trocar de plano: catalogo de troca deve estar
-        # vazio para o titular (PIX, sem carencia -> nao bloqueado, mas o
-        # dependente Stripe recorrente esta dentro da carencia).
         dependent_lock = get_plan_change_lock(dependent_membership)
         self.assertTrue(dependent_lock["is_locked"])
 
-        # 4) Titular tenta remover o dependente ANTES da carencia terminar:
-        # deve ser bloqueado, vinculo preservado, desconto continua aplicado.
         self._login()
         response = self.client.post(
             reverse("system:dependent-remove", args=[dependent.pk])
@@ -168,13 +151,10 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         owner_membership.refresh_from_db()
         self.assertTrue(owner_membership.family_discount_applied)
 
-        # 5) A carencia termina (simulada via ORM).
         dependent_membership.current_period_end = timezone.now() - timezone.timedelta(days=1)
         dependent_membership.save(update_fields=["current_period_end"])
         self.assertFalse(get_plan_change_lock(dependent_membership)["is_locked"])
 
-        # 6) Agora a remocao e permitida: vinculo apagado, desconto reverte
-        # para o titular (volta a pagar o preco cheio).
         response = self.client.post(
             reverse("system:dependent-remove", args=[dependent.pk])
         )
@@ -191,8 +171,6 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         self.assertEqual(owner_membership.billed_price, self.price_pix.price)
 
     def test_upgrade_titular_para_5x_nao_afeta_dependente_em_tier_diferente(self):
-        """Regressao: trocar o plano do titular para outro tier nao deve
-        gerar desconto familia com um dependente em tier diferente."""
         tier_5x = PlanTier.objects.create(
             code="adult-5x-n2n",
             display_name="Adulto 5x por semana",
@@ -241,7 +219,6 @@ class FullFamilyLifecycleScenarioTestCase(TestCase):
         self.assertTrue(owner_membership.family_discount_applied)
         self.assertTrue(dependent_membership.family_discount_applied)
 
-        # Titular faz upgrade (simulado via troca direta de plan_price).
         owner_membership.plan_price = price_5x_pix
         owner_membership.save(update_fields=["plan_price"])
         recompute_family_discounts_for_person(self.owner)

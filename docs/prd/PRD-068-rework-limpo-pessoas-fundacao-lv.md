@@ -1,7 +1,7 @@
 # PRD-068: Login unico progressivo
 
 ## Summary
-Estado inicial progressivo do LV JIU JITSU: manter somente a tela de login e os arquivos diretamente vinculados a ela pela referencia Visary. Qualquer template, CSS, JS ou imagem nao mapeado aqui deve permanecer ausente ate uma PRD futura recriar o modulo correspondente.
+Estado inicial progressivo do LV JIU JITSU: manter somente a tela de login e os arquivos diretamente vinculados a ela pela referencia de contrato. Qualquer template, CSS, JS ou imagem nao mapeado aqui deve permanecer ausente ate uma PRD futura recriar o modulo correspondente.
 
 ## Demand type
 Limpeza destrutiva local de UI e reimplementacao minima de login.

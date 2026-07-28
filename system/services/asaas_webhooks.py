@@ -58,7 +58,6 @@ ACTIONABLE_TRANSFER_EVENTS = TRANSFER_SUCCESS_EVENTS | TRANSFER_FAILURE_EVENTS
 
 @transaction.atomic
 def process_asaas_event(event: dict):
-    """Idempotente. Retorna dict com {order, payout, duplicate}."""
     event_id = event.get("id") or ""
     event_type = event.get("event") or ""
     if not event_id:

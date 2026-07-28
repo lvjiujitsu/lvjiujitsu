@@ -5,31 +5,34 @@ description: Use esta skill no final de toda mudança do LV JIU JITSU para revis
 
 # LV Cleanup Audit
 
-## Auditar
+## Quando acionar
 
-1. Ler o diff completo da tarefa.
-2. Reler integralmente os arquivos alterados.
-3. Verificar contratos adjacentes e PRD.
-4. Procurar código morto, órfãos, duplicação, hardcode, erro mascarado, N+1, comentário redundante, temporários, documentação divergente e teste sem contrato.
-5. Confirmar referências antes de remover.
+No fechamento de toda mudança do LV JIU JITSU.
 
-## Corrigir
+## Passos
 
-- Remover resíduos introduzidos.
-- Corrigir achados dentro do escopo.
-- Preservar mudanças preexistentes.
-- Não iniciar refatoração ampla como limpeza.
+1. Executar `git diff -- .` e `git status --short`.
+2. Reler integralmente arquivos alterados, PRD e contratos adjacentes.
+3. Procurar código morto, órfãos, duplicação, hardcode, erro mascarado, N+1, temporários, documentação divergente e teste sem contrato.
+4. Confirmar referências, remover resíduos introduzidos e corrigir achados dentro do escopo.
+5. Preservar mudanças preexistentes e não iniciar refatoração ampla.
+6. Se o diff tocar `*/skills/*/SKILL.md`, comparar `.agents`, `.claude` e `.cursor` por hash ou conteúdo byte a byte e falhar a auditoria se divergirem.
+7. Para dívida material fora do escopo, criar PRD com `lv-prd`, vincular à atual e parar sem implementar.
+8. Atualizar limpeza, evidências, limitações, pendências e status.
 
-## Criar follow-up
+## Saída
 
-Para dívida material fora do escopo:
+```text
+Diff auditado: <comando executado>
+Achados corrigidos no escopo: <lista ou "nenhum">
+Follow-up criado: <PRD-NNN ou "nenhum">
+Cópias de skill sincronizadas: <sim | não se aplica>
+Status: limpo | com follow-up
+```
 
-1. criar nova PRD com `lv-prd`;
-2. registrar evidência, risco e arquivos;
-3. vincular à PRD atual;
-4. parar;
-5. pedir aprovação.
+## Parar quando
 
-## Fechar
-
-Atualizar limpeza, achados residuais, evidências, limitações e status. Não declarar o sistema inteiro limpo quando apenas o escopo foi auditado.
+- O diff do escopo estiver relido, validado e sem resíduo introduzido.
+- Se as cópias de skill divergirem, parar com status não limpo.
+- Se houver dívida material fora do escopo, parar após criar o follow-up.
+- Não declarar o sistema inteiro limpo quando apenas o escopo foi auditado.

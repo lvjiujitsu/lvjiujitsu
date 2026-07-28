@@ -6,7 +6,6 @@ from django.test import SimpleTestCase
 
 
 class SeedDocsCommandContractTestCase(SimpleTestCase):
-    """PRD-095: a ordem documentada de seeds so cita comandos que existem de verdade."""
 
     def test_documented_seed_commands_exist(self):
         root = Path(__file__).resolve().parents[2]

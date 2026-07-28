@@ -1,8 +1,3 @@
-"""PRD-130: troca de plano (upgrade/downgrade) migrada para o catálogo
-PlanTier/PlanPrice. Regressão reportada pelo usuário: "Trocar plano" sumiu da
-home porque build_plan_catalog/get_eligible_plans só liam SubscriptionPlan, e
-as linhas não-veteranas desse modelo foram inativadas pela PRD-127.
-"""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -111,14 +106,10 @@ class BuildPlanCatalogPlanPriceTestCase(TestCase):
         self.assertIn(pp_id(self.price_5x_pix.pk), by_id)
         self.assertFalse(by_id[pp_id(self.price_5x_pix.pk)]["is_current"])
 
-        # o plano atual aparece no catálogo, marcado como "atual" (não trocável para ele mesmo)
         self.assertIn(pp_id(self.price_2x_pix.pk), by_id)
         self.assertTrue(by_id[pp_id(self.price_2x_pix.pk)]["is_current"])
 
     def test_current_plan_card_matches_its_own_filters(self):
-        """Regressão reportada pelo usuário: selecionar o filtro exato do plano
-        atual (frequência/ciclo/forma de pagamento) não mostrava nada — o
-        cliente esperava ver o próprio plano marcado como "Plano atual"."""
         catalog = build_plan_catalog(self.person, self.membership)
         current = next(item for item in catalog if item["is_current"])
 

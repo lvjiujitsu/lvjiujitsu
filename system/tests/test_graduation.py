@@ -198,7 +198,6 @@ class GraduationServiceTestCase(TestCase):
         self.assertEqual(count_approved_classes_in_window(self.person, start, end), 1)
 
     def test_count_approved_classes_same_day_counts_once(self):
-        # Two check-ins on the same day must count as 1 unique training day.
         target_date = timezone.localdate() - timedelta(days=5)
         session1, _ = ClassSession.objects.get_or_create(schedule=self.schedule, date=target_date)
         ClassCheckin.objects.create(session=session1, person=self.person, status=CheckinStatus.APPROVED)

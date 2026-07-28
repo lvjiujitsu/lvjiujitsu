@@ -147,7 +147,6 @@ def refuse_payout(payout: TeacherPayout, *, admin_user, notes=""):
 
 
 def dispatch_payout(payout: TeacherPayout):
-    """Dispara o Transfer PIX via Asaas. Requer payout APPROVED."""
     if payout.status != PayoutStatus.APPROVED:
         raise PayrollError(
             "Só é possível disparar pagamentos aprovados."

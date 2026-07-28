@@ -78,9 +78,6 @@ class PlanCatalogPayloadCommercialTierTestCase(TestCase):
 
 
 class PlanPriceCatalogMultiGatewayCardPriceTestCase(TestCase):
-    """PRD real: asaas_card e stripe_card no mesmo tier/ciclo não podem
-    vazar o preço um do outro em charge_card (bug encontrado em validação
-    ao vivo — os dois apareciam com o mesmo valor no wizard)."""
 
     def test_asaas_card_and_stripe_card_report_their_own_price(self):
         tier = PlanTier.objects.create(

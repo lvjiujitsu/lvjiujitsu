@@ -347,10 +347,6 @@ class HomeDashboardContractTestCase(TestCase):
 
 
 class HomeDashboardPlanPriceMembershipTestCase(TestCase):
-    """Regressao encontrada na PRD-128: build_membership_summary (usado pela
-    home) acessava membership.plan.price/.display_name incondicionalmente,
-    quebrando com 500 para qualquer Membership que use plan_price (modelo
-    novo da PRD-127) em vez do plan legado."""
 
     def setUp(self):
         from decimal import Decimal

@@ -2,20 +2,28 @@
 
 Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 
-## Regras
+## 1. Regras
 
-- Verificar o próximo número sem duplicar, usando `docs/prd/README.md` como índice canônico (não confiar apenas em `ls`, que não revela gaps reservados ou duplicatas).
-- Atualizar `docs/prd/README.md` ao criar uma PRD nova.
-- Criar antes do código.
-- Declarar skills.
+- O número vem de `docs/prd/README.md`, o índice canônico, não de `ls` — a
+  listagem não revela gap reservado nem número duplicado. Ao criar ou fechar
+  uma PRD, regenerar o índice no mesmo passo com
+  `python scripts/build_prd_index.py`, que recusa colisão de número.
+- Criar antes do código e registrar a autorização em `Understanding approved`;
+  ordem explícita do operador autoriza o escopo descrito.
 - Usar critérios comportamentais e verificáveis.
-- Incluir fonte oficial externa relevante.
-- Usar Context7 quando houver biblioteca, framework, SDK, API ou CLI.
+- Declarar as skills requeridas.
+- Usar Context7 quando houver biblioteca, framework, SDK, API ou CLI, e
+  registrar ao menos uma fonte oficial externa relevante.
 - Separar teste escrito de teste executado.
-- Não marcar item sem evidência.
-- Atualizar implementação, evidências, limpeza, desvios, pendências e status.
+- Manter checkbox desmarcado até existir evidência; inferência não fecha
+  critério.
+- Atualizar `Implemented`, `Evidence`, `Cleanup findings`,
+  `Deviations from plan`, `Pending` e `Final status` **durante** a execução.
+- Guardar log de sessão na PRD; contratos contêm apenas fato estável.
 
-## Skills
+## 2. Skills
+
+Selecionar:
 
 | Demanda | Skill |
 |---|---|
@@ -24,8 +32,10 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 | Django | `lv-django-delivery` |
 | UI | `lv-ui-delivery` |
 | Fechamento | `lv-cleanup-audit` |
+| Gerar prompt de execução | `lv-prompt-builder` (invocação manual) |
+| Auditoria de coerência | `lv-parity-audit` (invocação manual) |
 
-## Template
+## 3. Template
 
 ```md
 # PRD-<NNN>: <Título>
@@ -39,11 +49,20 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 ### Files read in full
 ### Adjacent files consulted
 ### Internet / official documentation
+- [Fonte](https://...)
 ### Context7 / MCPs / tools verified
 ### Limitations found
 
 ## Required skills
+- `lv-task-intake`
+- `lv-prd`
+- <skills específicas>
+- `lv-cleanup-audit`
+
 ## Understanding approved
+- Summary presented:
+- User approval:
+- Date:
 
 ## Execution prompt
 ### Persona
@@ -51,6 +70,7 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 ### Context
 ### Constraints
 ### Acceptance criteria
+- [ ] When X, the system must Y.
 ### Expected evidence
 ### Output format
 
@@ -59,15 +79,34 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 ## Impacted files
 ## Risks and edge cases
 ## Rules and constraints
+
 ## Plan
+- [ ] Context and research
+- [ ] Test authored first, when applicable
+- [ ] Implementation
+- [ ] Refactor
+- [ ] Validation
+- [ ] Cleanup audit
+- [ ] Documentation
 
 ## Test plan
 ### Tests to author
 ### Execution authorization
+- Status: not requested | requested | authorized | denied
 ### Execution evidence
 
 ## Visual validation
+### Design approval
+### Routes and states
+### Desktop
+### Mobile
+### Console and terminal
+### Screenshot / snapshot
+
 ## ORM validation
+### Read-only checks
+### Mutating checks and authorization
+
 ## Quality validation
 ## Evidence
 ## Implemented
@@ -78,26 +117,49 @@ Toda mudança relevante usa `docs/prd/PRD-<NNN>-<slug>.md`.
 ## Final status
 ```
 
-## UI
+Seção que não se aplica à mudança é preenchida com "Não aplicável" e o motivo,
+nunca apagada — a ausência da seção não distingue "não se aplica" de
+"esqueci".
 
-PRD visual inclui:
+## 4. UI adicional
 
-- `## Visual hierarchy`
-- `## Wireframe`
-- `## State machine`
-- aprovação do design;
-- disabled/loading/error/success;
+PRD de UI inclui:
+
+```md
+## Visual hierarchy
+## Wireframe
+## State machine
+```
+
+Critérios mínimos:
+
+- hierarquia e agrupamento;
+- affordance e feedback;
+- estados `disabled`, `loading`, `error` e `success`;
 - erro por campo;
-- desktop/mobile e temas;
-- permissões;
-- console e evidência visual.
+- desktop e mobile;
+- tema claro e escuro;
+- permissões reais;
+- comportamento preservado;
+- console sem erro crítico.
 
-## Evidência
+## 5. Evidência
 
-Válidos: comando e saída, teste autorizado, screenshot, console, terminal, ORM, link oficial e diff.
+Evidência válida:
 
-“Implementado” não significa “validado”.
+- comando e saída;
+- teste executado e resultado;
+- screenshot ou snapshot;
+- console e terminal;
+- ORM;
+- link oficial;
+- diff verificável.
 
-## Follow-up
+"Implementado" não significa "validado": sem execução observável, o item vai
+para `Pending`, não para `Evidence`.
 
-Auditoria pode criar nova PRD para dívida material. A próxima PRD não é implementada automaticamente.
+## 6. Follow-up
+
+Dívida material fora do escopo vira PRD de follow-up com número reservado em
+`docs/prd/README.md`, e não é implementada sem autorização. Ampliar escopo sem
+registro é tão ruim quanto deixar a dívida.

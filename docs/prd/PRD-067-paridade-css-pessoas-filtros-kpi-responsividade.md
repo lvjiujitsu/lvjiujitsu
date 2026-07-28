@@ -1,7 +1,7 @@
 # PRD-067: Paridade de CSS de Pessoas — filtros, KPIs, linhas e responsividade
 
 ## Summary
-Corrigir a homologação visual do módulo Pessoas para atingir paridade real com o hub de Clientes do Visary. A primeira passada (PRD-066) entregou o padrão de modal/ações icônicas, mas o CSS de linhas (cards), filtros e responsividade divergiu do Visary, e a faixa de KPIs foi mantida — em conflito com a governança anti-KPI do projeto irmão (Visary PRD-068/069/074/076).
+Corrigir a homologação visual do módulo Pessoas para atingir paridade com o hub de referência. A primeira passada (PRD-066) entregou o padrão de modal/ações icônicas, mas o CSS de linhas (cards), filtros e responsividade divergiu do contrato, e a faixa de KPIs foi mantida — em conflito com a governança anti-KPI do contrato de tela.
 
 ## Demand type
 Correção de UI/CSS com paridade de referência + governança.
@@ -12,22 +12,22 @@ Correção de UI/CSS com paridade de referência + governança.
 - `lv-cleanup-audit`
 
 ## Current problem
-Comparando `static/system/css/people/people.css` (LV) com `static/system/css/client/clients.css` + `portal/modules.css` (Visary):
-1. `.person-card` usa `align-items: center`; Visary usa `flex-start` (linhas desalinham quando há badges + meta).
-2. `.person-card__name` e `.person-card__meta` truncam com `nowrap/ellipsis`; Visary deixa quebrar (`line-height` 1.3/1.45, `overflow-wrap: anywhere`).
-3. `.person-card__avatar` é cinza (`surface-soft`/`muted`); Visary usa avatar com marca (`brand-muted`/`brand-strong`).
-4. `.icon-actions` diverge: Visary é `justify-content: flex-end; gap: 0.375rem; flex-wrap: nowrap`.
-5. `.filter-input/.filter-select` têm `height: 36px`; Visary usa `44px`. `.filter-field` recebe `max-width: 200px` que o Visary não aplica.
-6. Não há regra mobile para as linhas: no Visary, em ≤768px o card faz `flex-wrap: wrap` e as ações viram grade alinhada após o avatar (`margin-left: calc(40px + 1rem)`). No LV as ações ficam comprimidas/cortadas.
-7. Faixa de KPIs (6 cards) presente sem pedido — Visary proíbe KPI não solicitado em hub operacional.
+Comparando `static/system/css/people/people.css` (LV) com `static/system/css/client/clients.css` + `portal/modules.css`:
+1. `.person-card` usa `align-items: center`; o padrão pede `flex-start` (linhas desalinham quando há badges + meta).
+2. `.person-card__name` e `.person-card__meta` truncam com `nowrap/ellipsis`; o padrão deixa quebrar (`line-height` 1.3/1.45, `overflow-wrap: anywhere`).
+3. `.person-card__avatar` é cinza (`surface-soft`/`muted`); o padrão usa avatar com marca (`brand-muted`/`brand-strong`).
+4. `.icon-actions` diverge: o padrão é `justify-content: flex-end; gap: 0.375rem; flex-wrap: nowrap`.
+5. `.filter-input/.filter-select` têm `height: 36px`; o padrão usa `44px`. `.filter-field` recebe `max-width: 200px` que o contrato não prevê.
+6. Não há regra mobile para as linhas: em ≤768px o card deve fazer `flex-wrap: wrap` e as ações viram grade alinhada após o avatar (`margin-left: calc(40px + 1rem)`). No LV as ações ficam comprimidas/cortadas.
+7. Faixa de KPIs (6 cards) presente sem pedido — o contrato proíbe KPI não solicitado em hub operacional.
 
 ## Goal
-- Reescrever os blocos de `card/linha`, `filtros` e `responsividade` de `people.css` reproduzindo o contrato do Visary com tokens do LV.
-- Alinhar `.icon-actions` da fundação (`crud_modal.css`) ao Visary.
+- Reescrever os blocos de `card/linha`, `filtros` e `responsividade` de `people.css` reproduzindo o contrato de referência com tokens do LV.
+- Alinhar `.icon-actions` da fundação (`crud_modal.css`) ao contrato.
 - Remover a faixa de KPIs de Pessoas (template + contexto/helper na view).
 - Registrar a regra anti-KPI no `UI-SCREEN-CONTRACT.md`.
 
-## Mapeamento de tokens (Visary → LV)
+## Mapeamento de tokens
 `--brand`→`--brand-red`, `--brand-strong`→`--brand-red-strong`, `--brand-muted`→`--brand-red-muted`.
 
 ## Out of scope

@@ -3,6 +3,7 @@ from django.views.generic import RedirectView
 
 from system.views.auth_views import (
     ChromeDevtoolsProbeView,
+    HealthCheckView,
     FinalizeRegistrationView,
     MaterialsCheckoutView,
     PortalChangePasswordView,
@@ -188,6 +189,7 @@ app_name = "system"
 
 urlpatterns = [
     path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
+    path("health/", HealthCheckView.as_view(), name="health"),
     path("", PortalLoginView.as_view(), name="root"),
     path("login/", PortalLoginView.as_view(), name="login"),
     path("logout/", PortalLogoutView.as_view(), name="logout"),

@@ -1,8 +1,6 @@
 import logging
 import warnings
-from pathlib import Path
 
-from django.conf import settings
 from django.db import connections
 from django.test.runner import DiscoverRunner
 
@@ -10,11 +8,9 @@ from django.test.runner import DiscoverRunner
 logger = logging.getLogger(__name__)
 
 
-class PostgreSQLDiscoverRunner(DiscoverRunner):
-    def setup_test_environment(self, **kwargs):
-        static_root = Path(settings.STATIC_ROOT)
-        static_root.mkdir(parents=True, exist_ok=True)
+class ProjectDiscoverRunner(DiscoverRunner):
 
+    def setup_test_environment(self, **kwargs):
         warnings.filterwarnings(
             "ignore",
             message=r"No directory at:.*",
@@ -22,15 +18,6 @@ class PostgreSQLDiscoverRunner(DiscoverRunner):
             module=r"whitenoise",
         )
 
-        # Sem LOGGING configurado fora de produção (settings.py só define
-        # LOGGING quando DEBUG=False), o handler padrão do Python escreve
-        # WARNING+ direto no stderr — intercalando com os pontos de
-        # progresso do unittest e quebrando a saída padronizada dos testes.
-        # Mensagens de warning esperadas em branches testados (ex.:
-        # notificação sem e-mail cadastrado) não são falhas; suprimir aqui
-        # é o padrão documentado pelo Django para saída limpa de testes.
-        # Só até WARNING — ERROR/CRITICAL continuam passando, preservando
-        # `assertLogs(level="ERROR")` (ex.: test_stripe_webhook_view.py).
         logging.disable(logging.WARNING)
 
         super().setup_test_environment(**kwargs)

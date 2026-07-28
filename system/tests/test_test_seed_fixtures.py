@@ -4,7 +4,8 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase
+from django.core.management.base import CommandError
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from system.models import (
     ClassEnrollment,
@@ -114,7 +115,9 @@ class TestSeedFixtureCommandTestCase(TestCase):
         self.assertEqual(ClassInstructorAssignment.objects.filter(notes=TEST_SEED_NOTE).count(), 9)
 
         student = Person.objects.get(cpf="930.100.004-04")
-        self.assertTrue(student.access_account.check_password("LvTest@2026"))
+        self.assertTrue(
+            student.access_account.check_password(settings.SEED_TEST_PORTAL_PASSWORD)
+        )
         self.assertFalse(student.operational_role_assignments.exists())
 
         student_assistant = Person.objects.get(cpf="930.100.006-06")
@@ -167,3 +170,44 @@ def _load_test_fixture_entries():
 
 def _load_test_fixture_cpfs():
     return {entry["cpf"] for entry in _load_test_fixture_entries()}
+
+
+class SeedTestPortalPasswordTests(TestCase):
+
+    def test_seed_refuses_when_password_is_not_configured(self):
+        with override_settings(SEED_TEST_PORTAL_PASSWORD=""):
+            with self.assertRaises(CommandError) as raised:
+                call_command("seed_system_initial_test_students", stdout=StringIO())
+
+        self.assertIn("SEED_TEST_PORTAL_PASSWORD", str(raised.exception))
+        self.assertFalse(
+            Person.objects.filter(cpf="930.100.004-04").exists(),
+            "Nenhuma pessoa pode ser criada quando a senha nao esta configurada.",
+        )
+
+    def test_seed_uses_the_configured_password(self):
+        with self.settings(SEED_INITIAL_TEACHER_PASSWORD=DEFAULT_SEED_PASSWORD):
+            for command_name in (
+                "seed_system_initial_person_type",
+                "seed_system_initial_belt_ranks",
+                "seed_system_initial_ibjjf_age_categories",
+                "seed_system_initial_class_categories",
+                "seed_system_initial_teacher",
+                "seed_system_initial_class_catalog",
+            ):
+                call_command(command_name, stdout=StringIO())
+
+        with override_settings(SEED_TEST_PORTAL_PASSWORD="OutraSenha@2026"):
+            call_command("seed_system_initial_test_students", stdout=StringIO())
+
+        student = Person.objects.get(cpf="930.100.004-04")
+        self.assertTrue(student.access_account.check_password("OutraSenha@2026"))
+
+    def test_json_fixtures_do_not_carry_any_password(self):
+        base = Path(settings.BASE_DIR) / "static" / "initial_data"
+        for name in ("students", "guardians", "administrative", "teachers"):
+            path = base / f"seed_system_initial_test_{name}.json"
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            entries = payload if isinstance(payload, list) else payload.get("entries", payload)
+            for entry in entries:
+                self.assertNotIn("portal_password", entry, path.name)

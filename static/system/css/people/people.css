@@ -1,6 +1,5 @@
-/* Pessoas — estilos do módulo (tokens em lv/base.css) */
 
-/* ─── Body ──────────────────────────────────────────────────────────────────── */
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg);
@@ -19,13 +18,11 @@ html[data-theme="dark"] body {
     radial-gradient(ellipse 50% 45% at 0% 0%, rgba(196, 18, 48, 0.06) 0%, transparent 60%);
 }
 
-/* ─── Animação de entrada ───────────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Topbar ────────────────────────────────────────────────────────────────── */
 .topbar {
   position: sticky;
   top: 0;
@@ -65,7 +62,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   gap: 0.5rem;
 }
 
-/* ─── Botões de ícone (topbar) ──────────────────────────────────────────────── */
 .btn-icon {
   display: flex;
   align-items: center;
@@ -83,18 +79,16 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   flex-shrink: 0;
 }
 
-.btn-icon:hover { background: var(--surface); color: var(--text); border-color: var(--brand-red-muted); }
+.btn-icon:hover { background: var(--surface); color: var(--text); border-color: var(--accent-muted); }
 .btn-icon:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .btn-icon svg { display: block; flex-shrink: 0; }
 
-/* ─── Layout principal ──────────────────────────────────────────────────────── */
 .page {
   max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1.25rem 5rem;
 }
 
-/* ─── Cabeçalho da página ───────────────────────────────────────────────────── */
 .page-header {
   margin-bottom: 2rem;
   animation: fadeSlideIn 0.3s ease both;
@@ -115,7 +109,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   transition: color 0.15s;
 }
 
-.page-header__eyebrow a:hover { color: var(--brand-red); }
+.page-header__eyebrow a:hover { color: var(--accent); }
 
 .page-header__row {
   display: flex;
@@ -152,7 +146,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   flex-wrap: wrap;
 }
 
-/* ─── Seção ─────────────────────────────────────────────────────────────────── */
 .section {
   margin-bottom: 1.75rem;
   animation: fadeSlideIn 0.35s ease both;
@@ -185,17 +178,16 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .section__link {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--brand-red);
+  color: var(--accent);
   text-decoration: none;
   white-space: nowrap;
   transition: color 0.15s;
   flex-shrink: 0;
 }
 
-.section__link:hover { color: var(--brand-red-strong); text-decoration: underline; }
+.section__link:hover { color: var(--accent-strong); text-decoration: underline; }
 .section__link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
 
-/* ─── Painel ────────────────────────────────────────────────────────────────── */
 .panel {
   background: var(--panel);
   border: 1.5px solid var(--border);
@@ -204,7 +196,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   overflow: hidden;
 }
 
-/* ─── Badges ────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -225,7 +216,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .badge--info    { background: var(--info-muted);    color: var(--info);    }
 .badge--neutral { background: var(--surface-soft);  color: var(--muted);   }
 
-/* ─── Botões ────────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -245,11 +235,11 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   font-family: inherit;
 }
 
-.btn--primary { background: var(--brand-red); color: #fff; border-color: var(--brand-red); }
-.btn--primary:hover { background: var(--brand-red-strong); border-color: var(--brand-red-strong); box-shadow: 0 0 0 3px var(--brand-red-muted); }
+.btn--primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn--primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-muted); }
 
 .btn--secondary { background: transparent; color: var(--text); border-color: var(--border); }
-.btn--secondary:hover { background: var(--surface); border-color: var(--brand-red-muted); }
+.btn--secondary:hover { background: var(--surface); border-color: var(--accent-muted); }
 
 .btn--danger-outline { background: transparent; color: var(--danger); border-color: var(--danger); }
 .btn--danger-outline:hover { background: var(--danger-muted); }
@@ -259,7 +249,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
-/* ─── Estado vazio ──────────────────────────────────────────────────────────── */
 .empty-state {
   padding: 2.5rem 1rem;
   text-align: center;
@@ -281,7 +270,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   color: var(--muted);
 }
 
-/* ─── Mensagens do sistema ──────────────────────────────────────────────────── */
 .system-messages {
   display: flex;
   flex-direction: column;
@@ -306,9 +294,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .system-message--warning { background: var(--warning-muted); border: 1px solid rgba(217,119,6,.18);  color: var(--warning); }
 .system-message--info    { background: var(--info-muted);    border: 1px solid rgba(37,99,235,.18);  color: var(--info);    }
 
-/* ───────────────────────────────────────────────────────────────────────────── */
-/*  KPIs                                                                         */
-/* ───────────────────────────────────────────────────────────────────────────── */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -347,9 +332,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   margin-top: 0.25rem;
 }
 
-/* ───────────────────────────────────────────────────────────────────────────── */
-/*  Filtros                                                                       */
-/* ───────────────────────────────────────────────────────────────────────────── */
 .filter-panel {
   background: var(--panel);
   border: 1.5px solid var(--border);
@@ -412,8 +394,8 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .filter-input:focus,
 .filter-select:focus {
   outline: none;
-  border-color: var(--brand-red);
-  box-shadow: 0 0 0 3px var(--brand-red-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .filter-select {
@@ -433,7 +415,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .filter-checkbox-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -454,9 +436,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   padding-top: 0.125rem;
 }
 
-/* ───────────────────────────────────────────────────────────────────────────── */
-/*  Cards de pessoa (listagem)                                                   */
-/* ───────────────────────────────────────────────────────────────────────────── */
 .person-list {
   display: flex;
   flex-direction: column;
@@ -535,9 +514,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   gap: 0.5rem;
 }
 
-/* ───────────────────────────────────────────────────────────────────────────── */
-/*  Detalhe da pessoa                                                             */
-/* ───────────────────────────────────────────────────────────────────────────── */
 .detail-panel {
   background: var(--panel);
   border: 1.5px solid var(--border);
@@ -585,7 +561,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   flex-wrap: wrap;
 }
 
-/* ─── Seções de detalhe ─────────────────────────────────────────────────────── */
 .detail-section {
   padding: 1.125rem 1.5rem;
   border-bottom: 1px solid var(--border-soft);
@@ -602,7 +577,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   margin-bottom: 0.875rem;
 }
 
-/* ─── Grid de campos de detalhe ─────────────────────────────────────────────── */
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -634,7 +608,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   font-weight: 400;
 }
 
-/* ─── Tags de horários e turmas ─────────────────────────────────────────────── */
 .schedule-tags {
   display: flex;
   flex-wrap: wrap;
@@ -655,7 +628,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   white-space: nowrap;
 }
 
-/* ─── Visual da faixa (belt SVG) ─────────────────────────────────────────────── */
 .belt-visual {
   margin-bottom: 0.875rem;
 }
@@ -691,7 +663,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   color: var(--muted);
 }
 
-/* ─── Progresso de graduação ────────────────────────────────────────────────── */
 .grad-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -754,7 +725,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .progress-label__pct {
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--brand-red);
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -769,7 +740,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 
 .progress-bar__fill {
   height: 100%;
-  background: var(--brand-red);
+  background: var(--accent);
   border-radius: 99px;
   transition: width 0.6s ease;
   min-width: 0;
@@ -805,7 +776,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   margin-top: 0.625rem;
 }
 
-/* ─── Histórico de graduação ────────────────────────────────────────────────── */
 .grad-history {
   display: flex;
   flex-direction: column;
@@ -843,7 +813,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   flex-shrink: 0;
 }
 
-/* ─── Mensalidade — admin view ──────────────────────────────────────────────── */
 .billing-table {
   width: 100%;
   border-collapse: collapse;
@@ -883,9 +852,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   color: var(--muted);
 }
 
-/* ───────────────────────────────────────────────────────────────────────────── */
-/*  Formulário de pessoa                                                          */
-/* ───────────────────────────────────────────────────────────────────────────── */
 .form-card {
   background: var(--panel);
   border: 1.5px solid var(--border);
@@ -955,8 +921,8 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: var(--brand-red);
-  box-shadow: 0 0 0 3px var(--brand-red-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .form-field textarea {
@@ -993,7 +959,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   line-height: 1.4;
 }
 
-/* Checkbox row dentro do form */
 .form-checkbox-row {
   display: flex;
   align-items: center;
@@ -1004,7 +969,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .form-checkbox-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
   cursor: pointer;
   flex-shrink: 0;
   min-height: auto;
@@ -1020,7 +985,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   letter-spacing: 0;
 }
 
-/* MultipleChoiceField como lista de checkboxes */
 .form-field ul.class-groups-list {
   list-style: none;
   display: grid;
@@ -1042,7 +1006,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   color: var(--text);
 }
 
-/* ─── Ações do formulário ───────────────────────────────────────────────────── */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -1058,7 +1021,6 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
   .form-actions .btn { width: 100%; }
 }
 
-/* ─── Confirmação de exclusão ───────────────────────────────────────────────── */
 .delete-confirm {
   background: var(--panel);
   border: 1.5px solid var(--danger);

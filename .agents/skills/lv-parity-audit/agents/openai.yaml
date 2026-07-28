@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV JIU JITSU Parity Audit"
+  short_description: "Audita coerência interna do repositório"
+  default_prompt: "Use $lv-parity-audit para auditar este repositório contra o próprio contrato."

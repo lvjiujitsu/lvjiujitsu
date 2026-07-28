@@ -1,25 +1,8 @@
-/* Register wizard — overrides (tokens base em lv/base.css) */
-
-:root {
-  --bg: #f5f5f5;
-  --input-bg: #fafafa;
-  --border: #e4e4e7;
-  --border-soft: #f0f0f2;
-}
-
-html[data-theme="dark"] {
-  --input-bg: #18181b;
-  --border: #2d2d30;
-  --border-soft: #1f1f23;
-}
-
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
-a { color: var(--brand-red); text-decoration: none; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { display: block; max-width: 100%; }
 button { font-family: inherit; }
-
-/* ─── Shell ─────────────────────────────────────────────────────────────────── */
 
 body.register-page {
   min-height: 100dvh;
@@ -45,8 +28,6 @@ html[data-theme="dark"] body.register-page {
   padding: 0 1.25rem 2rem;
 }
 
-/* ─── Header ────────────────────────────────────────────────────────────────── */
-
 .wizard-header {
   display: flex;
   align-items: center;
@@ -65,7 +46,7 @@ html[data-theme="dark"] body.register-page {
   transition: color 0.15s;
   min-width: 64px;
 }
-.wizard-back:hover { color: var(--brand-red); text-decoration: none; }
+.wizard-back:hover { color: var(--accent); text-decoration: none; }
 .wizard-back:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
 
 .wizard-header__logo {
@@ -81,8 +62,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   text-align: right;
 }
 
-/* ─── Barra de progresso ────────────────────────────────────────────────────── */
-
 .wizard-progress-bar {
   height: 3px;
   background: var(--border);
@@ -93,12 +72,10 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 
 .wizard-progress-bar__fill {
   height: 100%;
-  background: var(--brand-red);
+  background: var(--accent);
   border-radius: 99px;
   transition: width 0.4s ease;
 }
-
-/* ─── Step ──────────────────────────────────────────────────────────────────── */
 
 .wizard-step { display: flex; flex-direction: column; gap: 1.5rem; flex: 1; }
 .wizard-step[hidden] { display: none; }
@@ -116,8 +93,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   font-size: 0.9375rem;
   color: var(--muted);
 }
-
-/* ─── Mensagens do sistema (Django messages) ────────────────────────────────── */
 
 .wizard-system-messages {
   padding: 0 1rem 0;
@@ -150,8 +125,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 .wizard-system-message--success svg { color: var(--success); }
 
-/* ─── Erros ─────────────────────────────────────────────────────────────────── */
-
 .wizard-errors {
   background: var(--danger-muted);
   border: 1px solid rgba(220, 38, 38, 0.25);
@@ -162,8 +135,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   gap: 0.25rem;
 }
 .wizard-errors__item { font-size: 0.875rem; color: var(--danger); }
-
-/* ─── Cards de perfil ───────────────────────────────────────────────────────── */
 
 .profile-options {
   display: flex;
@@ -188,8 +159,8 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .profile-card:hover {
-  border-color: var(--brand-red);
-  box-shadow: 0 0 0 3px var(--brand-red-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .profile-card:focus-visible {
@@ -198,9 +169,9 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .profile-card[aria-pressed="true"] {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  box-shadow: 0 0 0 3px var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .profile-card__icon {
@@ -217,8 +188,8 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .profile-card[aria-pressed="true"] .profile-card__icon {
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 
 .profile-card__body {
@@ -254,12 +225,10 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .profile-card[aria-pressed="true"] .profile-card__check {
-  border-color: var(--brand-red);
-  background: var(--brand-red);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
-
-/* ─── Sub-opções ────────────────────────────────────────────────────────────── */
 
 .profile-suboption {
   background: var(--border-soft);
@@ -289,7 +258,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 .profile-suboption__checkbox {
   width: 18px;
   height: 18px;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -367,18 +336,16 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .profile-segmented__option input:checked + span {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
-  box-shadow: 0 0 0 2px var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 .profile-segmented__option input:focus-visible + span {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
-
-/* ─── Contador de alunos ────────────────────────────────────────────────────── */
 
 .student-counter {
   display: flex;
@@ -405,7 +372,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   transition: background 0.15s, color 0.15s;
   line-height: 1;
 }
-.student-counter__btn:hover { background: var(--brand-red-muted); color: var(--brand-red); }
+.student-counter__btn:hover { background: var(--accent-muted); color: var(--accent); }
 .student-counter__btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .student-counter__btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -422,8 +389,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   line-height: 38px;
 }
 
-/* ─── Ações da etapa ────────────────────────────────────────────────────────── */
-
 .wizard-step__actions {
   display: flex;
   flex-direction: column;
@@ -439,7 +404,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   gap: 0.5rem;
   width: 100%;
   height: 50px;
-  background: var(--brand-red);
+  background: var(--accent);
   color: #ffffff;
   border: none;
   border-radius: 0.5rem;
@@ -450,7 +415,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s, transform 0.1s;
 }
-.btn-next:hover:not(:disabled) { background: var(--brand-red-strong); }
+.btn-next:hover:not(:disabled) { background: var(--accent-strong); }
 .btn-next:active:not(:disabled) { transform: translateY(1px); }
 .btn-next:disabled {
   opacity: 0.45;
@@ -460,8 +425,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
-
-/* ─── Campos de formulário — Etapa 2+ ──────────────────────────────────────── */
 
 .wizard-form__fields {
   display: flex;
@@ -511,7 +474,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--brand-red);
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
   background: var(--panel);
 }
@@ -521,7 +484,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }
 
-/* Select */
 .form-select-wrapper {
   position: relative;
 }
@@ -546,7 +508,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   padding-right: 2.25rem;
 }
 
-/* Wrapper senha + toggle */
 .form-input-wrapper {
   position: relative;
   display: flex;
@@ -581,22 +542,17 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 .password-toggle[aria-label="Ocultar senha"] .password-toggle__icon--show { opacity: 0; }
 .password-toggle[aria-label="Ocultar senha"] .password-toggle__icon--hide { opacity: 1; }
 
-/* Erro de campo */
 .form-field__error {
   font-size: 0.8125rem;
   color: var(--danger);
   line-height: 1.3;
 }
 
-/* ─── Textarea ──────────────────────────────────────────────────────────────── */
-
 .form-textarea {
   resize: vertical;
   min-height: 72px;
   line-height: 1.5;
 }
-
-/* ─── Etapas operacionais ─────────────────────────────────────────────────── */
 
 .operational-panel {
   display: flex;
@@ -635,14 +591,14 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   width: 18px;
   height: 18px;
   margin-top: 0.125rem;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
   flex-shrink: 0;
 }
 
 .operational-choice:has(input:checked) {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  box-shadow: 0 0 0 2px var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 .operational-choice__body {
@@ -700,15 +656,15 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   width: 18px;
   height: 18px;
   margin-top: 0.15rem;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
   flex-shrink: 0;
 }
 
 .teacher-class-card--selected,
 .teacher-class-card:has(input:checked) {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  box-shadow: 0 0 0 2px var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 .teacher-class-card__body {
@@ -791,13 +747,13 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 .weekday-check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
 }
 
 .weekday-check:has(input:checked) {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  box-shadow: 0 0 0 2px var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 .weekday-check span {
@@ -853,8 +809,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   }
 }
 
-/* ─── Toggle de experiência marcial ────────────────────────────────────────── */
-
 .martial-has-toggle {
   display: flex;
   gap: 0.5rem;
@@ -881,17 +835,15 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 }
 
 .martial-has-btn--active {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
   font-weight: 600;
 }
 
 @media (max-width: 480px) {
   .martial-has-toggle { flex-direction: column; }
 }
-
-/* ─── IBJJF Notice ──────────────────────────────────────────────────────────── */
 
 .ibjjf-notice {
   display: flex;
@@ -900,7 +852,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
   margin-top: 1rem;
   padding: 12px 14px;
   border-radius: 10px;
-  background: var(--brand-red-muted);
+  background: var(--accent-muted);
   border: 1px solid rgba(196, 18, 48, 0.18);
   font-size: 0.8125rem;
   color: var(--text);
@@ -909,7 +861,7 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 
 .ibjjf-notice__icon {
   flex-shrink: 0;
-  color: var(--brand-red);
+  color: var(--accent);
   margin-top: 1px;
 }
 
@@ -920,8 +872,6 @@ html[data-theme="dark"] .wizard-header__logo { filter: invert(1); }
 html[data-theme="dark"] .ibjjf-notice {
   border-color: rgba(224, 34, 68, 0.25);
 }
-
-/* ─── Seleção de turma ──────────────────────────────────────────────────────── */
 
 .class-catalog {
   display: flex;
@@ -943,11 +893,11 @@ html[data-theme="dark"] .ibjjf-notice {
   width: 100%;
 }
 
-.class-card:hover { border-color: var(--brand-red-muted); }
+.class-card:hover { border-color: var(--accent-muted); }
 
 .class-card--selected {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
 }
 
 .class-card__radio {
@@ -964,8 +914,8 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 
 .class-card--selected .class-card__radio {
-  background: var(--brand-red);
-  border-color: var(--brand-red);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .class-card__radio-dot {
@@ -1045,8 +995,6 @@ html[data-theme="dark"] .ibjjf-notice {
   font-size: .9rem;
 }
 
-/* ─── Filtros de plano ──────────────────────────────────────────────────────── */
-
 .plan-filter-section {
   margin-bottom: 1.125rem;
 }
@@ -1113,13 +1061,13 @@ html[data-theme="dark"] .ibjjf-notice {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .08);
 }
 .plan-filter-pill:hover {
-  border-color: var(--brand-red);
+  border-color: var(--accent);
   color: var(--text);
 }
 .plan-filter-pill--active {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -1130,12 +1078,12 @@ html[data-theme="dark"] .ibjjf-notice {
   letter-spacing: .04em;
   padding: 2px 6px;
   border-radius: 10px;
-  background: var(--brand-red);
+  background: var(--accent);
   color: #fff;
   line-height: 1.3;
 }
 .plan-filter-pill--active .plan-filter-pill__badge {
-  background: var(--brand-red-strong);
+  background: var(--accent-strong);
 }
 
 @media (max-width: 540px) {
@@ -1195,8 +1143,6 @@ html[data-theme="dark"] .ibjjf-notice {
   }
 }
 
-/* ─── Cards de plano ────────────────────────────────────────────────────────── */
-
 .plan-cards {
   display: flex;
   flex-direction: column;
@@ -1223,12 +1169,11 @@ html[data-theme="dark"] .ibjjf-notice {
   box-shadow: 0 2px 12px rgba(196, 18, 48, 0.08);
 }
 .plan-card--selected {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
   box-shadow: 0 2px 16px rgba(196, 18, 48, 0.12);
 }
 
-/* Radio indicator — reutiliza padrão do class-card */
 .plan-card__radio {
   flex-shrink: 0;
   width: 20px;
@@ -1242,8 +1187,8 @@ html[data-theme="dark"] .ibjjf-notice {
   transition: border-color .15s, background .15s;
 }
 .plan-card--selected .plan-card__radio {
-  background: var(--brand-red);
-  border-color: var(--brand-red);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .plan-card__radio-dot {
   width: 8px;
@@ -1278,7 +1223,7 @@ html[data-theme="dark"] .ibjjf-notice {
   letter-spacing: .06em;
   padding: 2px 8px;
   border-radius: 20px;
-  background: var(--brand-red);
+  background: var(--accent);
   color: #fff;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1297,7 +1242,7 @@ html[data-theme="dark"] .ibjjf-notice {
   line-height: 1;
   transition: color .15s;
 }
-.plan-card--selected .plan-card__price { color: var(--brand-red); }
+.plan-card--selected .plan-card__price { color: var(--accent); }
 .plan-card__price-cycle {
   font-size: .8125rem;
   color: var(--muted);
@@ -1315,12 +1260,12 @@ html[data-theme="dark"] .ibjjf-notice {
 .plan-card__price--discounted {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--brand-red);
+  color: var(--accent);
   line-height: 1;
 }
 .plan-card__family-discount-note {
   font-size: .72rem;
-  color: var(--brand-red);
+  color: var(--accent);
   margin-top: 2px;
 }
 
@@ -1351,8 +1296,6 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--muted);
   font-size: .9rem;
 }
-
-/* ─── Checkout — resumo e ações ─────────────────────────────────────────────── */
 
 .checkout-summary {
   border: 1.5px solid var(--border);
@@ -1393,7 +1336,7 @@ html[data-theme="dark"] .ibjjf-notice {
 .checkout-summary__plan-price {
   font-weight: 800;
   font-size: 1.15rem;
-  color: var(--brand-red);
+  color: var(--accent);
   white-space: nowrap;
 }
 .checkout-summary__plan-price small {
@@ -1432,7 +1375,7 @@ html[data-theme="dark"] .ibjjf-notice {
   padding: 15px 20px;
   border-radius: 12px;
   border: none;
-  background: var(--brand-red);
+  background: var(--accent);
   color: #fff;
   font-size: .975rem;
   font-weight: 700;
@@ -1440,7 +1383,7 @@ html[data-theme="dark"] .ibjjf-notice {
   transition: background .15s, transform .1s;
   letter-spacing: .01em;
 }
-.btn-checkout-pay:hover  { background: var(--brand-red-strong); }
+.btn-checkout-pay:hover  { background: var(--accent-strong); }
 .btn-checkout-pay:active { transform: scale(.98); }
 .btn-checkout-pay__icon  { flex-shrink: 0; }
 
@@ -1458,18 +1401,15 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 .btn-checkout-later:hover { border-color: var(--text); color: var(--text); }
 
-/* ─── Badge de etapa do dependente ─────────────────────────────────────────── */
-
 .dep-step-badge {
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--brand-red);
+  color: var(--accent);
   margin-bottom: 0.125rem;
 }
 
-/* Label opcional */
 .form-label-optional {
   font-weight: 400;
   text-transform: none;
@@ -1477,8 +1417,6 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--muted);
   font-size: 0.75rem;
 }
-
-/* ─── Painel de confirmação pós-pagamento ───────────────────────────────────── */
 
 .reg-confirm-panel {
   background: var(--panel);
@@ -1549,9 +1487,6 @@ html[data-theme="dark"] .ibjjf-notice {
   font-weight: 500;
 }
 
-/* ─── Produtos pós-pagamento — cards e wizard de seleção ────────────────────── */
-
-/* Cards de produto */
 .prod-cards {
   display: flex;
   flex-direction: column;
@@ -1635,16 +1570,16 @@ html[data-theme="dark"] .ibjjf-notice {
   gap: 6px;
   padding: 7px 16px;
   border-radius: 8px;
-  border: 1.5px solid var(--brand-red);
+  border: 1.5px solid var(--accent);
   background: transparent;
-  color: var(--brand-red);
+  color: var(--accent);
   font-size: .8125rem;
   font-weight: 600;
   cursor: pointer;
   transition: background .15s, color .15s;
   font-family: inherit;
 }
-.prod-card__add-btn:hover { background: var(--brand-red); color: #fff; }
+.prod-card__add-btn:hover { background: var(--accent); color: #fff; }
 .prod-card__add-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 .prod-card__in-cart {
@@ -1653,14 +1588,13 @@ html[data-theme="dark"] .ibjjf-notice {
   font-style: italic;
 }
 
-/* Indicador de itens no carrinho */
 .products-cart-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: .8125rem;
   font-weight: 600;
-  color: var(--brand-red);
+  color: var(--accent);
   cursor: pointer;
   background: none;
   border: none;
@@ -1670,7 +1604,6 @@ html[data-theme="dark"] .ibjjf-notice {
   text-underline-offset: 2px;
 }
 
-/* Sub-view de configuração de variante */
 .prod-configure__back {
   display: inline-flex;
   align-items: center;
@@ -1685,7 +1618,7 @@ html[data-theme="dark"] .ibjjf-notice {
   transition: color .15s;
   margin-bottom: .25rem;
 }
-.prod-configure__back:hover { color: var(--brand-red); }
+.prod-configure__back:hover { color: var(--accent); }
 
 .prod-configure__product-name {
   font-size: 1.125rem;
@@ -1704,7 +1637,6 @@ html[data-theme="dark"] .ibjjf-notice {
   margin-top: 1rem;
 }
 
-/* Pills de variante */
 .variant-pills {
   display: flex;
   gap: 8px;
@@ -1726,11 +1658,11 @@ html[data-theme="dark"] .ibjjf-notice {
   font-family: inherit;
   white-space: nowrap;
 }
-.variant-pill:hover { border-color: var(--brand-red); color: var(--text); }
+.variant-pill:hover { border-color: var(--accent); color: var(--text); }
 .variant-pill--selected {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
   font-weight: 600;
 }
 .variant-pill--disabled {
@@ -1740,7 +1672,6 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 .variant-pill:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-/* Stepper de quantidade na configuração */
 .configure-qty-row {
   display: flex;
   align-items: center;
@@ -1782,8 +1713,8 @@ html[data-theme="dark"] .ibjjf-notice {
   font-family: inherit;
   line-height: 1;
 }
-.configure-qty-stepper__btn:hover:not(:disabled) { background: var(--brand-red-muted); color: var(--brand-red); }
-.configure-qty-stepper__btn:active:not(:disabled) { background: var(--brand-red); color: #fff; }
+.configure-qty-stepper__btn:hover:not(:disabled) { background: var(--accent-muted); color: var(--accent); }
+.configure-qty-stepper__btn:active:not(:disabled) { background: var(--accent); color: #fff; }
 .configure-qty-stepper__btn:disabled { opacity: .35; cursor: not-allowed; }
 
 .configure-qty-stepper__value {
@@ -1798,7 +1729,6 @@ html[data-theme="dark"] .ibjjf-notice {
   line-height: 2.5rem;
 }
 
-/* Itens do carrinho */
 .cart-item-list {
   display: flex;
   flex-direction: column;
@@ -1838,7 +1768,7 @@ html[data-theme="dark"] .ibjjf-notice {
 .cart-item__subtotal {
   font-size: .9rem;
   font-weight: 700;
-  color: var(--brand-red);
+  color: var(--accent);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1877,8 +1807,6 @@ html[data-theme="dark"] .ibjjf-notice {
   font-weight: 800;
 }
 
-/* ─── Revisão pós-materiais ─────────────────────────────────────────────────── */
-
 .order-review-block {
   background: var(--panel);
   border: 1px solid var(--border-soft);
@@ -1910,7 +1838,7 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 .order-review-block__amount strong,
 .order-review-block__amount:last-child {
-  color: var(--brand-red);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -1923,8 +1851,6 @@ html[data-theme="dark"] .ibjjf-notice {
   padding: 0.125rem 0;
 }
 
-/* ─── Painel de confirmação — heading ──────────────────────────────────────── */
-
 .reg-confirm-panel__heading {
   font-size: .72rem;
   font-weight: 700;
@@ -1934,8 +1860,6 @@ html[data-theme="dark"] .ibjjf-notice {
   padding: 10px 16px 6px;
   border-bottom: 1px solid var(--border-soft);
 }
-
-/* ─── Cards de produto — melhorias ─────────────────────────────────────────── */
 
 .prod-card__price-row {
   display: flex;
@@ -1951,8 +1875,8 @@ html[data-theme="dark"] .ibjjf-notice {
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 20px;
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  background: var(--accent-muted);
+  color: var(--accent);
   letter-spacing: .02em;
 }
 .prod-card__stock-badge--out {
@@ -1983,8 +1907,6 @@ html[data-theme="dark"] .ibjjf-notice {
   overflow: hidden;
 }
 
-/* ─── Configure sub-view — section wrapper + hint ──────────────────────────── */
-
 .prod-configure__section {
   margin-top: 1rem;
 }
@@ -1995,8 +1917,6 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--muted);
   margin-top: .375rem;
 }
-
-/* ─── Seletor de cor ────────────────────────────────────────────────────────── */
 
 .color-pills {
   display: flex;
@@ -2018,11 +1938,11 @@ html[data-theme="dark"] .ibjjf-notice {
   transition: border-color .15s, background .15s, color .15s;
   font-family: inherit;
 }
-.color-pill:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.color-pill:hover { border-color: var(--accent); color: var(--accent); }
 .color-pill--selected {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
-  color: var(--brand-red);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
   font-weight: 700;
 }
 .color-pill--disabled {
@@ -2031,8 +1951,6 @@ html[data-theme="dark"] .ibjjf-notice {
   pointer-events: none;
 }
 .color-pill:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-
-/* ─── Seletor de tamanho com estoque ────────────────────────────────────────── */
 
 .size-pills {
   display: flex;
@@ -2053,10 +1971,10 @@ html[data-theme="dark"] .ibjjf-notice {
   font-family: inherit;
   min-width: 52px;
 }
-.size-pill:hover { border-color: var(--brand-red); }
+.size-pill:hover { border-color: var(--accent); }
 .size-pill--selected {
-  border-color: var(--brand-red);
-  background: var(--brand-red-muted);
+  border-color: var(--accent);
+  background: var(--accent-muted);
 }
 .size-pill--disabled {
   opacity: .35;
@@ -2071,7 +1989,7 @@ html[data-theme="dark"] .ibjjf-notice {
   color: var(--text);
   line-height: 1.2;
 }
-.size-pill--selected .size-pill__size { color: var(--brand-red); }
+.size-pill--selected .size-pill__size { color: var(--accent); }
 
 .size-pill__stock {
   font-size: .65rem;
@@ -2081,16 +1999,12 @@ html[data-theme="dark"] .ibjjf-notice {
   letter-spacing: .02em;
   white-space: nowrap;
 }
-.size-pill--selected .size-pill__stock { color: var(--brand-red); opacity: .8; }
-
-/* ─── Responsivo ────────────────────────────────────────────────────────────── */
+.size-pill--selected .size-pill__stock { color: var(--accent); opacity: .8; }
 
 @media (min-width: 540px) {
   .wizard-shell { padding: 0 0 2.5rem; }
   .wizard-step__title { font-size: 1.5rem; }
 }
-
-/* ─── Cupom de desconto ─────────────────────────────────────────────────────── */
 
 .coupon-area {
   margin: 0.75rem 0 0.5rem;
@@ -2107,18 +2021,18 @@ html[data-theme="dark"] .ibjjf-notice {
   padding: 0 0.75rem;
   font-size: 0.9rem;
   font-family: inherit;
-  background: var(--card);
+  background: var(--surface);
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   transition: border-color 0.15s;
 }
-.coupon-area__input:focus { outline: none; border-color: var(--brand-red); }
+.coupon-area__input:focus { outline: none; border-color: var(--accent); }
 .coupon-area__input:disabled { opacity: 0.55; cursor: not-allowed; }
 .coupon-area__btn {
   height: 40px;
   padding: 0 1rem;
-  background: var(--brand-red);
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 0.4rem;
@@ -2129,7 +2043,7 @@ html[data-theme="dark"] .ibjjf-notice {
   transition: background 0.15s;
   white-space: nowrap;
 }
-.coupon-area__btn:hover:not(:disabled) { background: var(--brand-red-strong); }
+.coupon-area__btn:hover:not(:disabled) { background: var(--accent-strong); }
 .coupon-area__btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .coupon-msg {
   font-size: 0.8rem;
@@ -2137,8 +2051,6 @@ html[data-theme="dark"] .ibjjf-notice {
 }
 .coupon-msg--ok    { color: var(--success, #16a34a); }
 .coupon-msg--error { color: var(--danger, #dc2626); }
-
-/* ─── Botão aula experimental ───────────────────────────────────────────────── */
 
 .btn-trial {
   display: flex;
@@ -2161,7 +2073,6 @@ html[data-theme="dark"] .ibjjf-notice {
 .btn-trial:hover { border-color: var(--text, #ccc); color: var(--text, #eee); }
 .btn-trial svg { flex-shrink: 0; }
 
-/* Banner trial */
 .checkout-confirmed-banner--trial {
   background: color-mix(in srgb, #16a34a 10%, transparent);
   border-color: color-mix(in srgb, #16a34a 30%, transparent);
@@ -2171,16 +2082,14 @@ html[data-theme="dark"] .ibjjf-notice {
   color: #16a34a;
 }
 
-/* ─── Aviso de fidelidade Stripe ────────────────────────────────────────────── */
-
 .stripe-commitment-notice {
   display: flex;
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.875rem 1rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--brand-red, #dc2626) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--brand-red, #dc2626) 30%, transparent);
+  background: color-mix(in srgb, var(--accent, #dc2626) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #dc2626) 30%, transparent);
   color: var(--text, #111);
   margin-top: 1rem;
   margin-bottom: 0.25rem;
@@ -2188,7 +2097,7 @@ html[data-theme="dark"] .ibjjf-notice {
 .stripe-commitment-notice svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--brand-red, #dc2626);
+  color: var(--accent, #dc2626);
 }
 .stripe-commitment-notice > div > strong {
   display: block;
@@ -2215,8 +2124,8 @@ html[data-theme="dark"] .ibjjf-notice {
   align-items: flex-start;
   padding: 0.875rem 1rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--brand-primary, #2563eb) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--brand-primary, #2563eb) 25%, transparent);
+  background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 25%, transparent);
   color: var(--text, #111);
   margin-top: 1rem;
   margin-bottom: 0.25rem;
@@ -2224,7 +2133,7 @@ html[data-theme="dark"] .ibjjf-notice {
 .plan-policy-notice svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--brand-primary, #2563eb);
+  color: var(--accent, #2563eb);
 }
 .plan-policy-notice > div > strong {
   display: block;
@@ -2244,8 +2153,6 @@ html[data-theme="dark"] .ibjjf-notice {
   font-weight: 700;
   color: var(--text, #111);
 }
-
-/* ─── Prefers-reduced-motion ────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

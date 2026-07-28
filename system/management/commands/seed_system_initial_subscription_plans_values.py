@@ -104,10 +104,6 @@ class Command(BaseCommand):
                 rounding=ROUND_HALF_UP,
             )
 
-        # O preço realmente cobrado é sempre 'charged_price' (sobrescrito abaixo via
-        # .update()); 'base_monthly_net_price' por ciclo é opcional e só existe para
-        # reproduzir o valor comercial exato quando o ciclo mensal não divide o total
-        # do ciclo em uma fração de centavo exata.
         base_monthly_net_price = self._decimal(
             cycle_data if "base_monthly_net_price" in cycle_data else entry,
             "base_monthly_net_price",

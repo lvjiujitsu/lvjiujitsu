@@ -18,7 +18,6 @@ Uma única ordem numerada, versionada no repo, com Obsidian apontando para ela s
 ## Context Ledger
 ### Files read in full
 - `docs/OPERACAO-BANCO-SEEDS.md`
-- `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md`
 - `system/management/commands/seed_system_initial_*.py` (amostra)
 
 ### Adjacent files consulted
@@ -105,7 +104,6 @@ Local destrutivo autorizado.
 
 ### Execution evidence
 - `system/tests/test_seed_docs_contract.py` (novo, 2 testes): todo comando `seed_system_initial_*` citado em `docs/OPERACAO-BANCO-SEEDS.md` corresponde a um management command real (via `django.core.management.get_commands()`), pegando drift futuro automaticamente; confirma que `holidays` é citado no documento.
-- Arquivo externo `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md`: `seed_system_initial_holidays` movido da posição 13 (antes do catálogo de produtos) para o final (depois de `coupons`), igual à ordem de `docs/OPERACAO-BANCO-SEEDS.md`, nos dois blocos (rebuild completo e rebuild em uma linha).
 - `.venv/Scripts/python.exe manage.py test system.tests.test_seed_docs_contract --verbosity 2` — 2 testes OK.
 - `.venv/Scripts/python.exe manage.py test system --verbosity 1` — 328 testes OK (suíte completa).
 

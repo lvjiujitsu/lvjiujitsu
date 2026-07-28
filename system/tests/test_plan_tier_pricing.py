@@ -91,11 +91,6 @@ class PlanPriceComputationTestCase(TestCase):
         self.assertEqual(price.family_price(), (price.price * Decimal("0.82")).quantize(Decimal("0.01")))
 
     def test_price_recomputed_via_update_or_create_persists_to_database(self):
-        # Regressão: update_or_create() do Django restringe o UPDATE aos campos
-        # de 'defaults' via update_fields. 'price'/'monthly_reference_price' são
-        # derivados dentro do próprio save() e não estavam nesse conjunto — o
-        # valor calculado ficava certo só no objeto em memória, e o preço antigo
-        # permanecia gravado no banco (usado pelos seeds de catálogo).
         PlanPrice.objects.create(
             tier=self.tier,
             payment_method=PlanPaymentMethod.PIX,

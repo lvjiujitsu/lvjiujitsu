@@ -700,7 +700,7 @@ print('plan_paid:', snap.get('plan_paid'))  # True
 > um túnel HTTPS público (ex: `cloudflared`, `ngrok`) apontando para `localhost:8000`,
 > com `SITE_BASE_URL` local ajustado para a URL do túnel e esse mesmo domínio
 > cadastrado em "Minha Conta → Informações" no painel sandbox da Asaas (ver
-> `CLAUDE.md` seção 8 e `docs/prd/PRD-058-validacao-webhooks-asaas-stripe-local-hg.md`).
+> `CLAUDE.md` seção 9 e `docs/prd/PRD-058-validacao-webhooks-asaas-stripe-local-hg.md`).
 > Essa mudança de configuração **exige decisão e confirmação do usuário** antes de
 > qualquer alteração no `.env` local — não fazer isso silenciosamente.
 
@@ -875,7 +875,6 @@ stripe_session_id: cs_test_<id_original>
 
 ### Hook de simulação Stripe (100% local, sem navegador externo)
 
-Fonte canônica dos comandos: `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-stripe-lvjiujitsu.md`.
 Este é o único gateway que se testa inteiramente pelo preview interno — o Stripe CLI
 simula o webhook que a Stripe enviaria em produção, sem precisar abrir
 `checkout.stripe.com`.

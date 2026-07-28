@@ -8,14 +8,13 @@
 {% endblock %}
 
 {% block content %}
-<!-- Cabeçalho -->
+
     <div class="page-header">
       <p class="page-header__eyebrow">
         <a href="{% url 'system:person-detail' pk=object.pk %}">← {{ object.full_name }}</a>
       </p>
     </div>
 
-    <!-- Card de confirmação de exclusão -->
     <div class="delete-confirm" role="alert" aria-labelledby="delete-title" aria-describedby="delete-body">
 
       <div class="delete-confirm__icon" aria-hidden="true">
@@ -48,7 +47,7 @@
 {% endblock %}
 
 {% block modals %}
-<!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+
   <script>
     (function () {
       var toggle = document.getElementById('theme-toggle');

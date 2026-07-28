@@ -1,7 +1,13 @@
 [
   {
     "fixture_id": "teacher_purple_assistant",
-    "coverage_tags": ["profile:teacher", "dependency:none", "experience:jiu_jitsu", "belt:adult-purple", "blood:AB+"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:none",
+      "experience:jiu_jitsu",
+      "belt:adult-purple",
+      "blood:AB+"
+    ],
     "full_name": "Test Teacher Purple Assistant",
     "cpf": "930.400.001-01",
     "email": "test.teacher.purple@lvjiujitsu.test",
@@ -22,15 +28,29 @@
     "person_type_code": "instructor",
     "class_category_code": "adult",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "adult", "class_group_teacher_cpf": "92000000100"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000100"
+      }
+    ],
     "operational_roles": [],
     "relationships": [],
     "graduation_history": [
-      {"belt_rank_code": "adult-blue", "grade_number": 4, "awarded_at": "2021-01-16", "notes": "Blue belt history."},
-      {"belt_rank_code": "adult-purple", "grade_number": 3, "awarded_at": "2024-01-20", "notes": "Current teacher purple belt fixture."}
+      {
+        "belt_rank_code": "adult-blue",
+        "grade_number": 4,
+        "awarded_at": "2021-01-16",
+        "notes": "Blue belt history."
+      },
+      {
+        "belt_rank_code": "adult-purple",
+        "grade_number": 3,
+        "awarded_at": "2024-01-20",
+        "notes": "Current teacher purple belt fixture."
+      }
     ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_001",
     "asaas_customer_id": "cus_asaas_teacher_001",
@@ -44,7 +64,13 @@
   },
   {
     "fixture_id": "teacher_black_with_dependent",
-    "coverage_tags": ["profile:teacher", "dependency:teacher-with-dependent", "experience:jiu_jitsu", "belt:adult-black", "blood:AB-"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:teacher-with-dependent",
+      "experience:jiu_jitsu",
+      "belt:adult-black",
+      "blood:AB-"
+    ],
     "full_name": "Test Teacher Black Dependent",
     "cpf": "930.400.002-02",
     "email": "test.teacher.black.dependent@lvjiujitsu.test",
@@ -65,15 +91,36 @@
     "person_type_code": "instructor",
     "class_category_code": "kids",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "kids", "class_group_teacher_cpf": "92000000452"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "kids",
+        "class_group_teacher_cpf": "92000000452"
+      }
+    ],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.011-11", "kinship_type": "mother", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.011-11",
+        "kinship_type": "mother",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
     "graduation_history": [
-      {"belt_rank_code": "adult-brown", "grade_number": 4, "awarded_at": "2018-08-18", "notes": "Brown belt history."},
-      {"belt_rank_code": "adult-black", "grade_number": 2, "awarded_at": "2024-08-24", "notes": "Current teacher black belt fixture."}
+      {
+        "belt_rank_code": "adult-brown",
+        "grade_number": 4,
+        "awarded_at": "2018-08-18",
+        "notes": "Brown belt history."
+      },
+      {
+        "belt_rank_code": "adult-black",
+        "grade_number": 2,
+        "awarded_at": "2024-08-24",
+        "notes": "Current teacher black belt fixture."
+      }
     ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_002",
     "asaas_customer_id": "cus_asaas_teacher_002",
@@ -87,7 +134,13 @@
   },
   {
     "fixture_id": "teacher_coral_red_black",
-    "coverage_tags": ["profile:teacher", "dependency:none", "experience:jiu_jitsu", "belt:adult-coral-redblack", "blood:O+"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:none",
+      "experience:jiu_jitsu",
+      "belt:adult-coral-redblack",
+      "blood:O+"
+    ],
     "full_name": "Test Teacher Coral Red Black",
     "cpf": "930.400.003-03",
     "email": "test.teacher.coral.redblack@lvjiujitsu.test",
@@ -108,12 +161,23 @@
     "person_type_code": "instructor",
     "class_category_code": "adult",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "adult", "class_group_teacher_cpf": "92000000290"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000290"
+      }
+    ],
     "operational_roles": [],
     "relationships": [],
-    "graduation_history": [{"belt_rank_code": "adult-coral-redblack", "grade_number": 0, "awarded_at": "2022-03-12", "notes": "Coral red-black teacher fixture."}],
+    "graduation_history": [
+      {
+        "belt_rank_code": "adult-coral-redblack",
+        "grade_number": 0,
+        "awarded_at": "2022-03-12",
+        "notes": "Coral red-black teacher fixture."
+      }
+    ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_003",
     "asaas_customer_id": "cus_asaas_teacher_003",
@@ -127,7 +191,13 @@
   },
   {
     "fixture_id": "teacher_coral_red_white",
-    "coverage_tags": ["profile:teacher", "dependency:none", "experience:jiu_jitsu", "belt:adult-coral-redwhite", "blood:O-"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:none",
+      "experience:jiu_jitsu",
+      "belt:adult-coral-redwhite",
+      "blood:O-"
+    ],
     "full_name": "Test Teacher Coral Red White",
     "cpf": "930.400.004-04",
     "email": "test.teacher.coral.redwhite@lvjiujitsu.test",
@@ -148,12 +218,23 @@
     "person_type_code": "instructor",
     "class_category_code": "adult",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "women", "class_group_teacher_cpf": "92000000533"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "women",
+        "class_group_teacher_cpf": "92000000533"
+      }
+    ],
     "operational_roles": [],
     "relationships": [],
-    "graduation_history": [{"belt_rank_code": "adult-coral-redwhite", "grade_number": 0, "awarded_at": "2021-04-17", "notes": "Coral red-white teacher fixture."}],
+    "graduation_history": [
+      {
+        "belt_rank_code": "adult-coral-redwhite",
+        "grade_number": 0,
+        "awarded_at": "2021-04-17",
+        "notes": "Coral red-white teacher fixture."
+      }
+    ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_004",
     "asaas_customer_id": "cus_asaas_teacher_004",
@@ -167,7 +248,13 @@
   },
   {
     "fixture_id": "teacher_red_belt",
-    "coverage_tags": ["profile:teacher", "dependency:none", "experience:jiu_jitsu", "belt:adult-red", "blood:A+"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:none",
+      "experience:jiu_jitsu",
+      "belt:adult-red",
+      "blood:A+"
+    ],
     "full_name": "Test Teacher Red Belt",
     "cpf": "930.400.005-05",
     "email": "test.teacher.red@lvjiujitsu.test",
@@ -188,12 +275,23 @@
     "person_type_code": "instructor",
     "class_category_code": "adult",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "adult", "class_group_teacher_cpf": "75598094134"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "75598094134"
+      }
+    ],
     "operational_roles": [],
     "relationships": [],
-    "graduation_history": [{"belt_rank_code": "adult-red", "grade_number": 0, "awarded_at": "2018-12-08", "notes": "Red belt teacher fixture."}],
+    "graduation_history": [
+      {
+        "belt_rank_code": "adult-red",
+        "grade_number": 0,
+        "awarded_at": "2018-12-08",
+        "notes": "Red belt teacher fixture."
+      }
+    ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_005",
     "asaas_customer_id": "cus_asaas_teacher_005",
@@ -207,7 +305,14 @@
   },
   {
     "fixture_id": "teacher_judo_people_support",
-    "coverage_tags": ["profile:teacher", "dependency:none", "experience:judo", "belt:none", "blood:A-", "role:people-support"],
+    "coverage_tags": [
+      "profile:teacher",
+      "dependency:none",
+      "experience:judo",
+      "belt:none",
+      "blood:A-",
+      "role:people-support"
+    ],
     "full_name": "Test Teacher Judo Support",
     "cpf": "930.400.006-06",
     "email": "test.teacher.judo@lvjiujitsu.test",
@@ -228,12 +333,20 @@
     "person_type_code": "instructor",
     "class_category_code": "adult",
     "class_enrollments": [],
-    "class_instructor_assignments": [{"class_group_category": "adult", "class_group_teacher_cpf": "92000000100"}],
-    "operational_roles": [{"role_code": "people-support"}],
+    "class_instructor_assignments": [
+      {
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000100"
+      }
+    ],
+    "operational_roles": [
+      {
+        "role_code": "people-support"
+      }
+    ],
     "relationships": [],
     "graduation_history": [],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_teacher_006",
     "asaas_customer_id": "cus_asaas_teacher_006",

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Criar uma entrega futura para habilitar navegação e CRUD/hubs administrativos dos módulos já modelados no LV: turmas, financeiro, graduação, materiais, planos, perfis e acessos. A demanda nasce da comparação com o Visary: o LV possui partes relevantes de domínio e services, mas vários módulos estão sem rotas/templates administrativas ou aparecem como atalhos desabilitados na home.
+Criar uma entrega futura para habilitar navegação e CRUD/hubs administrativos dos módulos já modelados no LV: turmas, financeiro, graduação, materiais, planos, perfis e acessos. O LV possui partes relevantes de domínio e services, mas vários módulos estão sem rotas/templates administrativas ou aparecem como atalhos desabilitados na home.
 
 ## Demand type
 
@@ -19,7 +19,7 @@ Nova feature administrativa + integração de módulos existentes. Exige PRD pr�
   - `graduation`: faixas, regras e graduação do aluno;
   - `products/materials`: categorias, produtos, variantes e backorders;
   - `person_types`: administração de perfis/tipos de pessoa.
-- O LV não deve copiar domínio de consultoria do Visary; deve portar apenas padrão de governança, hubs, permissões, navegação e acabamento visual.
+- O LV não deve copiar domínio de consultoria; deve adotar apenas padrão de governança, hubs, permissões, navegação e acabamento visual.
 
 ## Goal
 
@@ -270,7 +270,7 @@ Aprovado por solicitação direta do usuário: “implemente”.
 - Migrations/schema sem autorização.
 - Seeds destrutivos ou reset local.
 - Pagamentos reais em gateway.
-- Portar domínio de vistos/consultoria do Visary.
+- Portar domínio de vistos ou consultoria.
 
 ## Impacted files
 

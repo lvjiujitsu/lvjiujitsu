@@ -1,8 +1,8 @@
-# PRD-062: Auditoria do padrão sinal → serviço idempotente (lição PRD-105 do Visary)
+# PRD-062: Auditoria do padrão sinal → serviço idempotente
 
 ## Summary
 
-Auditar no LV a superfície de sinais Django e a criação de registros derivados (backorders, repasses/`TeacherPayout`, financeiro de pedido) contra os modos de falha que o Visary corrigiu no PRD-105 — dependência exclusiva de sinal, timing de M2M/`bulk_create` e exceção silenciada — e codificar o padrão "serviço idempotente + chamada explícita" (belt-and-suspenders) como regra de projeto. A constatação inicial é que o LV **já segue** o padrão correto nos serviços; este PRD confirma isso com evidência e endurece o único ponto frágil identificado.
+Auditar no LV a superfície de sinais Django e a criação de registros derivados (backorders, repasses/`TeacherPayout`, financeiro de pedido) contra modos de falha conhecidos — dependência exclusiva de sinal, timing de M2M/`bulk_create` e exceção silenciada — e codificar o padrão "serviço idempotente + chamada explícita" (belt-and-suspenders) como regra de projeto. A constatação inicial é que o LV **já segue** o padrão correto nos serviços; este PRD confirma isso com evidência e endurece o único ponto frágil identificado.
 
 ## Demand type
 
@@ -10,7 +10,7 @@ Auditoria arquitetural preventiva + endurecimento pontual + codificação de reg
 
 ## Current problem
 
-- No Visary (PRD-105), lógica crítica dependia só de sinais e falhava por timing de M2M e `bulk_create`, que não disparam `post_save`. A correção foi extrair serviço idempotente e chamá-lo explicitamente na view.
+- Em caso conhecido, lógica crítica dependia só de sinais e falhava por timing de M2M e `bulk_create`, que não disparam `post_save`. A correção foi extrair serviço idempotente e chamá-lo explicitamente na view.
 - No LV, a auditoria preliminar indica situação saudável:
   - único `@receiver` do repositório está em `system/signals.py` (backorders) e já delega a `system/services/product_backorders.py`;
   - serviços de repasse (`asaas_payroll.py`) e financeiro (`financial_transactions.py`) criam registros dentro de `@transaction.atomic`, sem depender de sinal.
@@ -40,7 +40,6 @@ Auditoria arquitetural preventiva + endurecimento pontual + codificação de reg
 
 - `system/models/product.py` (ProductVariant, ProductBackorder, RegistrationOrder)
 - `system/services/registration_checkout.py` (fluxo de pedido)
-- Visary `docs/prd/PRD-105-financial-signal-fix.md` (lição de referência)
 - inventário de `system/services/`
 
 ### Internet / official documentation

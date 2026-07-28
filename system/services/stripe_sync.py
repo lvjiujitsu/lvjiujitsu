@@ -27,8 +27,6 @@ def _to_cents(value):
 
 
 def _plan_code(plan):
-    """Código estável para metadata Stripe. SubscriptionPlan tem 'code' próprio;
-    PlanPrice não tem — deriva um código equivalente a partir do tier/gateway/ciclo."""
     code = getattr(plan, "code", None)
     if code:
         return code
@@ -39,16 +37,10 @@ def _plan_code(plan):
 
 
 def _plan_description(plan):
-    """SubscriptionPlan tem 'description'; PlanPrice não tem esse campo."""
     return getattr(plan, "description", "") or None
 
 
 def sync_plan_to_stripe(plan):
-    """Sincroniza um plano (SubscriptionPlan legado OU PlanPrice novo) com o
-    Stripe. Ambos os modelos compartilham os mesmos campos stripe_* — a query
-    de persistência usa type(plan) em vez de um modelo fixo para funcionar
-    com qualquer um dos dois.
-    """
     model = type(plan)
     client = _get_client()
     now = timezone.now()

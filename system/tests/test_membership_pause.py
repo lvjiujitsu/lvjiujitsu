@@ -1,4 +1,3 @@
-"""PRD-132: pausa de mensalidade (atestado médico e trancamento self-service)."""
 
 from datetime import date, timedelta
 from decimal import Decimal

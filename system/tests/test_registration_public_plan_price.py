@@ -1,9 +1,3 @@
-"""PRD-129: cadastro público (register.js/registration_forms.py) migrado para
-o catálogo dual-source PlanTier/PlanPrice (mesmo padrão já usado pelo wizard
-de dependente na PRD-127). Cobre a regressão encontrada na validação da
-PRD-128: após o reseed, Individual/Família ficam inativos em SubscriptionPlan
-e o cadastro público não teria mais nenhum plano vendável sem esta migração.
-"""
 
 from decimal import Decimal
 

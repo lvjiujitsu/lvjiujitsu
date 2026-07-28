@@ -12,4 +12,5 @@ Use:
 - `docs/PLATFORM-ADAPTERS.md` para diferenças do Cursor;
 - as skills `lv-*` conforme a demanda.
 
-Responda em pt-BR, de forma mínima. Testes locais, ORM local, migrations locais e seeds locais fazem parte da entrega quando proporcionais ao escopo.
+Responda em pt-BR, de forma mínima. Testes, ORM, migrations, reset e seeds
+locais fazem parte da entrega quando proporcionais ao escopo.

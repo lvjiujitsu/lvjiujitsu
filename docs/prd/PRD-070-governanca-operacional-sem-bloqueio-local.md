@@ -26,17 +26,16 @@ Permitir que agentes executem o ciclo local completo necessario para entregar o 
 - `.cursor/rules/*.mdc`
 - `.claude/settings.json`
 - `.claude/launch.json`
-- Visary: `AGENTS.md`, `CLAUDE.md`, `docs/AGENT-WORKFLOW.md`, `docs/OPERACAO-BANCO-SEEDS.md`, `docs/PLATFORM-ADAPTERS.md`, `docs/UI-SCREEN-CONTRACT.md`, `docs/UX-SCREEN-FLOWS.md`, skills e bootstrap.
 
 ## Official documentation
 - Context7 `/websites/djangoproject_en_5_2`: `migrate` aplica migrations e cria tabelas; test runner usa banco de teste separado; management commands sao via `manage.py`.
 
 ## Approval
-Usuario autorizou explicitamente: seeds, migrations, qualquer comando, testes, criacao de admin e validacao visual. Tambem solicitou remocao da politica em LV e Visary.
+Usuario autorizou explicitamente: seeds, migrations, qualquer comando, testes, criacao de admin e validacao visual.
 
 ## Scope
 - Governanca ativa do LV.
-- Governanca ativa do Visary quando a mesma restricao existir.
+
 - Execucao local do ciclo LV ate Home autenticada.
 
 ## Out of scope
@@ -49,14 +48,14 @@ Usuario autorizou explicitamente: seeds, migrations, qualquer comando, testes, c
 - URL local canonica documentada como `http://localhost:8000`.
 - `http://lv.localhost:8000` nao renderiza a aplicacao LV como host alternativo.
 - Skills LV sincronizadas entre `.agents`, `.claude` e `.cursor`.
-- Visary recebe a mesma regra operacional.
+
 - LV executa `makemigrations`, `migrate`, seeds necessarias, `create_admin_superuser`, testes proporcionais e validacao visual em `localhost:8000`.
 
 ## Evidence
 - Context7 `/websites/djangoproject_en_5_2`: `migrate` aplica migrations e cria tabelas; test runner usa banco de teste separado.
-- Busca ativa LV/Visary: sem `lv.localhost`, `127.0.0.1`, `testes somente`, `somente sob autorização`, `não executar testes` ou `não executado por política` nos contratos ativos fora de PRDs históricas.
+- Busca ativa: sem `lv.localhost`, `127.0.0.1`, `testes somente`, `somente sob autorização`, `não executar testes` ou `não executado por política` nos contratos ativos fora de PRDs históricas.
 - Hash das skills LV: `.agents`, `.claude` e `.cursor` sincronizados para `lv-task-intake`, `lv-prd`, `lv-ui-delivery`, `lv-django-delivery`, `lv-cleanup-audit` e `lv-prompt-builder`.
-- Hash das skills Visary: `.agents`, `.claude` e `.cursor` sincronizados para `visary-task-intake`, `visary-prd`, `visary-ui-delivery`, `visary-django-delivery` e `visary-cleanup-audit`.
+- Hash das skills: `.agents`, `.claude` e `.cursor` sincronizados para `lv-task-intake`, `lv-prd`, `lv-ui-delivery`, `lv-django-delivery` e `lv-cleanup-audit`.
 - `manage.py makemigrations`: criou `system/migrations/0001_initial.py`.
 - `manage.py test system.tests.test_home_dashboard system.tests.test_admin_hubs_contract --verbosity 2`: 3 testes OK.
 - `manage.py migrate`: aplicou todas as migrations, incluindo `system.0001_initial`.
@@ -83,8 +82,8 @@ Usuario autorizou explicitamente: seeds, migrations, qualquer comando, testes, c
 
 ## Implemented
 - Governança ativa LV atualizada em `AGENTS.md`, `CLAUDE.md`, `docs/AGENT-WORKFLOW.md`, `docs/OPERACAO-BANCO-SEEDS.md`, `docs/PLATFORM-ADAPTERS.md`, `docs/UI-SCREEN-CONTRACT.md`, skills, regras Cursor e launch Claude.
-- Governança ativa Visary atualizada nos equivalentes, incluindo `.claude/settings.json`.
-- Bootstrap Visary atualizado para não reintroduzir bloqueio local.
+- Governança ativa atualizada, incluindo `.claude/settings.json`.
+- Bootstrap atualizado para não reintroduzir bloqueio local.
 - URL local canônica documentada como `http://localhost:8000`.
 - Ciclo operacional local LV executado até admin + Home autenticada.
 

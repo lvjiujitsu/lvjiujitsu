@@ -1,9 +1,4 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   LV JIU JITSU — Dependente (home)
-   Reaproveita os tokens e componentes de auth/register.css (wizard-shell,
-   wizard-step, form-field, plan-card, class-card, martial-has-btn). Este
-   arquivo cobre apenas o que register.css não define.
-   ───────────────────────────────────────────────────────────────────────────── */
+
 
 .dependent-page--modal .wizard-shell {
   max-width: 100%;
@@ -37,7 +32,6 @@
   margin: 0;
 }
 
-/* ─── Barra fina de navegação (o título/fechar já vêm do modal externo) ──────── */
 .dep-wizard-topbar {
   display: flex;
   align-items: center;
@@ -46,7 +40,6 @@
   padding: 0.25rem 0 0.75rem;
 }
 
-/* ─── Tela de conclusão (iframe fecha e a home recarrega em seguida) ─────────── */
 .dependent-shell {
   width: min(100%, 540px);
   margin: 0 auto;
@@ -85,7 +78,6 @@
   color: var(--muted);
 }
 
-/* ─── Usar plano familiar ativo ──────────────────────────────────────────────── */
 .option-card {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -103,7 +95,7 @@
   width: 1.15rem;
   height: 1.15rem;
   margin-top: 0.2rem;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
 }
 
 .option-card strong,
@@ -116,7 +108,6 @@
   color: var(--muted);
 }
 
-/* ─── Plano do dependente ───────────────────────────────────────────────────── */
 .financial-plan-section {
   display: grid;
   gap: 0.9rem;
@@ -144,7 +135,6 @@
   display: none;
 }
 
-/* ─── Materiais opcionais ────────────────────────────────────────────────────── */
 .materials-empty {
   padding: 1rem;
   border: 1px dashed var(--border);
@@ -158,7 +148,6 @@
   padding: 1rem;
 }
 
-/* ─── Etapa de revisão ────────────────────────────────────────────────────────── */
 .review-summary {
   display: grid;
   gap: 0;
@@ -197,7 +186,6 @@
   color: var(--muted);
 }
 
-/* ─── Estratégia de cartão do dependente ────────────────────────────────────── */
 .card-strategy-section {
   display: grid;
   gap: 0.5rem;

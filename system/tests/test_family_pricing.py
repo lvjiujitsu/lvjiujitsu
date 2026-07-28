@@ -177,9 +177,6 @@ class FamilyPricingRecomputeTestCase(TestCase):
 
 
 class LegacyPlanTierInteropTestCase(TestCase):
-    """Titular ainda em SubscriptionPlan legado (Individual) + dependente já no
-    novo PlanPrice devem ser reconhecidos como o mesmo tier comercial (audience +
-    weekly_frequency), sem exigir migração do Membership do titular."""
 
     def setUp(self):
         self.person_type = PersonType.objects.create(

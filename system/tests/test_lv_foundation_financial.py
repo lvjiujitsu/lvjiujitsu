@@ -11,7 +11,6 @@ from system.services import TECHNICAL_ADMIN_SESSION_KEY
 
 
 class LvFoundationFinancialRoutesTestCase(TestCase):
-    """PRD-077: rotas canonicas em ingles para Financeiro (telas de leitura + acao)."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

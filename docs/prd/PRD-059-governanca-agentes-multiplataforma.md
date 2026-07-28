@@ -44,7 +44,7 @@ Consolidar um fluxo que:
 - `docs/UI-SCREEN-CONTRACT.md`
 - `docs/GUIA-PREENCHIMENTO-CLAUDE-MD.md`
 - `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md`
-- `docs/prd/PRD-054-alinhamento-arquitetural-lv-visary.md`
+- `docs/prd/PRD-054-alinhamento-arquitetural-reset-seguro.md`
 - `docs/prd/PRD-058-validacao-webhooks-asaas-stripe-local-hg.md`
 - `system/services/stripe_checkout.py`
 - `system/views/stripe_views.py`
@@ -57,7 +57,7 @@ Consolidar um fluxo que:
 - inventário de `system/management/commands/`
 - `requirements.txt`
 - wizard guides em `docs/wizard-step-*.md`
-- bootstrap reutilizável do Visary.
+- bootstrap de governança reutilizável.
 
 ### Internet / official documentation
 
@@ -75,7 +75,7 @@ Consolidar um fluxo que:
 
 ### Context7 / MCPs / tools verified
 
-- Pesquisa Context7 de Django e Playwright registrada no PRD-106 do Visary.
+- Pesquisa Context7 de Django e Playwright registrada.
 - PowerShell 7.6.0, Python 3.12.10, Git e `rg` disponíveis.
 - Browser interno disponível em `http://localhost:8000/`, mas não aplicável a arquivos documentais/configuração.
 
@@ -88,10 +88,7 @@ Consolidar um fluxo que:
 
 ## Required skills
 
-- `visary-task-intake`
-- `visary-prd`
 - `skill-creator`
-- `visary-cleanup-audit`
 
 Após a implementação:
 
@@ -191,7 +188,7 @@ As fontes e adaptadores listados no escopo.
 
 - Bloquear testes apenas em documentação e deixar permissão ampla em configuração.
 - Remover detalhes de Asaas/Stripe sem manter referência operacional.
-- Copiar fatos do Visary para o LV.
+- Copiar fatos de outro domínio para o LV.
 - Divergência entre cópias de skills.
 - Sobrescrever mudanças locais do usuário.
 
@@ -286,7 +283,7 @@ Nenhum.
 ## Deviations from plan
 
 - O gerador oficial de skills escreveu inicialmente `openai.yaml` no encoding do console Windows; os cinco arquivos foram substituídos por UTF-8 e revalidados.
-- PyYAML não foi instalado na `.venv` do LV; o validador foi executado com a `.venv` do Visary, que já contém a dependência aprovada.
+- PyYAML não foi instalado na `.venv` do LV; o validador foi executado com uma `.venv` que já contém a dependência aprovada.
 - Não houve forward-test com subagente porque a tarefa não autorizou delegação.
 
 ## Pending

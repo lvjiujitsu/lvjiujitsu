@@ -38,7 +38,8 @@ def base_dir_path_setting(name, default):
 
 
 DJANGO_ENVIRONMENT = config("DJANGO_ENVIRONMENT", default="local").strip().lower()
-if DJANGO_ENVIRONMENT not in {"local", "hg", "prod"}:
+REMOTE_ENVIRONMENTS = {"hg", "prod"}
+if DJANGO_ENVIRONMENT not in {"local", *REMOTE_ENVIRONMENTS}:
     raise ImproperlyConfigured(
         "DJANGO_ENVIRONMENT deve ser 'local', 'hg' ou 'prod'."
     )
@@ -48,9 +49,9 @@ DEBUG = config(
     default=DJANGO_ENVIRONMENT == "local",
     cast=bool,
 )
-if DJANGO_ENVIRONMENT in {"hg", "prod"} and DEBUG:
+if DJANGO_ENVIRONMENT in REMOTE_ENVIRONMENTS and DEBUG:
     raise ImproperlyConfigured(
-        "DJANGO_DEBUG deve ser False para os ambientes hg e prod."
+        f"DJANGO_DEBUG deve ser False no ambiente {DJANGO_ENVIRONMENT}."
     )
 
 
@@ -97,6 +98,9 @@ SECURE_SSL_REDIRECT = config("DJANGO_SECURE_SSL_REDIRECT", default=not DEBUG, ca
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
 
 ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
 ADMIN_SUPERUSER_EMAIL    = config("ADMIN_SUPERUSER_EMAIL",    default="")
@@ -104,6 +108,8 @@ ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
 
 SEED_INITIAL_TEACHER_PASSWORD        = config("SEED_INITIAL_TEACHER_PASSWORD",        default="")
 SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config("SEED_INITIAL_ADMINISTRATIVE_PASSWORD", default="")
+
+SEED_TEST_PORTAL_PASSWORD = config("SEED_TEST_PORTAL_PASSWORD", default="")
 
 
 STRIPE_PUBLIC_KEY      = config("STRIPE_PUBLIC_KEY",      default="")
@@ -226,7 +232,9 @@ WSGI_APPLICATION = 'lvjiujitsu.wsgi.application'
 
 
 DATABASE_URL = config("DATABASE_URL", default="").strip()
-if DJANGO_ENVIRONMENT in {"hg", "prod"} and not DATABASE_URL:
+
+SUPABASE_PROJECT_REF = config("SUPABASE_PROJECT_REF", default="").strip()
+if DJANGO_ENVIRONMENT in REMOTE_ENVIRONMENTS and not DATABASE_URL:
     raise ImproperlyConfigured(
         "DATABASE_URL deve ser definido para os ambientes hg e prod."
     )
@@ -285,6 +293,7 @@ DATETIME_FORMAT = "d/m/Y H:i"
 STATIC_URL    = config("DJANGO_STATIC_URL", default="/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT   = base_dir_path_setting("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles")
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 MEDIA_URL  = config("DJANGO_MEDIA_URL",  default="/media/")
 MEDIA_ROOT = base_dir_path_setting("DJANGO_MEDIA_ROOT", BASE_DIR / "media")
@@ -295,7 +304,7 @@ LOGOUT_REDIRECT_URL = "system:login"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-TEST_RUNNER = 'system.test_runner.PostgreSQLDiscoverRunner'
+TEST_RUNNER = "system.test_runner.ProjectDiscoverRunner"
 
 
 STORAGES = {
@@ -313,36 +322,45 @@ STORAGES = {
 WHITENOISE_MAX_AGE = config('WHITENOISE_MAX_AGE', default=31536000 if not DEBUG else 0, cast=int)
 
 
-if not DEBUG:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'simple': {
-                'format': '{levelname} {name} {message}',
-                'style': '{',
-            },
+_log_handler = 'null' if DEBUG else 'console'
+LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='WARNING').upper()
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '{levelname} {name} {message}',
+            'style': '{',
         },
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'simple',
-            },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
-        'root': {
-            'handlers': ['console'],
-            'level': 'WARNING',
+        'null': {
+            'class': 'logging.NullHandler',
         },
-        'loggers': {
-            'django': {
-                'handlers': ['console'],
-                'level': 'WARNING',
-                'propagate': False,
-            },
-            'django.request': {
-                'handlers': ['console'],
-                'level': 'ERROR',
-                'propagate': False,
-            },
+    },
+    'root': {
+        'handlers': [_log_handler],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {
+            'handlers': [_log_handler],
+            'level': LOG_LEVEL,
+            'propagate': False,
         },
-    }
+        'django.db.backends': {
+            'handlers': [_log_handler],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': [_log_handler],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

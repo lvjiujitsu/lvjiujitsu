@@ -2,7 +2,7 @@
 
 ## Summary
 
-Consolidar a máquina de estados do wizard público (`/register/`, `static/system/js/auth/register.js`) para eliminar a classe de bugs que os PRD-056 e PRD-057 trataram pontualmente: `state.stepSequence` e `state.classSelections` vazios após limpeza do `sessionStorage`, múltiplos steps visíveis simultaneamente e navegação retroativa inconsistente pós-pagamento. Adapta ao LV o princípio de continuidade e retorno à origem que o Visary consolidou no PRD-117 (cadeia multi-etapas que preserva contexto e volta ao ponto de início), aplicado aqui à máquina de passos de página única — não a modais aninhados.
+Consolidar a máquina de estados do wizard público (`/register/`, `static/system/js/auth/register.js`) para eliminar a classe de bugs que os PRD-056 e PRD-057 trataram pontualmente: `state.stepSequence` e `state.classSelections` vazios após limpeza do `sessionStorage`, múltiplos steps visíveis simultaneamente e navegação retroativa inconsistente pós-pagamento. Adapta ao LV o princípio de continuidade e retorno à origem (cadeia multi-etapas que preserva contexto e volta ao ponto de início), aplicado aqui à máquina de passos de página única — não a modais aninhados.
 
 ## Demand type
 
@@ -38,7 +38,6 @@ Correção arquitetural de front-end (consolidação de máquina de estados) + U
 - `docs/wizard-step-plan-aluno-titular.md`, `docs/wizard-step-plan-aluno-com-dependente.md`, `docs/wizard-step-plan-responsavel-com-aluno.md`
 - template do wizard em `templates/login/` (steps e atributo `hidden`)
 - `docs/UI-SCREEN-CONTRACT.md`
-- Visary `docs/prd/PRD-117-fluxo-encadeado-sobre-home-clientes.md` (princípio de continuidade/retorno à origem)
 
 ### Internet / official documentation
 
@@ -66,7 +65,7 @@ Correção arquitetural de front-end (consolidação de máquina de estados) + U
 
 ## Understanding approved
 
-- Summary presented: consolidar a máquina de estados do wizard e a re-hidratação autoritativa, adaptando o princípio de continuidade do PRD-117 do Visary.
+- Summary presented: consolidar a máquina de estados do wizard e a re-hidratação autoritativa, adaptando o princípio de continuidade.
 - User approval: solicitação explícita de PRDs completos para implementação sequencial.
 - Date: 2026-06-28.
 

@@ -1,11 +1,13 @@
 ---
-description: Templates, CSS, JavaScript e fluxos visuais do LV
+description: Templates, CSS, JavaScript e fluxos visuais do LV JIU JITSU
 globs: "{templates/**/*.html,static/system/**/*.css,static/system/**/*.js}"
 alwaysApply: false
 ---
 
 Use `/lv-ui-delivery`.
 
-Leia `docs/UI-SCREEN-CONTRACT.md` e o PRD do fluxo.
+Leia `docs/UI-SCREEN-CONTRACT.md` e a PRD do fluxo.
 
-Apresente a proposta visual e aguarde aprovação antes de implementar. Depois, valide no browser interno disponível em desktop e mobile e registre evidência.
+Apresente hierarquia, wireframe e estados antes do código. Depois, valide a
+rota real no browser interno em desktop e mobile, nos dois temas, com console
+limpo e evidência visual registrada.

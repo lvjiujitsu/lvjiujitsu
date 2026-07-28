@@ -1,22 +1,40 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
-from django.conf import settings
 
 
 class Command(BaseCommand):
-    help = "Cria ou atualiza o superusuario administrativo a partir das variaveis do .env."
+    help = "Cria ou atualiza o superusuário a partir de ADMIN_SUPERUSER_*."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--skip-if-unconfigured",
+            action="store_true",
+            help="Não falha quando e-mail ou senha não estiverem configurados.",
+        )
 
     def handle(self, *args, **options):
-        username = self._get_setting("ADMIN_SUPERUSER_USERNAME")
-        email = self._get_setting("ADMIN_SUPERUSER_EMAIL")
-        password = self._get_setting("ADMIN_SUPERUSER_PASSWORD")
+        username = settings.ADMIN_SUPERUSER_USERNAME.strip() or "admin"
+        email = settings.ADMIN_SUPERUSER_EMAIL.strip()
+        password = settings.ADMIN_SUPERUSER_PASSWORD
 
-        user_model = get_user_model()
-        user, created = user_model.objects.get_or_create(
+        if not email or not password:
+            if options["skip_if_unconfigured"]:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "Superusuário não configurado; defina ADMIN_SUPERUSER_EMAIL e "
+                        "ADMIN_SUPERUSER_PASSWORD."
+                    )
+                )
+                return
+            raise CommandError(
+                "ADMIN_SUPERUSER_EMAIL e ADMIN_SUPERUSER_PASSWORD são obrigatórios."
+            )
+
+        user, created = get_user_model().objects.get_or_create(
             username=username,
             defaults={"email": email},
         )
-
         user.email = email
         user.is_staff = True
         user.is_superuser = True
@@ -24,16 +42,5 @@ class Command(BaseCommand):
         user.save()
 
         action = "criado" if created else "atualizado"
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Superusuario administrativo '{username}' {action} com sucesso."
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"Superusuário '{username}' {action}."))
 
-    def _get_setting(self, key: str) -> str:
-        value = getattr(settings, key, "").strip()
-        if not value:
-            raise CommandError(
-                f"A configuracao '{key}' nao foi definida no arquivo .env."
-            )
-        return value

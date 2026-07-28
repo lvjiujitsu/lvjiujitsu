@@ -81,7 +81,7 @@ Renomeação documental autorizada somente após matriz de impacto.
 - `grep -n "PRD-NNN"` dentro de cada arquivo renomeado para detectar autorreferência: encontrada e corrigida uma autorreferência obsoleta em `docs/prd/PRD-087-remover-inicial-seed.md` (apontava para `PRD-016-remover-inicial-seed.md`).
 - Referências externas corrigidas: `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md` (apontava para `PRD-021-revisao-fluxo-cadastro.md`, agora `PRD-088`) e `docs/prd/PRD-050-modulo-planos-admin.md` (apontava para `PRD-028-crud-planos-precificacao-dinamica.md`, agora `PRD-089`).
 - `ls docs/prd/*.md | xargs -n1 basename | grep -oE "^PRD-[0-9]+" | sort | uniq -d` após a execução: vazio (sem duplicatas).
-- `grep -rohE "docs/prd/PRD-[0-9]+-[a-z0-9-]+\.md"` em todo `*.md` do repo, checando existência de cada arquivo referenciado: únicas ausências são `PRD-105`, `PRD-106`, `PRD-107`, `PRD-110`, `PRD-116`, `PRD-117`, todas citadas explicitamente como `Visary docs/prd/PRD-XXX...` (referências ao repositório irmão, fora do escopo desta PRD).
+- `grep -rohE "docs/prd/PRD-[0-9]+-[a-z0-9-]+\.md"` em todo `*.md` do repo, checando existência de cada arquivo referenciado: únicas ausências são `PRD-105`, `PRD-106`, `PRD-107`, `PRD-110`, `PRD-116`, `PRD-117`, todas citadas explicitamente como referências externas (fora do escopo desta PRD).
 - Criado `docs/prd/README.md` com tabela completa das 90 PRDs (arquivo + título) e seção explicando a renumeração de duplicatas.
 - Atualizado `docs/PRD-STANDARD.md` com regra de consultar o índice antes de escolher o próximo número.
 

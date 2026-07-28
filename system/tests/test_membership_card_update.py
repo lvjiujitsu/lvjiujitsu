@@ -1,5 +1,3 @@
-"""PRD-133: indicador de forma de pagamento/gateway, troca de cartão via Stripe
-Billing Portal (payment_method_update) e histórico de cobrança falhada."""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -136,11 +134,6 @@ class MarkInvoiceFailedHistoryTestCase(TestCase):
         self.assertIsNone(invoice.paid_at)
 
     def test_home_renders_after_failed_invoice_for_plan_price_membership(self):
-        """Regressão descoberta ao validar ao vivo: _build_payment_history_items
-        (system/views/home_views.py) acessava membership.plan.display_name
-        incondicionalmente — quebrava a home com 500 assim que existisse
-        qualquer MembershipInvoice (inclusive falhada) para uma Membership
-        baseada em PlanPrice, mesma família de bug já vista nas PRD-128/129/130."""
         mark_invoice_failed({
             "id": "in_test_home_render_1", "subscription": "sub_fail_test", "amount_due": 23037,
         })
@@ -386,9 +379,6 @@ class MembershipUpdateCardViewTestCase(TestCase):
 
 
 class StripeCustomerIdCapturePropagationTestCase(TestCase):
-    """Regressão descoberta ao validar 'Trocar cartão' ao vivo: o fluxo do
-    wizard público (PreRegistration + Stripe) nunca capturava/propagava
-    stripe_customer_id para a Membership — só stripe_subscription_id."""
 
     def setUp(self):
         from system.models import PreRegistration
@@ -441,9 +431,6 @@ class StripeCustomerIdCapturePropagationTestCase(TestCase):
         self.assertEqual(membership.stripe_customer_id, "cus_capture_2")
 
     def test_dependent_create_paid_plan_order_propagates_customer_id(self):
-        """Regressão descoberta ao validar ao vivo: _create_paid_plan_order
-        (system/services/dependent_registration.py) tinha o mesmo gap de
-        finalize_pre_registration — nunca propagava stripe_customer_id."""
         from system.services.dependent_registration import _create_paid_plan_order
 
         guardian_type = PersonType.objects.create(code="guardian-capture-dep-test", display_name="Responsável")
@@ -470,13 +457,6 @@ class StripeCustomerIdCapturePropagationTestCase(TestCase):
 
 
 class ExtractStripeSubscriptionPeriodTestCase(TestCase):
-    """Regressão descoberta ao validar 'Trocar cartão' ao vivo contra a API
-    real do Stripe: current_period_start/end saíram do objeto Subscription
-    para o SubscriptionItem nas versões recentes da API. upsert_membership_
-    from_stripe_subscription lia só o nível antigo (sempre None agora) e
-    sobrescrevia current_period_end da Membership com None em TODO evento
-    customer.subscription.updated real — inclusive um simples "trocar
-    cartão", que não deveria alterar vigência nenhuma."""
 
     def test_reads_top_level_fields_when_present(self):
         sub = _stripe_subscription({
@@ -531,9 +511,6 @@ class UpsertSubscriptionPreservesPeriodTestCase(TestCase):
         )
 
     def test_event_without_period_data_does_not_null_existing_dates(self):
-        """Caso real: evento customer.subscription.updated disparado por uma
-        troca de cartão, sem current_period_start/end em nenhum nível
-        (payload mínimo) — não pode apagar a vigência já registrada."""
         original_end = self.membership.current_period_end
         sub = _stripe_subscription({
             "id": "sub_upsert_period_test", "status": "active",

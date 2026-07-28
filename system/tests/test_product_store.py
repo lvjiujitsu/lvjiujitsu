@@ -20,7 +20,6 @@ from system.services import PORTAL_ACCOUNT_SESSION_KEY
 
 
 class ProductStoreTestCase(TestCase):
-    """PRD-101: loja publica, pre-pedidos e historico do aluno."""
 
     def setUp(self):
         self.student_type = PersonType.objects.create(
@@ -117,7 +116,6 @@ class ProductStoreTestCase(TestCase):
 
 
 class GuardianBuysForDependentTestCase(TestCase):
-    """PRD-106: responsavel compra/ve materiais em nome do dependente."""
 
     def setUp(self):
         self.guardian_type = PersonType.objects.create(

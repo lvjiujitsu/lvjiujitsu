@@ -200,10 +200,6 @@ class AsaasCheckoutTests(TestCase):
     ASAAS_API_URL="https://sandbox.asaas.com/api/v3",
 )
 class AsaasCheckoutPlanPriceCatalogTests(TestCase):
-    """PRD-137: pedidos do catálogo PlanTier/PlanPrice (Individual/Kids/Juvenil,
-    usado pelo cadastro público desde a PRD-129) ficavam presos em 1x — o cálculo
-    de parcelamento só olhava para RegistrationOrder.plan (SubscriptionPlan
-    legado, hoje só Veterano), nunca para plan_price_ref."""
 
     def setUp(self):
         self.person = _make_person()

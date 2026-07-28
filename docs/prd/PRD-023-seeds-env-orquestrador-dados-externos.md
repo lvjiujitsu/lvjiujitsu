@@ -24,9 +24,6 @@ Alteração arquitetural / governança de dados iniciais.
 
 ### Arquivos lidos integralmente
 
-- [system/services/seeding/bootstrap.py](c:/Users/whsf/Documents/GitHub/lvjiujitsu/system/services/seeding/bootstrap.py) (trechos de definições e funções `seed_*`)
-- [lvjiujitsu/settings.py](c:/Users/whsf/Documents/GitHub/lvjiujitsu/lvjiujitsu/settings.py)
-- [system/services/registration.py](c:/Users/whsf/Documents/GitHub/lvjiujitsu/system/services/registration.py) (`ensure_default_person_types`)
 
 ### Limitações
 
@@ -45,7 +42,6 @@ Alteração arquitetural / governança de dados iniciais.
 
 - Pacote `initial_load`, JSONs, settings, refatoração de `bootstrap` para ler JSON e normalizar enums.
 - Comandos `seed_*` com guard no início.
-- Atualização de [CLAUDE.md](c:/Users/whsf/Documents/GitHub/lvjiujitsu/CLAUDE.md).
 
 ## Fora do escopo
 

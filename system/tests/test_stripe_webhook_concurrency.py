@@ -38,11 +38,6 @@ class SqliteDatabaseTimeoutSettingTestCase(SimpleTestCase):
 
 
 class SqliteBusyTimeoutMechanismTestCase(SimpleTestCase):
-    """Prova, num arquivo SQLite real (fora do harness de testes do Django,
-    que usa banco em memória com shared cache e semântica de lock diferente),
-    que o valor de OPTIONS.timeout configurado evita 'database is locked'
-    sob escrita concorrente — o mesmo cenário do bug original (rajada de
-    webhooks Stripe processados em paralelo)."""
 
     def test_higher_busy_timeout_avoids_database_locked_under_concurrent_writes(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -61,7 +56,7 @@ class SqliteBusyTimeoutMechanismTestCase(SimpleTestCase):
                         "INSERT INTO probe (value) VALUES (?)", (f"row-{index}",)
                     )
                     conn.commit()
-                except sqlite3.OperationalError as exc:  # pragma: no cover
+                except sqlite3.OperationalError as exc:
                     errors.append(exc)
                 finally:
                     conn.close()

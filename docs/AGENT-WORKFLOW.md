@@ -1,8 +1,10 @@
 # Fluxo operacional dos agentes
 
-Este documento detalha o protocolo curto de `AGENTS.md`.
+Procedimento detalhado do ciclo de trabalho no LV JIU JITSU. `AGENTS.md` diz o
+que vale; este arquivo diz como executar. Fatos de produto vivem em
+`CLAUDE.md`.
 
-## 1. Ciclo
+## 1. Ciclo de uma demanda
 
 ```text
 Prompt
@@ -13,13 +15,32 @@ Prompt
   -> confirmação de entendimento
   -> autorização registrada pelo prompt
   -> PRD
+  -> teste primeiro
   -> implementação
   -> validação proporcional
   -> auditoria de limpeza
   -> fechamento
 ```
 
-Perguntas e diagnósticos sem escrita encerram após análise e evidência.
+Cada etapa tem entrada, saída e critério de passagem. Etapa sem saída
+verificável não foi executada.
+
+| Etapa | Entrada | Saída | Passa quando |
+|---|---|---|---|
+| Classificação | pedido do operador | tipo declarado | o tipo determina o resto do ciclo |
+| Preflight | tipo | ambiente confirmado | os comandos da seção 3 rodaram |
+| Leitura | escopo | arquivos lidos por inteiro | nenhum arquivo do fluxo ficou só grepado |
+| Pesquisa | dúvida de biblioteca | fontes no Context Ledger | Context7 e doc oficial consultados |
+| Entendimento | tudo acima | resumo e autorização | o operador confirmou ou já ordenou |
+| PRD | entendimento | `docs/prd/PRD-<NNN>-*.md` | critérios são verificáveis |
+| Teste | PRD | teste escrito e Red observado | a falha foi vista, não presumida |
+| Implementação | teste Red | menor mudança correta | Green observado |
+| Validação | implementação | evidência real | saída de comando colada |
+| Limpeza | diff | resíduos removidos | contratos adjacentes revisados |
+| Fechamento | tudo | PRD atualizada | status real declarado |
+
+Perguntas e diagnósticos sem escrita encerram após contexto, análise e
+evidência.
 
 ## 2. Classificação
 
@@ -41,79 +62,140 @@ A classificação define arquivos adjacentes, PRD, validação e risco.
 
 ## 3. Preflight
 
-Verificar conforme a demanda:
+Verificar apenas o necessário para a demanda:
 
-- alinhamento entre `AGENTS.md` e `CLAUDE.md`;
-- worktree e mudanças preexistentes;
-- PowerShell, `.venv` e interpretador;
+- `AGENTS.md` e `CLAUDE.md` alinhados;
+- worktree e alterações preexistentes;
+- shell, `.venv` e interpretador;
 - comandos reais;
-- Context7, internet e browser;
-- viabilidade de validação, ORM e gateway externo.
+- ferramentas exigidas;
+- acesso à internet;
+- viabilidade de browser, ORM e validação.
 
-Mudanças existentes pertencem ao usuário e não podem ser revertidas.
+Mudanças preexistentes pertencem ao operador. Não revertê-las.
 
-## 4. Leitura
+## 4. Leitura integral
 
 Antes de diagnosticar ou editar:
 
-1. identificar arquivos diretos;
+1. identificar os arquivos diretamente envolvidos;
 2. ler cada arquivo por inteiro;
 3. ler contratos adjacentes;
 4. registrar o ledger na PRD.
 
-Busca textual localiza arquivos e pontos de entrada; não substitui leitura integral dos arquivos diretos.
+Em Django, considerar:
 
-Em Django, considerar models, forms, services, selectors, views, URLs, templates, CSS/JS, testes, settings, middleware, signals, tasks e management commands.
+- models;
+- forms;
+- services;
+- selectors;
+- views;
+- URLs;
+- templates;
+- CSS/JS;
+- testes;
+- settings;
+- signals;
+- tasks;
+- management commands.
+
+Busca textual serve para localizar, não para substituir leitura.
 
 ## 5. Pesquisa
 
-Ordem:
+### Ordem
 
-1. Context7 para biblioteca, framework, SDK, API ou CLI;
-2. documentação oficial atual;
-3. fonte primária adicional quando necessária.
+1. Context7 para biblioteca, framework, SDK, API ou CLI.
+2. Documentação oficial atual.
+3. Fonte primária adicional quando necessária.
 
-Toda PRD registra consulta, links, conclusão e limitações. Pesquisa irrelevante não preenche checklist.
+### Registro
+
+Toda PRD contém:
+
+- consulta realizada;
+- links;
+- conclusão aplicável;
+- limitação ou divergência.
+
+Toda PRD registra ao menos uma fonte oficial externa relevante. Pesquisa
+irrelevante não aumenta qualidade. Se a ferramenta estiver indisponível,
+registrar a limitação sem inventar referência.
 
 ## 6. Confirmação mínima
 
-Antes de uma mudança ainda não autorizada pelo prompt:
+Antes de uma mudança ainda não autorizada pelo prompt, responder:
 
 ```text
-Entendi: <resultado>.
+Entendi: <resultado desejado>.
 Escopo: <arquivos/fluxos>.
-Validação: <browser, checks, testes e ORM local proporcionais>.
+Validação: <browser, ORM local, checks e testes proporcionais>.
 Posso implementar?
 ```
 
-## 7. Autorizações
+Não repetir o prompt. Expor premissas que possam alterar o resultado.
 
-| Ação | Regra |
+## 7. Gates de autorização
+
+| Ação | Autorização |
 |---|---|
 | Leitura, pesquisa e diagnóstico | implícita |
 | Escrita solicitada com escopo claro | solicitação atual |
-| Expansão material | nova aprovação |
-| Implementação de UI | proposta aprovada |
-| Teste local | autorizado para entrega operacional solicitada |
-| ORM read-only | permitido quando necessário |
-| ORM mutável local | autorizado quando necessário ao objetivo solicitado |
-| Migration, migrate, reset local ou seed local | autorizado quando necessário ao objetivo solicitado |
-| Pagamento externo real | autorização e ambiente operacional |
-| Push ou deploy | autorização explícita |
-| HG ou produção | confirmação explícita do ambiente antes de qualquer escrita |
+| Expansão material de escopo | nova aprovação |
+| Proposta de UI | leitura e elaboração permitidas |
+| Implementação de UI | aprovação da proposta |
+| Execução de testes locais | autorizada para entrega operacional solicitada |
+| ORM read-only | permitida quando necessária |
+| ORM mutável em qualquer ambiente descartável | autorizada quando necessária ao objetivo solicitado |
+| Migration, migrate, reset ou seeds em local, HG ou prod | autorizados quando necessários ao objetivo solicitado; os três ambientes são descartáveis (ver `CLAUDE.md` §1) |
+| Ação irreversível fora do repositório: `git push`, deploy externo, escrita em serviço de terceiro, envio de e-mail real | autorização explícita |
 
-## 8. SDD e TDD
+## 8. PRD e SDD
 
-- Criar PRD antes de mudança relevante.
-- Escrever o teste do comportamento antes do código.
-- Implementar o mínimo e refatorar.
-- Executar testes locais proporcionais quando houver comportamento testável.
-- Não declarar Red ou Green sem execução real.
-- Registrar comando e resultado.
+Criar PRD antes do código em mudança relevante.
 
-Testes Django usam banco de teste isolado. Reset + seeds é ciclo operacional local permitido quando necessário para primeira carga ou reconstrução.
+A PRD é um documento vivo:
 
-## 9. Django
+- começa com contexto e plano;
+- recebe evidência durante a execução;
+- marca critérios somente quando comprovados;
+- registra testes escritos e status de execução;
+- registra limitações sem mascará-las.
+
+Usar `docs/PRD-STANDARD.md`. O número vem de `docs/prd/README.md`, e o índice é
+regenerado por `python scripts/build_prd_index.py` no mesmo passo — o comando
+recusa colisão de número.
+
+## 9. TDD com execução local
+
+### Ordem de autoria
+
+1. escrever o teste do comportamento esperado;
+2. implementar o mínimo;
+3. refatorar.
+
+### Execução
+
+Executar testes locais proporcionais ao risco do escopo.
+
+Sem execução real:
+
+- não afirmar que o teste falha;
+- não afirmar que passa;
+- não afirmar ausência de regressão.
+
+### Banco de testes
+
+`django.test.TestCase` usa banco de teste isolado. Não limpar `db.sqlite3` para
+executar testes.
+
+O ciclo destrutivo mais seeds é usado apenas para:
+
+- reconstrução deliberada do baseline de schema;
+- validação operacional de primeira carga;
+- auditoria de seeds em ambiente descartável.
+
+## 10. Implementação Django
 
 Ordem padrão:
 
@@ -128,50 +210,98 @@ Ordem padrão:
 9. testes;
 10. documentação.
 
-Views permanecem finas. Múltiplas escritas usam transação. Queries relacionadas devem ser revisadas contra N+1.
+Adaptar a ordem quando o menor patch correto exigir.
 
-## 10. UI
+Views permanecem finas. Múltiplas escritas relacionadas usam transação.
+Queries relacionadas devem ser verificadas contra N+1.
 
-Antes do código:
+## 11. UI
 
-- objetivo e comportamento preservado;
+### Antes do código
+
+Produzir proposta curta:
+
+- objetivo da tela;
 - hierarquia;
 - wireframe;
-- estados e erros;
-- permissões;
-- desktop e mobile.
+- estados;
+- ações e permissões;
+- desktop e mobile;
+- preservação funcional.
 
-Após implementar:
+Pedir aprovação.
+
+### Após o código
+
+Usar o navegador interno da ferramenta:
 
 1. abrir a rota real na porta canônica;
-2. validar caminho feliz e edge case;
-3. inspecionar console e terminal;
-4. validar desktop/mobile e temas;
-5. registrar screenshot ou snapshot.
+2. validar caminho feliz;
+3. validar ao menos um edge case;
+4. inspecionar console e terminal;
+5. validar desktop e mobile;
+6. validar tema claro e escuro;
+7. **auditar a renderização** (checklist abaixo);
+8. registrar screenshot ou snapshot na PRD.
 
-Para sessão autenticada, usar a superfície que mantenha a sessão. Headless não substitui browser interno quando ele está disponível.
+### Auditar a renderização — gate, não formalidade
 
-## 11. Pagamentos
+Screenshot não é carimbo de aprovação: é material a ser auditado. "A tela
+abriu" não é validação. Antes de declarar qualquer etapa concluída, verificar
+explicitamente e relatar o resultado:
 
-- Ler o fluxo completo e os documentos de Asaas/Stripe.
-- Verificar settings e ambiente sem expor segredos.
-- Separar redirect do browser, webhook server-to-server e confirmação no banco.
-- Asaas local exige URL pública HTTPS válida.
-- Stripe local pode exigir Stripe CLI e secret temporário.
-- Não simular pagamento real por inferência nem declarar confirmação sem evidência do gateway e do ORM.
+- **Layout**: elemento cortado no topo ou na base, dialog maior que a
+  viewport, overflow horizontal, conteúdo inalcançável por rolagem.
+- **Colisão**: rodapé fixo, botão de ação ou barra sobrepondo conteúdo de
+  forma que impeça leitura ou clique.
+- **Dados renderizados**: campo obrigatório vazio quando o dado já é conhecido
+  pelo sistema; rótulo sem valor; select em `---------` onde havia contexto
+  para pré-preencher.
+- **Estado**: item selecionado que não parece selecionado, contador divergente
+  da lista, badge sem correspondência.
+
+Quando um defeito aparecer no próprio screenshot capturado pelo agente, ele é
+**achado do agente** — não pode ser deixado para o operador encontrar.
+Confirmar cada suspeita por medição (geometria via JS, computed style, valor do
+campo) antes de afirmar que é ou não defeito; não declarar bug por impressão
+visual nem descartar por conveniência.
+
+Para rotas autenticadas, usar a superfície com sessão disponível. Não declarar
+sucesso com base em navegador sem autenticação.
 
 ## 12. ORM
 
-- Preferir read-only.
+- Preferir checagem read-only.
 - Registrar comando e resultado.
 - Criar dados locais somente quando fizer parte do objetivo ou da validação.
-- Recuperação mutável deve ser explícita, idempotente e registrada.
+- Não corrigir dados locais como efeito colateral silencioso.
+- Qualquer escrita de recuperação deve ser idempotente, explícita e
+  registrada.
 
-## 13. Limpeza e fechamento
+## 13. Limpeza
 
-Revisar diff, fluxo e contratos adjacentes. Corrigir resíduos do escopo. Dívida material fora do escopo gera nova PRD e parada.
+Revisar somente o escopo e contratos adjacentes:
 
-Fechamento:
+- código morto;
+- imports e branches obsoletos;
+- duplicação;
+- hardcode;
+- erro mascarado;
+- template, rota ou asset órfão;
+- comentário e docstring, que o §10 do `AGENTS.md` proíbe;
+- documentação desatualizada;
+- teste sem contrato real.
+
+Corrigir o que pertence ao escopo. Para achado material fora do escopo:
+
+1. criar PRD de follow-up;
+2. descrever risco e evidência;
+3. parar;
+4. aguardar aprovação.
+
+## 14. Fechamento
+
+Formato mínimo:
 
 ```text
 Implementado: ...
@@ -180,3 +310,24 @@ Não validado: ...
 Pendências/desvios: ...
 Status: concluída | concluída com limitações | não concluída
 ```
+
+## 15. Slash commands
+
+Três comandos em `.claude/commands/`, para o ciclo que se repete. Eles não
+substituem as skills: executam uma sequência já decidida, e não introduzem
+regra de governança nova.
+
+| Comando | O que faz |
+|---|---|
+| `/reset-local` | ciclo destrutivo local até o servidor no ar; verifica as pré-condições antes de apagar o banco e recusa `.env.hg` e `.env.prod` |
+| `/validar-tela <rota>` | valida uma rota em desktop e mobile, nos dois temas, com screenshot obrigatório |
+| `/sync-skills` | compara as sete skills nas três plataformas e reporta divergência sem sobrescrever |
+
+`/reset-local` destrói o ambiente local; sua invocação manual é a autorização
+explícita para as seeds do ciclo.
+
+Claude expõe os três como slash command. Codex e Cursor seguem o procedimento
+equivalente deste workflow e do runbook — o conteúdo é o mesmo, muda apenas a
+forma de acionar. `scripts/validate_skill_frontmatter.py` e
+`scripts/build_prd_index.py --check` rodam em qualquer plataforma e são o que o
+CI executa.

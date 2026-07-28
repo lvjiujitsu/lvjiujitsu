@@ -7,7 +7,6 @@ from system.services import TECHNICAL_ADMIN_SESSION_KEY
 
 
 class LvFoundationTemplatesGapTestCase(TestCase):
-    """PRD-078: rotas ativas sem template foram resolvidas (exceto loja/backorder, documentado como pendencia)."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

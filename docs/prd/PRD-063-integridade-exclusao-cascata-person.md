@@ -1,8 +1,8 @@
-# PRD-063: Integridade de exclusão em cascata de Person (lição PRD-116 do Visary)
+# PRD-063: Integridade de exclusão em cascata de Person
 
 ## Summary
 
-Validar de ponta a ponta, pela interface, a exclusão de `Person` no LV e tratar com segurança os modos de falha de integridade referencial. O mapa de `on_delete` mostra que `Person` é referenciada com mistura de `CASCADE`, `SET_NULL` e `PROTECT` em cerca de dez models; a `PersonDeleteView` é um `DeleteView` padrão que não trata `ProtectedError`, então apagar uma pessoa referenciada por relação `PROTECT` (ex.: professor em `ClassGroup.main_teacher`, instrutor em calendário, repasse `TeacherPayout`) falha sem mensagem clara ao administrador. Espelha a homologação de exclusão completa que o Visary fez no PRD-116.
+Validar de ponta a ponta, pela interface, a exclusão de `Person` no LV e tratar com segurança os modos de falha de integridade referencial. O mapa de `on_delete` mostra que `Person` é referenciada com mistura de `CASCADE`, `SET_NULL` e `PROTECT` em cerca de dez models; a `PersonDeleteView` é um `DeleteView` padrão que não trata `ProtectedError`, então apagar uma pessoa referenciada por relação `PROTECT` (ex.: professor em `ClassGroup.main_teacher`, instrutor em calendário, repasse `TeacherPayout`) falha sem mensagem clara ao administrador.
 
 ## Demand type
 
@@ -48,7 +48,6 @@ Auditoria de integridade + endurecimento de view + homologação por UI com muta
 
 - `system/models/asaas.py`, `registration_order.py`, `graduation.py`, `membership.py`, `product_backorder.py`, `calendar.py`, `trial_access.py` (linhas de `on_delete`)
 - `templates/people/person_confirm_delete.html`
-- Visary `docs/prd/PRD-116-validacao-exclusao-cadastro-cliente-completo.md`
 
 ### Internet / official documentation
 

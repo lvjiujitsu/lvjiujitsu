@@ -1,4 +1,4 @@
-/* Planos — estilos do módulo (tokens em lv/base.css) */
+
 
 body {
   min-height: 100dvh;
@@ -77,7 +77,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 .btn-icon:hover {
   background: var(--surface);
   color: var(--text);
-  border-color: var(--brand-red-muted);
+  border-color: var(--accent-muted);
 }
 
 .btn-icon:focus-visible,
@@ -118,7 +118,7 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 }
 
 .page-header__eyebrow a:hover {
-  color: var(--brand-red);
+  color: var(--accent);
 }
 
 .page-header__row {
@@ -175,14 +175,14 @@ html[data-theme="dark"] .topbar__logo { filter: invert(1); }
 }
 
 .btn--primary {
-  background: var(--brand-red);
+  background: var(--accent);
   color: #fff;
-  border-color: var(--brand-red);
+  border-color: var(--accent);
 }
 
 .btn--primary:hover {
-  background: var(--brand-red-strong);
-  border-color: var(--brand-red-strong);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .btn--secondary {

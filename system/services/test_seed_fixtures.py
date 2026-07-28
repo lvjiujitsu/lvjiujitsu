@@ -31,6 +31,11 @@ from system.utils.person_data import format_cpf_digits
 
 TEST_SEED_NOTE = "Seed inicial de homologacao visual."
 
+
+def _portal_password() -> str:
+    return str(getattr(settings, "SEED_TEST_PORTAL_PASSWORD", "") or "").strip()
+
+
 REQUIRED_ENTRY_KEYS = {
     "fixture_id",
     "coverage_tags",
@@ -59,7 +64,6 @@ REQUIRED_ENTRY_KEYS = {
     "relationships",
     "graduation_history",
     "is_active",
-    "portal_password",
     "portal_is_active",
     "stripe_customer_id",
     "asaas_customer_id",
@@ -178,8 +182,12 @@ def _validate_entries(entries: list[dict], data_filename: str) -> None:
             )
         if not str(entry["full_name"]).strip():
             raise CommandError(f"Entrada {index} em {data_filename} esta sem full_name.")
-        if not str(entry["portal_password"]).strip():
-            raise CommandError(f"Entrada {index} em {data_filename} esta sem portal_password.")
+        if not _portal_password():
+            raise CommandError(
+                "SEED_TEST_PORTAL_PASSWORD nao esta configurada. Defina a "
+                "variavel no arquivo de ambiente antes de rodar as seeds "
+                "ficticias de homologacao."
+            )
         cpf = _formatted_cpf(entry["cpf"])
         if cpf in seen_cpfs:
             raise CommandError(f"CPF duplicado em {data_filename}: {cpf}")
@@ -260,7 +268,7 @@ def _sync_portal_account(person: Person, entry: dict) -> int:
         person=person,
         defaults={"password_hash": ""},
     )
-    account.set_password(entry["portal_password"])
+    account.set_password(_portal_password())
     account.is_active = bool(entry.get("portal_is_active", True))
     account.save()
     return 1

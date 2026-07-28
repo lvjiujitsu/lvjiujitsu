@@ -26,7 +26,6 @@ class Command(BaseCommand):
         updated_count = 0
 
         with transaction.atomic():
-            # Primeira passagem: cria/atualiza todas as faixas sem next_rank
             belt_map = {}
             for entry in data:
                 code = entry.get("code", "").strip()
@@ -49,7 +48,6 @@ class Command(BaseCommand):
                 else:
                     updated_count += 1
 
-            # Segunda passagem: vincula next_rank agora que todas as faixas existem
             for entry in data:
                 next_code = entry.get("next_code")
                 if not next_code:

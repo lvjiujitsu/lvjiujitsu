@@ -7,7 +7,6 @@ from system.services import TECHNICAL_ADMIN_SESSION_KEY
 
 
 class ProductCategoryCrudTestCase(TestCase):
-    """PRD-102: CRUD de categoria de material."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

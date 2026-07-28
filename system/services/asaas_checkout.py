@@ -213,7 +213,6 @@ def create_credit_card_charge_for_order(order: RegistrationOrder, *, installment
     }
 
 
-# Número máximo de parcelas permitido pelo ciclo do plano
 _CYCLE_MAX_INSTALLMENTS = {
     "monthly": 1,
     "quarterly": 3,
@@ -221,7 +220,6 @@ _CYCLE_MAX_INSTALLMENTS = {
     "annual": 12,
 }
 
-# Opções de parcelamento disponíveis por ciclo (divisores do total)
 INSTALLMENT_OPTIONS = {
     "monthly":    [1],
     "quarterly":  [1, 3],
@@ -231,11 +229,6 @@ INSTALLMENT_OPTIONS = {
 
 
 def _billing_cycle_for_order(order):
-    """Resolve o ciclo de cobrança do pedido, aceitando tanto o catálogo legado
-    (SubscriptionPlan, 'plan') quanto o catálogo PlanTier/PlanPrice ('plan_price_ref')
-    usado pelo cadastro público desde a PRD-129 — sem isso, pedidos do catálogo
-    novo caem para 'monthly'/1x mesmo em ciclos trimestral/semestral/anual.
-    """
     if order.plan_id:
         return order.plan.billing_cycle
     if order.plan_price_ref_id:
@@ -249,7 +242,6 @@ def _max_installments_for_order(order):
 
 
 def get_installment_options_for_order(order):
-    """Retorna lista de opções de parcelamento com valor por parcela."""
     from decimal import Decimal, ROUND_HALF_UP
     cycle = _billing_cycle_for_order(order)
     options = INSTALLMENT_OPTIONS.get(cycle, [1])

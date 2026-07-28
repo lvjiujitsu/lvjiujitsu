@@ -1,11 +1,13 @@
 ---
-description: Arquitetura, lógica, persistência e testes do Django LV
+description: Arquitetura, persistência e testes Django do LV JIU JITSU
 globs: "**/*.py"
 alwaysApply: false
 ---
 
 Use `/lv-django-delivery`.
 
-Respeite MVT com `services/` e `selectors/`, validação server-side, permissões no backend e política operacional local de `AGENTS.md`.
+Respeite Django MVT com `services/` e `selectors/`, validação server-side,
+permissões no backend e a política operacional de `AGENTS.md`.
 
-Escreva testes antes do código quando houver comportamento testável e execute-os quando proporcionais ao escopo local.
+Escreva o teste antes do código quando houver comportamento testável e
+execute-o quando proporcional ao escopo local.

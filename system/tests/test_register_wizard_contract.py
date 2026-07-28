@@ -60,8 +60,6 @@ class RegisterWizardStaticContractTestCase(SimpleTestCase):
         self.assertIn("wizardEndpoints.eligibilityUrl", script)
         self.assertIn("wizardEndpoints.validateCouponUrl", script)
         self.assertIn("document.querySelectorAll('.wizard-step')", script)
-        # PRD-153: filtro de "Período de cobrança" deve valer também para
-        # planos recorrentes Stripe (sem bypass por gateway_code).
         self.assertNotIn("if (!isStripe && planFilter.cycle", script)
         self.assertIn("if (planFilter.cycle && p.billing_cycle !== planFilter.cycle) return false;", script)
 

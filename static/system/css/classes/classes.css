@@ -1,9 +1,4 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   LV JIU JITSU — Turmas, categorias e horarios
-   Reaproveita tokens e componentes genericos de people.css (topbar, page-header,
-   panel, badge, btn, filter-panel, form-card/grid/field, empty-state, kpi-row).
-   Aqui ficam apenas os componentes especificos de listagem em card.
-   ───────────────────────────────────────────────────────────────────────────── */
+
 
 .entity-list {
   display: flex;
@@ -102,7 +97,7 @@
   width: 16px;
   height: 16px;
   margin-top: 0.125rem;
-  accent-color: var(--brand-red);
+  accent-color: var(--accent);
 }
 
 .request-summary {

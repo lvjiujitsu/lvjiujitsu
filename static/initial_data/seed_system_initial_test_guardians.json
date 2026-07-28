@@ -1,7 +1,12 @@
 [
   {
     "fixture_id": "guardian_one_dependent_karate",
-    "coverage_tags": ["profile:guardian", "dependency:one-dependent", "experience:karate", "blood:A+"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:one-dependent",
+      "experience:karate",
+      "blood:A+"
+    ],
     "full_name": "Test Guardian Karate One",
     "cpf": "930.200.001-01",
     "email": "test.guardian.karate@lvjiujitsu.test",
@@ -24,10 +29,16 @@
     "class_enrollments": [],
     "class_instructor_assignments": [],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.007-07", "kinship_type": "mother", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.007-07",
+        "kinship_type": "mother",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
     "graduation_history": [],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_001",
     "asaas_customer_id": "cus_asaas_guardian_001",
@@ -41,7 +52,12 @@
   },
   {
     "fixture_id": "guardian_multi_dependent_no_experience",
-    "coverage_tags": ["profile:guardian", "dependency:multiple-dependents", "experience:none", "blood:A-"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:multiple-dependents",
+      "experience:none",
+      "blood:A-"
+    ],
     "full_name": "Test Guardian Multiple Dependents",
     "cpf": "930.200.002-02",
     "email": "test.guardian.multiple@lvjiujitsu.test",
@@ -65,12 +81,21 @@
     "class_instructor_assignments": [],
     "operational_roles": [],
     "relationships": [
-      {"target_cpf": "930.100.008-08", "kinship_type": "father", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."},
-      {"target_cpf": "930.100.009-09", "kinship_type": "father", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."}
+      {
+        "target_cpf": "930.100.008-08",
+        "kinship_type": "father",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      },
+      {
+        "target_cpf": "930.100.009-09",
+        "kinship_type": "father",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      }
     ],
     "graduation_history": [],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_002",
     "asaas_customer_id": "cus_asaas_guardian_002",
@@ -84,7 +109,13 @@
   },
   {
     "fixture_id": "guardian_trains_blue",
-    "coverage_tags": ["profile:guardian", "dependency:trains-and-responsible", "experience:jiu_jitsu", "belt:adult-blue", "blood:B+"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:trains-and-responsible",
+      "experience:jiu_jitsu",
+      "belt:adult-blue",
+      "blood:B+"
+    ],
     "full_name": "Test Guardian Trains Blue",
     "cpf": "930.200.003-03",
     "email": "test.guardian.trains@lvjiujitsu.test",
@@ -104,16 +135,37 @@
     "previous_academy": "Adult morning class at previous academy.",
     "person_type_code": "guardian",
     "class_category_code": "adult",
-    "class_enrollments": [{"class_group_category": "adult", "class_group_teacher_cpf": "92000000100"}],
+    "class_enrollments": [
+      {
+        "class_group_category": "adult",
+        "class_group_teacher_cpf": "92000000100"
+      }
+    ],
     "class_instructor_assignments": [],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.010-10", "kinship_type": "mother", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.010-10",
+        "kinship_type": "mother",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
     "graduation_history": [
-      {"belt_rank_code": "adult-white", "grade_number": 4, "awarded_at": "2024-02-17", "notes": "White belt history."},
-      {"belt_rank_code": "adult-blue", "grade_number": 1, "awarded_at": "2025-03-15", "notes": "Current guardian blue belt fixture."}
+      {
+        "belt_rank_code": "adult-white",
+        "grade_number": 4,
+        "awarded_at": "2024-02-17",
+        "notes": "White belt history."
+      },
+      {
+        "belt_rank_code": "adult-blue",
+        "grade_number": 1,
+        "awarded_at": "2025-03-15",
+        "notes": "Current guardian blue belt fixture."
+      }
     ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_003",
     "asaas_customer_id": "cus_asaas_guardian_003",
@@ -127,7 +179,12 @@
   },
   {
     "fixture_id": "guardian_second_for_dual_dependent_wrestling",
-    "coverage_tags": ["profile:guardian", "dependency:dual-guardian", "experience:wrestling", "blood:B-"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:dual-guardian",
+      "experience:wrestling",
+      "blood:B-"
+    ],
     "full_name": "Test Guardian Wrestling Dual",
     "cpf": "930.200.004-04",
     "email": "test.guardian.wrestling@lvjiujitsu.test",
@@ -150,10 +207,16 @@
     "class_enrollments": [],
     "class_instructor_assignments": [],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.008-08", "kinship_type": "father", "kinship_other_label": "", "notes": "Seed inicial de homologacao visual."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.008-08",
+        "kinship_type": "father",
+        "kinship_other_label": "",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
     "graduation_history": [],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_004",
     "asaas_customer_id": "cus_asaas_guardian_004",
@@ -167,7 +230,12 @@
   },
   {
     "fixture_id": "guardian_other_modality_student_target",
-    "coverage_tags": ["profile:guardian", "dependency:student-holder-target", "experience:other", "blood:AB+"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:student-holder-target",
+      "experience:other",
+      "blood:AB+"
+    ],
     "full_name": "Test Guardian Other Modality",
     "cpf": "930.200.005-05",
     "email": "test.guardian.other@lvjiujitsu.test",
@@ -190,10 +258,16 @@
     "class_enrollments": [],
     "class_instructor_assignments": [],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.010-10", "kinship_type": "other", "kinship_other_label": "Aunt", "notes": "Seed inicial de homologacao visual."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.010-10",
+        "kinship_type": "other",
+        "kinship_other_label": "Aunt",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
     "graduation_history": [],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_005",
     "asaas_customer_id": "cus_asaas_guardian_005",
@@ -207,7 +281,13 @@
   },
   {
     "fixture_id": "guardian_red_belt_master",
-    "coverage_tags": ["profile:guardian", "dependency:red-belt-responsible", "experience:jiu_jitsu", "belt:adult-red", "blood:AB-"],
+    "coverage_tags": [
+      "profile:guardian",
+      "dependency:red-belt-responsible",
+      "experience:jiu_jitsu",
+      "belt:adult-red",
+      "blood:AB-"
+    ],
     "full_name": "Test Guardian Red Belt",
     "cpf": "930.200.006-06",
     "email": "test.guardian.red@lvjiujitsu.test",
@@ -230,10 +310,23 @@
     "class_enrollments": [],
     "class_instructor_assignments": [],
     "operational_roles": [],
-    "relationships": [{"target_cpf": "930.100.011-11", "kinship_type": "other", "kinship_other_label": "Grandfather", "notes": "Seed inicial de homologacao visual."}],
-    "graduation_history": [{"belt_rank_code": "adult-red", "grade_number": 0, "awarded_at": "2020-12-12", "notes": "Red belt guardian fixture."}],
+    "relationships": [
+      {
+        "target_cpf": "930.100.011-11",
+        "kinship_type": "other",
+        "kinship_other_label": "Grandfather",
+        "notes": "Seed inicial de homologacao visual."
+      }
+    ],
+    "graduation_history": [
+      {
+        "belt_rank_code": "adult-red",
+        "grade_number": 0,
+        "awarded_at": "2020-12-12",
+        "notes": "Red belt guardian fixture."
+      }
+    ],
     "is_active": true,
-    "portal_password": "LvTest@2026",
     "portal_is_active": true,
     "stripe_customer_id": "cus_test_guardian_006",
     "asaas_customer_id": "cus_asaas_guardian_006",

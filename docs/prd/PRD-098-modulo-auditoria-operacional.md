@@ -23,7 +23,7 @@ Gestor com `MANAGE_ACADEMY` consulta lista filtrada de eventos: data, ator, enti
 - `docs/prd/PRD-077-crud-mvp-academia-artes-marciais.md`
 
 ### Adjacent files consulted
-- Visary: padrão de listagem densa (sem copiar domínio)
+- Padrão de listagem densa (sem copiar domínio)
 - `docs/prd/PRD-062-auditoria-sinais-servicos-idempotencia.md`
 
 ### Internet / official documentation

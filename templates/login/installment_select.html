@@ -6,6 +6,7 @@
   <title>Escolher parcelamento — LV Jiu Jitsu</title>
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
+    <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=7">
   <style>
     .installment-card {
@@ -24,21 +25,21 @@
       text-align: left;
     }
     .installment-card:hover {
-      border-color: var(--brand-red);
-      box-shadow: 0 0 0 3px var(--brand-red-muted);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
     }
     .installment-card input[type="radio"] {
-      accent-color: var(--brand-red);
+      accent-color: var(--accent);
       width: 1.125rem;
       height: 1.125rem;
       flex-shrink: 0;
     }
     .installment-card input[type="radio"]:checked ~ .installment-card__info {
-      color: var(--brand-red);
+      color: var(--accent);
     }
     .installment-card--selected {
-      border-color: var(--brand-red);
-      background: var(--brand-red-muted);
+      border-color: var(--accent);
+      background: var(--accent-muted);
     }
     .installment-card__info {
       flex: 1;
@@ -57,7 +58,7 @@
     .installment-card__amount {
       font-size: 1.0625rem;
       font-weight: 700;
-      color: var(--brand-red);
+      color: var(--accent);
       white-space: nowrap;
     }
 
@@ -101,7 +102,7 @@
       display: block;
       width: 100%;
       padding: 0.875rem 1.5rem;
-      background: var(--brand-red);
+      background: var(--accent);
       color: #fff;
       font-size: 1rem;
       font-weight: 600;
@@ -111,7 +112,7 @@
       transition: background 0.15s, transform 0.1s;
       text-align: center;
     }
-    .btn-primary:hover { background: var(--brand-red-strong); }
+    .btn-primary:hover { background: var(--accent-strong); }
     .btn-primary:active { transform: scale(0.98); }
     .btn-primary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
@@ -130,7 +131,7 @@
       text-align: center;
       text-decoration: none;
     }
-    .btn-ghost:hover { border-color: var(--brand-red); color: var(--brand-red); text-decoration: none; }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
     .btn-ghost:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
     .action-stack {

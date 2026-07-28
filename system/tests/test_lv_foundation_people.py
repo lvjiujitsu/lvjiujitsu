@@ -10,7 +10,6 @@ from system.services import TECHNICAL_ADMIN_SESSION_KEY
 
 
 class LvFoundationPeopleRoutesTestCase(TestCase):
-    """PRD-075: rotas canonicas em ingles + CRUD curto em modal para Pessoas."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

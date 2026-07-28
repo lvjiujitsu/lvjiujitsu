@@ -5,48 +5,34 @@ description: Use esta skill para implementar ou corrigir lógica Django no LV JI
 
 # LV Django Delivery
 
-## Contextualizar
+## Quando acionar
 
-1. Executar `lv-task-intake`.
-2. Criar ou atualizar a PRD com `lv-prd`.
-3. Ler integralmente todas as camadas.
-4. Consultar Django e SDKs atuais no Context7 e documentação oficial.
-5. Para Asaas/Stripe, ler serviços, views, webhooks, settings e documentos operacionais.
+Em implementação ou correção de lógica Django, persistência, commands e integrações.
 
-## Escrever primeiro o contrato
+## Passos
 
-1. Criar ou ajustar o teste do comportamento.
-2. Cobrir fluxo feliz, erro e edge case proporcional.
-3. Executar testes locais proporcionais ao risco do escopo.
-4. Registrar comando e resultado.
+1. Executar `lv-task-intake`, criar ou atualizar a PRD com `lv-prd` e ler todas as camadas.
+2. Consultar Context7 e documentação oficial; em pagamentos, ler settings, serviços, views, webhooks e runbooks.
+3. Criar ou ajustar primeiro o teste do comportamento, cobrindo caminho feliz, erro e edge case proporcional.
+4. Implementar o mínimo com models para persistência, forms para validação, services para negócio/transações, selectors para leitura e views finas.
+5. Usar `transaction.atomic`, relações carregadas, guard clauses, exceções específicas e configuração explícita.
+6. Executar `.\.venv\Scripts\python.exe manage.py check`.
+7. Executar o teste focado e, quando proporcional, `.\.venv\Scripts\python.exe manage.py test --verbosity 2`.
+8. Fazer ORM local quando necessário, revisar N+1, diff e contratos e encerrar com `lv-cleanup-audit`.
+9. Testes usam banco isolado; migrations, reset e seeds locais seguem `docs/OPERACAO-BANCO-SEEDS.md`.
 
-## Implementar
+## Saída
 
-- Models: invariantes simples.
-- Forms: validação server-side.
-- Services: regra e múltiplas escritas com `transaction.atomic`.
-- Selectors: leitura reutilizável e relações carregadas.
-- Views: HTTP fino.
-- Templates/JS: apresentação.
+```text
+Contrato test-first: <teste criado ou justificativa>.
+Implementado: <camadas e arquivos>.
+Validação: <comandos e resultados reais>.
+ORM/migrations/seeds: <executado | não aplicável>.
+Status: <concluída | concluída com limitações | não concluída>.
+```
 
-Usar guard clauses, exceções específicas e configuração explícita. Não adicionar comentários ou docstrings por padrão.
+## Parar quando
 
-## Validar
-
-Validação local:
-
-- executar `manage.py check` quando proporcional;
-- executar teste focado e/ou suíte proporcional ao risco;
-- fazer ORM local quando necessário;
-- revisar N+1, diff e contratos.
-
-## Banco
-
-- Testes usam banco isolado.
-- Não apagar `db.sqlite3` apenas para testar.
-- Criar/aplicar migrations locais, reset local e seeds locais quando necessários ao objetivo solicitado.
-- Parar antes de escrita em HG, produção ou integração externa sem confirmação explícita do ambiente.
-
-## Encerrar
-
-Atualizar a PRD e executar `lv-cleanup-audit`.
+- Critérios da PRD estiverem implementados e validados com saída real.
+- Se o teste permanecer vermelho, parar como não concluída e registrar a causa.
+- Antes de ação externa ou expansão não autorizada, parar e pedir decisão.

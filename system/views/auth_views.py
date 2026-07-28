@@ -457,6 +457,12 @@ class ChromeDevtoolsProbeView(View):
         return HttpResponse(status=204, content_type="application/json")
 
 
+class HealthCheckView(View):
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse({"status": "ok"})
+
+
 class MaterialsCheckoutView(View):
     def post(self, request, *args, **kwargs):
         pre_registration_id = request.session.get("pending_pre_registration_id")

@@ -25,7 +25,7 @@ Separar o que é fonte de verdade do que é legado, remover somente o que for co
 - `docs/PRD-STANDARD.md`
 - `docs/PLATFORM-ADAPTERS.md`
 - `docs/UI-SCREEN-CONTRACT.md`
-- `docs/prd/PRD-066-portabilidade-visary-modal-crud.md`
+- `docs/prd/PRD-066-padrao-visual-modal-crud.md`
 - `docs/prd/PRD-068-rework-limpo-pessoas-fundacao-lv.md`
 - `docs/prd/PRD-065-hubs-administrativos-modulos-lv.md`
 

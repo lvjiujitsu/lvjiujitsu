@@ -1,66 +1,9 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   LV JIU JITSU — Fundação lv/ (PRD-075)
-   Tokens compartilhados + shell de modal CRUD (iframe)
-   ───────────────────────────────────────────────────────────────────────────── */
-
-:root {
-  --bg: #f4f4f6;
-  --panel: #ffffff;
-  --surface: #f8f8fa;
-  --surface-soft: #f0f0f3;
-  --border: #e2e2e8;
-  --border-soft: #ebebef;
-  --text: #18181b;
-  --muted: #71717a;
-  --brand-red: #c41230;
-  --brand-red-strong: #9b0e25;
-  --brand-red-muted: rgba(196, 18, 48, 0.09);
-  --focus-ring: rgba(196, 18, 48, 0.3);
-  --danger: #dc2626;
-  --danger-muted: rgba(220, 38, 38, 0.08);
-  --success: #16a34a;
-  --success-muted: rgba(22, 163, 74, 0.1);
-  --warning: #d97706;
-  --warning-muted: rgba(217, 119, 6, 0.1);
-  --info: #2563eb;
-  --info-muted: rgba(37, 99, 235, 0.1);
-  --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05);
-  --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.07);
-}
-
-html[data-theme="dark"] {
-  --bg: #09090b;
-  --panel: #111113;
-  --surface: #18181b;
-  --surface-soft: #1f1f23;
-  --border: #2d2d32;
-  --border-soft: #222226;
-  --text: #fafafa;
-  --muted: #a1a1aa;
-  --brand-red: #e02244;
-  --brand-red-strong: #c41230;
-  --brand-red-muted: rgba(224, 34, 68, 0.12);
-  --focus-ring: rgba(224, 34, 68, 0.35);
-  --danger: #f87171;
-  --danger-muted: rgba(248, 113, 113, 0.1);
-  --success: #4ade80;
-  --success-muted: rgba(74, 222, 128, 0.1);
-  --warning: #fbbf24;
-  --warning-muted: rgba(251, 191, 36, 0.1);
-  --info: #60a5fa;
-  --info-muted: rgba(96, 165, 250, 0.1);
-  --card-shadow: 0 1px 6px rgba(0, 0, 0, 0.4), 0 4px 20px rgba(0, 0, 0, 0.3);
-  --card-shadow-hover: 0 2px 10px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.4);
-}
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
-html { font-size: 16px; color-scheme: light; -webkit-text-size-adjust: 100%; }
-html[data-theme="dark"] { color-scheme: dark; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
 button { font-family: inherit; cursor: pointer; }
 
-/* ─── Shell do frame de modal (iframe) ───────────────────────────────────── */
 .modal-frame-body { min-height: 100dvh; background: var(--panel); }
 .modal-frame { display: flex; flex-direction: column; min-height: 100dvh; }
 .modal-frame__header {
@@ -74,7 +17,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--surface-soft); color: var(--text); font-size: 1.1rem;
   display: flex; align-items: center; justify-content: center;
 }
-.modal-frame__close:hover { background: var(--brand-red-muted); color: var(--brand-red); }
+.modal-frame__close:hover { background: var(--accent-muted); color: var(--accent); }
 .modal-frame__body { padding: 1.25rem; flex: 1; }
 .modal-frame__body form { display: flex; flex-direction: column; gap: 1rem; }
 
@@ -82,7 +25,6 @@ button { font-family: inherit; cursor: pointer; }
 .modal-done__icon { color: var(--success); }
 .modal-done__text { color: var(--muted); }
 
-/* ─── Dialog CRUD (pai) ───────────────────────────────────────────────────── */
 dialog.crud-modal {
   padding: 0; border: none; border-radius: 14px; overflow: hidden;
   width: min(860px, calc(100vw - 1.5rem)); max-height: 92vh;

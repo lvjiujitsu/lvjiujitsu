@@ -20,7 +20,6 @@ from system.services import PORTAL_ACCOUNT_SESSION_KEY
 
 
 class PersonUpdatePermissionMatrixTestCase(TestCase):
-    """PRD-099: SUPPORT_PEOPLE edita aluno/dependente; nao edita administrativo nem payroll."""
 
     def setUp(self):
         self.student_type = PersonType.objects.create(

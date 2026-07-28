@@ -424,11 +424,6 @@ class PlanPrice(TimeStampedModel):
             self.monthly_reference_price = None
         update_fields = kwargs.get("update_fields")
         if update_fields is not None:
-            # 'price'/'monthly_reference_price' são derivados dos outros campos
-            # dentro deste save(), não passados por quem chama — precisam entrar
-            # explicitamente em update_fields, senão update_or_create() (usado
-            # pelos seeds de catálogo) grava os campos base corretos mas deixa
-            # o preço antigo intocado no banco.
             update_fields = set(update_fields) | {"price", "monthly_reference_price"}
             kwargs["update_fields"] = update_fields
         super().save(*args, **kwargs)

@@ -1,6 +1,5 @@
 :root,
 html[data-theme="light"] {
-  color-scheme: light;
   --auth-bg: #f4f4f5;
   --auth-card: #ffffff;
   --auth-card-border: rgba(196, 18, 48, 0.18);
@@ -8,8 +7,8 @@ html[data-theme="light"] {
   --auth-input: #fafafa;
   --auth-text: #18181b;
   --auth-muted: #686872;
-  --auth-brand: #c41230;
-  --auth-brand-strong: #9b0e25;
+  --auth-accent: #c41230;
+  --auth-accent-strong: #9b0e25;
   --auth-focus: rgba(196, 18, 48, 0.28);
   --auth-danger: #dc2626;
   --auth-danger-soft: rgba(220, 38, 38, 0.08);
@@ -22,7 +21,6 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
-  color-scheme: dark;
   --auth-bg: #08090b;
   --auth-card: #111315;
   --auth-card-border: rgba(224, 34, 68, 0.3);
@@ -30,8 +28,8 @@ html[data-theme="dark"] {
   --auth-input: #181b1f;
   --auth-text: #f7f7f8;
   --auth-muted: #a5a7ad;
-  --auth-brand: #e02244;
-  --auth-brand-strong: #c41230;
+  --auth-accent: #e02244;
+  --auth-accent-strong: #c41230;
   --auth-focus: rgba(224, 34, 68, 0.34);
   --auth-danger: #f87171;
   --auth-danger-soft: rgba(248, 113, 113, 0.1);
@@ -63,7 +61,7 @@ body.login-page {
 }
 
 body.login-page a {
-  color: var(--auth-brand-strong);
+  color: var(--auth-accent-strong);
 }
 
 button,
@@ -108,7 +106,7 @@ img {
 
 .theme-toggle:hover {
   color: var(--auth-text);
-  border-color: var(--auth-brand);
+  border-color: var(--auth-accent);
 }
 
 .theme-toggle:focus-visible {
@@ -157,7 +155,7 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
   padding: 38px 42px;
   background: var(--auth-card);
   border: 1px solid var(--auth-card-border);
-  border-top: 3px solid var(--auth-brand);
+  border-top: 3px solid var(--auth-accent);
   border-radius: 8px;
   box-shadow: var(--auth-shadow);
 }
@@ -279,7 +277,7 @@ html[data-theme="dark"] .login-card__logo--dark-theme {
 
 .login-form input:focus {
   outline: none;
-  border-color: var(--auth-brand);
+  border-color: var(--auth-accent);
   box-shadow: 0 0 0 3px var(--auth-focus);
   background: var(--auth-card);
 }
@@ -371,12 +369,12 @@ html[data-theme="dark"] .login-card__logo--dark-theme {
 
 .btn-submit {
   border: 0;
-  background: var(--auth-brand);
+  background: var(--auth-accent);
   color: #ffffff;
 }
 
 .btn-submit:hover {
-  background: var(--auth-brand-strong);
+  background: var(--auth-accent-strong);
 }
 
 .btn-submit:active,
@@ -427,8 +425,8 @@ html[data-theme="dark"] .login-card__logo--dark-theme {
 }
 
 .btn-register:hover {
-  border-color: var(--auth-brand);
-  color: var(--auth-brand-strong);
+  border-color: var(--auth-accent);
+  color: var(--auth-accent-strong);
   text-decoration: none;
 }
 

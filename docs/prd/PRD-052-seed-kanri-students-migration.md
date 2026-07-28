@@ -7,7 +7,7 @@ Criar um management command idempotente para popular o cadastro local a partir d
 Nova feature / seed de migração de dados.
 
 ## Problema atual
-Os dados sanitizados da migração existem em arquivos JSON individuais, mas ainda não há uma seed auditável que os transforme em registros do sistema. O modelo local exige `Person.cpf` único, enquanto parte dos arquivos do Kanri usa CPF do responsável, repete CPF entre irmãos ou não possui documento.
+Os dados sanitizados da migração existem em arquivos JSON individuais, mas ainda não há uma seed auditável que os transforme em registros do sistema. O modelo local exige `Person.cpf` único, enquanto parte dos arquivos do Kanri usa CPF do responsável, repete CPF entre dependentes ou não possui documento.
 
 ## Objetivo
 Popular pessoas, responsáveis, dependentes, vínculos familiares e histórico de graduação possível, preservando rastreabilidade e evitando inventar mensalidades, check-ins ou turmas sem contrato suficiente.

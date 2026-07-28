@@ -6,11 +6,6 @@ from system.models import OperationalRole, PersonOperationalRole
 
 @transaction.atomic
 def sync_person_operational_roles(person, role_ids, class_assistant_group=None):
-    """Sincroniza os PersonOperationalRole ativos da pessoa com a selecao feita na tela.
-
-    Papeis nao selecionados sao removidos; papeis selecionados sao criados/atualizados.
-    O papel `class-assistant` usa `class_assistant_group` como escopo; os demais sao globais.
-    """
     selected_roles = list(
         OperationalRole.objects.filter(pk__in=role_ids, is_active=True)
     )

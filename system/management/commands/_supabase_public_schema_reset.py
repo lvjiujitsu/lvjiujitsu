@@ -14,6 +14,24 @@ WHERE n.nspname = 'public'
   AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
 """
 
+PUBLIC_RELATION_LIST_SQL = """
+SELECT c.relkind, c.relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+ORDER BY c.relname
+"""
+
+RELKIND_LABELS = {
+    "r": "tabela",
+    "p": "tabela particionada",
+    "v": "view",
+    "m": "view materializada",
+    "S": "sequence",
+    "f": "foreign table",
+}
+
 PUBLIC_RELATION_RESET_SQL = """
 DO $$
 DECLARE
@@ -56,17 +74,47 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
     target_environment = ""
     confirmation_value = ""
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--execute",
+            action="store_true",
+            help="Executa a remocao. Sem esta flag, apenas lista o alvo.",
+        )
+
     def handle(self, *args, **options):
-        self.validate_safety_guards()
-        before_count = self.count_public_relations()
-        self.stdout.write(f"Objetos encontrados no schema public antes da limpeza: {before_count}")
+        project_ref = self.validate_safety_guards()
+        relations = self.list_public_relations()
+
+        self.stdout.write(f"Projeto Supabase confirmado: {project_ref}")
+        self.stdout.write(
+            f"Objetos encontrados no schema public: {len(relations)}"
+        )
+        for relkind, relname in relations:
+            self.stdout.write(f"  - {RELKIND_LABELS.get(relkind, relkind)} public.{relname}")
+
+        if not options["execute"]:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Simulacao concluida. Nenhum objeto foi removido. "
+                    "Revise o projeto e a lista acima antes de usar --execute."
+                )
+            )
+            return
+
+        if not relations:
+            self.stdout.write(self.style.WARNING("Nenhum objeto encontrado no schema public."))
+            return
 
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(PUBLIC_RELATION_RESET_SQL)
 
         after_count = self.count_public_relations()
-        self.stdout.write(f"Objetos restantes no schema public: {after_count}")
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Reset concluido. Objetos restantes no schema public: {after_count}"
+            )
+        )
 
     def validate_safety_guards(self):
         current_environment = getattr(settings, "DJANGO_ENVIRONMENT", "")
@@ -93,6 +141,35 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
 
         if connection.vendor != "postgresql":
             raise CommandError("Este comando exige conexão PostgreSQL. SQLite foi recusado.")
+
+        return self.validate_project_ref(database_url)
+
+    @staticmethod
+    def validate_project_ref(database_url):
+        expected_ref = getattr(settings, "SUPABASE_PROJECT_REF", "").strip()
+        if not expected_ref:
+            raise CommandError(
+                "SUPABASE_PROJECT_REF e obrigatoria para confirmar qual projeto "
+                "Supabase e o alvo."
+            )
+
+        parsed = urlparse(database_url)
+        hostname = (parsed.hostname or "").lower()
+        username = parsed.username or ""
+        direct_ref = hostname.removeprefix("db.").removesuffix(".supabase.co")
+        pooler_ref = username.split(".", 1)[1] if username.startswith("postgres.") else ""
+        discovered_ref = pooler_ref or direct_ref
+
+        if discovered_ref != expected_ref:
+            raise CommandError(
+                "A conexao nao corresponde ao SUPABASE_PROJECT_REF esperado."
+            )
+        return expected_ref
+
+    def list_public_relations(self):
+        with connection.cursor() as cursor:
+            cursor.execute(PUBLIC_RELATION_LIST_SQL)
+            return cursor.fetchall()
 
     def count_public_relations(self):
         with connection.cursor() as cursor:

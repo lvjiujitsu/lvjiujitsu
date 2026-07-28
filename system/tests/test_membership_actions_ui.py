@@ -12,7 +12,6 @@ from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_
 
 
 class MembershipActionsUiTestCase(TestCase):
-    """PRD-103: acoes de assinatura no detalhe de pessoa."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

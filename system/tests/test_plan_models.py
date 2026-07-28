@@ -102,7 +102,6 @@ class SubscriptionPlanModelTestCase(TestCase):
             gateway_percentage_fee=Decimal("0.0000"),
             cycle_discount_percentage=Decimal("0.1200"),
         )
-        # (250 * 12 * (1 - 0.12) + 1.99) / 1 = 2640 + 1.99 = 2641.99
         self.assertEqual(plan.price, Decimal("2641.99"))
 
     def test_plan_without_base_net_keeps_manual_price(self):

@@ -5,31 +5,34 @@ description: Use esta skill para criar ou atualizar PRDs do LV JIU JITSU antes d
 
 # LV PRD
 
-## Preparar
+## Quando acionar
 
-1. Ler `docs/PRD-STANDARD.md`.
-2. Confirmar que `lv-task-intake` foi concluída.
-3. Encontrar o próximo número livre.
-4. Registrar arquivos, fontes, ferramentas e limitações.
-5. Usar Context7 e documentação oficial quando aplicável.
+Antes de toda mudança relevante que exija especificação comportamental verificável.
 
-## Especificar
+## Passos
 
-Incluir problema, objetivo, escopo, fora de escopo, riscos, arquivos, skills, autorização registrada, critérios, evidência, plano test-first, execução de testes, browser, ORM e limpeza.
+1. Confirmar `lv-task-intake` e ler `docs/PRD-STANDARD.md`.
+2. Consultar `docs/prd/README.md` como índice canônico, escolher o próximo número sem duplicar e atualizar o índice.
+3. Registrar arquivos lidos, fontes, ferramentas, limitações e autorização.
+4. Especificar problema, objetivo, escopo, fora de escopo, riscos, critérios e evidências.
+5. Definir plano test-first, comandos reais, browser, ORM e limpeza proporcionais.
+6. Para UI, incluir hierarquia, wireframe, máquina de estados e gate do `AGENTS.md`.
+7. Para pagamentos, distinguir redirect, webhook, gateway, sessão, ORM e ambiente.
+8. Atualizar evidências, implementação, limpeza, desvios, pendências e status durante a execução.
 
-Para UI, incluir hierarquia, wireframe, máquina de estados e aprovação.
+## Saída
 
-Para pagamentos, distinguir redirect, webhook, gateway, sessão, ORM e ambiente.
+```text
+PRD: <PRD-NNN e caminho>.
+Autorização: <registrada | pendente>.
+Critérios verificáveis: <resumo>.
+Evidência esperada: <comandos, testes, browser e ORM>.
+Status: <não iniciada | em execução | concluída | não concluída>.
+```
 
-## Manter
+## Parar quando
 
-- Não marcar checklist sem evidência.
-- Diferenciar teste escrito de executado.
-- Não declarar Red ou Green sem execução real.
-- Atualizar `Evidence`, `Implemented`, `Cleanup findings`, `Deviations`, `Pending` e `Final status`.
-
-## Restringir
-
-- Não criar PRD vazia.
-- Não inventar rota, gateway, comando ou resultado.
-- Não implementar follow-up sem nova aprovação.
+- A PRD e o índice estiverem atualizados com critérios verificáveis.
+- Se o número estiver duplicado ou reservado, parar e corrigir o índice antes do código.
+- Se faltar autorização necessária, parar com status pendente.
+- Não marcar checklist nem declarar teste executado sem evidência real.

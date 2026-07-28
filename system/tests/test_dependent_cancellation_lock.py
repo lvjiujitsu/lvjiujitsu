@@ -24,9 +24,6 @@ from system.services.plan_change import get_plan_change_lock, is_plan_change_loc
 
 
 class PlanChangeLockRecognizesPlanPriceTestCase(TestCase):
-    """Regressão encontrada na PRD-128: is_plan_change_locked ignorava
-    Membership.plan_price (modelo novo da PRD-127), nunca bloqueando quem já
-    migrou para PlanTier/PlanPrice."""
 
     def setUp(self):
         self.person_type = PersonType.objects.create(
@@ -114,9 +111,6 @@ class PlanChangeLockRecognizesPlanPriceTestCase(TestCase):
 
 
 class DependentRemovalCancellationLockTestCase(TestCase):
-    """Cenário N:N real: titular contrata, adiciona dependente com plano
-    próprio recorrente Stripe, tenta remover antes da carência (bloqueado),
-    e remove depois que a carência termina (permitido)."""
 
     def setUp(self):
         self.person_type = PersonType.objects.create(

@@ -45,7 +45,6 @@ Implementar fluxo seguro para presenca do professor na aula do dia, com cancelam
 - `static/system/js/home/dashboard.js`
 - `system/views/home_views.py`
 - `system/urls.py`
-- Projeto irmao `C:/Users/whsf/Documents/GitHub/visary` para padrao de acoes iconicas (`icon-action`, `btn-icon`, `aria-label`).
 
 ### Internet / official documentation
 - Django 5.2 class-based views: https://docs.djangoproject.com/en/5.2/ref/class-based-views/base/

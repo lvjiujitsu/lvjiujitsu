@@ -2,7 +2,7 @@
 
 ## Summary
 
-Levar a governança do LV JIU JITSU à paridade com o padrão multiplataforma compartilhado com o Visary, sem portar fatos de domínio do Visary. Fechar duas divergências de protocolo (a seção de Classificação ausente no `docs/AGENT-WORKFLOW.md` e a falta da skill `lv-prompt-builder`) e registrar uma decisão consciente sobre `docs/UX-SCREEN-FLOWS.md`. A skill `lv-prompt-builder` transforma um problema cru no melhor execution prompt no padrão LV e para, sem implementar.
+Levar a governança do LV JIU JITSU ao padrão multiplataforma de governança, sem portar fatos de outro domínio. Fechar duas divergências de protocolo (a seção de Classificação ausente no `docs/AGENT-WORKFLOW.md` e a falta da skill `lv-prompt-builder`) e registrar uma decisão consciente sobre `docs/UX-SCREEN-FLOWS.md`. A skill `lv-prompt-builder` transforma um problema cru no melhor execution prompt no padrão LV e para, sem implementar.
 
 ## Demand type
 
@@ -10,9 +10,9 @@ Revisão de governança do agente + regeneração documental + tooling de agente
 
 ## Current problem
 
-- O `docs/AGENT-WORKFLOW.md` do LV não tinha uma seção de Classificação; sua `§2` era "Preflight". O padrão multiplataforma (Visary) define Classificação em `§2`, e a skill de prompt builder referencia `docs/AGENT-WORKFLOW.md §2` para as categorias de demanda — a referência ficaria quebrada sem essa seção.
+- O `docs/AGENT-WORKFLOW.md` do LV não tinha uma seção de Classificação; sua `§2` era "Preflight". O padrão multiplataforma define Classificação em `§2`, e a skill de prompt builder referencia `docs/AGENT-WORKFLOW.md §2` para as categorias de demanda — a referência ficaria quebrada sem essa seção.
 - Não existia a skill `lv-prompt-builder` em nenhuma das três plataformas (`.claude`, `.agents`, `.cursor`). Transformar um problema cru em execução exige montar manualmente intake, classificação, escolha de skills, leitura e gates, e as autorizações previsíveis viram pausas dispersas.
-- O Visary mantém um `docs/UX-SCREEN-FLOWS.md`; o LV não tem o arquivo, gerando uma assimetria estrutural que precisava de decisão registrada.
+- O LV não tem um `docs/UX-SCREEN-FLOWS.md`, gerando uma assimetria estrutural que precisava de decisão registrada.
 
 ## Goal
 
@@ -36,7 +36,7 @@ Revisão de governança do agente + regeneração documental + tooling de agente
 - `.claude/skills/lv-prd/SKILL.md`, `.agents/skills/lv-prd/SKILL.md`, `.cursor/skills/lv-prd/SKILL.md`
 - `.agents/skills/lv-prd/agents/openai.yaml` (e os outros quatro `openai.yaml`)
 - `docs/prd/PRD-059-governanca-agentes-multiplataforma.md`
-- Referência de protocolo no Visary: `AGENTS.md`, `CLAUDE.md`, `docs/AGENT-WORKFLOW.md`, `docs/PLATFORM-ADAPTERS.md`, `docs/UX-SCREEN-FLOWS.md`, `.claude/skills/visary-prompt-builder/SKILL.md`, `docs/prd/PRD-110-prompt-builder-claude.md`
+- Referência de protocolo: `AGENTS.md`, `CLAUDE.md`, `docs/AGENT-WORKFLOW.md`, `docs/PLATFORM-ADAPTERS.md`, `docs/UX-SCREEN-FLOWS.md`, `docs/prd/PRD-110-prompt-builder-claude.md`
 
 ### Adjacent files consulted
 
@@ -54,7 +54,7 @@ Conclusão aplicável: `name` é opcional (default = nome do diretório) e `desc
 ### Context7 / MCPs / tools verified
 
 - Context7 não aplicável: a mudança é documental/de configuração, sem biblioteca de runtime nova. A fonte de verdade é a própria ferramenta, verificada na documentação oficial.
-- PyYAML disponível via `.venv` do Visary (o LV não instala PyYAML por padrão; mesmo arranjo registrado no PRD-059).
+- PyYAML disponível via `.venv` auxiliar (o LV não instala PyYAML por padrão; mesmo arranjo registrado no PRD-059).
 - PowerShell, Git, `rg` e `sha256sum` disponíveis.
 
 ### Limitations found
@@ -87,11 +87,11 @@ Fechar as divergências de protocolo do LV em relação ao padrão multiplatafor
 
 ### Context
 
-O LV é um monólito Django 5.2 em Windows/PowerShell, com governança em `AGENTS.md`, `CLAUDE.md` e `docs/`, cinco skills `lv-*` sincronizadas em `.claude`/`.agents`/`.cursor`, pagamentos Asaas/Stripe e wizard público. O Visary é a referência de protocolo, não de domínio.
+O LV é um monólito Django 5.2 em Windows/PowerShell, com governança em `AGENTS.md`, `CLAUDE.md` e `docs/`, cinco skills `lv-*` sincronizadas em `.claude`/`.agents`/`.cursor`, pagamentos Asaas/Stripe e wizard público. A referência é de protocolo, não de domínio.
 
 ### Constraints
 
-- Não portar fatos do Visary (vistos, viagens, parceiros, "sem pagamento", mapeamento Principal/dependente-viagem).
+- Não portar fatos de outro domínio (vistos, viagens, parceiros, "sem pagamento", mapeamento Principal/dependente-viagem).
 - Preservar os fatos de domínio do LV.
 - Menor mudança correta: atualizar só o protocolo divergente; não reescrever o que está certo.
 - Não alterar código funcional, banco, migrations, seeds ou pagamentos.
@@ -106,14 +106,14 @@ O LV é um monólito Django 5.2 em Windows/PowerShell, com governança em `AGENT
 - [x] A skill usa `disable-model-invocation: true` e gera o execution prompt no formato de `docs/PRD-STANDARD.md`, parando sem implementar.
 - [x] `docs/PLATFORM-ADAPTERS.md` registra a skill nas colunas Claude/Codex/Cursor.
 - [x] A decisão sobre `docs/UX-SCREEN-FLOWS.md` está registrada com motivo.
-- [x] Nenhum fato de domínio do Visary vazou para os arquivos tocados.
+- [x] Nenhum fato de outro domínio vazou para os arquivos tocados.
 
 ### Expected evidence
 
 - Parse YAML estrito das cópias e dos metadados.
 - SHA-256 idêntico entre as três cópias.
 - Contagem de caracteres da `description` abaixo de 1.536.
-- Busca textual anti-vazamento de termos do Visary.
+- Busca textual anti-vazamento de termos de outro domínio.
 - `git diff --check`.
 
 ### Output format
@@ -147,7 +147,7 @@ Os arquivos listados no escopo.
 - Frontmatter malformado carregando a skill sem `description`: mitigado quotando a `description` (contém `: `); validado por PyYAML.
 - Renumeração do AGENT-WORKFLOW quebrar referências: verificado por `grep` — nenhuma fonte referencia seções numeradas do documento.
 - Prompt gerado que pré-aprova gate de segurança: a skill lista explicitamente os gates que não podem ser consolidados (ORM mutável, migrations, migrate, reset, seeds, cobrança/webhook real Asaas/Stripe, push, deploy).
-- Vazamento de fatos do Visary: mitigado por varredura textual; o único match foi o falso positivo "categoria principal" (adjetivo pt-BR).
+- Vazamento de fatos de outro domínio: mitigado por varredura textual; o único match foi o falso positivo "categoria principal" (adjetivo pt-BR).
 
 ## Rules and constraints
 
@@ -193,7 +193,7 @@ Não aplicável. Não há persistência.
 - Parse YAML estrito (PyYAML) das 18 cópias de `SKILL.md` (6 skills × 3 plataformas) e dos 6 `openai.yaml`: todas válidas.
 - SHA-256 das três cópias de `lv-prompt-builder/SKILL.md`.
 - Contagem de caracteres da `description`.
-- Varredura anti-vazamento de termos do Visary.
+- Varredura anti-vazamento de termos de outro domínio.
 - `git diff --check`.
 
 ## Evidence
@@ -203,7 +203,7 @@ Não aplicável. Não há persistência.
 - Parse YAML estrito: 18 `SKILL.md` + 6 `openai.yaml` reportados como válidos; `lv-prompt-builder` com `name`, `description`, `argument-hint` e `disable-model-invocation: true`.
 - `description` da skill com 354 caracteres, abaixo do limite de 1.536 da listagem.
 - `docs/AGENT-WORKFLOW.md` com seções `## 1` a `## 13`, sendo `## 2. Classificação` a nova; `grep` confirmou que nenhuma fonte referencia seções numeradas do documento.
-- Varredura anti-Visary (`visto|viagem|consular|parceiro|assessor|mysql|viacep|sem pagamento|dependente.*viagem|Aluno.*Principal`) sem correspondência nos arquivos tocados.
+- Varredura anti-domínio-externo (`visto|viagem|consular|parceiro|assessor|mysql|viacep|sem pagamento|dependente.*viagem|Aluno.*Principal`) sem correspondência nos arquivos tocados.
 - `git diff --check`: sem erro de whitespace; apenas avisos de normalização LF→CRLF do Windows.
 - Fonte oficial confirmada nesta sessão: [Claude Code: skills](https://code.claude.com/docs/en/skills) — cap de 1.536 caracteres, `disable-model-invocation`, localização `.claude/skills/` e comportamento de frontmatter malformado.
 
@@ -219,8 +219,8 @@ Não aplicável. Não há persistência.
 
 - Diff reauditado: seis arquivos no escopo aprovado, mais este PRD; `.claude/settings.local.json` preexistente preservado.
 - Todas as referências da skill (`AGENTS.md`, `CLAUDE.md`, contratos `docs/` e skills `lv-*`) existem; nenhuma rota, arquivo, comando ou fonte inventada.
-- **Decisão sobre `docs/UX-SCREEN-FLOWS.md`: não criar agora.** Motivo: o LV já governa padrões genéricos de tela, estados, papéis e hierarquia de ação em `docs/UI-SCREEN-CONTRACT.md`, e os fluxos concretos vivem nos três `docs/wizard-step-plan-*.md` e nos PRDs de tela; criar um documento espelhando o Visary duplicaria conteúdo correto e arriscaria portar fatos de domínio do Visary. A própria skill `lv-prompt-builder` (e o `SKILL.md` fornecido) já omite `UX-SCREEN-FLOWS` da lista de contratos, refletindo essa decisão. Reabrir quando houver fluxo de tela transversal não coberto pelos contratos atuais.
-- O `visary-prompt-builder` original existe apenas em `.claude`; o LV fecha o gap entregando a skill nas três plataformas de uma vez (supera a paridade pendente registrada no PRD-110 do Visary).
+- **Decisão sobre `docs/UX-SCREEN-FLOWS.md`: não criar agora.** Motivo: o LV já governa padrões genéricos de tela, estados, papéis e hierarquia de ação em `docs/UI-SCREEN-CONTRACT.md`, e os fluxos concretos vivem nos três `docs/wizard-step-plan-*.md` e nos PRDs de tela; criar um documento espelhando outro projeto duplicaria conteúdo correto e arriscaria portar fatos de outro domínio. A própria skill `lv-prompt-builder` (e o `SKILL.md` fornecido) já omite `UX-SCREEN-FLOWS` da lista de contratos, refletindo essa decisão. Reabrir quando houver fluxo de tela transversal não coberto pelos contratos atuais.
+- O prompt-builder de referência existe apenas em `.claude`; o LV fecha o gap entregando a skill nas três plataformas de uma vez.
 - Sem código morto, hardcode, duplicação, placeholder solto ou documentação divergente no escopo.
 
 ## Follow-up PRDs

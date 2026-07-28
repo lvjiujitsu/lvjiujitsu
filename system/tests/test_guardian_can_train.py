@@ -20,7 +20,6 @@ from system.services import PORTAL_ACCOUNT_SESSION_KEY, TECHNICAL_ADMIN_SESSION_
 
 
 class GuardianCanTrainTestCase(TestCase):
-    """PRD-093: responsavel (guardian) pode receber turmas e treinar sem virar 'student'."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

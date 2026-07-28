@@ -6,7 +6,6 @@ from system.services import TECHNICAL_ADMIN_SESSION_KEY
 
 
 class LvFoundationCalendarRoutesTestCase(TestCase):
-    """PRD-077: rota canonica em ingles para o cronograma (calendario unico)."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(
@@ -33,7 +32,6 @@ class LvFoundationCalendarRoutesTestCase(TestCase):
 
 
 class CalendarDeadCodeRemovedTestCase(TestCase):
-    """PRD-097/PRD-077: views de calendario orfas (sem rota) foram removidas."""
 
     def test_admin_calendar_view_no_longer_exists(self):
         from system.views import calendar_views

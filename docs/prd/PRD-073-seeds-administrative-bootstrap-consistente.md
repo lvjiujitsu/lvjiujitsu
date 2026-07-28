@@ -7,7 +7,6 @@ Corrigir a ordem e a atomicidade das seeds iniciais que criam professores, admin
 Correção de bootstrap local + governança de seeds.
 
 ## Current problem
-- `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md` executa `seed_system_initial_administrative` antes de `seed_system_initial_class_categories` e `seed_system_initial_class_catalog`.
 - `seed_system_initial_administrative.py` cria pessoa/portal e também chama `sync_administrative_training_links`, que exige `ClassCategory` e `ClassGroup` existentes.
 - As seeds legadas `seed_system_initial_class_categories_administrative` e `seed_system_initial_class_catalog_administrative` dependem da pessoa administrativa já criada; quando a seed principal falha, ambas falham com CPF não encontrado.
 - `docs/OPERACAO-BANCO-SEEDS.md` também precisa ser reconciliado: a ordem atual documentada ainda posiciona vínculos de professor antes da criação do professor.
@@ -27,7 +26,6 @@ Ter um ciclo local reproduzível, idempotente e transacional para primeira carga
 - `docs/AGENT-WORKFLOW.md`
 - `docs/PRD-STANDARD.md`
 - `docs/OPERACAO-BANCO-SEEDS.md`
-- `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md`
 - `system/management/commands/seed_system_initial_administrative.py`
 - `system/management/commands/seed_system_initial_class_categories.py`
 - `system/management/commands/seed_system_initial_class_categories_administrative.py`
@@ -84,7 +82,6 @@ Autorizado pela solicitação atual do usuário, que pediu corrigir de maneira c
 - `system/tests/test_commands.py`
 - `system/management/commands/seed_system_initial_administrative.py`
 - `system/services/administrative_training.py`
-- `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md`
 
 ## Risks and edge cases
 - Seed administrativa atual junta criação de pessoa e vínculos dependentes; uma dependência ausente deve abortar sem pessoa parcialmente criada.
@@ -142,7 +139,6 @@ Validar em banco de teste e, se necessário, shell ORM local read-only após see
 - `system/management/commands/seed_system_initial_administrative.py`: dependências de treino são validadas antes de criar/atualizar `Person`.
 - `system/tests/test_commands.py`: adicionada `AdministrativeSeedCommandTestCase` cobrindo falta de categorias, falta de catálogo e idempotência das seeds legadas após a seed principal.
 - `docs/OPERACAO-BANCO-SEEDS.md`: ordem de referência corrigida.
-- `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\comandos\comandos-powershell-lvjiujitsu.md`: rebuild completo e comando em uma linha corrigidos para a ordem validada.
 
 ## Cleanup findings
 - Diff revisado no escopo da PRD-073.

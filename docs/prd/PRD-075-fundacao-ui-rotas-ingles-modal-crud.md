@@ -1,7 +1,7 @@
 # PRD-075: Fundação UI, rotas em inglês e CRUD modal
 
 ## Summary
-Reconstruir a fundação autenticada do LV para que os módulos CRUD usem rotas canônicas em inglês, interface pt-BR e ações curtas em modal/dialog na mesma tela, conforme o padrão descrito no contrato atual e inspirado no Visary sem copiar domínio.
+Reconstruir a fundação autenticada do LV para que os módulos CRUD usem rotas canônicas em inglês, interface pt-BR e ações curtas em modal/dialog na mesma tela, conforme o padrão descrito no contrato atual, sem copiar domínio externo.
 
 ## Demand type
 Reimplementação UI/UX multi-módulo + governança de rotas.
@@ -26,7 +26,7 @@ Reimplementação UI/UX multi-módulo + governança de rotas.
 - `AGENTS.md`
 - `CLAUDE.md`
 - `docs/UI-SCREEN-CONTRACT.md`
-- `docs/prd/PRD-066-portabilidade-visary-modal-crud.md`
+- `docs/prd/PRD-066-padrao-visual-modal-crud.md`
 - `docs/prd/PRD-068-rework-limpo-pessoas-fundacao-lv.md`
 - `docs/prd/PRD-065-hubs-administrativos-modulos-lv.md`
 - `system/urls.py`
@@ -46,7 +46,6 @@ Reimplementação UI/UX multi-módulo + governança de rotas.
 - `system/views/plan_views.py`
 - `static/system/css/home/dashboard.css`
 - `static/system/js/home/dashboard.js`
-- `C:\Users\whsf\Documents\GitHub\visary` como referência conceitual solicitada, sem portar domínio.
 
 ### Internet / official documentation
 - Django 5.2 templates: https://docs.djangoproject.com/en/5.2/topics/templates/
@@ -140,7 +139,7 @@ Autorizado pela solicitação atual: rotas em inglês, front em português, flux
 ## Plan
 - [x] Escrever teste de inventário/renderização real para as rotas de Pessoas.
 - [x] Criar fundação compartilhada (`templates/lv/*`, `static/system/css/lv/base.css`, `static/system/js/lv/*`).
-- [x] Migrar Pessoas para modal CRUD (create/edit em iframe modal; detalhe mantém página dedicada, exceção documentada no padrão Visary por concentrar financeiro/graduação).
+- [x] Migrar Pessoas para modal CRUD (create/edit em iframe modal; detalhe mantém página dedicada, exceção documentada por concentrar financeiro/graduação).
 - [x] Adicionar rotas canônicas em inglês (`/people/...`) com redirect de compatibilidade das rotas antigas em português (`/pessoas/...`).
 - [x] Validar desktop/mobile/claro/escuro no navegador interno.
 - [ ] Replicar o padrão para os demais módulos (Planos, Turmas, Materiais, Financeiro, Graduação) — escopo da PRD-077.
@@ -204,7 +203,7 @@ Dados reais do banco de desenvolvimento local (seeds já aplicadas); pessoa de t
 - PRD-084 para tokens/estilo inline nos módulos ainda não migrados.
 
 ## Deviations from plan
-- Detalhe de pessoa (`PersonDetailView`) manteve página dedicada como ação principal (só criou o template modal compacto já referenciado no código, sem trigger no card), por ser uma tela rica (financeiro, graduação, histórico) — exceção explicitamente documentada no padrão Visary (`docs/references/VISARY-PATTERNS-LV.md`, seção 2) para páginas de detalhe que concentram múltiplas áreas.
+- Detalhe de pessoa (`PersonDetailView`) manteve página dedicada como ação principal (só criou o template modal compacto já referenciado no código, sem trigger no card), por ser uma tela rica (financeiro, graduação, histórico) — exceção explicitamente documentada para páginas de detalhe que concentram múltiplas áreas.
 
 ## Pending
 - Repetir esta fundação para Planos, Turmas, Materiais, Financeiro e Graduação (PRD-077).

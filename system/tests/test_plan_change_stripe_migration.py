@@ -1,5 +1,3 @@
-"""PRD-132: transição livre entre planos, incluindo migração de gateway
-(Asaas -> Stripe recorrente e Stripe -> Asaas) via "Trocar plano"."""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -160,9 +158,6 @@ class PlanChangeSelectViewStripeMigrationTestCase(TestCase):
 
         mock_client.Subscription.delete.assert_called_once_with("sub_leaving_stripe", prorate=True)
 
-        # Ciclo Stripe já vencido -> sem saldo a aproveitar -> exige novo pagamento
-        # (mesmo comportamento de qualquer troca de plano sem crédito disponível),
-        # mas a assinatura Stripe antiga já foi cancelada e o status voltou a ativo.
         self.assertIn("redirect_url", payload)
         order = RegistrationOrder.objects.get(person=self.person, is_plan_change=True)
         self.assertEqual(order.plan_price_ref_id, self.price_asaas.pk)

@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from contextlib import redirect_stdout
 from datetime import date
@@ -14,7 +15,16 @@ from django.core.management import call_command, get_commands
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from clear_migrations import remove_runtime_artifacts
+from clear_migrations import (
+    CleanupError,
+    ancestor_pids,
+    build_parent_map,
+    is_project_python_process,
+    kill_project_python_processes,
+    remove_runtime_artifacts,
+    validate_database_targets,
+    validate_local_environment,
+)
 from system.constants import OperationalRoleCode, PersonTypeCode
 from system.models import (
     BeltRank,
@@ -33,6 +43,34 @@ from system.tests.seed_helpers import DEFAULT_SEED_PASSWORD
 
 
 class ClearMigrationsCleanupTestCase(SimpleTestCase):
+    def test_self_and_all_ancestors_are_protected_from_being_killed(self):
+        parent_map = {4242: 1010, 1010: 500, 500: 0}
+
+        protected = ancestor_pids(4242, parent_map)
+
+        self.assertIn(4242, protected)
+        self.assertIn(1010, protected)
+        self.assertIn(500, protected)
+
+    def test_sibling_process_remains_a_valid_target(self):
+        parent_map = {4242: 1010, 1010: 500, 500: 0, 7777: 500}
+
+        self.assertNotIn(7777, ancestor_pids(4242, parent_map))
+
+    def test_parent_cycle_does_not_hang(self):
+        self.assertEqual(ancestor_pids(10, {10: 20, 20: 10}), {0, 10, 20})
+
+    def test_build_parent_map_ignores_malformed_entries(self):
+        parent_map = build_parent_map(
+            [
+                {"ProcessId": "10", "ParentProcessId": "4"},
+                {"ProcessId": None, "ParentProcessId": "4"},
+                {"ProcessId": "abc", "ParentProcessId": "4"},
+            ]
+        )
+
+        self.assertEqual(parent_map, {10: 4})
+
     def test_remove_runtime_artifacts_also_removes_playwright_and_screenshot_dirs(self):
         root = Path(
             tempfile.mkdtemp(
@@ -59,6 +97,201 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
             self.assertNotIn(root / ".venv", removed_paths)
         finally:
             shutil.rmtree(root, ignore_errors=True)
+
+    def test_process_filter_only_accepts_python_from_current_project(self):
+        root = Path.cwd().resolve()
+
+        self.assertTrue(
+            is_project_python_process(
+                {
+                    "ExecutablePath": str(root / ".venv" / "Scripts" / "python.exe"),
+                    "CommandLine": "python manage.py runserver",
+                },
+                root,
+            )
+        )
+        self.assertTrue(
+            is_project_python_process(
+                {
+                    "ExecutablePath": r"C:\Python312\python.exe",
+                    "CommandLine": f'python "{root / "manage.py"}" runserver',
+                },
+                root,
+            )
+        )
+        self.assertFalse(
+            is_project_python_process(
+                {
+                    "ExecutablePath": r"C:\other-project\.venv\Scripts\python.exe",
+                    "CommandLine": r"python C:\other-project\manage.py runserver",
+                },
+                root,
+            )
+        )
+        self.assertFalse(
+            is_project_python_process(
+                {
+                    "ExecutablePath": r"C:\Python312\python.exe",
+                    "CommandLine": f'python "{root}-other\\manage.py" runserver',
+                },
+                root,
+            )
+        )
+
+    def test_kill_only_targets_project_python_processes(self):
+        root = Path.cwd().resolve()
+        own_pid = 99101
+        other_pid = 99102
+        process_payload = json.dumps(
+            [
+                {
+                    "ProcessId": own_pid,
+                    "ExecutablePath": str(root / ".venv" / "Scripts" / "python.exe"),
+                    "CommandLine": "python manage.py runserver",
+                },
+                {
+                    "ProcessId": other_pid,
+                    "ExecutablePath": r"C:\other-project\.venv\Scripts\python.exe",
+                    "CommandLine": r"python C:\other-project\manage.py runserver",
+                },
+            ]
+        )
+        process_list_result = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=process_payload,
+            stderr="",
+        )
+        taskkill_result = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+        with (
+            patch("clear_migrations.os.name", "nt"),
+            patch(
+                "clear_migrations.subprocess.run",
+                side_effect=[process_list_result, taskkill_result],
+            ) as mocked_run,
+            redirect_stdout(StringIO()),
+        ):
+            stopped = kill_project_python_processes(root)
+
+        self.assertEqual(stopped, {own_pid})
+        self.assertEqual(mocked_run.call_count, 2)
+        self.assertEqual(
+            mocked_run.call_args_list[1].args[0],
+            ["taskkill", "/PID", str(own_pid), "/F"],
+        )
+
+    def test_local_environment_validation_accepts_complete_sqlite_config(self):
+        root = Path(tempfile.mkdtemp(prefix="cleanup-env-", dir=Path.cwd())).resolve()
+        try:
+            env_path = root / ".env"
+            env_path.write_text(
+                "\n".join(
+                    [
+                        "DJANGO_ENVIRONMENT=local",
+                        "DATABASE_URL=",
+                        "ADMIN_SUPERUSER_USERNAME=admin",
+                        "ADMIN_SUPERUSER_EMAIL=admin@example.com",
+                        "ADMIN_SUPERUSER_PASSWORD=local-only",
+                        "SEED_INITIAL_TEACHER_PASSWORD=local-only",
+                        "SEED_INITIAL_ADMINISTRATIVE_PASSWORD=local-only",
+                        "SEED_TEST_PORTAL_PASSWORD=local-only",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(validate_local_environment(root), env_path)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_local_environment_validation_refuses_remote_environment(self):
+        root = Path(tempfile.mkdtemp(prefix="cleanup-env-", dir=Path.cwd())).resolve()
+        try:
+            env_path = root / ".env.hg"
+            env_path.write_text("DJANGO_ENVIRONMENT=hg\nDATABASE_URL=postgres://example\n", encoding="utf-8")
+
+            with (
+                patch.dict(os.environ, {"DJANGO_ENV_FILE": ".env.hg"}, clear=True),
+                self.assertRaisesMessage(CleanupError, "use o arquivo .env local"),
+            ):
+                validate_local_environment(root)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_local_environment_validation_refuses_database_url(self):
+        root = Path(tempfile.mkdtemp(prefix="cleanup-env-", dir=Path.cwd())).resolve()
+        try:
+            (root / ".env").write_text(
+                "\n".join(
+                    [
+                        "DJANGO_ENVIRONMENT=local",
+                        "DATABASE_URL=postgres://example",
+                        "ADMIN_SUPERUSER_USERNAME=admin",
+                        "ADMIN_SUPERUSER_EMAIL=admin@example.com",
+                        "ADMIN_SUPERUSER_PASSWORD=local-only",
+                        "SEED_INITIAL_TEACHER_PASSWORD=local-only",
+                        "SEED_INITIAL_ADMINISTRATIVE_PASSWORD=local-only",
+                        "SEED_TEST_PORTAL_PASSWORD=local-only",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                self.assertRaisesMessage(CleanupError, "DATABASE_URL deve estar vazio"),
+            ):
+                validate_local_environment(root)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_local_environment_validation_refuses_file_outside_project(self):
+        root = Path(tempfile.mkdtemp(prefix="cleanup-env-", dir=Path.cwd())).resolve()
+        external_env = root.parent / f"{root.name}-outside.env"
+        try:
+            external_env.write_text("DJANGO_ENVIRONMENT=local\n", encoding="utf-8")
+            with (
+                patch.dict(
+                    os.environ,
+                    {"DJANGO_ENV_FILE": str(external_env)},
+                    clear=True,
+                ),
+                self.assertRaisesMessage(CleanupError, "dentro do projeto"),
+            ):
+                validate_local_environment(root)
+        finally:
+            external_env.unlink(missing_ok=True)
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_local_environment_validation_refuses_missing_seed_settings(self):
+        root = Path(tempfile.mkdtemp(prefix="cleanup-env-", dir=Path.cwd())).resolve()
+        try:
+            (root / ".env").write_text(
+                "DJANGO_ENVIRONMENT=local\nDATABASE_URL=\n",
+                encoding="utf-8",
+            )
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                self.assertRaisesMessage(CleanupError, "Configuracoes obrigatorias"),
+            ):
+                validate_local_environment(root)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_database_target_validation_refuses_parent_traversal(self):
+        with (
+            patch("clear_migrations.DATABASE_FILE_NAMES", {"../outside.sqlite3"}),
+            self.assertRaisesMessage(CleanupError, "fora da raiz do projeto"),
+        ):
+            validate_database_targets(Path.cwd())
 
 
 class SeedCommandGovernanceTestCase(SimpleTestCase):
@@ -570,9 +803,6 @@ class SubscriptionPlanValuesSeedCommandTestCase(TestCase):
         self._call("seed_system_initial_subscription_plans_values")
         self._call("seed_system_initial_subscription_plans_values")
 
-        # PRD-127: Individual e Família migraram para PlanTier/PlanPrice (desconto
-        # dinâmico). SubscriptionPlan agora só gera as linhas de Veterano (loyalty),
-        # e só existe o Veterano 5x por semana (não há Veterano 2x).
         self.assertEqual(
             SubscriptionPlan.objects.exclude(code__in=("individual", "loyalty", "family")).count(),
             8,
@@ -626,10 +856,6 @@ class PlanTierPriceSeedCommandTestCase(TestCase):
         stripe_price = PlanPrice.objects.get(
             tier=adult_2x, gateway_code="stripe_card", billing_cycle="monthly"
         )
-        # PRD-127: preço sempre computado pela fórmula única (compute_gross_price),
-        # sem valores manuais divergentes — R$ 229,14 é o correto para base R$ 220,00
-        # com taxa Stripe de 3,99% (o antigo SubscriptionPlan gravava R$ 228,80 direto
-        # do JSON, ignorando a própria fórmula do modelo).
         self.assertEqual(stripe_price.price, Decimal("229.14"))
         self.assertEqual(stripe_price.payment_method, "credit_card")
 
@@ -649,8 +875,6 @@ class PlanTierPriceSeedCommandTestCase(TestCase):
         )
         self.assertEqual(kids_2x_asaas_pix_monthly.price, Decimal("250.00"))
 
-        # PRD-137: recorrente Stripe passou a existir também em semestral/anual
-        # (antes só existia mensal) — desconto de fidelidade vs. Asaas Cartão.
         stripe_adult_2x_semiannual = PlanPrice.objects.get(
             tier__code="adult-2x", gateway_code="stripe_card", billing_cycle="semiannual"
         )

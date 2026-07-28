@@ -22,7 +22,6 @@ from system.services.portal_capabilities import ensure_default_operational_roles
 
 
 class PersonFormOperationalRolesTestCase(TestCase):
-    """PRD-091: atribuir papeis operacionais (ex: apoio de turma) no cadastro de pessoa."""
 
     def setUp(self):
         self.admin_user = get_user_model().objects.create_user(

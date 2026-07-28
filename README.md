@@ -1,72 +1,137 @@
 # LV JIU JITSU
 
-Portal de academia para cadastro, turmas, presença, graduação, planos, materiais, financeiro e repasses.
+Portal de academia. Gerencia cadastro de aluno e responsável, turmas e
+presença, graduação por faixa e categoria, planos e mensalidade, loja de
+materiais, financeiro e repasse de professor. Aluno, responsável, professor e
+administrativo entram pela mesma home, que resolve o papel pela sessão.
 
 ## Stack
 
-- Python 3.12.10
-- Django 5.2.14 LTS, templates server-rendered
-- SQLite local (`db.sqlite3`); Supabase PostgreSQL em homologação e produção
-- Pagamentos: Asaas (PIX/cartão) e Stripe (assinatura recorrente)
-- Deploy: Render
+- Python 3.12.10, Django 5.2.14 LTS;
+- SQLite local, PostgreSQL via Supabase em homologação e produção;
+- Asaas para PIX e cartão, Stripe para assinatura recorrente;
+- WhiteNoise para estáticos, Gunicorn e Render como serviço web.
 
 ## Estrutura
 
-```text
-system/
-├── models/
-├── forms/
-├── services/
-├── selectors/
-├── views/
-├── tests/
-└── management/commands/
-```
+App único `system/`, organizado por responsabilidade: `models/`, `forms/`,
+`services/`, `selectors/`, `views/`, `management/commands/`, `utils/` e
+`tests/`. O projeto Django fica em `lvjiujitsu/`.
 
-Domínio concentrado em `system/`. Regra de negócio em `services/`, leituras em `selectors/`, validação em `forms/`, views finas.
+A baseline de migrations é única: `system/migrations/0001_initial.py`.
 
-## Ambiente local
-
-Pré-requisitos: Python 3.12, PowerShell, `.venv` na raiz do repo.
+## Setup local
 
 ```powershell
-.\.venv\Scripts\pip.exe install -r requirements.txt
+cd 'C:\Users\whsf\Documents\GitHub\lvjiujitsu'
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+```
+
+Copie `.env.example` para `.env` e preencha os valores locais. `DATABASE_URL`
+fica vazia no ambiente local, que usa SQLite.
+
+## Ciclo local completo
+
+```powershell
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
 .\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+```
+
+Em seguida rode as 21 seeds `seed_system_initial_*` na ordem canônica de
+[docs/OPERACAO-BANCO-SEEDS.md](docs/OPERACAO-BANCO-SEEDS.md), que começa em
+`person_type` e termina em `plan_prices`. As seeds `seed_system_initial_test_*`
+são opcionais e só entram quando o objetivo pedir telas povoadas. O equivalente
+automatizado é o slash command `/reset-local`, que verifica as guardas antes de
+apagar.
+
+`clear_migrations.py` recusa a execução quando o ambiente não é
+inequivocamente local — `.env.hg`, `.env.prod`, `DJANGO_ENVIRONMENT` remoto ou
+`DATABASE_URL` preenchida param o script antes de qualquer remoção. As guardas
+estão descritas no runbook de banco.
+
+## Servidor e URLs
+
+```powershell
 .\.venv\Scripts\python.exe manage.py runserver localhost:8000
 ```
 
-Um único arquivo de dependências (`requirements.txt`) cobre local e deploy (inclui PyYAML para o validador de skills). Ver PRD-149.
+| URL | Superfície |
+|---|---|
+| `http://localhost:8000/` | home única, conteúdo conforme o papel da sessão |
+| `http://localhost:8000/login/` | login próprio |
+| `http://localhost:8000/register/` | wizard público de cadastro |
+| `http://localhost:8000/pessoas/` | pessoas e dependentes |
+| `http://localhost:8000/turmas/` | turmas e catálogo |
+| `http://localhost:8000/aulas/` | aulas e presença |
+| `http://localhost:8000/graduacao/` | graduação e faixas |
+| `http://localhost:8000/planos/` | planos, tiers e preços |
+| `http://localhost:8000/materiais/` e `/loja/` | materiais e loja |
+| `http://localhost:8000/financeiro/` | financeiro e repasses |
+| `http://localhost:8000/pagamentos/` | retorno de checkout e webhook de gateway |
+| `http://localhost:8000/administracao/` | administração do produto |
+| `http://localhost:8000/django-admin/` | Django Admin técnico |
+| `http://localhost:8000/health/` | health check |
 
-Variáveis de ambiente locais ficam em `.env`. Ver `.env.example` para o contrato versionável.
+As rotas têm alias em inglês além do caminho pt-BR. O Django Admin é ferramenta
+técnica e não é o painel operacional do produto.
 
-## Comandos úteis
+## Validação
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py showmigrations
-.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
-.\.venv\Scripts\python.exe manage.py shell -c "<CHECK>"
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+.\.venv\Scripts\python.exe scripts\build_prd_index.py --check
+.\.venv\Scripts\python.exe scripts\validate_skill_frontmatter.py
+.\.venv\Scripts\python.exe -m pip check
 ```
 
-Operação de banco, migrations e seeds: `docs/OPERACAO-BANCO-SEEDS.md`.
+Apontando para `.env.hg` ou `.env.prod`, rode `collectstatic` antes de
+`check`, senão o manifest de estáticos faltará.
 
-## Governança e agentes
+O CI em `.github/workflows/ci.yml` roda `pip check`, o validador de skills, o
+verificador do índice de PRD, `manage.py check`, `makemigrations --check` e a
+suíte a cada push.
 
-Este repositório segue um protocolo de governança para agentes de desenvolvimento (Claude Code, Codex, Cursor):
+## Ambientes
 
-- `AGENTS.md` — protocolo comum entre ferramentas.
-- `CLAUDE.md` — contexto factual do projeto LV.
-- `docs/AGENT-WORKFLOW.md` — fluxo detalhado de execução.
-- `docs/PRD-STANDARD.md` — padrão de PRD.
-- `docs/PLATFORM-ADAPTERS.md` — diferenças por ferramenta e skills.
-- `docs/prd/` — PRDs do projeto.
+| Arquivo | Ambiente | Banco |
+|---|---|---|
+| `.env` | local | SQLite |
+| `.env.hg` | homologação | PostgreSQL Supabase |
+| `.env.prod` | produção | PostgreSQL Supabase |
+| `.env.example` | template versionado | — |
 
-Mudanças relevantes exigem uma PRD em `docs/prd/PRD-<NNN>-<slug>.md` antes da implementação.
+Os quatro declaram o mesmo conjunto de chaves. `.env`, `.env.hg` e `.env.prod`
+são privados e ignorados pelo Git. O procedimento de deploy está em
+[docs/DEPLOY-RENDER-SUPABASE.md](docs/DEPLOY-RENDER-SUPABASE.md).
 
-## Documentação
+## Governança
 
-- UI: `docs/UI-SCREEN-CONTRACT.md`.
-- Cadastro público: `docs/prd/PRD-040-fluxo-cadastro-pagamento-antes-pessoa.md`.
-- Pagamentos e webhooks: `docs/GUIA-PREENCHIMENTO-TESTE-CLIENTE.md` e `docs/prd/PRD-058-validacao-webhooks-asaas-stripe-local-hg.md`.
-- Banco, migrations e seeds: `docs/OPERACAO-BANCO-SEEDS.md`.
+- [AGENTS.md](AGENTS.md) — protocolo comum de agentes;
+- [CLAUDE.md](CLAUDE.md) — fatos do produto e dos ambientes;
+- [docs/AGENT-WORKFLOW.md](docs/AGENT-WORKFLOW.md) — ciclo de trabalho;
+- [docs/PRD-STANDARD.md](docs/PRD-STANDARD.md) — formato de PRD;
+- [docs/PLATFORM-ADAPTERS.md](docs/PLATFORM-ADAPTERS.md) — Claude, Codex e
+  Cursor;
+- [docs/UI-SCREEN-CONTRACT.md](docs/UI-SCREEN-CONTRACT.md) — contrato visual;
+- [docs/OPERACAO-BANCO-SEEDS.md](docs/OPERACAO-BANCO-SEEDS.md) — banco,
+  migrations e seeds;
+- [docs/DEPLOY-RENDER-SUPABASE.md](docs/DEPLOY-RENDER-SUPABASE.md) — deploy;
+- [docs/GUIA-PREENCHIMENTO-TESTE-CLIENTE.md](docs/GUIA-PREENCHIMENTO-TESTE-CLIENTE.md) — roteiro de teste manual e pagamentos;
+- [docs/prd/README.md](docs/prd/README.md) — índice canônico das PRDs.
+
+As sete skills vivem em `.claude/skills/` e são espelhadas byte a byte em
+`.agents/skills/` e `.cursor/skills/`. Os slash commands `/reset-local`,
+`/validar-tela` e `/sync-skills` ficam em `.claude/commands/`.
+
+## Licença
+
+MIT. Ver [LICENSE](LICENSE).

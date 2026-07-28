@@ -8,18 +8,16 @@
 {% endblock %}
 
 {% block content %}
-<!-- Cabeçalho da página -->
+
     <div class="page-header">
       <p class="page-header__eyebrow">
         <a href="{% url 'system:person-list' %}">← Pessoas</a>
       </p>
     </div>
 
-    <!-- ─── Painel principal de detalhe ─────────────────────────────────────── -->
     <section class="section" aria-labelledby="person-name-heading">
       <div class="detail-panel">
 
-        <!-- Cabeçalho do detalhe -->
         <div class="detail-header">
           <div class="detail-header__badges">
             {% if person.person_type %}
@@ -73,7 +71,6 @@
           {% endif %}
         </div>
 
-        <!-- ─── Dados pessoais ─────────────────────────────────────────────── -->
         <div class="detail-section">
           <h2 class="detail-section__title">Dados pessoais</h2>
           <div class="detail-grid">
@@ -122,7 +119,6 @@
           </div>
         </div>
 
-        <!-- ─── Endereço ───────────────────────────────────────────────────── -->
         {% if person.address or person.city %}
         <div class="detail-section">
           <h2 class="detail-section__title">Endereço</h2>
@@ -158,7 +154,6 @@
         </div>
         {% endif %}
 
-        <!-- ─── Turmas ──────────────────────────────────────────────────────── -->
         {% if person.show_student_context or person.show_teacher_context %}
         <div class="detail-section">
           <h2 class="detail-section__title">Turmas e horários</h2>
@@ -207,14 +202,12 @@
         </div>
         {% endif %}
 
-        <!-- ─── Graduação ──────────────────────────────────────────────────── -->
         <div class="detail-section">
           <h2 class="detail-section__title">Graduação</h2>
 
           {% if graduation_progress and graduation_progress.current_belt_rank %}
           {% with gp=graduation_progress belt=graduation_progress.current_belt_rank grade=graduation_progress.current_grade_number %}
 
-            <!-- Belt SVG -->
             {% with belt_grade=grade|default:0 %}
             {% comment %}Compute stripes via context — view already provides belt_rank/belt_stripes only on home.
             On detail view we access graduation_progress directly.{% endcomment %}
@@ -243,7 +236,6 @@
               {% if grade %}<span class="belt-info__grade">{{ grade }}º grau</span>{% endif %}
             </div>
 
-            <!-- Stats de graduação -->
             <div class="grad-stats">
               <div class="grad-stat">
                 <span class="grad-stat__label">Na faixa</span>
@@ -264,7 +256,6 @@
               </div>
             </div>
 
-            <!-- Barra de progresso -->
             {% if gp.required_classes or gp.required_months %}
             <div class="progress-label">
               <span class="progress-label__name">Progresso geral</span>
@@ -278,7 +269,6 @@
             </div>
             {% endif %}
 
-            <!-- Elegibilidade ou bloqueador -->
             {% if gp.is_eligible %}
               <div class="grad-eligible" role="status">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -332,7 +322,6 @@
           </div>
           {% endif %}
 
-          <!-- Histórico de graduação -->
           {% if graduation_history %}
           <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border-soft);">
             <div style="font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.625rem;">Histórico</div>
@@ -350,10 +339,9 @@
 
         </div>
 
-      </div><!-- /detail-panel -->
+      </div>
     </section>
 
-    <!-- ─── Arte marcial ─────────────────────────────────────────────────────── -->
     {% if person.martial_art or person.jiu_jitsu_belt or person.martial_art_started_at %}
     <section class="section" aria-labelledby="martial-art-heading">
       <div class="section__header">
@@ -404,7 +392,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Mensalidade (somente can_manage_people) ─────────────────────────── -->
     {% if can_manage_people %}
     <section class="section" aria-labelledby="billing-heading">
       <div class="section__header">
@@ -415,7 +402,6 @@
       </div>
       <div class="detail-panel">
 
-        <!-- Plano ativo -->
         <div class="detail-section">
           <h3 class="detail-section__title">Plano ativo</h3>
           {% if active_membership %}
@@ -467,7 +453,6 @@
           {% endif %}
         </div>
 
-        <!-- Pedidos pendentes -->
         {% if pending_orders %}
         <div class="detail-section">
           <h3 class="detail-section__title">Pagamentos pendentes</h3>
@@ -484,7 +469,6 @@
         </div>
         {% endif %}
 
-        <!-- Histórico de faturas -->
         {% if person_invoices %}
         <div class="detail-section">
           <h3 class="detail-section__title">Faturas recentes</h3>
@@ -529,7 +513,6 @@
         </div>
         {% endif %}
 
-        <!-- Todos os planos da pessoa -->
         {% if memberships %}
         <div class="detail-section">
           <h3 class="detail-section__title">Histórico de planos</h3>
@@ -549,7 +532,6 @@
         </div>
         {% endif %}
 
-        <!-- Plano Veterano -->
         <div class="detail-section" style="border-bottom:none;">
           <h3 class="detail-section__title">Plano Veterano</h3>
           <div style="display:flex;align-items:center;gap:0.625rem;margin-bottom:0.375rem;flex-wrap:wrap;">
@@ -599,7 +581,6 @@
     </section>
     {% endif %}
 
-    <!-- ─── Solicitações (somente can_manage_people) ─────────────────────────── -->
     {% if can_manage_people and access_request_history or can_manage_people and class_request_history %}
     <section class="section" aria-labelledby="requests-history-heading">
       <div class="section__header">
@@ -630,7 +611,7 @@
 {% endblock %}
 
 {% block modals %}
-<!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+
   <script>
     (function () {
       var toggle = document.getElementById('theme-toggle');

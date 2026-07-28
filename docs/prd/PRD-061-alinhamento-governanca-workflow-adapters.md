@@ -1,8 +1,8 @@
-# PRD-061: Alinhamento de governança — workflow e adaptadores ao padrão Visary
+# PRD-061: Alinhamento de governança — workflow e adaptadores
 
 ## Summary
 
-Trazer para o LV JIU JITSU as evoluções de governança do projeto irmão Visary (PRD-106/PRD-107) que ainda não foram absorvidas, sem copiar domínio de consultoria de vistos: o checklist de leitura Django completo em `docs/AGENT-WORKFLOW.md` e os blocos de Context7, escada de prioridade de browser e sincronização explícita de skills em `docs/PLATFORM-ADAPTERS.md`.
+Trazer para o LV JIU JITSU as evoluções de governança ainda não absorvidas, sem copiar domínio de consultoria de vistos: o checklist de leitura Django completo em `docs/AGENT-WORKFLOW.md` e os blocos de Context7, escada de prioridade de browser e sincronização explícita de skills em `docs/PLATFORM-ADAPTERS.md`.
 
 ## Demand type
 
@@ -11,17 +11,17 @@ Revisão de governança + regeneração documental. Sem alteração de código f
 ## Current problem
 
 - `docs/AGENT-WORKFLOW.md` do LV está condensado: resume a leitura Django numa única linha e não inclui `signals`, `tasks` e `management commands` explicitamente, nem a âncora "busca textual serve para localizar, não para substituir leitura".
-- `docs/PLATFORM-ADAPTERS.md` do LV não traz três blocos já consolidados no Visary:
+- `docs/PLATFORM-ADAPTERS.md` do LV não traz três blocos necessários:
   1. **Context7 obrigatório** com a lista de gatilhos (biblioteca, framework, SDK, API, CLI, config);
   2. **Escada de prioridade de browser** em quatro níveis (interno → sessão autenticada → Playwright MCP → relatório de limitação);
   3. **Sincronização de skills** com paths explícitos (`.claude/skills/...`, `.cursor/skills/...`) e verificação por hash/conteúdo.
-- A LV é consumidora do bootstrap de governança do Visary, mas não registra onde vive a fonte canônica desse bootstrap, o que facilita divergência futura.
+- A LV usa um bootstrap de governança, mas não registra onde vive a fonte canônica dele, o que facilita divergência futura.
 
 ## Goal
 
 1. Expandir `docs/AGENT-WORKFLOW.md` para o checklist Django completo e a âncora de leitura.
 2. Adicionar a `docs/PLATFORM-ADAPTERS.md` os blocos de Context7, escada de browser e sincronização explícita, mantendo os nomes de skills do LV (`lv-*`).
-3. Registrar em `CLAUDE.md §11` que o bootstrap de governança canônico vive no Visary (`docs/agent-bootstrap/`), para ressincronizações futuras.
+3. Registrar em `CLAUDE.md` onde vive o bootstrap de governança, para ressincronizações futuras.
 4. Não alterar `AGENTS.md` além do necessário para manter coerência de referências.
 
 ## Context Ledger
@@ -36,12 +36,6 @@ Revisão de governança + regeneração documental. Sem alteração de código f
 - `AGENTS.md`
 
 ### Adjacent files consulted
-
-- Visary `docs/AGENT-WORKFLOW.md` (versão completa de referência)
-- Visary `docs/PLATFORM-ADAPTERS.md` (blocos Context7/browser/sincronização)
-- Visary `docs/prd/PRD-106-governanca-agentes-multiplataforma.md`
-- Visary `docs/prd/PRD-107-bootstrap-governanca-django-reutilizavel.md`
-- Visary `docs/agent-bootstrap/` (fonte canônica do bootstrap)
 
 ### Internet / official documentation
 
@@ -69,7 +63,7 @@ Revisão de governança + regeneração documental. Sem alteração de código f
 
 ## Understanding approved
 
-- Summary presented: alinhar governança documental do LV ao padrão Visary, sem portar domínio de vistos.
+- Summary presented: alinhar a governança documental do LV ao padrão canônico, sem portar domínio externo.
 - User approval: solicitação explícita de PRDs completos para implementação sequencial.
 - Date: 2026-06-28.
 
@@ -77,7 +71,7 @@ Revisão de governança + regeneração documental. Sem alteração de código f
 
 ### Persona
 
-Engenheiro de governança de agentes em monólitos Django irmãos.
+Engenheiro de governança de agentes em monólito Django.
 
 ### Action
 
@@ -85,12 +79,12 @@ Editar dois documentos de governança do LV e adicionar uma referência factual 
 
 ### Context
 
-LV e Visary são monólitos Django 5.2 (MVT, `services/`, `selectors/`) operados em Windows/PowerShell, Render e Supabase, com governança comum versionada.
+O LV é um monólito Django 5.2 (MVT, `services/`, `selectors/`) operados em Windows/PowerShell, Render e Supabase, com governança comum versionada.
 
 ### Constraints
 
 - Não alterar código funcional, templates, CSS ou JS.
-- Não copiar fatos do domínio Visary (clientes, vistos, viagens, processos) para o LV.
+- Não copiar fatos de outro domínio (clientes, vistos, viagens, processos) para o LV.
 - Manter os nomes de skills do LV (`lv-task-intake`, `lv-prd`, `lv-ui-delivery`, `lv-django-delivery`, `lv-cleanup-audit`, `lv-prompt-builder`).
 - Uma fonte de verdade por responsabilidade; conteúdo permanente curto.
 
@@ -101,14 +95,14 @@ LV e Visary são monólitos Django 5.2 (MVT, `services/`, `selectors/`) operados
 - [x] `docs/PLATFORM-ADAPTERS.md` contém bloco Context7 com gatilhos.
 - [x] `docs/PLATFORM-ADAPTERS.md` contém escada de prioridade de browser em quatro níveis.
 - [x] `docs/PLATFORM-ADAPTERS.md` contém bloco de sincronização com paths explícitos das três cópias de skill e verificação por hash/conteúdo.
-- [x] `CLAUDE.md §11` referencia o bootstrap canônico do Visary.
+- [x] `CLAUDE.md` referencia o bootstrap canônico.
 - [x] Nenhuma referência nova a domínio de vistos foi introduzida no LV.
 
 ### Expected evidence
 
 - Diff dos dois documentos e do `CLAUDE.md`.
 - Busca textual confirmando os termos exigidos.
-- Busca confirmando ausência de termos de domínio Visary (cliente/visto/viagem/processo) nas fontes novas.
+- Busca confirmando ausência de termos de domínio externo (cliente/visto/viagem/processo) nas fontes novas.
 
 ### Output format
 
@@ -136,7 +130,7 @@ Resumo curto, evidências, limitações e status.
 
 ## Risks and edge cases
 
-- Copiar verbatim o texto do Visary e arrastar nomes `visary-*` ou termos de domínio.
+- Copiar verbatim texto de outro repositório e arrastar nomes ou termos de domínio.
 - Inflar os documentos além do princípio de conteúdo curto.
 - Divergência entre a escada de browser documentada e as ferramentas realmente disponíveis no LV.
 
@@ -152,7 +146,7 @@ Resumo curto, evidências, limitações e status.
 - [ ] Expandir `AGENT-WORKFLOW.md`
 - [ ] Expandir `PLATFORM-ADAPTERS.md`
 - [ ] Referenciar bootstrap canônico no `CLAUDE.md`
-- [ ] Validar termos e ausência de domínio Visary
+- [ ] Validar termos e ausência de domínio externo
 - [ ] Cleanup audit
 - [ ] Documentation
 
@@ -181,7 +175,7 @@ Não aplicável.
 ## Quality validation
 
 - Busca textual dos termos exigidos.
-- Busca de termos de domínio Visary indevidos.
+- Busca de termos de domínio externo indevidos.
 - `git diff --check`.
 - Revisão integral do diff.
 
@@ -195,7 +189,7 @@ Não aplicável.
 
 - `docs/AGENT-WORKFLOW.md` recebeu a etapa de classificação, a âncora de busca textual e checklist Django ampliado com `signals`, `tasks` e `management commands`.
 - `docs/PLATFORM-ADAPTERS.md` recebeu o bloco de gatilhos Context7, a prioridade de validação visual em quatro níveis e a sincronização explícita de skills entre `.agents`, `.claude` e `.cursor`.
-- `CLAUDE.md §11` agora referencia o bootstrap canônico do Visary em `docs/agent-bootstrap/`.
+- `CLAUDE.md` agora referencia onde vive o bootstrap canônico.
 
 ## Cleanup findings
 

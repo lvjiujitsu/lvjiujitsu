@@ -25,7 +25,6 @@ from system.services import PORTAL_ACCOUNT_SESSION_KEY
 
 
 class HomeDependentsSectionTestCase(TestCase):
-    """PRD-105: seção 'Meus dependentes' no home do responsável."""
 
     def setUp(self):
         self.guardian_type = PersonType.objects.create(

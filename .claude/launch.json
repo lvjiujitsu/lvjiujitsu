@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "django",
-      "runtimeExecutable": "C:/Users/whsf/Documents/GitHub/lvjiujitsu/.venv/Scripts/python.exe",
-      "runtimeArgs": ["manage.py", "runserver", "localhost:8000", "--noreload"],
-      "port": 8000
+      "name": "Django Dev Server",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["manage.py", "runserver", "localhost:8000"],
+      "port": 8000,
+      "autoPort": false
     }
   ]
 }
