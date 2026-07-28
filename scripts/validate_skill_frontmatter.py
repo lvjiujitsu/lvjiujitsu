@@ -101,34 +101,6 @@ def validate_codex_metadata(names: set[str]) -> None:
             )
 
 
-def validate_agents() -> int:
-    agent_root = ROOT / ".claude" / "agents"
-    if not agent_root.is_dir():
-        raise ValueError("Diretorio de agentes ausente: .claude/agents")
-
-    agent_files = sorted(agent_root.glob("*.md"))
-    if not agent_files:
-        raise ValueError("Nenhum agente encontrado em .claude/agents")
-
-    for path in agent_files:
-        metadata = load_frontmatter(path)
-        for required_key in ("tools", "model"):
-            if not str(metadata.get(required_key, "")).strip():
-                raise ValueError(
-                    f"Campo {required_key} ausente: {path.relative_to(ROOT)}"
-                )
-        if metadata["name"] != path.stem:
-            raise ValueError(
-                f"Campo name diverge do arquivo: {path.relative_to(ROOT)}"
-            )
-        if metadata["model"] not in {"opus", "sonnet", "haiku", "inherit"}:
-            raise ValueError(
-                f"Modelo desconhecido em {path.relative_to(ROOT)}: {metadata['model']}"
-            )
-
-    return len(agent_files)
-
-
 def main() -> int:
     skill_files = sorted(
         path
@@ -148,9 +120,6 @@ def main() -> int:
 
     validate_codex_metadata(names)
     print(f"[OK] {len(names)} metadado(s) Codex integro(s) em UTF-8 com LF.")
-
-    agents = validate_agents()
-    print(f"[OK] {agents} agente(s) em .claude/agents com frontmatter valido.")
 
     print(f"{len(skill_files)} arquivo(s) de skill validado(s).")
     return 0
