@@ -154,10 +154,15 @@ Comando local necessário à entrega está autorizado: teste, ORM local,
 `makemigrations`, `migrate`, seeds, reset local e criação de admin. Registrar
 comando e resultado.
 
-Trabalho corrente vive na branch `stage`; `main` recebe o que vai para
-produção. Commit e `git push` **não** são feitos por agente sem ordem explícita:
-`push` dispara o Auto-Deploy do Render, e isso é ação irreversível fora do
-repositório (`AGENTS.md` §8 e `docs/AGENT-WORKFLOW.md` §7).
+Pareamento direto com o operador acontece na branch `stage`; `push` nela
+dispara o Auto-Deploy do Render. Trabalho autônomo extenso de agente — a
+implementação de uma PRD inteira, não uma correção pontual em conversa direta
+— vive em `developer`: local, auditado e testado antes de virar Pull Request
+`developer → stage`, cujo merge é sempre humano. `main` recebe somente
+promoção manual para produção. Commit e `git push` **não** são feitos por
+agente sem ordem explícita do operador — `push` em `stage` ou `main` é ação
+irreversível fora do repositório (`docs/AGENT-WORKFLOW.md` §7). Nenhum agente
+mescla em `stage` ou `main`, nem faz force push.
 
 O inventário completo dos comandos de operação, com as guardas de cada um, está
 em [`docs/OPERACAO-BANCO-SEEDS.md`](docs/OPERACAO-BANCO-SEEDS.md). O ciclo
