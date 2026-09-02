@@ -6,7 +6,7 @@ disable-model-invocation: true
 # /reset-local
 
 Executa o ciclo destrutivo **somente local** na ordem canônica de
-`docs/OPERACAO-BANCO-SEEDS.md` e para no primeiro erro, informando em qual passo
+`obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md` e para no primeiro erro, informando em qual passo
 parou. A invocação manual deste comando é a autorização explícita para executar
 as seeds do ciclo.
 
@@ -79,7 +79,7 @@ if (($env:DJANGO_ENV_FILE -match 'hg|prod') -or ($env:DJANGO_ENVIRONMENT -match 
 .\.venv\Scripts\python.exe manage.py showmigrations
 ```
 
-A ordem das seeds é a de `docs/OPERACAO-BANCO-SEEDS.md`; não manter segunda
+A ordem das seeds é a de `obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md`; não manter segunda
 cópia da lista fora dela — ao divergir, o runbook vence e este arquivo é
 corrigido.
 

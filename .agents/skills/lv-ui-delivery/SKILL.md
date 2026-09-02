@@ -11,7 +11,7 @@ Em qualquer alteração de template, CSS, JavaScript, tela, componente, modal, w
 
 ## Passos
 
-1. Executar `lv-task-intake` e ler PRD, `docs/UI-SCREEN-CONTRACT.md` e o contrato do fluxo.
+1. Executar `lv-task-intake` e ler PRD, `obsidian/projetos/lvjiujitsu/contrato-ui-lvjiujitsu.md` e o contrato do fluxo.
 2. Ler integralmente view, form, service, selector, URL, template, CSS, JS e testes.
 3. Consultar Context7 e documentação oficial quando aplicável.
 4. Antes do código, apresentar objetivo, preservação funcional, hierarquia, wireframe, estados, erros, permissões, desktop, mobile e temas.

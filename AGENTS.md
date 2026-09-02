@@ -1,48 +1,69 @@
 # AGENTS.md
 
-Protocolo comum do LV JIU JITSU para Claude, Codex, Cursor e agentes compatíveis.
+Contrato operacional do LV JIU JITSU para Claude Code, Codex e agentes compatíveis.
 
 Este arquivo diz o que vale. `CLAUDE.md` diz o que o projeto é.
-`docs/AGENT-WORKFLOW.md` diz como executar. Um dono por assunto.
+`obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` diz como executar. Um
+dono por assunto, e nenhum arquivo repete a regra de outro.
 
-## 1. Precedência
+## Universo
 
-1. Solicitação atual do usuário.
-2. Segurança, integridade operacional e rastreabilidade.
-3. Este arquivo.
-4. `CLAUDE.md`.
-5. PRD ativa e contratos locais.
-6. Adaptadores da ferramenta.
+- A documentação de contrato e operação vive no vault descrito abaixo.
+- `CLAUDE.md` contém os fatos do produto, da stack e dos ambientes.
+- A solicitação atual do operador tem precedência dentro dos limites de
+  segurança, integridade operacional e rastreabilidade.
+- Divergência material entre contratos bloqueia a conclusão até ser resolvida. A
+  precedência define qual contrato corrigir; não autoriza ignorar a contradição,
+  nem seguir a fonte mais alta fingindo que a mais baixa não existe.
+- Contrato descreve o que existe. Ao divergir do código, o código vence e o
+  contrato é corrigido na mesma mudança.
+- Antes de editar: classificar o pedido, ler os arquivos diretos e adjacentes
+  integralmente e confirmar o entendimento. Pergunta, leitura e diagnóstico sem
+  escrita não exigem aprovação adicional. Ordem explícita e inequívoca autoriza
+  o escopo descrito; pedido exploratório, ambíguo ou que implique expansão
+  material de escopo exige decisão do operador.
+- Mudança visual acrescenta um passo: hierarquia, wireframe e estados são
+  apresentados antes do código.
+- Busca textual localiza, mas não substitui leitura integral: um `grep` que acha
+  a linha não mostra a guarda três funções acima. Ler models, forms, services,
+  selectors, views, URLs, templates, static e testes envolvidos.
+- Context7 vem primeiro para biblioteca, framework, SDK, API ou CLI; depois, a
+  documentação oficial da versão em uso. Toda PRD registra ao menos uma fonte
+  relevante, a conclusão e as limitações. Limitação de ferramenta é registrada,
+  nunca preenchida por suposição.
 
-Divergência material entre fontes bloqueia a conclusão até ser resolvida. A
-precedência define qual contrato deve ser corrigido; não autoriza ignorar a
-contradição, nem seguir a fonte mais alta fingindo que a mais baixa não
-existe.
+### Onde os contratos vivem
 
-## 2. Fontes de verdade
+Os contratos de ciclo, PRD, UI, fluxos, banco, deploy, performance, teste manual
+e plataforma **não estão no repositório**: são notas do vault Obsidian em
+`C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\`, cujo índice é
+`lvjiujitsu.md`.
 
-Cada assunto tem um dono único. Os outros arquivos referenciam o dono; não
-repetem a regra. Alterar uma regra exige editar apenas o dono.
+| Responsabilidade | Dono único |
+|---|---|
+| Protocolo comum | `AGENTS.md` |
+| Fatos do produto, stack, ambientes e portas | `CLAUDE.md` |
+| Índice da documentação | `obsidian/projetos/lvjiujitsu/lvjiujitsu.md` |
+| Ciclo detalhado de execução | `obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` |
+| Formato e numeração de PRD | `obsidian/projetos/lvjiujitsu/padrao-prd-lvjiujitsu.md` |
+| Contrato visual, estados e evidência | `obsidian/projetos/lvjiujitsu/contrato-ui-lvjiujitsu.md` |
+| Fluxos de tela | `obsidian/projetos/lvjiujitsu/fluxos-tela-lvjiujitsu.md` |
+| Banco, migrations e seeds | `obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md` |
+| Deploy Render e Supabase | `obsidian/projetos/lvjiujitsu/deploy-render-supabase-lvjiujitsu.md` |
+| Teto da plataforma e orçamento de carga | `obsidian/projetos/lvjiujitsu/performance-plataforma-lvjiujitsu.md` |
+| Roteiro de preenchimento para teste manual | `obsidian/projetos/lvjiujitsu/guia-teste-cliente-lvjiujitsu.md` |
+| Diferenças por ferramenta | `obsidian/projetos/lvjiujitsu/plataformas-agente-lvjiujitsu.md` |
+| Conhecimento do produto | `obsidian/projetos/lvjiujitsu/conhecimento-lvjiujitsu.md` |
+| Runbook operacional dos três ambientes | `obsidian/projetos/lvjiujitsu/comandos-powershell-lvjiujitsu.md` |
+| Regra de negócio do produto | `obsidian/projetos/lvjiujitsu/regras-negocio-lvjiujitsu.md` |
+| Índice e próximo número de PRD | `docs/prd/README.md` |
+| Comportamento da mudança | PRD correspondente |
+| Comportamento real | código, testes e execução observável |
 
-| Responsabilidade | Dono único | Quem referencia |
-|---|---|---|
-| Protocolo comum | `AGENTS.md` | skills, `.cursor/rules/` |
-| Fatos do produto, stack, ambientes e portas | `CLAUDE.md` | todos |
-| Ciclo detalhado de execução | `docs/AGENT-WORKFLOW.md` | `AGENTS.md`, skills |
-| Formato e numeração de PRD | `docs/PRD-STANDARD.md` | `lv-prd` |
-| Contrato visual, estados e evidência | `docs/UI-SCREEN-CONTRACT.md` | `lv-ui-delivery` |
-| Banco, migrations e seeds | `docs/OPERACAO-BANCO-SEEDS.md` | `CLAUDE.md`, `AGENTS.md` |
-| Deploy Render e Supabase | `docs/DEPLOY-RENDER-SUPABASE.md` | `CLAUDE.md`, `AGENTS.md` |
-| Roteiro de preenchimento para teste manual | `docs/GUIA-PREENCHIMENTO-TESTE-CLIENTE.md` | `lv-ui-delivery` |
-| Diferenças por ferramenta | `docs/PLATFORM-ADAPTERS.md` | `AGENTS.md` |
-| Índice e próximo número de PRD | `docs/prd/README.md` | `lv-prd` |
-| Comportamento da mudança | PRD correspondente | — |
-| Comportamento real | código, testes e execução observável | — |
+O vault é lido durante a implementação. Escrever nele só quando a mudança tornar
+uma nota factualmente incorreta, e a nota corrigida não entra no Pull Request.
 
-Contrato descreve o que existe. Ao divergir do código, o código vence e o
-contrato é corrigido na mesma mudança.
-
-## 3. Idioma e comunicação
+## Idioma
 
 - Código, nomes técnicos, arquivos, classes e funções: inglês.
 - Interface, mensagens, PRDs, commits e respostas: português pt-BR, com
@@ -53,182 +74,186 @@ contrato é corrigido na mesma mudança.
 - Não expor raciocínio interno. Informar conclusões, premissas e evidências
   verificáveis.
 
-## 4. Gate de entendimento e execução
+## Quatro agentes autônomos, um escritor por vez
 
-Antes de editar: classificar o pedido, executar preflight, ler os arquivos
-diretos e adjacentes integralmente, pesquisar fontes atuais e confirmar o
-entendimento.
+| Agente | Definição | Owner | Assunto |
+|---|---|---|---|
+| Codex | `.codex/agents/lvjiujitsu-agent-developer.toml` | `codex` | código inteiro |
+| Claude Code | `.claude/agents/lvjiujitsu-agent-developer.md` | `claude` | código inteiro |
+| Visual | `.claude/agents/lvjiujitsu-agent-visual.md` | `visual` | interface |
+| Clean Code | `.claude/agents/lvjiujitsu-agent-clean-code.md` | `clean` | higiene do código |
 
-Perguntas, leitura e diagnóstico sem escrita não exigem aprovação adicional.
+- Os dois agentes de código executam a mesma skill de ciclo autônomo. O visual
+  executa a skill de auditoria visual e o Clean Code a de higiene. Os quatro
+  escrevem no mesmo branch `developer`.
+- **Cada trilha tem lease próprio, no seu próprio checkpoint.** Se o lease da
+  trilha estiver ocupado, encerrar imediatamente sem escrita e retomar na
+  próxima execução — isso é esperado, não é falha.
+- **O lease vale por prova de vida, não por relógio.** Todo comando de estado
+  carimba um `heartbeat`; a trilha que para de carimbar libera o lease.
+- **Número de PRD é reservado, não escolhido.** Com as trilhas em paralelo, o
+  número vem de reserva explícita, e o índice canônico continua sendo
+  `docs/prd/README.md`.
+- Nenhum agente delega, cria subagentes ou executa duas correções em paralelo
+  dentro do próprio ciclo.
+- O fluxo detalhado, os scripts fechados e as referências pertencem à skill;
+  este arquivo não os duplica.
+- O estado de execução e os worktrees vivem fora do controle de versão.
 
-Ordem explícita e inequívoca autoriza o escopo descrito — não é preciso
-perguntar de novo. Pedido exploratório, ambíguo ou que implique expansão
-material de escopo exige decisão do operador.
+## Skills
 
-Mudança visual acrescenta um passo: hierarquia, wireframe e estados são
-apresentados antes do código, conforme `docs/UI-SCREEN-CONTRACT.md`.
+| Demanda | Skill | Onde |
+|---|---|---|
+| Ciclo autônomo de auditoria e correção | `lvjiujitsu-autonomous-developer` | `.agents/skills/` |
+| Auditoria visual rota por rota | `lvjiujitsu-visual-auditor` | `.agents/skills/` |
+| Varredura de comentário, hardcode e idioma | `lvjiujitsu-clean-code` | `.agents/skills/` |
+| Recriar HG ou produção | `lvjiujitsu-remote-refresh` | `.claude/skills/` |
 
-A ferramenta visual a usar por plataforma está em `docs/PLATFORM-ADAPTERS.md`.
+As três skills de ciclo são **canônicas em `.agents/skills/`**, com as
+referências, os scripts fechados e os testes de contrato que o CI executa.
+`.claude/skills/` guarda um adaptador fino de cada uma, que aponta para o
+arquivo canônico e declara só o que é específico do Claude Code.
 
-## 5. Contexto e pesquisa
-
-Context7 vem primeiro para biblioteca, framework, SDK, API ou CLI; depois,
-documentação oficial da versão em uso.
-
-Busca textual localiza, mas não substitui leitura integral: um `grep` que
-acha a linha não mostra a guarda três funções acima. Ler models, forms,
-services, selectors, views, URLs, templates, static e testes envolvidos.
-
-Toda PRD registra ao menos uma fonte oficial relevante, a conclusão e as
-limitações. Pesquisa sem relação com a demanda não preenche checklist.
-Limitações de ferramenta são registradas no Context Ledger, nunca preenchidas
-por suposição.
-
-## 6. SDD e PRD
-
-Mudança relevante exige PRD numerada em `docs/prd/PRD-<NNN>-<slug>.md`,
-aprovada e atualizada **durante** a execução, não depois.
-
-O número vem de `docs/prd/README.md`, não de `ls` — a listagem não revela gaps
-reservados nem duplicatas. Ao criar ou fechar uma PRD, o índice é regenerado no
-mesmo passo por `python scripts/build_prd_index.py`, que recusa colisão de
-número.
-
-A PRD declara skills, critérios verificáveis, testes, evidências, desvios,
-limpeza, pendências e status. Critério só é marcado com evidência real;
-inferência não fecha critério. Checkbox permanece desmarcado até existir
-evidência.
-
-## 7. TDD e execução de testes
-
-Escrever ou ajustar primeiro o teste quando houver comportamento testável.
-Observar o Red, implementar o mínimo, observar o Green, refatorar com a suíte
-verde.
-
-Executar teste focado e suíte proporcional ao risco da mudança. Não declarar
-Red, Green ou ausência de regressão sem saída real de comando; registrar
-comando e resultado. Testes Django usam banco isolado e não tocam o SQLite
-local.
-
-Quando não houver comportamento testável, dizer isso na PRD em vez de
-inventar um teste que não prova nada.
-
-## 8. Validação
-
-| Mudança | Validação |
-|---|---|
-| UI, template, CSS ou JS | browser real, desktop e mobile, os dois temas, fluxo, edge case, console e screenshot |
-| Django | `check`, teste focado, suíte proporcional e ORM quando couber |
-| Persistência | `makemigrations --check --dry-run`, `showmigrations` e runbook de banco |
-| Configuração | parser ou comando oficial, nunca leitura a olho |
-| Skills e plataformas | `scripts/validate_skill_frontmatter.py` |
-| PRD e índice | `scripts/build_prd_index.py --check` |
-| Documentação | links verificados em disco, estrutura, busca e diff |
-
-Em UI, validar no browser imediatamente após implementar. Não declarar
-validação visual por leitura de template nem por teste automatizado.
-
-"Implementado" não significa "validado". Sem execução observável, o item vai
-para `Pending`, não para `Evidence`.
-
-## 9. Django MVT
-
-| Camada | Responsabilidade |
-|---|---|
-| `models/` | Persistência e invariantes |
-| `forms/` | Validação de entrada |
-| `services/` | Regras de negócio e escrita transacional |
-| `selectors/` | Leituras reutilizáveis e queries otimizadas |
-| `views/` | HTTP fino |
-| `templates/` | Apresentação |
-| `static/` | CSS/JS por fluxo |
-| `tests/` | Contratos por camada |
-
-Evitar N+1 e query dentro de laço; carregar relações com `select_related` e
-`prefetch_related` onde forem usadas. Operação que altera mais de um registro
-relacionado roda em `transaction.atomic`.
-
-## 10. Clean code e segurança
-
-Menor mudança correta, causa raiz, guard clauses, funções pequenas, nomes
-claros, no máximo dois níveis de condição e configuração explícita.
-
-Proibido: segredo hardcoded, erro mascarado, `except: pass`, query em loop,
-`innerHTML` com dado do usuário, regra central de negócio em template ou
-JavaScript, edição de `staticfiles/`.
-
-**Código não tem comentário nem docstring.** A regra é absoluta e vale para
-`.py`, `.html`, `.css` e `.js`: nome, assinatura e teste dizem o que o código
-faz; o porquê vive na PRD e a operação vive em `docs/`. Explicação que só cabe
-em comentário é sinal de código que precisa de nome melhor ou de PRD.
-
-A única exceção é arquivo gerado por ferramenta — `migrations/` — que não é
-editado à mão.
-
-CSRF, validação server-side e permissão são resolvidos no backend.
-
-Segredo operacional nunca é impresso em saída, log ou PRD, mesmo sendo
-descartável. Ao ler arquivo de ambiente, reportar nomes de chave, não valores.
-
-## 11. Banco, migrations e seeds
-
-Reset, migrations, testes e ORM locais necessários ao escopo são autorizados
-sem perguntar.
-
-`clear_migrations.py` recusa qualquer ambiente que não seja inequivocamente
-local: arquivo de ambiente fora da raiz, `.env.hg`, `.env.prod`,
-`DJANGO_ENVIRONMENT` remoto, `DATABASE_URL` preenchida ou variável de seed
-ausente. Em toda recusa, nada é apagado.
-
-Seeds são sempre explícitas e nunca entram no Build Command. Dado de negócio
-não é carregado implicitamente por migration.
-
-Ação destrutiva no Supabase exige ambiente correto, `DEBUG=False`, host
-oficial, `SUPABASE_PROJECT_REF` conferido, `SUPABASE_RESET_CONFIRM` e
-`--execute`. Sem a flag, o comando simula. Detalhes em
-`docs/OPERACAO-BANCO-SEEDS.md`.
-
-## 12. Limpeza e follow-up
-
-Revisar o diff inteiro e os contratos adjacentes; remover resíduos
-introduzidos; procurar legado, duplicação, hardcode, órfão e risco no escopo;
-corrigir documentação que a mudança tornou obsoleta.
-
-Dívida material fora do escopo vira PRD de follow-up com número reservado, e
-**não é implementada silenciosamente**. Ampliar escopo sem registro é tão
-ruim quanto deixar a dívida.
-
-## 13. Fechamento
-
-Informar implementado, evidências com saída real, o que não foi validado,
-pendências, desvios e status real: **concluída**, **concluída com
-limitações** ou **não concluída**.
-
-Concluída com limitações exige dizer qual limitação e por quê. Parte
-bloqueada não transforma o resto em incompleto: entregar tudo que foi
-possível e declarar explicitamente o que ficou de fora.
-
-## 14. Skills obrigatórias
-
-| Demanda | Skill |
-|---|---|
-| Toda mudança não trivial | `lv-task-intake` |
-| PRD | `lv-prd` |
-| Django | `lv-django-delivery` |
-| UI | `lv-ui-delivery` |
-| Fechamento | `lv-cleanup-audit` |
-| Gerar prompt de execução | `lv-prompt-builder` |
-| Auditar coerência do repositório | `lv-parity-audit` |
-
-`lv-prompt-builder` é de invocação manual
-(`disable-model-invocation`): entrega o prompt de execução e para, sem
-implementar.
+`lvjiujitsu-remote-refresh` é de invocação manual (`disable-model-invocation`) e
+vive somente em `.claude/skills/`: toca ambiente remoto e nunca é acionada como
+parte automática de outra entrega.
 
 Cada `SKILL.md` segue a estrutura `Quando acionar` / `Passos` / `Saída` /
 `Parar quando`.
 
-As sete vivem em `.claude/skills/`, fonte de edição, e são espelhadas byte a
-byte em `.agents/skills/` e `.cursor/skills/`. Ausência em qualquer
-plataforma é divergência a corrigir, verificada por
-`scripts/validate_skill_frontmatter.py` no CI. Invocação e localização por
-ferramenta estão em `docs/PLATFORM-ADAPTERS.md`.
+Este contrato vale para toda mudança e não é reempacotado em skill. Skill que
+apenas reescreve o que já está aqui duplica contrato.
+
+## Branches
+
+- O operador trabalha em `stage`. `push` nela dispara o Auto-Deploy do Render.
+- O agente trabalha em uma única `feature/prd-<número>-<slug>` isolada, criada
+  apenas quando há defeito a corrigir, e publica somente em `developer`.
+- O agente abre ou atualiza o Pull Request `developer -> stage`; somente o
+  operador faz o merge.
+- Nenhum agente faz merge ou push em `stage` ou `main`, force push, reescrita de
+  histórico remoto ou operação de produção. `main` recebe apenas promoção
+  manual.
+- Commit e `git push` não são feitos por agente sem ordem explícita do operador.
+
+## Banco, migrations e seeds
+
+O contrato completo é
+`obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md`. As guardas ficam
+aqui de propósito, para sobreviverem a quem não alcança o vault.
+
+- Reset, migrations, testes e ORM **locais** necessários ao escopo são
+  autorizados sem perguntar. Testes Django usam banco isolado e não tocam o
+  SQLite local.
+- Enquanto os ambientes forem descartáveis, o checkout versiona uma **única**
+  migration vigente, `system/migrations/0001_initial.py`. Mudança de schema
+  termina com o ciclo destrutivo local e uma `0001_initial` consistente — nunca
+  com uma `0002`.
+- `clear_migrations.py` recusa qualquer ambiente que não seja inequivocamente
+  local: arquivo de ambiente fora da raiz, `.env.hg`, `.env.prod`,
+  `DJANGO_ENVIRONMENT` remoto, `DATABASE_URL` preenchida ou variável de seed
+  ausente. Em toda recusa, nada é apagado.
+- Dado de negócio nunca entra por migration. Produção usa seed explícita;
+  homologação pode ser reconstruída pelo Build Command aprovado.
+- Ação destrutiva no Supabase exige ambiente correto, `DEBUG=False`, host
+  oficial e conexão PostgreSQL. Produção exige ainda `SUPABASE_PROJECT_REF`
+  conferido, `SUPABASE_RESET_CONFIRM` e `--execute`; sem a flag, o comando
+  simula.
+- **Limpeza remota exige perguntar ao operador antes**, em HG e em produção,
+  mesmo com a tarefa já autorizada de forma geral, salvo autorização explícita
+  já registrada na mesma conversa.
+- **Antes de qualquer checagem contra `hg` ou `prod`, rodar
+  `manage.py check_environment_parity`.** Falha dele é bloqueio: auditar
+  ambiente remoto com env incompleta produz diagnóstico falso.
+- `.env` pode ser usado em execução local descartável; `.env.hg` somente em
+  auditoria read-only. Valores nunca são impressos, e arquivo de ambiente nunca
+  é copiado para worktree, log, PRD ou Pull Request.
+
+## Critério de conclusão
+
+- Toda mudança relevante tem PRD numerada em `docs/prd/PRD-<NNN>-<slug>.md`,
+  aprovada e atualizada **durante** a execução, não depois. O número vem de
+  `docs/prd/README.md`, não de `ls` — a listagem não revela gaps reservados nem
+  duplicatas. Ao criar ou fechar uma PRD, o índice é regenerado no mesmo passo
+  por `python scripts/build_prd_index.py`, que recusa colisão de número.
+- A PRD declara skills, critérios verificáveis, testes, evidências, desvios,
+  limpeza, pendências e status. Critério só é marcado com evidência real;
+  inferência não fecha critério, e checkbox permanece desmarcado até existir
+  evidência.
+- **TDD.** Escrever ou ajustar primeiro o teste quando houver comportamento
+  testável: observar o Red, implementar o mínimo, observar o Green, refatorar
+  com a suíte verde. Não declarar Red, Green ou ausência de regressão sem saída
+  real de comando. Quando não houver comportamento testável, dizer isso na PRD
+  em vez de inventar um teste que não prova nada.
+- **Validação por tipo de mudança.** UI, template, CSS ou JS: browser real,
+  desktop e mobile, os dois temas, fluxo, edge case, console e screenshot, no
+  ato da implementação. Django: `check`, teste focado e suíte proporcional.
+  Persistência: `makemigrations --check --dry-run` e `showmigrations`.
+  Configuração: parser ou comando oficial, nunca leitura a olho. PRD e índice:
+  `scripts/build_prd_index.py --check`. Documentação: links verificados em
+  disco.
+- **Django MVT.** `models/` persistência e invariantes; `forms/` validação de
+  entrada; `services/` regra de negócio e escrita transacional; `selectors/`
+  leitura reutilizável e query otimizada; `views/` HTTP fino; `templates/`
+  apresentação; `static/` CSS e JS por fluxo; `tests/` contrato por camada.
+  Evitar N+1 e query dentro de laço; carregar relações com `select_related` e
+  `prefetch_related` onde forem usadas. Operação que altera mais de um registro
+  relacionado roda em `transaction.atomic`.
+- **O orçamento de carga é critério, não conselho.** O projeto roda em 512 MB e
+  0.1 CPU, sem shell, sem cron e sem worker. Rota de lista e de relatório fecha
+  com contagem de query constante em relação ao volume de dado. Query dentro de
+  laço sobre linhas, agregação em Python no lugar de `GROUP BY`, busca linear em
+  coluna de texto, coleção inteira materializada em memória e chamada de rede
+  sem orçamento dentro do request são proibidos. Lentidão é aceitável; trabalho
+  ilimitado dentro de um request não.
+- **Clean code.** Menor mudança correta, causa raiz, guard clauses, funções
+  pequenas, nomes claros, no máximo dois níveis de condição e configuração
+  explícita. Proibido: segredo hardcoded, erro mascarado, exceção engolida sem
+  tratamento, query em loop, `innerHTML` com dado do usuário, regra central de
+  negócio em template ou JavaScript, edição de `staticfiles/`.
+- **Código não tem comentário nem docstring**, em `.py`, `.html`, `.css` e
+  `.js`. Nome, assinatura e teste dizem o que o código faz; o porquê vive na
+  PRD. A única exceção é `migrations/`, gerado por ferramenta.
+- CSRF, validação server-side e permissão são resolvidos no backend. Segredo
+  nunca é impresso, mesmo descartável: reportar nome de chave, não valor.
+- **A interface é do produto, nunca do navegador.** Lista de valores, sugestão,
+  confirmação e aviso são HTML, CSS e JavaScript deste projeto, com os tokens do
+  tema. `<datalist>`, `alert`, `confirm`, `prompt` e qualquer widget desenhado
+  pelo agente de usuário estão proibidos; a exceção é o que só o dispositivo
+  entrega, como teclado virtual e seletor de arquivo. Componente equivalente já
+  existente é reaproveitado.
+- **Limpeza.** Revisar o diff inteiro e os contratos adjacentes; remover
+  resíduos introduzidos; procurar legado, duplicação, hardcode, órfão e risco no
+  escopo; corrigir documentação que a mudança tornou obsoleta.
+- Dívida fora do escopo vira PRD de follow-up com número reservado, nunca
+  implementação silenciosa. Ampliar escopo sem registro é tão ruim quanto deixar
+  a dívida.
+- `Pending` material, PRD bloqueada, gate incompleto ou CI ausente impedem
+  conclusão e Pull Request Ready. Interrupção externa preserva o checkpoint.
+- "Implementado" não significa "validado". Sem execução observável, o item vai
+  para `Pending`, não para `Evidence`.
+- O fechamento informa implementado, evidências com saída real, o que não foi
+  validado, pendências, desvios e status: **concluída**, **concluída com
+  limitações** ou **não concluída**. Concluída com limitações exige dizer qual
+  limitação e por quê. Parte bloqueada não torna o resto incompleto.
+
+## Execução agendada
+
+Os quatro agentes rodam uma vez por dia, em sequência, com três horas entre um e
+outro para que uma execução longa não faça o seguinte encontrar o lease ocupado
+e perder o dia inteiro:
+
+| Horário | Agente | Owner | Acionamento |
+|---|---|---|---|
+| 01h | Codex | `codex` | tarefa do Codex Desktop |
+| 04h | Claude Code, código | `claude` | tarefa do Claude Code Desktop |
+| 07h | Claude Code, visual | `visual` | tarefa do Claude Code Desktop |
+| 10h | Claude Code, limpeza | `clean` | tarefa do Claude Code Desktop |
+
+A ordem é deliberada: o Codex publica primeiro, o agente de código do Claude o
+encontra publicado e pode revisá-lo no mesmo dia, o visual roda em seguida sobre
+o resultado dos dois, e o de limpeza roda por último, sobre o resultado dos três
+anteriores.
+
+Todas as definições de agendamento vivem fora do Git, cada uma no aplicativo que
+a executa.

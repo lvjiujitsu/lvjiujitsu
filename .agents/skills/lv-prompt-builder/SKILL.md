@@ -16,11 +16,11 @@ Quando o usuário pedir para transformar um problema cru em um prompt de execuç
 1. Tratar a entrada como problema a diagnosticar, não como ordem de implementação.
 2. Se estiver vazia ou ambígua a ponto de não nomear o fluxo, fazer uma pergunta objetiva e parar.
 3. Ler `AGENTS.md`, `CLAUDE.md` e contratos pertinentes sem editar arquivos.
-4. Classificar pela categoria de `docs/AGENT-WORKFLOW.md` e decidir PRD, UI, comportamento testável e pagamento.
+4. Classificar pela categoria de `obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` e decidir PRD, UI, comportamento testável e pagamento.
 5. Ordenar skills: `lv-task-intake`, `lv-prd`, `lv-ui-delivery`, `lv-django-delivery`, `lv-cleanup-audit`, conforme aplicável.
 6. Listar arquivos e contratos a ler integralmente por camada.
 7. Consolidar autorização do escopo e gates restantes conforme `AGENTS.md`.
-8. Gerar bloco único no formato Execution prompt de `docs/PRD-STANDARD.md`.
+8. Gerar bloco único no formato Execution prompt de `obsidian/projetos/lvjiujitsu/padrao-prd-lvjiujitsu.md`.
 9. Não inventar arquivo, rota, skill, comando, fonte ou validação.
 
 ## Saída

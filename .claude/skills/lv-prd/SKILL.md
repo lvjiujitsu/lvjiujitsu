@@ -11,7 +11,7 @@ Antes de toda mudança relevante que exija especificação comportamental verifi
 
 ## Passos
 
-1. Confirmar `lv-task-intake` e ler `docs/PRD-STANDARD.md`.
+1. Confirmar `lv-task-intake` e ler `obsidian/projetos/lvjiujitsu/padrao-prd-lvjiujitsu.md`.
 2. Consultar `docs/prd/README.md` como índice canônico, escolher o próximo número sem duplicar e atualizar o índice.
 3. Registrar arquivos lidos, fontes, ferramentas, limitações e autorização.
 4. Especificar problema, objetivo, escopo, fora de escopo, riscos, critérios e evidências.

@@ -16,7 +16,7 @@ No fechamento de toda mudança do LV JIU JITSU.
 3. Procurar código morto, órfãos, duplicação, hardcode, erro mascarado, N+1, temporários, documentação divergente e teste sem contrato.
 4. Confirmar referências, remover resíduos introduzidos e corrigir achados dentro do escopo.
 5. Preservar mudanças preexistentes e não iniciar refatoração ampla.
-6. Se o diff tocar `*/skills/*/SKILL.md`, comparar `.agents`, `.claude` e `.cursor` por hash ou conteúdo byte a byte e falhar a auditoria se divergirem.
+6. Se o diff tocar `*/skills/*/SKILL.md`, comparar `.agents` e `.claude` por hash ou conteúdo byte a byte e falhar a auditoria se divergirem.
 7. Para dívida material fora do escopo, criar PRD com `lv-prd`, vincular à atual e parar sem implementar.
 8. Atualizar limpeza, evidências, limitações, pendências e status.
 

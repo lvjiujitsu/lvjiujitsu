@@ -19,7 +19,7 @@ Em implementação ou correção de lógica Django, persistência, commands e in
 6. Executar `.\.venv\Scripts\python.exe manage.py check`.
 7. Executar o teste focado e, quando proporcional, `.\.venv\Scripts\python.exe manage.py test --verbosity 2`.
 8. Fazer ORM local quando necessário, revisar N+1, diff e contratos e encerrar com `lv-cleanup-audit`.
-9. Testes usam banco isolado; migrations, reset e seeds locais seguem `docs/OPERACAO-BANCO-SEEDS.md`.
+9. Testes usam banco isolado; migrations, reset e seeds locais seguem `obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md`.
 
 ## Saída
 

@@ -1,18 +1,17 @@
 ---
-description: "Compara as sete skills do LV JIU JITSU nas três plataformas (Claude, Codex, Cursor) e reporta divergências sem sobrescrever."
+description: "Compara as seis skills do LV JIU JITSU nas duas plataformas (Claude e Codex) e reporta divergências sem sobrescrever."
 disable-model-invocation: true
 ---
 
 # /sync-skills
 
 Compara sem sobrescrever. `.claude/skills/` é a **fonte de edição**;
-`.agents/skills/` e `.cursor/skills/` são espelhos e devem ser byte a byte
-idênticos a ela. A mesma regra está em `docs/PLATFORM-ADAPTERS.md`; se os
+`.agents/skills/` é o espelho e deve ser byte a byte idêntico a ela. A mesma regra está em `obsidian/projetos/lvjiujitsu/plataformas-agente-lvjiujitsu.md`; se os
 dois divergirem, o adaptador vence e este comando é corrigido.
 
-As sete skills existem nas três plataformas. Ausência em qualquer uma é
-divergência a corrigir, não exceção. `lv-prompt-builder` e `lv-parity-audit` mantêm
-`disable-model-invocation: true`, que rege como o Claude as aciona e não
+As seis skills existem nas duas plataformas. Ausência em qualquer uma é
+divergência a corrigir, não exceção. `lv-prompt-builder` mantém
+`disable-model-invocation: true`, que rege como o Claude a aciona e não
 dispensa o espelho.
 
 ## Passos
@@ -24,18 +23,15 @@ $skills = @(
   "lv-django-delivery",
   "lv-ui-delivery",
   "lv-cleanup-audit",
-  "lv-prompt-builder",
-  "lv-parity-audit"
+  "lv-prompt-builder"
 )
 foreach ($skill in $skills) {
   $claude = ".claude\skills\$skill\SKILL.md"
   $codex  = ".agents\skills\$skill\SKILL.md"
-  $cursor = ".cursor\skills\$skill\SKILL.md"
   if (!(Test-Path -LiteralPath $claude)) { Write-Output "$skill | claude AUSENTE"; continue }
   $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $claude).Hash
   $codexState  = if (!(Test-Path -LiteralPath $codex))  { "AUSENTE" } elseif ((Get-FileHash -Algorithm SHA256 -LiteralPath $codex).Hash  -eq $hash) { "idêntico" } else { "DIVERGENTE" }
-  $cursorState = if (!(Test-Path -LiteralPath $cursor)) { "AUSENTE" } elseif ((Get-FileHash -Algorithm SHA256 -LiteralPath $cursor).Hash -eq $hash) { "idêntico" } else { "DIVERGENTE" }
-  Write-Output "$skill | claude ok | codex $codexState | cursor $cursorState"
+  Write-Output "$skill | claude ok | codex $codexState"
 }
 ```
 
@@ -66,7 +62,7 @@ O mesmo resultado, com a comparação de cobertura embutida:
 ## Saída
 
 ```text
-Skill | Claude | Codex | Cursor | openai.yaml
+Skill | Claude | Codex | openai.yaml
 <uma linha por skill>
 Divergências reais: <nenhuma | lista>
 Direção de cópia sugerida: <pergunta ao operador; não aplicar sozinho>
@@ -76,5 +72,5 @@ Direção de cópia sugerida: <pergunta ao operador; não aplicar sozinho>
 
 - Houver ausência ou divergência: reportar e parar sem sobrescrever; pedir ao
   operador qual cópia é a fonte antes de sincronizar.
-- As sete skills forem idênticas nas três plataformas e os sete
+- As seis skills forem idênticas nas duas plataformas e os seis
   `openai.yaml` estiverem íntegros: reportar sincronizado e encerrar.
