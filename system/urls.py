@@ -195,7 +195,7 @@ urlpatterns = [
     path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
     path("password-reset/sent/", PortalPasswordResetDoneView.as_view(), name="password-reset-sent"),
     path("password-reset/done/", PortalPasswordResetDoneView.as_view(), name="password-reset-done"),
-    path("reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+    path("password-reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 
 # ----------------------------------------------------------------------------
 # BN - business rule: rotas do produto. Acima desta linha está a base de rotas
