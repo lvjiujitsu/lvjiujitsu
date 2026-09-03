@@ -1,5 +1,5 @@
 ---
-description: "Valida uma rota do LV JIU JITSU em desktop e mobile, nos dois temas, com screenshots e, quando aplicável, evidência de rede."
+description: "Valida uma rota do LV Jiu Jitsu em desktop e mobile, nos dois temas, com screenshots e, quando aplicável, evidência de rede."
 argument-hint: "<rota>"
 ---
 

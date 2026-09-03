@@ -1,6 +1,6 @@
 ---
 name: lvjiujitsu-autonomous-developer
-description: Executa o ciclo rigoroso do único agente autônomo do LV JIU JITSU. Usar para sincronizar stage em developer, retomar uma auditoria global comprovável arquivo por arquivo e linha por linha, auditar diffs somente após concluir a cobertura global, criar uma PRD por defeito, corrigir todas as PRDs do lote em uma única feature e worktree, validar Django, segurança e UI, publicar exclusivamente em developer e abrir ou atualizar o Pull Request para stage sem fazer merge.
+description: Executa o ciclo rigoroso do único agente autônomo do LV Jiu Jitsu. Usar para sincronizar stage em developer, retomar uma auditoria global comprovável arquivo por arquivo e linha por linha, auditar diffs somente após concluir a cobertura global, criar uma PRD por defeito, corrigir todas as PRDs do lote em uma única feature e worktree, validar Django, segurança e UI, publicar exclusivamente em developer e abrir ou atualizar o Pull Request para stage sem fazer merge.
 ---
 
 # Resultado

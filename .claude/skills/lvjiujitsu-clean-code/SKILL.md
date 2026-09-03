@@ -1,6 +1,6 @@
 ---
 name: lvjiujitsu-clean-code
-description: Executa o ciclo do agente de limpeza do LV JIU JITSU. Usar para varrer o repositório inteiro em busca de comentário e docstring, hardcode, mistura de idioma entre código em inglês e interface em português, e desvio de governança em nome de arquivo; abrir uma PRD por defeito, corrigir o lote em uma única feature e entregar o Pull Request de developer para stage sem fazer merge.
+description: Executa o ciclo do agente de limpeza do LV Jiu Jitsu. Usar para varrer o repositório inteiro em busca de comentário e docstring, hardcode, mistura de idioma entre código em inglês e interface em português, e desvio de governança em nome de arquivo; abrir uma PRD por defeito, corrigir o lote em uma única feature e entregar o Pull Request de developer para stage sem fazer merge.
 ---
 
 # Ciclo canônico

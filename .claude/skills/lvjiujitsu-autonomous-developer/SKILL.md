@@ -1,6 +1,6 @@
 ---
 name: lvjiujitsu-autonomous-developer
-description: Executa, no Claude Code, o mesmo ciclo rigoroso compartilhado com o agente Codex do LV JIU JITSU — sincronizar stage em developer, retomar uma auditoria global comprovável arquivo por arquivo e linha por linha, revisar o avanço recente do Codex como auditor sênior, auditar diffs somente após concluir a cobertura global, criar uma PRD por defeito, corrigir todas as PRDs do lote em uma única feature e worktree, validar Django, segurança e UI, publicar exclusivamente em developer e abrir ou atualizar o Pull Request para stage sem fazer merge.
+description: Executa, no Claude Code, o mesmo ciclo rigoroso compartilhado com o agente Codex do LV Jiu Jitsu — sincronizar stage em developer, retomar uma auditoria global comprovável arquivo por arquivo e linha por linha, revisar o avanço recente do Codex como auditor sênior, auditar diffs somente após concluir a cobertura global, criar uma PRD por defeito, corrigir todas as PRDs do lote em uma única feature e worktree, validar Django, segurança e UI, publicar exclusivamente em developer e abrir ou atualizar o Pull Request para stage sem fazer merge.
 ---
 
 # Ciclo compartilhado

@@ -1,4 +1,4 @@
 interface:
-  display_name: "LV JIU JITSU Visual Auditor"
+  display_name: "LV Jiu Jitsu Visual Auditor"
   short_description: "Auditoria visual rota por rota em desktop e mobile"
   default_prompt: "Use $lvjiujitsu-visual-auditor para auditar a interface pelo navegador interno."

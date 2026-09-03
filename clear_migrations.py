@@ -556,7 +556,7 @@ def validate_project(root: Path = PROJECT_ROOT) -> None:
         root / "system" / "migrations" / "__init__.py",
     )
     if any(not path.is_file() for path in required):
-        raise CleanupError("O script não está na raiz válida do LV JIU JITSU.")
+        raise CleanupError("O script não está na raiz válida do LV Jiu Jitsu.")
 
     environment = os.environ.get("DJANGO_ENVIRONMENT", "local").strip().lower()
     if environment in {"hg", "prod"}:

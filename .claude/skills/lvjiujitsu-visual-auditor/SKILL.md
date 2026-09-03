@@ -1,6 +1,6 @@
 ---
 name: lvjiujitsu-visual-auditor
-description: Executa o ciclo do agente visual do LV JIU JITSU. Usar para auditar toda a superfície de interface — CSS, HTML e JavaScript — rota por rota em desktop e mobile, tema claro e escuro, exercitando cada elemento interativo, medindo responsividade, rolagem, contraste e alvo de toque pelo navegador interno, abrindo uma PRD por defeito visual, corrigindo o lote em uma única feature e entregando o Pull Request de developer para stage sem fazer merge.
+description: Executa o ciclo do agente visual do LV Jiu Jitsu. Usar para auditar toda a superfície de interface — CSS, HTML e JavaScript — rota por rota em desktop e mobile, tema claro e escuro, exercitando cada elemento interativo, medindo responsividade, rolagem, contraste e alvo de toque pelo navegador interno, abrindo uma PRD por defeito visual, corrigindo o lote em uma única feature e entregando o Pull Request de developer para stage sem fazer merge.
 ---
 
 # Ciclo canônico

@@ -1,5 +1,5 @@
 ---
-description: "Reconstrói o ambiente local do LV JIU JITSU com guardas, testes e seeds explícitas do projeto."
+description: "Reconstrói o ambiente local do LV Jiu Jitsu com guardas, testes e seeds explícitas do projeto."
 disable-model-invocation: true
 ---
 

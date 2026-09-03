@@ -1,10 +1,10 @@
 ---
 name: lvjiujitsu-remote-refresh
-description: "Recria HG ou produção do LV JIU JITSU por pedido explícito, com simulação, confirmação do projeto e seeds documentadas."
+description: "Recria HG ou produção do LV Jiu Jitsu por pedido explícito, com simulação, confirmação do projeto e seeds documentadas."
 disable-model-invocation: true
 ---
 
-# LV JIU JITSU Remote Refresh
+# LV Jiu Jitsu Remote Refresh
 
 ## Quando acionar
 

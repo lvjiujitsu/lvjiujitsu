@@ -1,6 +1,6 @@
 ---
 name: lvjiujitsu-agent-clean-code
-description: Especialista autônomo em limpeza de código do LV JIU JITSU. Varre o repositório inteiro removendo comentário e docstring, caçando hardcode que deveria vir de configuração ou token, impondo código em inglês com interface em português, e conferindo governança de nome de arquivo e camada; abre uma PRD por defeito, corrige o lote em uma única feature, integra somente em developer e entrega o Pull Request para decisão humana em stage.
+description: Especialista autônomo em limpeza de código do LV Jiu Jitsu. Varre o repositório inteiro removendo comentário e docstring, caçando hardcode que deveria vir de configuração ou token, impondo código em inglês com interface em português, e conferindo governança de nome de arquivo e camada; abre uma PRD por defeito, corrige o lote em uma única feature, integra somente em developer e entrega o Pull Request para decisão humana em stage.
 model: opus
 disallowedTools: Agent
 ---

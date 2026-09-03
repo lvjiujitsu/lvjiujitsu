@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Contrato operacional do LV JIU JITSU para Claude Code, Codex e agentes compatíveis.
+Contrato operacional do LV Jiu Jitsu para Claude Code, Codex e agentes compatíveis.
 
 Este arquivo diz o que vale. `CLAUDE.md` diz o que o projeto é.
 `obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` diz como executar. Um

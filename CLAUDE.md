@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-Contexto factual do LV JIU JITSU. Procedimentos de agente — como conduzir uma
+Contexto factual do LV Jiu Jitsu. Procedimentos de agente — como conduzir uma
 mudança, quando criar PRD, como validar — pertencem ao `AGENTS.md`, às notas do
 vault e às skills de ciclo em `.agents/skills/`; este arquivo só descreve o que
 o projeto é e como operá-lo.
@@ -19,7 +19,7 @@ dono de cada assunto. A documentação raiz fica em `CLAUDE.md`, `AGENTS.md`,
 
 ## 1. Natureza do projeto
 
-- O LV JIU JITSU é um MVP descartável. Local, homologação e produção não contêm dado
+- O LV Jiu Jitsu é um MVP descartável. Local, homologação e produção não contêm dado
   real de negócio.
 - Produção é uma simulação recriável por `migrate` e pela execução explícita das
   seeds; não é a fonte de um histórico.
@@ -66,7 +66,7 @@ O inventário do que este produto não tem por decisão de domínio vive em
 
 | Campo | Valor |
 |---|---|
-| Nome | LV JIU JITSU |
+| Nome | LV Jiu Jitsu |
 | Objetivo | `obsidian/projetos/lvjiujitsu/regras-negocio-lvjiujitsu.md` |
 | App de domínio | `system/` |
 | Projeto Django | `lvjiujitsu/` |
@@ -90,7 +90,7 @@ estão em `obsidian/projetos/lvjiujitsu/fluxos-tela-lvjiujitsu.md`.
 
 ### O teto da plataforma
 
-O LV JIU JITSU roda em **plano gratuito nos dois serviços**, e isso não é detalhe de
+O LV Jiu Jitsu roda em **plano gratuito nos dois serviços**, e isso não é detalhe de
 custo: é a restrição que decide como o código pode ser escrito.
 
 | Serviço | Teto |

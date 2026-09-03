@@ -1,4 +1,4 @@
 interface:
-  display_name: "LV JIU JITSU Clean Code"
+  display_name: "LV Jiu Jitsu Clean Code"
   short_description: "Varredura de comentário, hardcode e idioma misturado"
   default_prompt: "Use $lvjiujitsu-clean-code para varrer o repositório e abrir PRD por defeito."

@@ -1,4 +1,4 @@
-# LV JIU JITSU
+# LV Jiu Jitsu
 
 Plataforma Django server-rendered, MVP descartável, operada em três ambientes:
 local, homologação e produção. O que o produto faz está em
