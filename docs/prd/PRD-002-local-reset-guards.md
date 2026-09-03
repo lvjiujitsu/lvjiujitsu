@@ -2,7 +2,7 @@
 
 ## Context
 
-The cleanup process matcher accepts an unrelated manage.py process using the shared port. LV settings also fail to locate the shared environment documented by the reset contract.
+The cleanup process matcher accepts an unrelated manage.py process using the shared port. Settings also fail to locate the shared environment documented by the reset contract.
 
 ## Required reading and research
 
@@ -14,11 +14,11 @@ Skill Creator, OpenAI Docs and Supabase for the relevant configuration and safet
 
 ## Understanding approved
 
-Summary presented: compare the three projects, fix functional drift and record supported domain exceptions. User approval: explicit request to audit, delete and edit the named surfaces. Date: 2026-09-02.
+Summary presented: audit this repository, fix functional drift and record supported domain exceptions. User approval: explicit request to audit, delete and edit the named surfaces. Date: 2026-09-02.
 
 ## Execution prompt
 
-Persona: Django maintainer. Action: correct the stated defect across affected projects. Context: shared tooling and distinct domain behavior. Constraints: preserve existing user changes and secrets; no remote mutation or publication. Acceptance criteria:
+Persona: Django maintainer. Action: correct the stated defect in this repository. Context: common tooling and domain-specific behavior. Constraints: preserve existing user changes and secrets; no remote mutation or publication. Acceptance criteria:
 
 - [x] Shared behavior is consistent and project identifiers resolve locally.
 - [x] Domain exceptions have actual consumers and Obsidian justification.
@@ -28,7 +28,7 @@ Expected evidence: commands, outputs and focused regression tests. Output format
 
 ## Scope
 
-clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; LV settings loader and missing environment/schema check commands; Obsidian database operation notes.
+clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
 
 ## Out of scope
 
@@ -36,7 +36,7 @@ Product redesign, schema changes, real local database reset, remote reset, netwo
 
 ## Impacted files
 
-clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; LV settings loader and missing environment/schema check commands; Obsidian database operation notes. Exact paths and before/after hashes are in paritydjango/validation/changes.json; initial user changes are distinguished from this audit.
+clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
 
 ## Risks and edge cases
 
@@ -58,7 +58,7 @@ Shared structure before documented project-specific configuration. Preserve appl
 
 ## Test plan
 
-Tests were authored before the fixes. The initial LV run reproduced foreign-process termination, shared-env lookup failure, remote-file masking and missing --check behavior. A separate failing test reproduced omission of untracked source files. Final focused and full suites passed. Tests for remote resets mock all connections and cursors. Execution was authorized by the user request and local contracts.
+Tests were authored before the fixes. The initial run reproduced foreign-process termination, shared-environment lookup failure, remote-file masking and missing --check behavior. A separate failing test reproduced omission of untracked source files. Final focused and full suites passed. Tests for remote resets mock all connections and cursors. Execution was authorized by the user request and local contracts.
 
 ## Visual validation
 
@@ -70,19 +70,19 @@ Read-only checks: Django checks and migration drift as applicable. Mutating chec
 
 ## Quality validation
 
-All shared checks passed. The quality scan covers tracked and untracked source and accepts UTF-8 BOM files. After it exposed 60 pre-existing Django comments in three LV templates, only comment tokens and blank-line indentation were removed, with non-comment content equivalence recorded in validation/template-comment-cleanup.json.
+All shared checks passed. The quality scan covers tracked and untracked source and accepts UTF-8 BOM files. After it exposed 60 pre-existing Django comments in three templates, only comment tokens and blank-line indentation were removed, preserving non-comment content.
 
 ## Evidence
 
-Full Django suite: 829 tests in 233.487s, exit 0. One Windows symbolic-link test skipped; junction and mocked containment scenarios passed. All 38 skill contract tests passed (23 autonomous, 9 visual, 6 clean). Local reset preflight, Django check, migration dry-run, local schema, pip check, CSS, quality and PRD index checks returned 0. Hook executed successfully from outside the repository. Skill Creator validated six compatible skills/adapters and YAML parsed for all metadata. Detailed logs and initial failing regressions are in paritydjango/validation and paritydjango/evidence; the full scope and exceptions are in paritydjango/AUDITORIA.md.
+Full Django suite: 829 tests in 233.487s, exit 0. One Windows symbolic-link test skipped; junction and mocked containment scenarios passed. All 38 skill contract tests passed (23 autonomous, 9 visual, 6 clean). Local reset preflight, Django check, migration dry-run, local schema, pip check, CSS, quality and PRD index checks returned 0. Hook executed successfully from outside the repository. Skill Creator validated six compatible skills/adapters and YAML parsed for all metadata.
 
 ## Implemented
 
-Added read-only --check with complete preflight before mutations. Removed port-only ownership inference; foreign processes remain untouched. Reject remote environment files even with a local process override and resolve explicit shared environment files consistently. LV now implements its documented shared settings loader and the environment/schema check commands. HG and production reset commands now share confirmation, project-ref, host and execution guards; production additionally requires --confirm-ref. All destructive behavior was exercised with temporary fixtures or mocks.
+Added read-only --check with complete preflight before mutations. Removed port-only ownership inference; foreign processes remain untouched. Reject remote environment files even with a local process override and resolve explicit shared environment files consistently. The documented shared settings loader and the environment/schema check commands are now implemented. HG and production reset commands now share confirmation, project-ref, host and execution guards; production additionally requires --confirm-ref. All destructive behavior was exercised with temporary fixtures or mocks.
 
 ## Cleanup findings
 
-Removed obsolete references and duplicate maintenance behavior. LV tests relying on removed cleanup APIs were updated to assert the current ownership guard. The obsolete test requiring docs/OPERACAO-BANCO-SEEDS.md was removed because that contract moved to the external vault; 363 command references in current runbook code blocks were checked against existing command modules. Original adapter relative links were already valid and remain valid.
+Removed obsolete references and duplicate maintenance behavior. Tests relying on removed cleanup APIs were updated to assert the current ownership guard. The obsolete test requiring docs/OPERACAO-BANCO-SEEDS.md was removed because that contract moved to the external vault; 363 command references in current runbook code blocks were checked against existing command modules. Original adapter relative links were already valid and remain valid.
 
 ## Follow-up PRDs
 
@@ -90,11 +90,11 @@ None required to finish this local scope. Further product-wide standardization r
 
 ## Deviations from plan
 
-At the start, the PRD directories contained no files; their indices were initialized during this audit. SuperAgos reservation ledger starts this batch at 161; LV and Visary at 001. Existing reservations are preserved.
+At the start, the PRD directories contained no files; their indices were initialized during this audit. The reservation ledger starts this batch at 001. Existing reservations are preserved.
 
 ## Pending
 
-No remaining local implementation work in this scope. No remote reset, deployment, real local database reset, external gateway request, commit or push was requested or executed. Before a future SuperAgos HG deployment, the operator must apply the reviewed Build Command in Obsidian with session-scoped SUPABASE_RESET_CONFIRM=RESET_HG; no Dashboard was changed.
+No remaining local implementation work in this scope. No remote reset, deployment, real local database reset, external gateway request, commit or push was requested or executed. Before a future HG deployment, the operator must apply the reviewed Build Command in Obsidian with session-scoped SUPABASE_RESET_CONFIRM=RESET_HG; no Dashboard was changed.
 
 ## Final status
 
