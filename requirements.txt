@@ -1,4 +1,4 @@
-# Plataforma comum: mesma ordem e versões nos três projetos.
+# Base técnica: ordem e versões estáveis.
 Django==5.2.16
 dj-database-url==3.1.2
 gunicorn==26.0.0
@@ -7,6 +7,6 @@ python-decouple==3.8
 tzdata==2026.1
 whitenoise==6.12.0
 
-# Dependências do produto: uso e justificativa em Obsidian/conhecimento.
+# BN - business rule: uso e justificativa em Obsidian/conhecimento.
 requests==2.33.1
 stripe==15.0.1

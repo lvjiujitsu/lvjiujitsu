@@ -1,15 +1,15 @@
 import os
 from pathlib import Path
 
+import dj_database_url
 from decouple import Config, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 SHARED_ENV_DIR_VARIABLE = "LVJIUJITSU_SHARED_ENV_DIR"
 DEFAULT_SHARED_ENV_DIR = r"W:\Meu Drive\Desenvolvimento\lvjiujitsu"
+ENVIRONMENT_VARIABLE = "DJANGO_ENVIRONMENT"
 
 
 def shared_env_dir():
@@ -31,9 +31,6 @@ def locate_env_file(name):
         if candidate.is_file():
             return candidate
     return None
-
-
-ENVIRONMENT_VARIABLE = "DJANGO_ENVIRONMENT"
 
 
 def load_config():
@@ -81,7 +78,6 @@ if DJANGO_ENVIRONMENT in REMOTE_ENVIRONMENTS and DEBUG:
         f"DJANGO_DEBUG deve ser False no ambiente {DJANGO_ENVIRONMENT}."
     )
 
-
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="")
 if not SECRET_KEY:
     if not DEBUG:
@@ -89,20 +85,24 @@ if not SECRET_KEY:
     SECRET_KEY = "django-insecure-dev-only-key-change-me"
 
 ALLOWED_HOSTS = [
-    h.strip()
-    for h in config(
+    host.strip()
+    for host in config(
         "DJANGO_ALLOWED_HOSTS",
         default="127.0.0.1,localhost,localhost.,0.0.0.0",
     ).split(",")
-    if h.strip()
+    if host.strip()
 ]
+
 CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in config(
+    origin.strip()
+    for origin in config(
         "DJANGO_CSRF_TRUSTED_ORIGINS",
-        default="http://127.0.0.1,http://localhost,https://127.0.0.1,https://localhost,https://*.ngrok-free.dev,https://*.ngrok.io",
+        default=(
+            "http://127.0.0.1,http://localhost,https://127.0.0.1,https://localhost,"
+            "https://*.ngrok-free.dev,https://*.ngrok.io"
+        ),
     ).split(",")
-    if o.strip()
+    if origin.strip()
 ]
 
 SESSION_COOKIE_SECURE = config("DJANGO_SESSION_COOKIE_SECURE", default=not DEBUG, cast=bool)
@@ -128,126 +128,59 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
-
-ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
-ADMIN_SUPERUSER_EMAIL    = config("ADMIN_SUPERUSER_EMAIL",    default="")
-ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
-
-SEED_INITIAL_TEACHER_PASSWORD        = config("SEED_INITIAL_TEACHER_PASSWORD",        default="")
-SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config("SEED_INITIAL_ADMINISTRATIVE_PASSWORD", default="")
-
-SEED_TEST_PORTAL_PASSWORD = config("SEED_TEST_PORTAL_PASSWORD", default="")
-
-
-STRIPE_PUBLIC_KEY      = config("STRIPE_PUBLIC_KEY",      default="")
-STRIPE_SECRET_KEY      = config("STRIPE_SECRET_KEY",      default="")
-STRIPE_WEBHOOK_SECRET  = config("STRIPE_WEBHOOK_SECRET",  default="")
-STRIPE_PLAN_SYNC_ENABLED = config("STRIPE_PLAN_SYNC_ENABLED", default=False, cast=bool)
-
-
-SITE_BASE_URL = config("SITE_BASE_URL", default="http://127.0.0.1:8000")
-
-
-ASAAS_API_KEY            = config("ASAAS_API_KEY",            default="")
-ASAAS_API_URL            = config("ASAAS_API_URL",            default="")
-ASAAS_WEBHOOK_TOKEN      = config("ASAAS_WEBHOOK_TOKEN",      default="")
-ASAAS_API_TIMEOUT_SECONDS   = config("ASAAS_API_TIMEOUT_SECONDS",   default=20,  cast=int)
-ASAAS_USER_AGENT            = config("ASAAS_USER_AGENT",            default="lvjiujitsu-django/1.0")
-ASAAS_PIX_DUE_DAYS          = config("ASAAS_PIX_DUE_DAYS",          default=1,   cast=int)
-ASAAS_PIX_EXPIRATION_MINUTES = config("ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int)
-
-
-SITE_NAME             = config("SITE_NAME",             default="LV Jiu Jitsu")
-SITE_NAME_UPPER       = config("SITE_NAME_UPPER",       default=SITE_NAME.upper())
-PAYMENT_CURRENCY      = config("PAYMENT_CURRENCY",      default="brl").lower()
-PAYMENT_CURRENCY_SYMBOL = config("PAYMENT_CURRENCY_SYMBOL", default="R$")
-ASAAS_PIX_FIXED_FEE      = config("ASAAS_PIX_FIXED_FEE",      default="1.99")
-ASAAS_CREDIT_PERCENT_FEE = config("ASAAS_CREDIT_PERCENT_FEE", default="0.0429")
-ASAAS_CREDIT_FIXED_FEE   = config("ASAAS_CREDIT_FIXED_FEE",   default="0.49")
-ASAAS_CARD_DUE_DAYS      = config("ASAAS_CARD_DUE_DAYS",      default=1, cast=int)
-STRIPE_CREDIT_PERCENT_FEE = config("STRIPE_CREDIT_PERCENT_FEE", default="0.0399")
-STRIPE_CREDIT_FIXED_FEE   = config("STRIPE_CREDIT_FIXED_FEE",   default="0.39")
-CREDIT_CARD_FEE_PASS_THROUGH = config("CREDIT_CARD_FEE_PASS_THROUGH", default=True,  cast=bool)
-PIX_FEE_PASS_THROUGH         = config("PIX_FEE_PASS_THROUGH",         default=True,  cast=bool)
-PORTAL_PASSWORD_RESET_TOKEN_HOURS    = config("PORTAL_PASSWORD_RESET_TOKEN_HOURS",    default=2,  cast=int)
-TRIAL_ACCESS_DEFAULT_CLASSES         = config("TRIAL_ACCESS_DEFAULT_CLASSES",         default=1,  cast=int)
-BACKORDER_RESERVATION_DAYS           = config("BACKORDER_RESERVATION_DAYS",           default=7,  cast=int)
-CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config("CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES", default=60, cast=int)
-SPECIAL_CLASS_DEFAULT_TITLE             = config("SPECIAL_CLASS_DEFAULT_TITLE",             default="Aulão")
-SPECIAL_CLASS_DEFAULT_DURATION_MINUTES  = config("SPECIAL_CLASS_DEFAULT_DURATION_MINUTES",  default=90, cast=int)
-PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=int)
-VETERAN_PLAN_TENURE_YEARS   = config("VETERAN_PLAN_TENURE_YEARS",   default=2,  cast=int)
-VETERAN_PLAN_GAP_GRACE_DAYS = config("VETERAN_PLAN_GAP_GRACE_DAYS", default=60, cast=int)
-
-
-EMAIL_BACKEND = config(
-    "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.console.EmailBackend",
-)
-DEFAULT_FROM_EMAIL = config(
-    "DJANGO_DEFAULT_FROM_EMAIL",
-    default="nao-responda@lvjiujitsu.local",
-)
-EMAIL_HOST          = config("DJANGO_EMAIL_HOST",     default="smtp.gmail.com")
-EMAIL_PORT          = config("DJANGO_EMAIL_PORT",     default=587, cast=int)
-EMAIL_USE_TLS       = config("DJANGO_EMAIL_USE_TLS",  default=True, cast=bool)
-EMAIL_HOST_USER     = config("DJANGO_EMAIL_HOST_USER",     default="")
-EMAIL_HOST_PASSWORD = config("DJANGO_EMAIL_HOST_PASSWORD", default="")
-
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'system',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "system.apps.SystemConfig",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'system.middleware.PortalSessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "system.middleware.PortalSessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'lvjiujitsu.urls'
+ROOT_URLCONF = "lvjiujitsu.urls"
 
 _CONTEXT_PROCESSORS = [
-    'django.template.context_processors.debug',
-    'django.template.context_processors.request',
-    'django.contrib.auth.context_processors.auth',
-    'django.contrib.messages.context_processors.messages',
+    "django.template.context_processors.debug",
+    "django.template.context_processors.request",
+    "django.contrib.auth.context_processors.auth",
+    "django.contrib.messages.context_processors.messages",
 ]
 
 if DEBUG:
     TEMPLATES = [
         {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [BASE_DIR / 'templates'],
-            'APP_DIRS': True,
-            'OPTIONS': {'context_processors': _CONTEXT_PROCESSORS},
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "DIRS": [BASE_DIR / "templates"],
+            "APP_DIRS": True,
+            "OPTIONS": {"context_processors": _CONTEXT_PROCESSORS},
         },
     ]
 else:
     TEMPLATES = [
         {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [BASE_DIR / 'templates'],
-            'OPTIONS': {
-                'context_processors': _CONTEXT_PROCESSORS,
-                'loaders': [
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "DIRS": [BASE_DIR / "templates"],
+            "OPTIONS": {
+                "context_processors": _CONTEXT_PROCESSORS,
+                "loaders": [
                     (
-                        'django.template.loaders.cached.Loader',
+                        "django.template.loaders.cached.Loader",
                         [
-                            'django.template.loaders.filesystem.Loader',
-                            'django.template.loaders.app_directories.Loader',
+                            "django.template.loaders.filesystem.Loader",
+                            "django.template.loaders.app_directories.Loader",
                         ],
                     )
                 ],
@@ -255,8 +188,9 @@ else:
         },
     ]
 
-WSGI_APPLICATION = 'lvjiujitsu.wsgi.application'
-
+WSGI_APPLICATION = "lvjiujitsu.wsgi.application"
+ASGI_APPLICATION = "lvjiujitsu.asgi.application"
+TEST_RUNNER = "system.test_runner.ProjectDiscoverRunner"
 
 DATABASE_URL = config("DATABASE_URL", default="").strip()
 
@@ -267,41 +201,45 @@ if DJANGO_ENVIRONMENT in REMOTE_ENVIRONMENTS and not DATABASE_URL:
     )
 
 if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
-    DATABASES['default']['CONN_MAX_AGE'] = config('DB_CONN_MAX_AGE', default=0, cast=int)
-    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
-    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+    DATABASES = {"default": dj_database_url.parse(DATABASE_URL)}
+    DATABASES["default"]["CONN_MAX_AGE"] = config("DB_CONN_MAX_AGE", default=0, cast=int)
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-            'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'},
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {"timeout": 20, "transaction_mode": "IMMEDIATE"},
         }
     }
 
-
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'lvjiujitsu-default',
-        'TIMEOUT': config('CACHE_TIMEOUT', default=300, cast=int),
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "lvjiujitsu-default",
+        "TIMEOUT": config("CACHE_TIMEOUT", default=300, cast=int),
+        "OPTIONS": {
+            "MAX_ENTRIES": 1000,
         },
     }
 }
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
-SESSION_CACHE_ALIAS = 'default'
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "default"
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_URL           = "system:login"
+LOGIN_REDIRECT_URL  = "system:dashboard-redirect"
+LOGOUT_REDIRECT_URL = "system:login"
 
 LANGUAGE_CODE = config("DJANGO_LANGUAGE_CODE", default="pt-br")
 TIME_ZONE     = config("DJANGO_TIME_ZONE",      default="America/Sao_Paulo")
@@ -316,78 +254,137 @@ DATE_INPUT_FORMATS = [
 DATE_FORMAT     = "d/m/Y"
 DATETIME_FORMAT = "d/m/Y H:i"
 
-
-STATIC_URL    = config("DJANGO_STATIC_URL", default="/static/")
+STATIC_URL       = config("DJANGO_STATIC_URL", default="/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT   = base_dir_path_setting("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles")
+STATIC_ROOT      = base_dir_path_setting("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles")
 STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
-MEDIA_URL  = config("DJANGO_MEDIA_URL",  default="/media/")
+MEDIA_URL  = config("DJANGO_MEDIA_URL", default="/media/")
 MEDIA_ROOT = base_dir_path_setting("DJANGO_MEDIA_ROOT", BASE_DIR / "media")
 
-LOGIN_URL           = "system:login"
-LOGIN_REDIRECT_URL  = "system:dashboard-redirect"
-LOGOUT_REDIRECT_URL = "system:login"
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-TEST_RUNNER = "system.test_runner.ProjectDiscoverRunner"
-
-
 STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
-    'staticfiles': {
-        'BACKEND': (
-            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
             if not DEBUG
-            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
         ),
     },
 }
-WHITENOISE_MAX_AGE = config('WHITENOISE_MAX_AGE', default=31536000 if not DEBUG else 0, cast=int)
 
+WHITENOISE_MAX_AGE = config("WHITENOISE_MAX_AGE", default=31536000 if not DEBUG else 0, cast=int)
 
-_log_handler = 'null' if DEBUG else 'console'
-LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='WARNING').upper()
+SITE_NAME             = config("SITE_NAME",             default="LV Jiu Jitsu")
+SITE_NAME_UPPER       = config("SITE_NAME_UPPER",       default=SITE_NAME.upper())
+SITE_BASE_URL = config("SITE_BASE_URL", default="http://127.0.0.1:8000")
+
+EMAIL_BACKEND = config(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = config(
+    "DJANGO_DEFAULT_FROM_EMAIL",
+    default="nao-responda@lvjiujitsu.local",
+)
+EMAIL_HOST          = config("DJANGO_EMAIL_HOST",     default="smtp.gmail.com")
+EMAIL_PORT          = config("DJANGO_EMAIL_PORT",     default=587, cast=int)
+EMAIL_USE_TLS       = config("DJANGO_EMAIL_USE_TLS",  default=True, cast=bool)
+EMAIL_HOST_USER     = config("DJANGO_EMAIL_HOST_USER",     default="")
+EMAIL_HOST_PASSWORD = config("DJANGO_EMAIL_HOST_PASSWORD", default="")
+EMAIL_TIMEOUT       = config("DJANGO_EMAIL_TIMEOUT",       default=10, cast=int)
+
+_log_handler = "null" if DEBUG else "console"
+LOG_LEVEL = config("DJANGO_LOG_LEVEL", default="WARNING").upper()
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '{levelname} {name} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "{levelname} {name} {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
         },
-        'null': {
-            'class': 'logging.NullHandler',
+        "null": {
+            "class": "logging.NullHandler",
         },
     },
-    'root': {
-        'handlers': [_log_handler],
-        'level': LOG_LEVEL,
+    "root": {
+        "handlers": [_log_handler],
+        "level": LOG_LEVEL,
     },
-    'loggers': {
-        'django': {
-            'handlers': [_log_handler],
-            'level': LOG_LEVEL,
-            'propagate': False,
+    "loggers": {
+        "django": {
+            "handlers": [_log_handler],
+            "level": LOG_LEVEL,
+            "propagate": False,
         },
-        'django.db.backends': {
-            'handlers': [_log_handler],
-            'level': 'INFO',
-            'propagate': False,
+        "django.db.backends": {
+            "handlers": [_log_handler],
+            "level": "INFO",
+            "propagate": False,
         },
-        'django.request': {
-            'handlers': [_log_handler],
-            'level': 'ERROR',
-            'propagate': False,
+        "django.request": {
+            "handlers": [_log_handler],
+            "level": "ERROR",
+            "propagate": False,
         },
     },
 }
+
+ADMIN_SUPERUSER_USERNAME = config("ADMIN_SUPERUSER_USERNAME", default="")
+ADMIN_SUPERUSER_EMAIL    = config("ADMIN_SUPERUSER_EMAIL",    default="")
+ADMIN_SUPERUSER_PASSWORD = config("ADMIN_SUPERUSER_PASSWORD", default="")
+
+# ----------------------------------------------------------------------------
+# BN - business rule: LV Jiu Jitsu. Acima desta linha está a base técnica
+# do repositório. Tudo abaixo é exclusivo deste produto e está registrado
+# em obsidian/projetos/lvjiujitsu/.
+# ----------------------------------------------------------------------------
+
+SEED_INITIAL_TEACHER_PASSWORD        = config("SEED_INITIAL_TEACHER_PASSWORD",        default="")
+SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config("SEED_INITIAL_ADMINISTRATIVE_PASSWORD", default="")
+
+SEED_TEST_PORTAL_PASSWORD = config("SEED_TEST_PORTAL_PASSWORD", default="")
+
+PAYMENT_CURRENCY      = config("PAYMENT_CURRENCY",      default="brl").lower()
+PAYMENT_CURRENCY_SYMBOL = config("PAYMENT_CURRENCY_SYMBOL", default="R$")
+
+STRIPE_PUBLIC_KEY      = config("STRIPE_PUBLIC_KEY",      default="")
+STRIPE_SECRET_KEY      = config("STRIPE_SECRET_KEY",      default="")
+STRIPE_WEBHOOK_SECRET  = config("STRIPE_WEBHOOK_SECRET",  default="")
+STRIPE_PLAN_SYNC_ENABLED = config("STRIPE_PLAN_SYNC_ENABLED", default=False, cast=bool)
+STRIPE_CREDIT_PERCENT_FEE = config("STRIPE_CREDIT_PERCENT_FEE", default="0.0399")
+STRIPE_CREDIT_FIXED_FEE   = config("STRIPE_CREDIT_FIXED_FEE",   default="0.39")
+
+ASAAS_API_KEY            = config("ASAAS_API_KEY",            default="")
+ASAAS_API_URL            = config("ASAAS_API_URL",            default="")
+ASAAS_WEBHOOK_TOKEN      = config("ASAAS_WEBHOOK_TOKEN",      default="")
+ASAAS_API_TIMEOUT_SECONDS   = config("ASAAS_API_TIMEOUT_SECONDS",   default=20,  cast=int)
+ASAAS_USER_AGENT            = config("ASAAS_USER_AGENT",            default="lvjiujitsu-django/1.0")
+ASAAS_PIX_DUE_DAYS          = config("ASAAS_PIX_DUE_DAYS",          default=1,   cast=int)
+ASAAS_PIX_EXPIRATION_MINUTES = config("ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int)
+ASAAS_PIX_FIXED_FEE      = config("ASAAS_PIX_FIXED_FEE",      default="1.99")
+ASAAS_CREDIT_PERCENT_FEE = config("ASAAS_CREDIT_PERCENT_FEE", default="0.0429")
+ASAAS_CREDIT_FIXED_FEE   = config("ASAAS_CREDIT_FIXED_FEE",   default="0.49")
+ASAAS_CARD_DUE_DAYS      = config("ASAAS_CARD_DUE_DAYS",      default=1, cast=int)
+
+CREDIT_CARD_FEE_PASS_THROUGH = config("CREDIT_CARD_FEE_PASS_THROUGH", default=True,  cast=bool)
+PIX_FEE_PASS_THROUGH         = config("PIX_FEE_PASS_THROUGH",         default=True,  cast=bool)
+
+PORTAL_PASSWORD_RESET_TOKEN_HOURS    = config("PORTAL_PASSWORD_RESET_TOKEN_HOURS",    default=2,  cast=int)
+TRIAL_ACCESS_DEFAULT_CLASSES         = config("TRIAL_ACCESS_DEFAULT_CLASSES",         default=1,  cast=int)
+BACKORDER_RESERVATION_DAYS           = config("BACKORDER_RESERVATION_DAYS",           default=7,  cast=int)
+CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES = config("CLASS_SCHEDULE_DEFAULT_DURATION_MINUTES", default=60, cast=int)
+SPECIAL_CLASS_DEFAULT_TITLE             = config("SPECIAL_CLASS_DEFAULT_TITLE",             default="Aulão")
+SPECIAL_CLASS_DEFAULT_DURATION_MINUTES  = config("SPECIAL_CLASS_DEFAULT_DURATION_MINUTES",  default=90, cast=int)
+PAYROLL_REFUND_HOLD_DAYS = config("PAYROLL_REFUND_HOLD_DAYS", default=7, cast=int)
+VETERAN_PLAN_TENURE_YEARS   = config("VETERAN_PLAN_TENURE_YEARS",   default=2,  cast=int)
+VETERAN_PLAN_GAP_GRACE_DAYS = config("VETERAN_PLAN_GAP_GRACE_DAYS", default=60, cast=int)

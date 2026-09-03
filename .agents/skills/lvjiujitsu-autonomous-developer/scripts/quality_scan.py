@@ -8,6 +8,7 @@ import tokenize
 
 
 TEXT_SUFFIXES = {".py", ".html", ".css", ".js"}
+COMMENT_EXEMPT_FILES = {"settings.py"}
 
 
 def run(*args: str) -> str:
@@ -26,9 +27,10 @@ def python_findings(path: pathlib.Path) -> list[dict]:
     if "migrations" in path.parts:
         return []
     findings = []
+    allows_comment = path.name in COMMENT_EXEMPT_FILES
     with path.open("rb") as source:
         for token in tokenize.tokenize(source.readline):
-            if token.type == tokenize.COMMENT:
+            if token.type == tokenize.COMMENT and not allows_comment:
                 findings.append({"path": str(path), "line": token.start[0], "kind": "comment"})
     tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
     nodes = [tree, *[node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]]

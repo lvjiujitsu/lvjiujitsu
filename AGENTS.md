@@ -215,7 +215,10 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
   negócio em template ou JavaScript, edição de `staticfiles/`.
 - **Código não tem comentário nem docstring**, em `.py`, `.html`, `.css` e
   `.js`. Nome, assinatura e teste dizem o que o código faz; o porquê vive na
-  PRD. A única exceção é `migrations/`, gerado por ferramenta.
+  PRD. As exceções são `migrations/`, gerado por ferramenta, e o comentário
+  de seção em `settings.py`, que marca onde a base técnica termina e começa
+  a regra de negócio do produto. Docstring continua proibida também em
+  `settings.py`.
 - CSRF, validação server-side e permissão são resolvidos no backend. Segredo
   nunca é impresso, mesmo descartável: reportar nome de chave, não valor.
 - **A interface é do produto, nunca do navegador.** Lista de valores, sugestão,
@@ -260,12 +263,14 @@ anteriores.
 Todas as definições de agendamento vivem fora do Git, cada uma no aplicativo que
 a executa.
 
-## Paridade da base técnica
+## Base técnica e regra de negócio
 
-Arquivos e ferramentas comuns mantêm os mesmos nomes relativos, ordem e
-comportamento nos três projetos, substituindo somente nome, slug e prefixo
-de ambiente. Dependências e instruções próprias do produto vêm ao final e
-têm consumidor e justificativa em `obsidian/projetos/lvjiujitsu/conhecimento-lvjiujitsu.md`.
-`/reset-local` e o hook `Stop` existem nos três; o hook só verifica e nunca aplica
-correções. Configuração ignorada `settings.local.json` é pessoal e não integra
-o contrato compartilhado; seus overrides são inventariados separadamente.
+A base técnica deste repositório — arquivos de plataforma, ferramentas de ciclo e
+suas ordens — é estável: nome relativo, sequência e comportamento não mudam por
+conveniência de uma entrega. O que é próprio do produto vem sempre ao final do
+arquivo, marcado como `BN - business rule`, com consumidor e justificativa em
+`obsidian/projetos/lvjiujitsu/conhecimento-lvjiujitsu.md`.
+
+`/reset-local` e o hook `Stop` são desta base; o hook só verifica e nunca aplica
+correções. `settings.local.json` é configuração pessoal, ignorada pelo Git, e não
+integra o contrato deste repositório.
