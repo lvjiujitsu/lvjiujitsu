@@ -48,6 +48,8 @@ REQUIRED_LOCAL_SEED_SETTINGS = {
     "ADMIN_SUPERUSER_USERNAME",
     "ADMIN_SUPERUSER_EMAIL",
     "ADMIN_SUPERUSER_PASSWORD",
+    "SEED_INITIAL_TEACHER_PASSWORD",
+    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",
 }
 
 
@@ -714,12 +716,6 @@ def main(arguments=()) -> int:
         "create_admin_superuser."
     )
     return 0
-
-
-REQUIRED_LOCAL_SEED_SETTINGS.update({
-    "SEED_INITIAL_TEACHER_PASSWORD",
-    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",
-})
 
 
 if __name__ == "__main__":
