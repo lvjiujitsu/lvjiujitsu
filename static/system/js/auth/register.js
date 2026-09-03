@@ -1,8 +1,8 @@
 (function () {
   'use strict';
 
-  var Wz = window.LV && window.LV.Wizard;
-  var DOM = window.LV && window.LV.DOM;
+  var Wz = window.APP && window.APP.Wizard;
+  var DOM = window.APP && window.APP.DOM;
   if (!Wz || !DOM) {
     if (typeof console !== 'undefined' && console.error) {
       console.error('[LV register] wizard_shared.js e dom_utils.js são obrigatórios');
@@ -1406,7 +1406,7 @@
   }
 
   function getWizardCsrfToken() {
-    return window.LV.getCsrfToken();
+    return window.APP.getCsrfToken();
   }
 
   function buildEligibilityRequestPayload() {

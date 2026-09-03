@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  window.LV = window.LV || {};
+  window.APP = window.APP || {};
 
   function warn(scope, message, err) {
     if (typeof console !== 'undefined' && console.warn) {
@@ -154,7 +154,7 @@
     }
   }
 
-  window.LV.Wizard = {
+  window.APP.Wizard = {
     warn: warn,
     escapeHtml: escapeHtml,
     readJsonScript: readJsonScript,

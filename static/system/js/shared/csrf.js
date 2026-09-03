@@ -17,6 +17,6 @@
     return input ? input.value : getCookie('csrftoken');
   }
 
-  window.LV = window.LV || {};
-  window.LV.getCsrfToken = getCsrfToken;
+  window.APP = window.APP || {};
+  window.APP.getCsrfToken = getCsrfToken;
 })();

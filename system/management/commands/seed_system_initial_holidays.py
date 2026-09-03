@@ -13,7 +13,7 @@ DATA_FILENAME = "seed_system_initial_holidays.json"
 
 
 class Command(BaseCommand):
-    help = f"Cria feriados iniciais a partir de static/initial_data/{DATA_FILENAME}."
+    help = f"Cria feriados iniciais a partir de static/business_rule/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_holidays"))

@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}LV Jiu Jitsu{% endblock %}</title>
   {% load static %}
-  <link rel="icon" type="image/svg+xml" href="{% static 'system/img/favicon-lv.svg' %}">
-  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260709-1"></script>
+  <link rel="icon" type="image/svg+xml" href="{% static 'logo/favicon.png' %}">
+  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
     <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
   {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -16,7 +16,7 @@
   {% block topbar %}
   <header class="topbar" role="banner">
     <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+      <img class="topbar__logo" src="{% static 'logo/logo-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
       <span class="topbar__name">LV JIU JITSU</span>
     </a>
     <nav class="topbar__actions" aria-label="Ações do usuário">
@@ -53,8 +53,8 @@
 
   {% block modals %}{% endblock %}
 
-  <script src="{% static 'system/js/lv/modal.js' %}?v=1"></script>
-  <script src="{% static 'system/js/lv/theme_toggle.js' %}?v=20260709-1"></script>
+  <script src="{% static 'system/js/shared/modal.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/lv/theme_toggle.js' %}?v=20260709-1"></script>
   {% block extra_js %}{% endblock %}
 
 </body>

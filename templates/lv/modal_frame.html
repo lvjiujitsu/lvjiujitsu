@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block modal_title %}LV Jiu Jitsu{% endblock %}</title>
   {% load static %}
-  <script src="{% static 'system/js/lv/theme_boot.js' %}?v=20260709-1"></script>
+  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
     <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
   {% block modal_extra_head %}{% endblock %}
 </head>
 <body class="modal-frame-body" data-modal-name="{{ crud_modal_name }}">
@@ -27,7 +27,7 @@
       {% block modal_content %}{% endblock %}
     </div>
   </div>
-  <script src="{% static 'system/js/lv/modal_child.js' %}"></script>
+  <script src="{% static 'business_rule/js/lv/modal_child.js' %}"></script>
   {% block modal_extra_scripts %}{% endblock %}
 </body>
 </html>

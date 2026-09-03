@@ -11,7 +11,7 @@ from system.models.graduation import BeltRank, Graduation
 
 
 class Command(BaseCommand):
-    help = "Cria professores iniciais a partir de static/initial_data/initial_teachers.json."
+    help = "Cria professores iniciais a partir de static/business_rule/initial_data/initial_teachers.json."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_teacher"))

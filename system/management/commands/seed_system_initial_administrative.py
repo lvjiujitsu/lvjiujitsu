@@ -19,7 +19,7 @@ from system.services.administrative_training import (
 
 
 class Command(BaseCommand):
-    help = "Cria usuários administrativos iniciais a partir de static/initial_data/initial_administrative.json."
+    help = "Cria usuários administrativos iniciais a partir de static/business_rule/initial_data/initial_administrative.json."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_administrative"))

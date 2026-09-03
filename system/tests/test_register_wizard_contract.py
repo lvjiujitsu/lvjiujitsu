@@ -117,7 +117,7 @@ class CalendarTemplateStaticContractTestCase(SimpleTestCase):
         extra_js = template.split("{% block extra_js %}", 1)[-1].split("{% endblock %}", 1)[0]
 
         self.assertIn("{% block extra_js %}", template)
-        self.assertIn("system/js/calendar/calendar.js' %}?v=3", extra_js)
+        self.assertIn("business_rule/js/calendar/calendar.js' %}?v=3", extra_js)
         self.assertNotIn("function applyTheme", template)
         self.assertNotIn("onclick=", template)
         self.assertNotIn("js-open-day-detail", extra_js)

@@ -19,7 +19,7 @@ DATA_FILENAME = "seed_system_initial_teacher_payroll_configs.json"
 
 
 class Command(BaseCommand):
-    help = f"Cria configurações iniciais de repasse a partir de static/initial_data/{DATA_FILENAME}."
+    help = f"Cria configurações iniciais de repasse a partir de static/business_rule/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_teacher_payroll_configs"))

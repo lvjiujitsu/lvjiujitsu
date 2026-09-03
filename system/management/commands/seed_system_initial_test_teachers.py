@@ -7,7 +7,7 @@ DATA_FILENAME = "seed_system_initial_test_teachers.json"
 
 
 class Command(BaseCommand):
-    help = f"Carrega professores ficticios de homologacao a partir de static/initial_data/{DATA_FILENAME}."
+    help = f"Carrega professores ficticios de homologacao a partir de static/business_rule/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_test_teachers"))

@@ -21,7 +21,7 @@ SUPPORTED_GATEWAYS = ("asaas_pix", "asaas_card")
 
 
 class Command(BaseCommand):
-    help = f"Cria os valores cobrados dos planos a partir de static/initial_data/{DATA_FILENAME}."
+    help = f"Cria os valores cobrados dos planos a partir de static/business_rule/initial_data/{DATA_FILENAME}."
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_initial_subscription_plans_values"))

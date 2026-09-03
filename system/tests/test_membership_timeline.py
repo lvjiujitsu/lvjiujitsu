@@ -590,4 +590,4 @@ class TimelineViewsSmokeTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Stripe Billing Portal")
         self.assertContains(response, 'class="entity-card membership-timeline-card"')
-        self.assertContains(response, "/static/system/css/audit/membership_timeline.css?v=1")
+        self.assertContains(response, "/static/business_rule/css/audit/membership_timeline.css?v=1")

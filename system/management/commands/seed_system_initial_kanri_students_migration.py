@@ -42,7 +42,7 @@ PERSON_BELT_BY_RANK_CODE = {
 class Command(BaseCommand):
     help = (
         "Importa alunos, responsáveis, dependentes e graduações a partir dos JSONs "
-        f"em static/initial_data/{DATA_DIRNAME}/."
+        f"em static/business_rule/initial_data/{DATA_DIRNAME}/."
     )
 
     def handle(self, *args, **options):

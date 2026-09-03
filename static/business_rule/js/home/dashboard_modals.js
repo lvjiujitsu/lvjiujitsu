@@ -2,7 +2,7 @@
   'use strict';
 
   function getCsrfToken() {
-    return window.LV.getCsrfToken();
+    return window.APP.getCsrfToken();
   }
 
   function readConfig() {

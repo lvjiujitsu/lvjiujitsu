@@ -73,8 +73,8 @@
     });
   }
 
-  window.LV = window.LV || {};
-  window.LV.Modal = {
+  window.APP = window.APP || {};
+  window.APP.Modal = {
     trapFocus: trapFocus,
     openDialog: openDialog,
     bindBackdropClose: bindBackdropClose,

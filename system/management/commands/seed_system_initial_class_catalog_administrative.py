@@ -18,7 +18,7 @@ from system.utils import format_cpf_digits
 class Command(BaseCommand):
     help = (
         "Reaplica vínculos de treino dos administrativos a partir de "
-        "static/initial_data/initial_administrative.json. "
+        "static/business_rule/initial_data/initial_administrative.json. "
         "Preferencialmente já executado por seed_system_initial_administrative."
     )
 

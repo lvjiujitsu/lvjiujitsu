@@ -8,7 +8,7 @@
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
     <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
 
 
@@ -36,7 +36,7 @@
         <span id="wizard-back-label">Voltar</span>
       </a>
       <img
-        src="{% static 'system/img/logo-lv-dark.png' %}"
+        src="{% static 'logo/logo-dark.png' %}"
         alt="LV Jiu Jitsu"
         class="wizard-header__logo"
         width="100"
@@ -1173,9 +1173,9 @@
 
   </div>
 
-  <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
-  <script src="{% static 'system/js/lv/dom_utils.js' %}?v=1"></script>
-  <script src="{% static 'system/js/auth/wizard_shared.js' %}?v=1"></script>
+  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/auth/wizard_shared.js' %}?v=1"></script>
   <script src="{% static 'system/js/auth/register.js' %}?v=57" defer></script>
 </body>
 </html>

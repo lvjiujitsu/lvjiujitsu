@@ -7,14 +7,14 @@
   {% load static %}
   <script>(function(){var t=localStorage.getItem('lv-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':(t==='light'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')));})();</script>
     <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/home/dashboard.css' %}?v=29">
 </head>
 <body>
 
   <header class="topbar" role="banner">
     <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="LV Jiu Jitsu — Início">
-      <img class="topbar__logo" src="{% static 'system/img/logo-lv-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
+      <img class="topbar__logo" src="{% static 'logo/logo-dark.png' %}" alt="LV Jiu Jitsu" width="80" height="30">
     </a>
     <nav class="topbar__actions" aria-label="Ações do usuário">
       {% if client_person %}
@@ -704,10 +704,10 @@
 
   {% include "home/includes/dashboard_modals.html" %}
 
-  <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
-  <script src="{% static 'system/js/lv/dom_utils.js' %}?v=1"></script>
-  <script src="{% static 'system/js/lv/modal.js' %}?v=1"></script>
-  <script src="{% static 'system/js/home/dashboard_modals.js' %}?v=1" defer></script>
+  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
+  <script src="{% static 'system/js/shared/modal.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/home/dashboard_modals.js' %}?v=1" defer></script>
   <script src="{% static 'system/js/home/dashboard.js' %}?v=31" defer></script>
 
 </body>

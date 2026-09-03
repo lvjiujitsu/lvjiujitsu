@@ -10,7 +10,7 @@ from system.models import Product, ProductCategory, ProductVariant
 
 class Command(BaseCommand):
     help = (
-        "Cria produtos e variantes a partir de static/initial_data/"
+        "Cria produtos e variantes a partir de static/business_rule/initial_data/"
         "seed_system_initial_product_catalog.json e "
         "seed_system_initial_product_catalog_inventory.json. "
         "Depende de seed_system_initial_product_categories."

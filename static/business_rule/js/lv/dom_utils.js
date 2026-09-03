@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  window.LV = window.LV || {};
+  window.APP = window.APP || {};
 
   function clearChildren(node) {
     if (!node) return;
@@ -73,7 +73,7 @@
     }
   }
 
-  window.LV.DOM = {
+  window.APP.DOM = {
     clearChildren: clearChildren,
     el: el,
     parseMarkup: parseMarkup,
