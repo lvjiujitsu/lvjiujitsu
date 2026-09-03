@@ -7,39 +7,60 @@ import stat
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 
-EXCLUDED_DIR_NAMES = {".git", ".venv", "venv", "node_modules"}
+PROJECT_ROOT = Path(__file__).resolve().parent
+
+EXCLUDED_DIR_NAMES = {
+    ".agents-runtime",
+    ".codex-runtime",
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+}
 RUNTIME_DIR_NAMES = {
+    ".codex-runtime",
     ".playwright-mcp",
     ".pytest_cache",
     ".pytest_tmp",
+    "htmlcov",
+    "media",
+    "staticfiles",
     "test_artifacts",
     "test_screenshots",
-    "staticfiles",
-    "media",
-    "htmlcov",
 }
 RUNTIME_FILE_NAMES = {".coverage", "coverage.xml", "pytestdebug.log"}
+PROJECT_PORTS = (8000,)
+
 DATABASE_FILE_NAMES = {
     "db.sqlite3",
-    "db.sqlite3-shm",
     "db.sqlite3-wal",
+    "db.sqlite3-shm",
     "db.sqlite3-journal",
 }
+REMOTE_ENV_FILE_NAMES = {".env.hg", ".env.prod"}
+SHARED_ENV_DIR_VARIABLE = "LVJIUJITSU_SHARED_ENV_DIR"
+DEFAULT_SHARED_ENV_DIR = r"W:\Meu Drive\Desenvolvimento\lvjiujitsu"
 REQUIRED_LOCAL_SEED_SETTINGS = {
     "ADMIN_SUPERUSER_USERNAME",
     "ADMIN_SUPERUSER_EMAIL",
     "ADMIN_SUPERUSER_PASSWORD",
-    "SEED_INITIAL_TEACHER_PASSWORD",
-    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",
-    "SEED_TEST_PORTAL_PASSWORD",
 }
 
 
-class CleanupError(Exception):
+class CleanupError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class RemovalPlan:
+    database: tuple[Path, ...]
+    pycache: tuple[Path, ...]
+    migrations: tuple[Path, ...]
+    runtime: tuple[Path, ...]
 
 
 def print_header(message: str) -> None:
@@ -56,87 +77,205 @@ def print_warning(message: str) -> None:
 
 
 def print_error(message: str) -> None:
-    print(f"[ERROR] {message}")
+    print(f"[ERRO] {message}", file=sys.stderr)
+
+
+def lstat_path(path: Path) -> os.stat_result | None:
+    try:
+        return path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise CleanupError(f"Não foi possível inspecionar o alvo: {path}") from error
+
+
+def require_lstat(path: Path) -> os.stat_result:
+    path_stat = lstat_path(path)
+    if path_stat is None:
+        raise CleanupError(f"Alvo desapareceu durante a validação: {path}")
+    return path_stat
+
+
+def is_link_or_reparse_point(path: Path) -> bool:
+    path_stat = require_lstat(path)
+    reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    attributes = getattr(path_stat, "st_file_attributes", 0)
+    return stat.S_ISLNK(path_stat.st_mode) or bool(attributes & reparse_point)
+
+
+def validate_path_integrity(path: Path, root: Path) -> tuple[Path, Path]:
+    lexical_root = root.absolute()
+    lexical_path = path.absolute()
+    try:
+        relative = lexical_path.relative_to(lexical_root)
+    except ValueError as error:
+        raise CleanupError(f"Alvo fora do projeto recusado: {lexical_path}") from error
+
+    current = lexical_path
+    while True:
+        if is_link_or_reparse_point(current):
+            raise CleanupError(f"Link ou junction recusado antes da remoção: {current}")
+        if current == lexical_root:
+            break
+        current = current.parent
+
+    try:
+        resolved_path = lexical_path.resolve()
+        resolved_root = lexical_root.resolve()
+        resolved_path.relative_to(resolved_root)
+    except (OSError, ValueError) as error:
+        raise CleanupError(f"Alvo fora do projeto recusado: {lexical_path}") from error
+
+    return lexical_path, relative
+
+
+def validate_removal_candidate(path: Path, category: str, root: Path) -> Path:
+    lexical_path, relative = validate_path_integrity(path, root)
+    path_stat = require_lstat(lexical_path)
+
+    is_allowed = {
+        "database": len(relative.parts) == 1
+        and relative.name in DATABASE_FILE_NAMES
+        and stat.S_ISREG(path_stat.st_mode),
+        "runtime": len(relative.parts) == 1
+        and (
+            relative.name in RUNTIME_DIR_NAMES and stat.S_ISDIR(path_stat.st_mode)
+            or relative.name in RUNTIME_FILE_NAMES and stat.S_ISREG(path_stat.st_mode)
+        ),
+        "pycache": stat.S_ISDIR(path_stat.st_mode)
+        and relative.name == "__pycache__"
+        and not is_excluded(lexical_path, root),
+        "migration": stat.S_ISREG(path_stat.st_mode)
+        and relative.name != "__init__.py"
+        and relative.suffix == ".py"
+        and lexical_path.parent.name == "migrations"
+        and not is_excluded(lexical_path, root),
+    }.get(category, False)
+    if not is_allowed:
+        raise CleanupError(f"Alvo não permitido para remoção: {lexical_path}")
+    return lexical_path
 
 
 def is_excluded(path: Path, root: Path) -> bool:
-    relative_parts = path.relative_to(root).parts
+    try:
+        relative_parts = path.relative_to(root).parts
+    except ValueError:
+        return True
     return any(part in EXCLUDED_DIR_NAMES for part in relative_parts)
 
 
-def force_remove(path: Path) -> bool:
-    if not path.exists():
+def remove_path(path: Path, category: str, root: Path = PROJECT_ROOT) -> bool:
+    target = validate_removal_candidate(path, category, root)
+    target_stat = lstat_path(target)
+    if target_stat is None:
         return False
-    if path.is_dir():
-        shutil.rmtree(path, ignore_errors=True)
-        return not path.exists()
+
+    if stat.S_ISDIR(target_stat.st_mode):
+        shutil.rmtree(target, ignore_errors=True)
+        return not target.exists()
+
     try:
-        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-    except OSError:
-        pass
-    try:
-        path.unlink()
+        target.unlink()
         return True
     except FileNotFoundError:
-        return True
-    except PermissionError:
         return False
+    except PermissionError as error:
+        os.chmod(target, stat.S_IWRITE | stat.S_IREAD)
+        for _ in range(3):
+            try:
+                target.unlink()
+                return True
+            except FileNotFoundError:
+                return True
+            except PermissionError:
+                time.sleep(0.5)
+        raise CleanupError(f"Arquivo bloqueado e não removido: {target}") from error
 
 
-def is_path_within(path: Path, root: Path) -> bool:
-    try:
-        path.resolve().relative_to(root.resolve())
-    except (OSError, ValueError):
-        return False
-    return True
-
-
-def is_project_python_process(process: dict, root: Path) -> bool:
-    executable_path = str(process.get("ExecutablePath") or "").strip()
-    if executable_path and is_path_within(Path(executable_path), root):
-        return True
-
-    command_line = str(process.get("CommandLine") or "").replace("/", "\\").casefold()
-    root_marker = str(root.resolve()).replace("/", "\\").casefold().rstrip("\\")
-    return (
-        f"{root_marker}\\" in command_line
-        or f'"{root_marker}"' in command_line
-        or f"'{root_marker}'" in command_line
+def collect_named_paths(root: Path, names: set[str]) -> tuple[Path, ...]:
+    return tuple(
+        root / name
+        for name in names
+        if lstat_path(root / name) is not None
     )
 
 
-def build_parent_map(processes: list[dict]) -> dict[int, int]:
-    parent_map: dict[int, int] = {}
-    for process in processes:
+def walk_project_paths(root: Path) -> tuple[Path, ...]:
+    paths: list[Path] = []
+    pending = [root]
+
+    while pending:
+        current = pending.pop()
+        current_stat = require_lstat(current)
+        if stat.S_ISLNK(current_stat.st_mode) or bool(
+            getattr(current_stat, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+        ):
+            raise CleanupError(f"Link ou junction recusado antes da remoção: {current}")
+        if not stat.S_ISDIR(current_stat.st_mode):
+            raise CleanupError(f"Diretório inválido durante inventário: {current}")
         try:
-            pid = int(process.get("ProcessId") or 0)
-            ppid = int(process.get("ParentProcessId") or 0)
-        except (TypeError, ValueError):
-            continue
-        if pid:
-            parent_map[pid] = ppid
-    return parent_map
+            children = tuple(current.iterdir())
+        except OSError as error:
+            raise CleanupError(f"Não foi possível listar o diretório: {current}") from error
+        for path in children:
+            path_stat = require_lstat(path)
+            if stat.S_ISLNK(path_stat.st_mode) or bool(
+                getattr(path_stat, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+            ):
+                raise CleanupError(f"Link ou junction recusado antes da remoção: {path}")
+            paths.append(path)
+            if stat.S_ISDIR(path_stat.st_mode) and not is_excluded(path, root):
+                pending.append(path)
+    return tuple(paths)
 
 
-def ancestor_pids(current_pid: int, parent_map: dict[int, int]) -> set[int]:
-    protected = {0, current_pid}
-    pid = current_pid
-    while True:
-        parent = parent_map.get(pid)
-        if not parent or parent in protected:
-            break
-        protected.add(parent)
-        pid = parent
-    return protected
+def collect_pycache_paths(paths: tuple[Path, ...], root: Path) -> tuple[Path, ...]:
+    return tuple(path for path in paths if path.name == "__pycache__" and not is_excluded(path, root))
 
 
-def kill_project_python_processes(root: Path) -> set[int]:
+def collect_migration_paths(paths: tuple[Path, ...], root: Path) -> tuple[Path, ...]:
+    migration_dirs = {
+        path
+        for path in paths
+        if path.name == "migrations" and not is_excluded(path, root)
+    }
+    return tuple(
+        path
+        for path in paths
+        if path.parent in migration_dirs
+        and path.name != "__init__.py"
+        and path.suffix == ".py"
+    )
+
+
+def collect_runtime_paths(root: Path) -> tuple[Path, ...]:
+    return collect_named_paths(root, RUNTIME_DIR_NAMES | RUNTIME_FILE_NAMES)
+
+
+def build_removal_plan(root: Path = PROJECT_ROOT) -> RemovalPlan:
+    project_paths = walk_project_paths(root)
+    plan = RemovalPlan(
+        database=collect_named_paths(root, DATABASE_FILE_NAMES),
+        pycache=collect_pycache_paths(project_paths, root),
+        migrations=collect_migration_paths(project_paths, root),
+        runtime=collect_runtime_paths(root),
+    )
+    for category, paths in (
+        ("database", plan.database),
+        ("pycache", plan.pycache),
+        ("migration", plan.migrations),
+        ("runtime", plan.runtime),
+    ):
+        for path in paths:
+            validate_removal_candidate(path, category, root)
+    return plan
+
+
+def list_python_processes() -> list[dict[str, str]]:
     if os.name != "nt":
-        return set()
-
-    print_header("Encerrando processos Python do projeto")
-    current_pid = os.getpid()
-    parent_pid = os.getppid()
+        return []
 
     command = [
         "powershell.exe",
@@ -152,48 +291,88 @@ def kill_project_python_processes(root: Path) -> set[int]:
     ]
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not result.stdout.strip():
-        print_warning("Nenhum processo Python do projeto encontrado.")
-        return set()
+        return []
 
     try:
         payload = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise CleanupError("Falha ao interpretar a lista de processos Python.") from exc
+    except json.JSONDecodeError:
+        return []
     if isinstance(payload, dict):
         payload = [payload]
+    return payload
 
-    protected_pids = ancestor_pids(current_pid, build_parent_map(payload)) | {parent_pid}
-    stopped: set[int] = set()
 
-    for process in payload:
-        pid = int(process.get("ProcessId") or 0)
-        if (
-            pid == 0
-            or pid in protected_pids
-            or not is_project_python_process(process, root)
-        ):
+def build_parent_map(processes: list[dict[str, str]]) -> dict[int, int]:
+    parent_map: dict[int, int] = {}
+    for process in processes:
+        try:
+            pid = int(process.get("ProcessId") or 0)
+            ppid = int(process.get("ParentProcessId") or 0)
+        except (TypeError, ValueError):
             continue
+        if pid:
+            parent_map[pid] = ppid
+    return parent_map
 
-        kill_result = subprocess.run(
-            ["taskkill", "/PID", str(pid), "/F"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if kill_result.returncode == 0:
-            stopped.add(pid)
-            print_result(f"Finalizado: PID {pid}")
-        else:
-            stderr = (kill_result.stderr or "").strip().lower()
-            if "not found" in stderr or "n\xe3o" in stderr:
-                print_result(f"PID {pid} ja encerrado.")
-            else:
-                print_warning(f"Falha ao finalizar PID {pid}.")
 
-    if not stopped:
-        print_warning("Nenhum processo Python do projeto ativo para encerrar.")
+def protected_pids(current_pid: int, parent_map: dict[int, int]) -> set[int]:
+    protected = {0, current_pid}
+    pid = current_pid
+    while True:
+        parent = parent_map.get(pid)
+        if not parent or parent in protected:
+            break
+        protected.add(parent)
+        pid = parent
+    return protected
 
-    return stopped
+
+def listening_pids_on_project_ports() -> set[int]:
+    if os.name != "nt":
+        return set()
+
+    ports = ",".join(str(port) for port in PROJECT_PORTS)
+    command = [
+        "powershell.exe",
+        "-NoProfile",
+        "-Command",
+        (
+            "$ErrorActionPreference='SilentlyContinue'; "
+            f"Get-NetTCPConnection -LocalPort {ports} -State Listen | "
+            "Select-Object -ExpandProperty OwningProcess"
+        ),
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    pids = set()
+    for line in (getattr(result, "stdout", "") or "").splitlines():
+        stripped = line.strip()
+        if stripped.isdigit():
+            pids.add(int(stripped))
+    return pids
+
+
+def process_belongs_to_repository(
+    process: dict[str, str], root: Path, listening_pids: set[int] | None = None
+) -> bool:
+    repo_root = str(root.resolve()).rstrip("\\/").lower()
+    repo_python = str((root / ".venv" / "Scripts" / "python.exe").resolve()).lower()
+    executable_path = str(process.get("ExecutablePath") or "").lower()
+    command_line = str(process.get("CommandLine") or "").lower()
+    repo_path_markers = (f"{repo_root}\\", f"{repo_root}/")
+
+    if executable_path == repo_python or any(
+        marker in command_line for marker in repo_path_markers
+    ):
+        return True
+
+    if listening_pids and "manage.py" in command_line:
+        try:
+            pid = int(process.get("ProcessId") or 0)
+        except (TypeError, ValueError):
+            return False
+        return pid in listening_pids
+
+    return False
 
 
 def wait_processes_exit(process_ids: set[int], max_wait: float = 8.0) -> None:
@@ -231,75 +410,125 @@ def wait_processes_exit(process_ids: set[int], max_wait: float = 8.0) -> None:
             return
 
     print_warning(
-        f"Timeout ({max_wait:.0f}s) — processos do projeto ainda ativos: "
+        f"Timeout ({max_wait:.0f}s) - processos do projeto ainda ativos: "
         f"{', '.join(str(pid) for pid in sorted(remaining))}."
     )
 
 
-def remove_database_files(root: Path) -> int:
-    print_header("Removendo banco SQLite")
-    removed = 0
-    failures: list[str] = []
+def stop_python_processes(root: Path = PROJECT_ROOT) -> int:
+    print_header("Encerrando processos Python do repositório")
+    if os.name != "nt":
+        print_warning("Enumeração de processos indisponível fora do Windows.")
+        return 0
 
-    for name in sorted(DATABASE_FILE_NAMES):
-        path = root / name
-        if not path.exists():
+    processes = list_python_processes()
+    listening = listening_pids_on_project_ports()
+    protected = protected_pids(os.getpid(), build_parent_map(processes))
+    stopped_pids: set[int] = set()
+
+    for process in processes:
+        try:
+            pid = int(process.get("ProcessId") or 0)
+        except (TypeError, ValueError):
+            continue
+        if pid in protected:
+            continue
+        if not process_belongs_to_repository(process, root, listening):
             continue
 
-        for attempt in range(10):
-            if force_remove(path):
-                removed += 1
-                print_result(f"Removido: {name}")
-                break
-            time.sleep(1)
+        result = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/F"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            stopped_pids.add(pid)
+            print_result(f"Processo Python finalizado: PID {pid}")
         else:
-            if path.exists():
+            print_warning(f"Não foi possível finalizar o PID {pid}.")
+
+    wait_processes_exit(stopped_pids)
+
+    if not stopped_pids:
+        print_warning("Nenhum processo Python vinculado ao repositório foi encontrado.")
+
+    return len(stopped_pids)
+
+
+def remove_database_files(
+    root: Path = PROJECT_ROOT, paths: tuple[Path, ...] | None = None
+) -> tuple[int, int]:
+    print_header("Removendo banco SQLite")
+    removed = 0
+    extra_stopped = 0
+    failures: list[str] = []
+
+    paths = paths if paths is not None else build_removal_plan(root).database
+    for path in paths:
+        name = path.name
+        try:
+            if remove_path(path, "database", root):
+                removed += 1
+                print_result(f"Arquivo removido: {name}")
+            continue
+        except CleanupError:
+            print_warning(
+                f"Arquivo bloqueado detectado: {name}. Tentando finalizar "
+                "processos Python vinculados ao repositório."
+            )
+            extra_stopped += stop_python_processes(root)
+            try:
+                if remove_path(path, "database", root):
+                    removed += 1
+                    print_result(f"Arquivo removido após desbloqueio: {name}")
+                continue
+            except CleanupError:
                 failures.append(name)
-                print_error(f"Nao foi possivel remover: {name}")
 
     if removed == 0 and not failures:
         print_warning("Nenhum arquivo SQLite encontrado.")
 
     if failures:
         raise CleanupError(
-            f"Arquivos SQLite bloqueados: {', '.join(failures)}. "
-            "Feche todas as aplicacoes que usam o banco e tente novamente."
+            "Não foi possível remover os arquivos SQLite bloqueados: "
+            f"{', '.join(failures)}. Feche o servidor Django, shells do "
+            "SQLite ou processos que estejam usando o banco e execute o "
+            "comando novamente."
         )
 
-    return removed
+    return removed, extra_stopped
 
 
-def remove_pycache_directories(root: Path) -> int:
-    print_header("Removendo diretorios __pycache__")
+def remove_pycache_directories(
+    root: Path = PROJECT_ROOT, paths: tuple[Path, ...] | None = None
+) -> int:
+    print_header("Removendo diretórios __pycache__")
     removed = 0
 
-    for cache_dir in root.rglob("__pycache__"):
-        if is_excluded(cache_dir, root):
-            continue
-        if force_remove(cache_dir):
+    paths = paths if paths is not None else build_removal_plan(root).pycache
+    for cache_dir in paths:
+        if remove_path(cache_dir, "pycache", root):
             removed += 1
-            print_result(f"Removido: {cache_dir.relative_to(root)}")
+            print_result(f"Diretório removido: {cache_dir.relative_to(root)}")
 
     if removed == 0:
-        print_warning("Nenhum diretorio __pycache__ encontrado.")
+        print_warning("Nenhum diretório __pycache__ encontrado.")
 
     return removed
 
 
-def remove_migration_files(root: Path) -> int:
+def remove_migration_files(
+    root: Path = PROJECT_ROOT, paths: tuple[Path, ...] | None = None
+) -> int:
     print_header("Removendo migrations do projeto")
     removed = 0
 
-    for migrations_dir in root.rglob("migrations"):
-        if is_excluded(migrations_dir, root) or not migrations_dir.is_dir():
-            continue
-
-        for path in migrations_dir.iterdir():
-            if path.name == "__init__.py":
-                continue
-            if force_remove(path):
-                removed += 1
-                print_result(f"Removido: {path.relative_to(root)}")
+    paths = paths if paths is not None else build_removal_plan(root).migrations
+    for path in paths:
+        if remove_path(path, "migration", root):
+            removed += 1
+            print_result(f"Migration removida: {path.relative_to(root)}")
 
     if removed == 0:
         print_warning("Nenhuma migration adicional encontrada.")
@@ -307,21 +536,17 @@ def remove_migration_files(root: Path) -> int:
     return removed
 
 
-def remove_runtime_artifacts(root: Path) -> int:
+def remove_runtime_artifacts(
+    root: Path = PROJECT_ROOT, paths: tuple[Path, ...] | None = None
+) -> int:
     print_header("Removendo artefatos locais")
     removed = 0
 
-    for name in sorted(RUNTIME_DIR_NAMES):
-        path = root / name
-        if force_remove(path):
+    paths = paths if paths is not None else build_removal_plan(root).runtime
+    for path in paths:
+        if remove_path(path, "runtime", root):
             removed += 1
-            print_result(f"Removido: {path.relative_to(root)}")
-
-    for name in sorted(RUNTIME_FILE_NAMES):
-        path = root / name
-        if force_remove(path):
-            removed += 1
-            print_result(f"Removido: {path.relative_to(root)}")
+            print_result(f"Artefato removido: {path.name}")
 
     if removed == 0:
         print_warning("Nenhum artefato local adicional encontrado.")
@@ -329,35 +554,53 @@ def remove_runtime_artifacts(root: Path) -> int:
     return removed
 
 
-def verify_cleanup(root: Path) -> None:
-    print_header("Verificando limpeza")
-    problems: list[str] = []
+def verify_cleanup(root: Path = PROJECT_ROOT) -> None:
+    remaining: list[str] = []
 
-    for name in sorted(DATABASE_FILE_NAMES):
+    for name in DATABASE_FILE_NAMES:
         if (root / name).exists():
-            problems.append(f"Banco ainda existe: {name}")
+            remaining.append(name)
 
-    for migrations_dir in root.rglob("migrations"):
-        if is_excluded(migrations_dir, root) or not migrations_dir.is_dir():
-            continue
-        for path in migrations_dir.iterdir():
-            if path.name != "__init__.py":
-                problems.append(f"Migration restante: {path.relative_to(root)}")
+    project_paths = walk_project_paths(root)
+    migration_dirs = {
+        path
+        for path in project_paths
+        if path.name == "migrations" and not is_excluded(path, root)
+    }
+    for path in project_paths:
+        if path.parent in migration_dirs and path.name != "__init__.py":
+            remaining.append(str(path.relative_to(root)))
 
-    if problems:
-        for problem in problems:
-            print_error(problem)
-        raise CleanupError("Limpeza incompleta. Veja os erros acima.")
+    for name in sorted(RUNTIME_DIR_NAMES):
+        if (root / name).exists():
+            remaining.append(name)
 
-    print_result("Ambiente limpo — banco deletado, migrations removidas.")
+    if remaining:
+        raise CleanupError(
+            "Limpeza incompleta; estes alvos permanecem: " + ", ".join(sorted(remaining))
+        )
 
 
-def validate_root(root: Path) -> None:
-    root = root.resolve()
-    if not (root / "manage.py").is_file():
-        raise CleanupError("Arquivo manage.py nao encontrado ao lado do script.")
-    if not (root / ".git").exists():
-        raise CleanupError("Raiz Git do projeto nao encontrada ao lado do script.")
+def validate_project(root: Path = PROJECT_ROOT) -> None:
+    required = (
+        root / "manage.py",
+        root / "lvjiujitsu" / "settings.py",
+        root / "system" / "migrations" / "__init__.py",
+    )
+    if any(not path.is_file() for path in required):
+        raise CleanupError("O script não está na raiz válida do LV JIU JITSU.")
+
+    environment = os.environ.get("DJANGO_ENVIRONMENT", "local").strip().lower()
+    if environment in {"hg", "prod"}:
+        raise CleanupError(f"Operação recusada: DJANGO_ENVIRONMENT={environment}.")
+
+
+def is_path_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+    except (OSError, ValueError):
+        return False
+    return True
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -378,19 +621,48 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
-def validate_local_environment(root: Path) -> Path:
-    configured_env_file = os.environ.get("DJANGO_ENV_FILE", "").strip()
-    env_path = Path(configured_env_file) if configured_env_file else root / ".env"
-    if not env_path.is_absolute():
-        env_path = root / env_path
-    env_path = env_path.resolve()
+def shared_env_dir() -> Path:
+    configured = os.environ.get(SHARED_ENV_DIR_VARIABLE, "").strip()
+    return Path(configured or DEFAULT_SHARED_ENV_DIR)
 
-    if not is_path_within(env_path, root):
-        raise CleanupError("DJANGO_ENV_FILE deve apontar para um arquivo dentro do projeto.")
-    if env_path.name.casefold() in {".env.hg", ".env.prod"}:
+
+def local_env_candidates(root: Path) -> list[Path]:
+    return [root / ".env", shared_env_dir() / ".env"]
+
+
+def is_allowed_env_location(env_path: Path, root: Path) -> bool:
+    if is_path_within(env_path, root):
+        return True
+    shared = shared_env_dir()
+    try:
+        return is_path_within(env_path, shared.resolve())
+    except OSError:
+        return False
+
+
+def validate_local_environment(root: Path = PROJECT_ROOT) -> Path:
+    configured_env_file = os.environ.get("DJANGO_ENV_FILE", "").strip()
+    if configured_env_file:
+        env_path = Path(configured_env_file)
+        if not env_path.is_absolute():
+            env_path = root / env_path
+        env_path = env_path.resolve()
+    else:
+        found = next(
+            (path for path in local_env_candidates(root) if path.is_file()),
+            None,
+        )
+        env_path = (found or root / ".env").resolve()
+
+    if not is_allowed_env_location(env_path, root):
+        raise CleanupError(
+            "DJANGO_ENV_FILE deve apontar para um arquivo dentro do projeto ou "
+            "do diretório compartilhado de ambiente."
+        )
+    if env_path.name.casefold() in REMOTE_ENV_FILE_NAMES:
         raise CleanupError("Ciclo destrutivo local recusado: use o arquivo .env local.")
     if not env_path.is_file():
-        raise CleanupError(f"Arquivo de ambiente local nao encontrado: {env_path}")
+        raise CleanupError(f"Arquivo de ambiente local não encontrado: {env_path}")
 
     values = parse_env_file(env_path)
     environment = (
@@ -404,13 +676,12 @@ def validate_local_environment(root: Path) -> Path:
         )
 
     database_url = (
-        os.environ.get("DATABASE_URL")
-        or values.get("DATABASE_URL")
-        or ""
+        os.environ.get("DATABASE_URL") or values.get("DATABASE_URL") or ""
     ).strip()
     if database_url:
         raise CleanupError(
-            "Ciclo destrutivo local recusado: DATABASE_URL deve estar vazio para usar SQLite."
+            "Ciclo destrutivo local recusado: DATABASE_URL deve estar vazio "
+            "para usar SQLite."
         )
 
     missing_settings = sorted(
@@ -420,14 +691,14 @@ def validate_local_environment(root: Path) -> Path:
     )
     if missing_settings:
         raise CleanupError(
-            "Configuracoes obrigatorias para o ciclo completo estao vazias: "
+            "Configurações obrigatórias para o ciclo completo estão vazias: "
             f"{', '.join(missing_settings)}."
         )
 
     return env_path
 
 
-def validate_database_targets(root: Path) -> None:
+def validate_database_targets(root: Path = PROJECT_ROOT) -> None:
     resolved_root = root.resolve()
     for name in DATABASE_FILE_NAMES:
         target = (resolved_root / name).resolve()
@@ -436,33 +707,35 @@ def validate_database_targets(root: Path) -> None:
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parent.resolve()
-    validate_root(root)
+    root = PROJECT_ROOT
+    validate_project(root)
     env_path = validate_local_environment(root)
     validate_database_targets(root)
+    removal_plan = build_removal_plan(root)
 
     print_header("Iniciando limpeza do ambiente")
-    print_result(f"Repositorio: {root}")
+    print_result(f"Repositório localizado em: {root}")
     print_result(f"Ambiente local validado: {env_path.name}")
 
-    stopped = kill_project_python_processes(root)
-    if stopped:
-        wait_processes_exit(stopped)
-
-    removed_db = remove_database_files(root)
-    removed_cache = remove_pycache_directories(root)
-    removed_migrations = remove_migration_files(root)
-    removed_artifacts = remove_runtime_artifacts(root)
+    stopped_processes = stop_python_processes(root)
+    removed_database, extra_stopped = remove_database_files(root, removal_plan.database)
+    stopped_processes += extra_stopped
+    removed_pycache = remove_pycache_directories(root, removal_plan.pycache)
+    removed_migrations = remove_migration_files(root, removal_plan.migrations)
+    removed_artifacts = remove_runtime_artifacts(root, removal_plan.runtime)
 
     verify_cleanup(root)
 
     print_header("Resumo final")
-    print_result(f"Processos finalizados: {len(stopped)}")
-    print_result(f"Arquivos SQLite removidos: {removed_db}")
-    print_result(f"Diretorios __pycache__: {removed_cache}")
+    print_result(f"Processos Python finalizados: {stopped_processes}")
+    print_result(f"Arquivos SQLite removidos: {removed_database}")
+    print_result(f"Diretórios __pycache__ removidos: {removed_pycache}")
     print_result(f"Migrations removidas: {removed_migrations}")
-    print_result(f"Artefatos locais: {removed_artifacts}")
-    print_result("Limpeza concluida com sucesso.")
+    print_result(f"Artefatos locais removidos: {removed_artifacts}")
+    print_result(
+        "Limpeza concluída. Agora execute makemigrations, migrate e "
+        "create_admin_superuser."
+    )
     return 0
 
 
