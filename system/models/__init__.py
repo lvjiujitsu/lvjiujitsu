@@ -94,6 +94,8 @@ from .trial_access import TrialAccessGrant
 from .audit import AuditAction, AuditModule, OperationalAuditEntry
 from .membership_timeline import MembershipTimelineEvent, MembershipTimelineEventType
 
+from .user import User, UserManager
+
 __all__ = [
     "AdministrativeAccessRequest",
     "AdministrativeAccessRequestOrigin",
