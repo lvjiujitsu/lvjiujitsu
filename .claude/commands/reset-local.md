@@ -1,126 +1,48 @@
 ---
-description: "Reconstrói o ambiente local do LV JIU JITSU, aplica as seeds explícitas e sobe a porta 8000 depois de validar todas as guardas."
+description: "Reconstrói o ambiente local do LV JIU JITSU com guardas, testes e seeds explícitas do projeto."
 disable-model-invocation: true
 ---
 
 # /reset-local
 
-Executa o ciclo destrutivo **somente local** na ordem canônica de
-`obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md` e para no primeiro erro, informando em qual passo
-parou. A invocação manual deste comando é a autorização explícita para executar
-as seeds do ciclo.
+## Quando acionar
 
-## Guardas antes de apagar
+Por invocação manual para reconstruir o banco local descartável. A invocação
+autoriza o reset e as seeds locais. Ler a sequência de domínio em
+`obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md` antes de executar.
 
-`clear_migrations.py` já recusa ambiente remoto por conta própria. Estas
-verificações são o aviso antecipado, para o operador não descobrir o problema
-depois de dez comandos.
+## Passos
 
-1. Recusar qualquer indicação de ambiente remoto:
-
-```powershell
-if (($env:DJANGO_ENV_FILE -match 'hg|prod') -or ($env:DJANGO_ENVIRONMENT -match 'hg|prod')) {
-    Write-Error "RECUSADO: /reset-local é somente local."
-    exit 1
-}
-```
-
-2. Confirmar que `.venv\Scripts\python.exe`, `manage.py` e
-   `static\initial_data\` existem.
-
-3. Verificar, **sem imprimir valores**, a configuração exigida pelo ciclo:
-
-```powershell
-.\.venv\Scripts\python.exe -c "from decouple import AutoConfig; import sys; c=AutoConfig(search_path='.'); miss=[k for k in ['ADMIN_SUPERUSER_PASSWORD','SEED_INITIAL_TEACHER_PASSWORD','SEED_INITIAL_ADMINISTRATIVE_PASSWORD','SEED_TEST_PORTAL_PASSWORD'] if not str(c(k, default='')).strip()]; print('MISSING: ' + ', '.join(miss) if miss else 'OK'); sys.exit(1 if miss else 0)"
-```
-
-   Se retornar `MISSING`, **parar aqui**: não rodar `clear_migrations.py`, não
-   apagar `db.sqlite3`. Informar quais variáveis faltam.
-
-4. Rodar `manage.py check`. Se qualquer guarda falhar, parar sem executar
-   `clear_migrations.py`; `db.sqlite3` deve permanecer intocado.
-
-5. Se a porta `8000` já estiver ocupada, consultar o PID. Encerrar somente
-   quando a linha de comando corresponder a `manage.py runserver
-   localhost:8000`; para qualquer outro processo, abortar e reportar o PID.
-   Depois de encerrar o runserver identificado, confirmar que a porta foi
-   liberada antes do reset.
-
-## Sequência (parar no primeiro erro)
-
-```powershell
-.\.venv\Scripts\python.exe clear_migrations.py
-.\.venv\Scripts\python.exe manage.py makemigrations
-.\.venv\Scripts\python.exe manage.py test --verbosity 2
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py create_admin_superuser
-.\.venv\Scripts\python.exe manage.py seed_system_initial_person_type
-.\.venv\Scripts\python.exe manage.py seed_system_initial_belt_ranks
-.\.venv\Scripts\python.exe manage.py seed_system_initial_ibjjf_age_categories
-.\.venv\Scripts\python.exe manage.py seed_system_initial_graduation_rules
-.\.venv\Scripts\python.exe manage.py seed_system_initial_class_categories
-.\.venv\Scripts\python.exe manage.py seed_system_initial_teacher
-.\.venv\Scripts\python.exe manage.py seed_system_initial_class_categories_teacher
-.\.venv\Scripts\python.exe manage.py seed_system_initial_class_catalog
-.\.venv\Scripts\python.exe manage.py seed_system_initial_teacher_payroll_configs
-.\.venv\Scripts\python.exe manage.py seed_system_initial_administrative
-.\.venv\Scripts\python.exe manage.py seed_system_initial_class_categories_administrative
-.\.venv\Scripts\python.exe manage.py seed_system_initial_class_catalog_administrative
-.\.venv\Scripts\python.exe manage.py seed_system_initial_product_categories
-.\.venv\Scripts\python.exe manage.py seed_system_initial_product_catalog
-.\.venv\Scripts\python.exe manage.py seed_system_initial_subscription_plans
-.\.venv\Scripts\python.exe manage.py seed_system_initial_subscription_plans_values
-.\.venv\Scripts\python.exe manage.py seed_system_initial_coupons
-.\.venv\Scripts\python.exe manage.py seed_system_initial_holidays
-.\.venv\Scripts\python.exe manage.py seed_system_initial_plan_tiers
-.\.venv\Scripts\python.exe manage.py seed_system_initial_plan_prices
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py showmigrations
-```
-
-A ordem das seeds é a de `obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md`; não manter segunda
-cópia da lista fora dela — ao divergir, o runbook vence e este arquivo é
-corrigido.
-
-## Dados fictícios de homologação (opcional)
-
-Só quando o objetivo pedir telas povoadas. Exige `SEED_TEST_PORTAL_PASSWORD`
-configurada:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py seed_system_initial_test_students
-.\.venv\Scripts\python.exe manage.py seed_system_initial_test_guardians
-.\.venv\Scripts\python.exe manage.py seed_system_initial_test_administrative
-.\.venv\Scripts\python.exe manage.py seed_system_initial_test_teachers
-```
-
-## Subir e confirmar
-
-```powershell
-$serverProcess = Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList @("manage.py", "runserver", "localhost:8000", "--noreload") -PassThru -WindowStyle Hidden
-$response = Invoke-WebRequest "http://localhost:8000/login/" -UseBasicParsing
-$response.StatusCode
-$serverProcess.Id
-```
-
-Se a primeira tentativa ocorrer antes de o servidor subir, repetir a
-requisição por até 15 segundos. Informar o PID para o operador poder encerrar
-o processo.
+1. Confirmar a raiz do projeto e o interpretador `.venv/Scripts/python.exe`.
+2. Executar `python clear_migrations.py --check` com esse interpretador. O comando
+   valida ambiente, credenciais de seed, contenção e plano de remoção sem apagar
+   arquivos nem encerrar processos. Usa o mesmo carregamento do reset efetivo.
+3. Executar `python manage.py check`. Resolver cada seed e seus argumentos no
+   código e na nota de banco. Confirmar os arquivos de entrada antes da remoção.
+   Variáveis de dados fictícios só são exigidas quando essas seeds forem pedidas.
+4. Executar individualmente e parar no primeiro código de saída diferente de zero:
+   `clear_migrations.py`, `manage.py makemigrations`, `manage.py test --verbosity 2`,
+   `manage.py migrate` e `manage.py create_admin_superuser`.
+5. Executar as seeds de domínio na ordem da nota de banco, uma por vez. A lista
+   pertence ao vault; este comando não mantém uma segunda cópia. Dados fictícios
+   só entram quando o objetivo pedir telas povoadas.
+6. Executar `manage.py check`, `manage.py makemigrations --check --dry-run` e
+   `manage.py showmigrations`. Registrar resultados e quantidades reais das seeds.
+7. Para subir o servidor, confirmar que a porta 8000 está livre. Porta ocupada
+   não comprova que o processo pertence a este repositório: informar o PID e
+   parar se o caminho do executável ou do script não comprovar a origem.
+8. Iniciar `manage.py runserver localhost:8000 --noreload` com o interpretador do
+   projeto, `Start-Process -WindowStyle Hidden -PassThru`. Consultar `/health/`
+   por até 15 segundos e registrar o PID e o status HTTP observado.
 
 ## Saída
 
-```text
-Guardas: ambiente local | arquivos ok | variáveis de seed ok | check ok
-Passo que falhou: nenhum | <nome do passo>
-Seeds: <resultado>
-Testes: <quantidade e resultado>
-Servidor: http://localhost:8000/login/ -> <status> (PID <id>)
-```
+Informar guardas, passo que falhou, migrations, seeds executadas, testes,
+HTTP de `/health/` e PID. Nunca imprimir valores de ambiente.
 
 ## Parar quando
 
-- Uma guarda recusar: parar antes de qualquer remoção e informar a causa.
-- Qualquer passo da sequência falhar: parar no passo, sem mascarar a saída.
-- O HTTP não responder em 15 segundos: reportar falha e o PID.
-- HTTP 200 confirmado: entregar a saída e deixar o PID explícito.
+- Uma guarda ou comando falhar; antes do reset, nada deve ser apagado.
+- A nota de banco ou um insumo obrigatório não estiver disponível.
+- A porta pertencer a outro processo ou o HTTP não responder no prazo.
+- A validação terminar: entregar a evidência real e o PID do servidor.

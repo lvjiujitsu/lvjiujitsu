@@ -17,10 +17,10 @@ from django.test import SimpleTestCase, TestCase, override_settings
 
 from clear_migrations import (
     CleanupError,
-    ancestor_pids,
+    protected_pids,
     build_parent_map,
-    is_project_python_process,
-    kill_project_python_processes,
+    process_belongs_to_repository,
+    stop_python_processes,
     remove_runtime_artifacts,
     validate_database_targets,
     validate_local_environment,
@@ -46,7 +46,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
     def test_self_and_all_ancestors_are_protected_from_being_killed(self):
         parent_map = {4242: 1010, 1010: 500, 500: 0}
 
-        protected = ancestor_pids(4242, parent_map)
+        protected = protected_pids(4242, parent_map)
 
         self.assertIn(4242, protected)
         self.assertIn(1010, protected)
@@ -55,10 +55,10 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
     def test_sibling_process_remains_a_valid_target(self):
         parent_map = {4242: 1010, 1010: 500, 500: 0, 7777: 500}
 
-        self.assertNotIn(7777, ancestor_pids(4242, parent_map))
+        self.assertNotIn(7777, protected_pids(4242, parent_map))
 
     def test_parent_cycle_does_not_hang(self):
-        self.assertEqual(ancestor_pids(10, {10: 20, 20: 10}), {0, 10, 20})
+        self.assertEqual(protected_pids(10, {10: 20, 20: 10}), {0, 10, 20})
 
     def test_build_parent_map_ignores_malformed_entries(self):
         parent_map = build_parent_map(
@@ -79,22 +79,15 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
             )
         )
         try:
-            removed_paths = []
-
-            def capture_remove_path(path):
-                removed_paths.append(path)
-                return False
-
-            with (
-                patch("clear_migrations.force_remove", side_effect=capture_remove_path),
-                redirect_stdout(StringIO()),
-            ):
-                remove_runtime_artifacts(root)
-
-            self.assertIn(root / ".playwright-mcp", removed_paths)
-            self.assertIn(root / "test_artifacts", removed_paths)
-            self.assertIn(root / "test_screenshots", removed_paths)
-            self.assertNotIn(root / ".venv", removed_paths)
+            for name in ('.playwright-mcp', 'test_artifacts', 'test_screenshots', '.venv'):
+                (root / name).mkdir()
+            with redirect_stdout(StringIO()):
+                removed = remove_runtime_artifacts(root)
+            self.assertEqual(removed, 3)
+            self.assertFalse((root / '.playwright-mcp').exists())
+            self.assertFalse((root / 'test_artifacts').exists())
+            self.assertFalse((root / 'test_screenshots').exists())
+            self.assertTrue((root / '.venv').is_dir())
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
@@ -102,7 +95,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
         root = Path.cwd().resolve()
 
         self.assertTrue(
-            is_project_python_process(
+            process_belongs_to_repository(
                 {
                     "ExecutablePath": str(root / ".venv" / "Scripts" / "python.exe"),
                     "CommandLine": "python manage.py runserver",
@@ -111,7 +104,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
             )
         )
         self.assertTrue(
-            is_project_python_process(
+            process_belongs_to_repository(
                 {
                     "ExecutablePath": r"C:\Python312\python.exe",
                     "CommandLine": f'python "{root / "manage.py"}" runserver',
@@ -120,7 +113,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
             )
         )
         self.assertFalse(
-            is_project_python_process(
+            process_belongs_to_repository(
                 {
                     "ExecutablePath": r"C:\other-project\.venv\Scripts\python.exe",
                     "CommandLine": r"python C:\other-project\manage.py runserver",
@@ -129,7 +122,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
             )
         )
         self.assertFalse(
-            is_project_python_process(
+            process_belongs_to_repository(
                 {
                     "ExecutablePath": r"C:\Python312\python.exe",
                     "CommandLine": f'python "{root}-other\\manage.py" runserver',
@@ -171,15 +164,16 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
 
         with (
             patch("clear_migrations.os.name", "nt"),
+            patch("clear_migrations.wait_processes_exit"),
             patch(
                 "clear_migrations.subprocess.run",
                 side_effect=[process_list_result, taskkill_result],
             ) as mocked_run,
             redirect_stdout(StringIO()),
         ):
-            stopped = kill_project_python_processes(root)
+            stopped = stop_python_processes(root)
 
-        self.assertEqual(stopped, {own_pid})
+        self.assertEqual(stopped, 1)
         self.assertEqual(mocked_run.call_count, 2)
         self.assertEqual(
             mocked_run.call_args_list[1].args[0],
@@ -280,7 +274,7 @@ class ClearMigrationsCleanupTestCase(SimpleTestCase):
 
             with (
                 patch.dict(os.environ, {}, clear=True),
-                self.assertRaisesMessage(CleanupError, "Configuracoes obrigatorias"),
+                self.assertRaisesMessage(CleanupError, "Configurações obrigatórias"),
             ):
                 validate_local_environment(root)
         finally:

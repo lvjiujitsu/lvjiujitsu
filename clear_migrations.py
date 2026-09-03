@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -33,7 +34,6 @@ RUNTIME_DIR_NAMES = {
     "test_screenshots",
 }
 RUNTIME_FILE_NAMES = {".coverage", "coverage.xml", "pytestdebug.log"}
-PROJECT_PORTS = (8000,)
 
 DATABASE_FILE_NAMES = {
     "db.sqlite3",
@@ -327,32 +327,8 @@ def protected_pids(current_pid: int, parent_map: dict[int, int]) -> set[int]:
     return protected
 
 
-def listening_pids_on_project_ports() -> set[int]:
-    if os.name != "nt":
-        return set()
-
-    ports = ",".join(str(port) for port in PROJECT_PORTS)
-    command = [
-        "powershell.exe",
-        "-NoProfile",
-        "-Command",
-        (
-            "$ErrorActionPreference='SilentlyContinue'; "
-            f"Get-NetTCPConnection -LocalPort {ports} -State Listen | "
-            "Select-Object -ExpandProperty OwningProcess"
-        ),
-    ]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    pids = set()
-    for line in (getattr(result, "stdout", "") or "").splitlines():
-        stripped = line.strip()
-        if stripped.isdigit():
-            pids.add(int(stripped))
-    return pids
-
-
 def process_belongs_to_repository(
-    process: dict[str, str], root: Path, listening_pids: set[int] | None = None
+    process: dict[str, str], root: Path
 ) -> bool:
     repo_root = str(root.resolve()).rstrip("\\/").lower()
     repo_python = str((root / ".venv" / "Scripts" / "python.exe").resolve()).lower()
@@ -364,13 +340,6 @@ def process_belongs_to_repository(
         marker in command_line for marker in repo_path_markers
     ):
         return True
-
-    if listening_pids and "manage.py" in command_line:
-        try:
-            pid = int(process.get("ProcessId") or 0)
-        except (TypeError, ValueError):
-            return False
-        return pid in listening_pids
 
     return False
 
@@ -422,7 +391,6 @@ def stop_python_processes(root: Path = PROJECT_ROOT) -> int:
         return 0
 
     processes = list_python_processes()
-    listening = listening_pids_on_project_ports()
     protected = protected_pids(os.getpid(), build_parent_map(processes))
     stopped_pids: set[int] = set()
 
@@ -433,7 +401,7 @@ def stop_python_processes(root: Path = PROJECT_ROOT) -> int:
             continue
         if pid in protected:
             continue
-        if not process_belongs_to_repository(process, root, listening):
+        if not process_belongs_to_repository(process, root):
             continue
 
         result = subprocess.run(
@@ -645,7 +613,8 @@ def validate_local_environment(root: Path = PROJECT_ROOT) -> Path:
     if configured_env_file:
         env_path = Path(configured_env_file)
         if not env_path.is_absolute():
-            env_path = root / env_path
+            candidates = (root / env_path, shared_env_dir() / env_path)
+            env_path = next((path for path in candidates if path.is_file()), candidates[0])
         env_path = env_path.resolve()
     else:
         found = next(
@@ -665,6 +634,8 @@ def validate_local_environment(root: Path = PROJECT_ROOT) -> Path:
         raise CleanupError(f"Arquivo de ambiente local não encontrado: {env_path}")
 
     values = parse_env_file(env_path)
+    if values.get("DJANGO_ENVIRONMENT", "local").strip().lower() != "local":
+        raise CleanupError("Ciclo destrutivo local recusado: DJANGO_ENVIRONMENT do arquivo não é local.")
     environment = (
         os.environ.get("DJANGO_ENVIRONMENT")
         or values.get("DJANGO_ENVIRONMENT")
@@ -706,12 +677,18 @@ def validate_database_targets(root: Path = PROJECT_ROOT) -> None:
             raise CleanupError(f"Alvo de banco fora da raiz do projeto: {target}")
 
 
-def main() -> int:
+def main(arguments=()) -> int:
+    parser = argparse.ArgumentParser(description="Valida e limpa somente o ambiente local deste projeto.")
+    parser.add_argument("--check", action="store_true", help="Valida o plano sem apagar arquivos ou encerrar processos.")
+    args = parser.parse_args(arguments)
     root = PROJECT_ROOT
     validate_project(root)
     env_path = validate_local_environment(root)
     validate_database_targets(root)
     removal_plan = build_removal_plan(root)
+    if args.check:
+        print_result("Guardas e plano local validados. Nenhum arquivo ou processo alterado.")
+        return 0
 
     print_header("Iniciando limpeza do ambiente")
     print_result(f"Repositório localizado em: {root}")
@@ -739,9 +716,15 @@ def main() -> int:
     return 0
 
 
+REQUIRED_LOCAL_SEED_SETTINGS.update({
+    "SEED_INITIAL_TEACHER_PASSWORD",
+    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",
+})
+
+
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        raise SystemExit(main(sys.argv[1:]))
     except CleanupError as error:
         print()
         print_error(str(error))

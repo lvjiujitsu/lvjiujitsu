@@ -1,30 +1,57 @@
 import os
 from pathlib import Path
 
-from decouple import Config, RepositoryEnv, config as decouple_config
+from decouple import Config, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+SHARED_ENV_DIR_VARIABLE = "LVJIUJITSU_SHARED_ENV_DIR"
+DEFAULT_SHARED_ENV_DIR = r"W:\Meu Drive\Desenvolvimento\lvjiujitsu"
+
+
+def shared_env_dir():
+    return Path(os.environ.get(SHARED_ENV_DIR_VARIABLE) or DEFAULT_SHARED_ENV_DIR)
+
+
+def env_file_candidates():
+    configured = os.environ.get("DJANGO_ENV_FILE", "").strip()
+    if not configured:
+        return [BASE_DIR / ".env", shared_env_dir() / ".env"]
+    path = Path(configured)
+    if path.is_absolute():
+        return [path]
+    return [BASE_DIR / path, shared_env_dir() / path]
+
+
+def locate_env_file(name):
+    for candidate in (BASE_DIR / name, shared_env_dir() / name):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+ENVIRONMENT_VARIABLE = "DJANGO_ENVIRONMENT"
+
+
 def load_config():
-    configured_env_file = os.environ.get("DJANGO_ENV_FILE", "").strip()
-    if configured_env_file:
-        env_path = Path(configured_env_file)
-        if not env_path.is_absolute():
-            env_path = BASE_DIR / env_path
-        if not env_path.is_file():
-            raise ImproperlyConfigured(
-                f"DJANGO_ENV_FILE aponta para arquivo inexistente: {env_path}"
-            )
-        return Config(RepositoryEnv(str(env_path)))
-
-    default_env_path = BASE_DIR / ".env"
-    if default_env_path.is_file():
-        return Config(RepositoryEnv(str(default_env_path)))
-
-    return decouple_config
+    candidates = env_file_candidates()
+    for candidate in candidates:
+        if candidate.is_file():
+            return Config(RepositoryEnv(str(candidate)))
+    if os.environ.get(ENVIRONMENT_VARIABLE, "").strip():
+        return Config(RepositoryEmpty())
+    looked = "; ".join(str(candidate) for candidate in candidates)
+    raise ImproperlyConfigured(
+        f"Nenhuma configuração encontrada. Sem {ENVIRONMENT_VARIABLE} no "
+        "ambiente do processo, é obrigatório haver arquivo. Procurado em: "
+        f"{looked}. Defina DJANGO_ENV_FILE, restaure o arquivo no repositório, "
+        "confira se o diretório compartilhado está montado "
+        f"({SHARED_ENV_DIR_VARIABLE} troca o caminho) ou cadastre as variáveis "
+        "no painel da plataforma."
+    )
 
 
 config = load_config()

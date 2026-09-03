@@ -73,6 +73,10 @@ END $$;
 class SupabasePublicSchemaResetCommand(BaseCommand):
     target_environment = ""
     confirmation_value = ""
+    requires_confirmation_variable = True
+    requires_project_ref = True
+    requires_execute_flag = True
+    requires_ref_argument = False
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -80,23 +84,33 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
             action="store_true",
             help="Executa a remocao. Sem esta flag, apenas lista o alvo.",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Lista o alvo sem remover, mesmo em ambiente sem trava.",
+        )
+        parser.add_argument(
+            "--confirm-ref",
+            default="",
+            help="Repete o SUPABASE_PROJECT_REF do alvo para liberar a remocao.",
+        )
 
     def handle(self, *args, **options):
-        project_ref = self.validate_safety_guards()
+        project_ref = self.validate_safety_guards(options)
         relations = self.list_public_relations()
 
-        self.stdout.write(f"Projeto Supabase confirmado: {project_ref}")
+        self.stdout.write(f"Projeto Supabase confirmado: {project_ref or '(nao declarado)'}")
         self.stdout.write(
             f"Objetos encontrados no schema public: {len(relations)}"
         )
         for relkind, relname in relations:
             self.stdout.write(f"  - {RELKIND_LABELS.get(relkind, relkind)} public.{relname}")
 
-        if not options["execute"]:
+        if options.get("dry_run", False) or (self.requires_execute_flag and not options.get("execute", False)):
             self.stdout.write(
                 self.style.WARNING(
                     "Simulacao concluida. Nenhum objeto foi removido. "
-                    "Revise o projeto e a lista acima antes de usar --execute."
+                    "Revise o projeto e a lista acima antes de remover."
                 )
             )
             return
@@ -116,7 +130,8 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
             )
         )
 
-    def validate_safety_guards(self):
+    def validate_safety_guards(self, options=None):
+        options = options or {}
         current_environment = getattr(settings, "DJANGO_ENVIRONMENT", "")
         if current_environment != self.target_environment:
             raise CommandError(
@@ -133,38 +148,54 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
         if not self.is_supabase_database_url(database_url):
             raise CommandError("DATABASE_URL deve apontar para um host Supabase.")
 
-        confirmation = os.environ.get("SUPABASE_RESET_CONFIRM", "")
-        if confirmation != self.confirmation_value:
-            raise CommandError(
-                f"Defina SUPABASE_RESET_CONFIRM={self.confirmation_value} para confirmar a limpeza."
-            )
+        if self.requires_confirmation_variable:
+            confirmation = os.environ.get("SUPABASE_RESET_CONFIRM", "")
+            if confirmation != self.confirmation_value:
+                raise CommandError(
+                    f"Defina SUPABASE_RESET_CONFIRM={self.confirmation_value} para confirmar a limpeza."
+                )
 
         if connection.vendor != "postgresql":
             raise CommandError("Este comando exige conexão PostgreSQL. SQLite foi recusado.")
 
-        return self.validate_project_ref(database_url)
+        project_ref = self.validate_project_ref(database_url)
 
-    @staticmethod
-    def validate_project_ref(database_url):
+        if self.requires_ref_argument and options.get("execute"):
+            informed = (options.get("confirm_ref") or "").strip()
+            if informed != project_ref:
+                raise CommandError(
+                    "Repita o ref do projeto em --confirm-ref para liberar a remocao."
+                )
+
+        return project_ref
+
+    @classmethod
+    def validate_project_ref(cls, database_url):
         expected_ref = getattr(settings, "SUPABASE_PROJECT_REF", "").strip()
-        if not expected_ref:
-            raise CommandError(
-                "SUPABASE_PROJECT_REF e obrigatoria para confirmar qual projeto "
-                "Supabase e o alvo."
-            )
+        discovered_ref = cls.discover_project_ref(database_url)
 
-        parsed = urlparse(database_url)
-        hostname = (parsed.hostname or "").lower()
-        username = parsed.username or ""
-        direct_ref = hostname.removeprefix("db.").removesuffix(".supabase.co")
-        pooler_ref = username.split(".", 1)[1] if username.startswith("postgres.") else ""
-        discovered_ref = pooler_ref or direct_ref
+        if not expected_ref:
+            if cls.requires_project_ref:
+                raise CommandError(
+                    "SUPABASE_PROJECT_REF e obrigatoria para confirmar qual projeto "
+                    "Supabase e o alvo."
+                )
+            return discovered_ref
 
         if discovered_ref != expected_ref:
             raise CommandError(
                 "A conexao nao corresponde ao SUPABASE_PROJECT_REF esperado."
             )
         return expected_ref
+
+    @staticmethod
+    def discover_project_ref(database_url):
+        parsed = urlparse(database_url)
+        hostname = (parsed.hostname or "").lower()
+        username = parsed.username or ""
+        direct_ref = hostname.removeprefix("db.").removesuffix(".supabase.co")
+        pooler_ref = username.split(".", 1)[1] if username.startswith("postgres.") else ""
+        return pooler_ref or direct_ref
 
     def list_public_relations(self):
         with connection.cursor() as cursor:
@@ -181,4 +212,4 @@ class SupabasePublicSchemaResetCommand(BaseCommand):
     @staticmethod
     def is_supabase_database_url(database_url):
         host = urlparse(database_url).hostname or ""
-        return host.endswith(".supabase.co") or host.endswith("pooler.supabase.com")
+        return host.endswith(".supabase.co") or host.endswith(".pooler.supabase.com")
