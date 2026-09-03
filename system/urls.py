@@ -188,11 +188,22 @@ app_name = "system"
 
 
 urlpatterns = [
-    path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
+    path("home/", HomeView.as_view(), name="home"),
     path("health/", HealthCheckView.as_view(), name="health"),
-    path("", PortalLoginView.as_view(), name="root"),
     path("login/", PortalLoginView.as_view(), name="login"),
     path("logout/", PortalLogoutView.as_view(), name="logout"),
+    path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
+    path("password-reset/sent/", PortalPasswordResetDoneView.as_view(), name="password-reset-sent"),
+    path("password-reset/done/", PortalPasswordResetDoneView.as_view(), name="password-reset-done"),
+    path("reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+
+# ----------------------------------------------------------------------------
+# BN - business rule: rotas do produto. Acima desta linha está a base de rotas
+# do repositório, com os mesmos nomes e na mesma ordem. Registro em
+# obsidian/projetos/lvjiujitsu/.
+# ----------------------------------------------------------------------------
+    path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
+    path("", PortalLoginView.as_view(), name="root"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("register/admin-access/", PublicAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-public-create"),
     path("register/teacher-proposal/", PublicNewTeacherClassCatalogRequestCreateView.as_view(), name="class-catalog-request-public-teacher-create"),
@@ -217,13 +228,9 @@ urlpatterns = [
     path("pagamentos/cancelado/", PaymentCancelView.as_view(), name="payment-cancel"),
     path("pagamentos/webhook/asaas/", AsaasWebhookView.as_view(), name="asaas-webhook"),
     path("pagamentos/webhook/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
-    path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
-    path("password-reset/done/", PortalPasswordResetDoneView.as_view(), name="password-reset-done"),
     path("reset/done/", PortalPasswordResetCompleteView.as_view(), name="password-reset-complete"),
-    path("reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("password-change/", PortalChangePasswordView.as_view(), name="password-change"),
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
-    path("home/", HomeView.as_view(), name="home"),
     path("account/profile/update/", ClientProfileUpdateView.as_view(), name="client-profile-update"),
     path("account/profile/deactivate/", ClientProfileDeactivateView.as_view(), name="client-profile-deactivate"),
     path("dependents/add/", DependentRegistrationView.as_view(), name="dependent-add"),

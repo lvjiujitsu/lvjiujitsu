@@ -9,7 +9,7 @@ urlpatterns = [
     path(
         "favicon.ico",
         RedirectView.as_view(
-            url=staticfiles_storage.url("system/img/favicon-lv.svg"),
+            url=staticfiles_storage.url("logo/favicon.png"),
             permanent=False,
         ),
     ),
