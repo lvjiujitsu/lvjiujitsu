@@ -216,9 +216,9 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
 - **Código não tem comentário nem docstring**, em `.py`, `.html`, `.css` e
   `.js`. Nome, assinatura e teste dizem o que o código faz; o porquê vive na
   PRD. As exceções são `migrations/`, gerado por ferramenta, e o comentário
-  de seção em `settings.py`, que marca onde a base técnica termina e começa
-  a regra de negócio do produto. Docstring continua proibida também em
-  `settings.py`.
+  de seção em `settings.py` e `urls.py`, que marca onde a base técnica
+  termina e começa a regra de negócio do produto. Docstring continua
+  proibida também nesses dois arquivos.
 - CSRF, validação server-side e permissão são resolvidos no backend. Segredo
   nunca é impresso, mesmo descartável: reportar nome de chave, não valor.
 - **A interface é do produto, nunca do navegador.** Lista de valores, sugestão,
