@@ -52,11 +52,11 @@ class CreatePixChargeView(View):
             )
         except RegistrationOrder.DoesNotExist:
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if not self._is_authorized(request, order):
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if order.payment_status in (
             PaymentStatus.PAID,
@@ -113,11 +113,11 @@ class CreateCreditCardChargeView(View):
             order = RegistrationOrder.objects.select_related("plan", "plan_price_ref", "person").get(pk=order_id)
         except RegistrationOrder.DoesNotExist:
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if not self._is_authorized(request, order):
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED, PaymentStatus.REFUNDED):
             messages.info(request, "Este pedido já foi processado.")
@@ -134,11 +134,11 @@ class CreateCreditCardChargeView(View):
             order = RegistrationOrder.objects.select_related("plan", "plan_price_ref", "person").get(pk=order_id)
         except RegistrationOrder.DoesNotExist:
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if not self._is_authorized(request, order):
             messages.error(request, "Pedido não encontrado.")
-            return redirect("system:root")
+            return redirect("system:home")
 
         if order.payment_status in (PaymentStatus.PAID, PaymentStatus.EXEMPTED, PaymentStatus.REFUNDED):
             messages.info(request, "Este pedido já foi processado.")

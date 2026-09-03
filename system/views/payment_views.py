@@ -18,7 +18,7 @@ from system.services.trial_access import grant_trial_for_order
 
 def _redirect_missing_order(request):
     messages.error(request, "Pedido não encontrado.")
-    return redirect("system:root")
+    return redirect("system:home")
 
 
 def _is_authorized_for_order(request, order):

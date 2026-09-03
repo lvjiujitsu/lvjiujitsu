@@ -10,10 +10,7 @@ class PortalLoginRequiredMixin:
         if not getattr(request, "portal_account", None) and not getattr(
             request, "portal_is_technical_admin", False
         ):
-            return redirect_to_login(
-                next=request.get_full_path(),
-                login_url=reverse("system:login"),
-            )
+            return redirect_to_login(next=request.get_full_path())
         return super().dispatch(request, *args, **kwargs)
 
 
