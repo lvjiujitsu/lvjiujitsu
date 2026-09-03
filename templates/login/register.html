@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{% static 'system/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
 
-  {# Dados de contexto do servidor — lidos pelo JS. json_script escapa com segurança (sem |safe). #}
+
   {{ registration_catalog_json|json_script:"reg-catalog-json" }}
   {{ plan_catalog_json|json_script:"reg-plan-catalog-json" }}
   {{ product_catalog_json|json_script:"reg-product-catalog-json" }}
@@ -29,7 +29,7 @@
 
   <div class="wizard-shell">
 
-    {# ── Cabeçalho fixo ── #}
+
     <header class="wizard-header">
       <a href="{% url 'system:login' %}" class="wizard-back" id="wizard-back">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -46,12 +46,12 @@
       </div>
     </header>
 
-    {# ── Barra de progresso ── #}
+
     <div class="wizard-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
       <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:16.66%"></div>
     </div>
 
-    {# ── Mensagens do sistema (erros de pagamento, etc.) ── #}
+
     {% if messages %}
       <div class="wizard-system-messages" role="alert" aria-live="assertive">
         {% for message in messages %}
@@ -63,7 +63,7 @@
       </div>
     {% endif %}
 
-    {# ── Formulário único — todos os campos presentes ── #}
+
     <form
       class="wizard-form"
       id="wizard-form"
@@ -75,20 +75,20 @@
     >
       {% csrf_token %}
 
-      {# Campos de controle da Etapa 1 #}
+
       <input type="hidden" name="registration_profile" id="id_registration_profile" value="{{ form.registration_profile.value|default:'' }}">
       <input type="hidden" name="include_dependent" id="id_include_dependent" value="">
       <input type="hidden" name="other_type_code" id="id_other_type_code" value="{{ form.other_type_code.value|default:'' }}">
       <input type="hidden" name="extra_dependents_payload" id="id_extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default:'[]' }}">
 
-      {# Campos de dados pessoais — Etapa 2 (renderizados hidden até lá) #}
+
       {% for field in form %}
         {% if field.name not in "registration_profile,include_dependent,other_type_code,extra_dependents_payload,selected_plan,selected_products_payload,coupon_code,checkout_action" %}
           <input type="hidden" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default:'' }}">
         {% endif %}
       {% endfor %}
 
-      {# Campos de checkout #}
+
       <input type="hidden" name="selected_plan" id="id_selected_plan" value="{{ form.selected_plan.value|default:'' }}">
       <input type="hidden" name="selected_plans_payload" id="id_selected_plans_payload" value="[]">
       <input type="hidden" name="selected_products_payload" id="id_selected_products_payload" value="{{ form.selected_products_payload.value|default:'[]' }}">
@@ -119,7 +119,7 @@
 
         <div class="profile-options" role="group" aria-label="Tipo de cadastro">
 
-          {# ── Card: Aluno ── #}
+
           <button
             type="button"
             class="profile-card"
@@ -142,7 +142,7 @@
             </div>
           </button>
 
-          {# Sub-opção de dependente — aparece quando Aluno é selecionado #}
+
           <div class="profile-suboption" id="holder-suboption" hidden>
             <label class="profile-suboption__label profile-suboption__label--toggle">
               <input
@@ -165,7 +165,7 @@
             </div>
           </div>
 
-          {# ── Card: Responsável ── #}
+
           <button
             type="button"
             class="profile-card"
@@ -190,7 +190,7 @@
             </div>
           </button>
 
-          {# Sub-opção de número de alunos — aparece quando Responsável é selecionado #}
+
           <div class="profile-suboption" id="guardian-suboption" hidden>
             <div class="profile-suboption__label">
               <span class="profile-suboption__text">
@@ -214,7 +214,7 @@
             </div>
           </div>
 
-          {# ── Card: Professor ── #}
+
           <button
             type="button"
             class="profile-card"
@@ -246,7 +246,7 @@
             </div>
           </div>
 
-          {# ── Card: Administrativo ── #}
+
           <button
             type="button"
             class="profile-card"
@@ -304,7 +304,7 @@
             </div>
           </div>
 
-        </div>{# /profile-options #}
+        </div>
 
         <div class="wizard-step__actions">
           <button
@@ -319,7 +319,7 @@
           </button>
         </div>
 
-      </section>{# /step-profile #}
+      </section>
 
       <section class="wizard-step" id="step-principal" data-step="2" hidden>
         <div class="wizard-step__heading">
@@ -438,7 +438,7 @@
         </div>
       </section>
 
-      {# ── Etapa dependente — reutilizada para cada dep/aluno ── #}
+
       <section class="wizard-step" id="step-dep" data-step="dep" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge" id="dep-step-badge">Dependente 1 de 1</p>
@@ -541,9 +541,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-dep #}
+      </section>
 
-      {# ── Etapa de saúde — reutilizada para cada pessoa ── #}
+
       <section class="wizard-step" id="step-health" data-step="health" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge" id="health-step-badge">Saúde</p>
@@ -592,9 +592,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-health #}
+      </section>
 
-      {# ── Etapa de artes marciais — reutilizada para cada pessoa ── #}
+
       <section class="wizard-step" id="step-martial" data-step="martial" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge" id="martial-step-badge">Histórico esportivo</p>
@@ -693,9 +693,9 @@
                 <p class="ibjjf-notice__text">A LV Jiu-Jitsu segue os critérios de <strong>tempo mínimo de graduação da IBJJF</strong>. O histórico informado será verificado antes da confirmação da faixa atual.</p>
               </div>
 
-            </div>{# /martial-jj-section #}
+            </div>
 
-          </div>{# /martial-detail-section #}
+          </div>
 
         </div>
 
@@ -705,9 +705,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-martial #}
+      </section>
 
-      {# ── Etapa operacional — professor ───────────────────────────────────── #}
+
       <section class="wizard-step" id="step-teacher-schedule" data-step="teacher-schedule" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Vínculo com horário</h1>
@@ -756,9 +756,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-teacher-schedule #}
+      </section>
 
-      {# ── Etapa operacional — administrativo ──────────────────────────────── #}
+
       <section class="wizard-step" id="step-administrative-access" data-step="administrative-access" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Áreas administrativas</h1>
@@ -801,9 +801,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-administrative-access #}
+      </section>
 
-      {# ── Etapa operacional — financeiro ──────────────────────────────────── #}
+
       <section class="wizard-step" id="step-operational-finance" data-step="operational-finance" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Condição financeira</h1>
@@ -904,9 +904,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-operational-finance #}
+      </section>
 
-      {# ── Etapa de turma — reutilizada para cada pessoa ── #}
+
       <section class="wizard-step" id="step-classes" data-step="classes" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge" id="class-step-badge">Turma</p>
@@ -923,9 +923,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
-      </section>{# /step-classes #}
+      </section>
 
-      {# ── Etapa de plano — seleção de assinatura ── #}
+
       <section class="wizard-step" id="step-plan" data-step="plan" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Escolha seu plano</h1>
@@ -936,7 +936,7 @@
         <div id="plan-cards-area"></div>
         <p class="form-field__error" id="plan-step-error" hidden></p>
 
-        {# Aviso de permanência mínima — exibido apenas quando plano Stripe é selecionado #}
+
         <div class="stripe-commitment-notice" id="stripe-commitment-notice" hidden>
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <div>
@@ -945,7 +945,7 @@
           </div>
         </div>
 
-        {# Regras de pausa/trancamento — sempre visível na seleção de plano #}
+
         <div class="plan-policy-notice" id="plan-policy-notice">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
           <div>
@@ -959,7 +959,7 @@
           </div>
         </div>
 
-        {# Cupom — oculto para planos Stripe (Stripe usa price fixo, cupom não se aplica) #}
+
         <div class="coupon-area" id="coupon-area">
           <div class="coupon-area__row">
             <input
@@ -986,11 +986,11 @@
             Fazer uma aula experimental
           </button>
         </div>
-      </section>{# /step-plan #}
+      </section>
 
     </form>
 
-    {# ── Etapa pós-plano: confirmação de pagamento ────────────────────────── #}
+
     <section id="step-plan-confirmed" class="wizard-step" hidden>
       <div class="wizard-step__heading">
         <h1 class="wizard-step__title">Pagamento do plano</h1>
@@ -1000,24 +1000,24 @@
       <div id="plan-confirmed-actions-area" class="checkout-actions"></div>
     </section>
 
-    {# ── Etapa pós-plano: escolher materiais ────────────────────────────────── #}
+
     <section id="step-products" class="wizard-step" hidden>
       <div class="wizard-step__heading">
         <h1 class="wizard-step__title">Materiais e equipamentos</h1>
         <p class="wizard-step__subtitle" id="products-subtitle">Adicione kimonos ou outros itens ao seu pedido (opcional)</p>
       </div>
 
-      {# Painel de confirmação do cadastro — preenchido por JS quando regPostPlan=true #}
+
       <div id="products-confirm-area"></div>
 
-      {# Form único compartilhado — payload e ação definidos por JS antes do submit #}
+
       <form id="products-payment-form" method="post" action="{% url 'system:register-materials-checkout' %}" hidden>
         {% csrf_token %}
         <input type="hidden" name="selected_products_payload" id="products-payload-hidden" value="[]">
         <input type="hidden" name="checkout_action" id="products-checkout-action-hidden" value="pay_later">
       </form>
 
-      {# Sub-view 1: catálogo de cards #}
+
       <div id="products-subview-catalog">
         <div id="products-catalog-area" class="prod-cards"></div>
         <div id="products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:auto;padding-top:1rem">
@@ -1029,7 +1029,7 @@
         </div>
       </div>
 
-      {# Sub-view 2: configurar variante e quantidade #}
+
       <div id="products-subview-configure" hidden>
         <button type="button" class="prod-configure__back" id="products-btn-back-catalog">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -1044,7 +1044,7 @@
         </div>
       </div>
 
-      {# Sub-view 3: carrinho com pagamento #}
+
       <div id="products-subview-cart" hidden>
         <button type="button" class="prod-configure__back" id="products-btn-back-to-catalog">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -1065,7 +1065,7 @@
       </div>
     </section>
 
-    {# ── Etapa pós-materiais: revisar e finalizar ────────────────────────────── #}
+
     <section id="step-review" class="wizard-step" hidden>
       <div class="wizard-step__heading">
         <h1 class="wizard-step__title">Confirmar cadastro</h1>
@@ -1171,7 +1171,7 @@
       </div>
     </dialog>
 
-  </div>{# /wizard-shell #}
+  </div>
 
   <script src="{% static 'system/js/lv/csrf.js' %}?v=1"></script>
   <script src="{% static 'system/js/lv/dom_utils.js' %}?v=1"></script>

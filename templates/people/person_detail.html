@@ -209,8 +209,7 @@
           {% with gp=graduation_progress belt=graduation_progress.current_belt_rank grade=graduation_progress.current_grade_number %}
 
             {% with belt_grade=grade|default:0 %}
-            {% comment %}Compute stripes via context — view already provides belt_rank/belt_stripes only on home.
-            On detail view we access graduation_progress directly.{% endcomment %}
+
             <div class="belt-visual" aria-label="{{ belt.display_name }}{% if grade %}, {{ grade }}º grau{% endif %}">
               <svg class="belt-visual__svg" viewBox="0 0 320 36" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" role="img" aria-hidden="true">
                 <defs>

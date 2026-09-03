@@ -31,7 +31,7 @@ PEOPLE_FLOW_SAMPLE_PASSWORD = "lv-pessoas-2026"
 class Command(BaseCommand):
     help = (
         "DEPRECATED: cria amostras locais de Pessoas fora do bootstrap canônico. "
-        "Prefira seed_system_initial_test_* documentado em docs/OPERACAO-BANCO-SEEDS.md."
+        "Prefira seed_system_initial_test_* documentado em obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md."
     )
 
     def handle(self, *args, **options):
@@ -44,7 +44,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.WARNING(
                 "AVISO: comando obsoleto — prefira os seeds canônicos "
-                "seed_system_initial_test_* (ver docs/OPERACAO-BANCO-SEEDS.md)."
+                "seed_system_initial_test_* (ver obsidian/projetos/lvjiujitsu/operacao-banco-seeds-lvjiujitsu.md)."
             )
         )
         self.stdout.write(self.style.MIGRATE_HEADING("seed_system_people_flow_samples"))

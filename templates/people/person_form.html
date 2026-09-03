@@ -355,7 +355,6 @@
 
   <script>
     (function () {
-      // Tema
       var toggle = document.getElementById('theme-toggle');
       var sun = document.getElementById('icon-sun');
       var moon = document.getElementById('icon-moon');
@@ -370,7 +369,6 @@
         localStorage.setItem('lv-theme', next);
         applyTheme(next);
       });
-      // Campo condicional de arte marcial
       var MARTIAL_ART_YES = 'yes';
       var hasMartialSelect = document.getElementById('{{ form.has_martial_art.id_for_label }}');
       var martialFields = document.getElementById('martial-art-fields');

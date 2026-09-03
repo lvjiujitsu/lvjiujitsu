@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{% static 'system/css/theme.css' %}?v=20260727-1">
   <link rel="stylesheet" href="{% static 'system/css/auth/register.css' %}?v=26">
   <link rel="stylesheet" href="{% static 'system/css/dependents/dependent_registration.css' %}?v=14">
-  {# json_script escapa com segurança (sem |safe) #}
+
   {{ class_catalog_json|json_script:"dep-class-catalog-json" }}
   {{ plan_catalog_json|json_script:"dep-plan-catalog-json" }}
   {{ product_catalog_json|json_script:"dep-product-catalog-json" }}
@@ -81,7 +81,7 @@
       </div>
       {% endif %}
 
-      {# ── Etapa 1 — Dados do dependente ──────────────────────────────────── #}
+
       <section class="wizard-step" data-step="1">
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Dependente de {{ owner.full_name }}</p>
@@ -162,7 +162,7 @@
         </div>
       </section>
 
-      {# ── Etapa 2 — Saúde ─────────────────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="2" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Saúde</p>
@@ -189,7 +189,7 @@
         </div>
       </section>
 
-      {# ── Etapa 3 — Artes marciais ─────────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="3" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Histórico esportivo</p>
@@ -248,7 +248,7 @@
         </div>
       </section>
 
-      {# ── Etapa 4 — Turma ──────────────────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="4" data-step-key="classes" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Turma</p>
@@ -261,7 +261,7 @@
         {% for error in form.dependent_class_groups.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
       </section>
 
-      {# ── Etapa 5 — Plano do dependente ────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="5" data-step-key="plan" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Plano do dependente</h1>
@@ -311,17 +311,17 @@
         </div>
       </section>
 
-      {# ── Etapa 6 — Materiais ──────────────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="6" data-step-key="materials" hidden>
         <div class="wizard-step__heading">
           <h1 class="wizard-step__title">Materiais e equipamentos</h1>
           <p class="wizard-step__subtitle" id="dep-products-subtitle">Adicione kimonos ou outros itens ao pedido do dependente (opcional)</p>
         </div>
 
-        {# Painel de confirmação — preenchido por JS quando o pagamento dos materiais já foi feito #}
+
         <div id="dep-products-confirm-area"></div>
 
-        {# Campos reais do Django — ocultos; a UI de cards abaixo escreve nestes campos #}
+
         <div hidden>
           {% for group in material_groups %}
             {% for product_row in group.products %}
@@ -334,7 +334,7 @@
         </div>
 
         {% if material_groups %}
-        {# Sub-view 1: catálogo de cards #}
+
         <div id="dep-products-subview-catalog">
           <div id="dep-products-catalog-area" class="prod-cards"></div>
           <div id="dep-products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem">
@@ -346,7 +346,7 @@
           </div>
         </div>
 
-        {# Sub-view 2: configurar variante e quantidade #}
+
         <div id="dep-products-subview-configure" hidden>
           <button type="button" class="prod-configure__back" id="dep-products-btn-back-catalog">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -361,7 +361,7 @@
           </div>
         </div>
 
-        {# Sub-view 3: carrinho com pagamento #}
+
         <div id="dep-products-subview-cart" hidden>
           <button type="button" class="prod-configure__back" id="dep-products-btn-back-to-catalog">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -387,7 +387,7 @@
         {% endif %}
       </section>
 
-      {# ── Etapa 7 — Revisar e confirmar ────────────────────────────────────── #}
+
       <section class="wizard-step" data-step="7" data-step-key="review" hidden>
         <div class="wizard-step__heading">
           <p class="dep-step-badge">Revisão</p>
