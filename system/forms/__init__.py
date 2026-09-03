@@ -1,8 +1,7 @@
-from .auth_forms import (
-    PortalAuthenticationForm,
-    PortalChangePasswordForm,
-    PortalPasswordResetRequestForm,
-    PortalSetPasswordForm,
+from .auth_forms import PortalAuthenticationForm, PortalChangePasswordForm
+from .password_reset_forms import (
+    PasswordResetConfirmForm,
+    PasswordResetRequestForm,
 )
 from .category_forms import ClassCategoryForm
 from .class_forms import ClassGroupForm, ClassScheduleForm
@@ -33,6 +32,8 @@ __all__ = [
     "DependentProfileForm",
     "DependentRegistrationForm",
     "ExistingTeacherClassCatalogRequestForm",
+    "PasswordResetConfirmForm",
+    "PasswordResetRequestForm",
     "MembershipPauseDecisionForm",
     "MembershipPauseRequestForm",
     "NewTeacherClassCatalogRequestForm",
@@ -43,9 +44,7 @@ __all__ = [
     "PlanListFilterForm",
     "PortalAuthenticationForm",
     "PortalChangePasswordForm",
-    "PortalPasswordResetRequestForm",
     "PortalRegistrationForm",
-    "PortalSetPasswordForm",
     "ProductCartForm",
     "ProductForm",
     "ProductVariantForm",

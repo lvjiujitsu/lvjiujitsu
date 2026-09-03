@@ -1,14 +1,10 @@
-from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
-from django.core.mail import send_mail
 from django.db.models import Prefetch
-from django.utils import timezone
 
-from system.models import PersonOperationalRole, PortalAccount, PortalPasswordResetToken
+from system.models import PersonOperationalRole, PortalAccount
 from system.models.registration_order import PaymentStatus, RegistrationOrder
 from system.services.membership import get_latest_open_order
 from system.services.trial_access import has_active_trial_for_person
-from system.runtime_config import site_name_upper
 from system.utils import ensure_formatted_cpf, only_digits
 
 
@@ -108,71 +104,12 @@ def resolve_technical_admin_from_session(request):
     return technical_admin_user
 
 
-def reset_portal_password_to_default(cpf: str) -> None:
-    formatted_cpf = ensure_formatted_cpf(cpf)
-    access_account = _get_active_account_by_cpf(formatted_cpf)
-
-    if access_account is None or not access_account.person.email:
-        return
-
-    access_account.set_password(DEFAULT_TEMP_PASSWORD)
-    access_account.failed_login_attempts = 0
-    access_account.save(
-        update_fields=("password_hash", "password_updated_at", "failed_login_attempts", "updated_at")
-    )
-
-    message = (
-        f"Olá, {access_account.person.full_name}.\n\n"
-        f"Sua senha do portal {site_name_upper()} foi redefinida para a senha "
-        f"temporária: {DEFAULT_TEMP_PASSWORD}\n\n"
-        "Faça login com essa senha temporária — você precisará criar uma nova "
-        "senha imediatamente ao entrar.\n\n"
-        "Se você não solicitou esta alteração, entre em contato com a administração."
-    )
-    send_mail(
-        subject=f"Senha temporária - {site_name_upper()}",
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[access_account.person.email],
-        fail_silently=False,
-    )
-
-
 def change_own_password(access_account: PortalAccount, new_password: str) -> None:
     access_account.set_password(new_password)
     access_account.failed_login_attempts = 0
     access_account.save(
         update_fields=("password_hash", "password_updated_at", "failed_login_attempts", "updated_at")
     )
-
-
-def get_valid_password_reset_token(token: str):
-    reset_token = (
-        PortalPasswordResetToken.objects.select_related("access_account", "access_account__person")
-        .filter(token=token)
-        .first()
-    )
-
-    if reset_token is None or not reset_token.is_valid():
-        return None
-
-    return reset_token
-
-
-def reset_portal_password(reset_token: PortalPasswordResetToken, new_password: str) -> None:
-    access_account = reset_token.access_account
-    access_account.set_password(new_password)
-    access_account.failed_login_attempts = 0
-    access_account.save(
-        update_fields=("password_hash", "password_updated_at", "failed_login_attempts", "updated_at")
-    )
-    reset_token.mark_as_used()
-    now = timezone.now()
-    PortalPasswordResetToken.objects.filter(
-        access_account=access_account,
-        used_at__isnull=True,
-        expires_at__gt=now,
-    ).exclude(pk=reset_token.pk).update(used_at=now, updated_at=now)
 
 
 def _authenticate_local_portal_account(identifier: str, password: str):

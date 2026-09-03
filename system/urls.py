@@ -11,13 +11,15 @@ from system.views.auth_views import (
     RegistrationCpfAvailabilityView,
     RegistrationEligibilityView,
     PortalLogoutView,
-    PortalPasswordResetCompleteView,
-    PortalPasswordResetConfirmView,
-    PortalPasswordResetDoneView,
-    PortalPasswordResetView,
     PortalRegisterView,
     ResetRegistrationView,
     ValidateCouponView,
+)
+from system.views.password_reset_views import (
+    PasswordResetConfirmView,
+    PasswordResetDoneView,
+    PasswordResetRequestView,
+    PasswordResetSentView,
 )
 from system.views.access_request_views import (
     AdministrativeAccessRequestDetailView,
@@ -188,14 +190,14 @@ app_name = "system"
 
 
 urlpatterns = [
-    path("home/", HomeView.as_view(), name="home"),
+    path("", HomeView.as_view(), name="home"),
     path("health/", HealthCheckView.as_view(), name="health"),
     path("login/", PortalLoginView.as_view(), name="login"),
     path("logout/", PortalLogoutView.as_view(), name="logout"),
-    path("password-reset/", PortalPasswordResetView.as_view(), name="password-reset"),
-    path("password-reset/sent/", PortalPasswordResetDoneView.as_view(), name="password-reset-sent"),
-    path("password-reset/done/", PortalPasswordResetDoneView.as_view(), name="password-reset-done"),
-    path("password-reset/<str:token>/", PortalPasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+    path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
+    path("password-reset/sent/", PasswordResetSentView.as_view(), name="password-reset-sent"),
+    path("password-reset/done/", PasswordResetDoneView.as_view(), name="password-reset-done"),
+    path("password-reset/<str:identifier>/<str:token>/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 
 # ----------------------------------------------------------------------------
 # BN - business rule: rotas do produto. Acima desta linha está a base de rotas
@@ -203,7 +205,6 @@ urlpatterns = [
 # obsidian/projetos/lvjiujitsu/.
 # ----------------------------------------------------------------------------
     path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
-    path("", PortalLoginView.as_view(), name="root"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("register/admin-access/", PublicAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-public-create"),
     path("register/teacher-proposal/", PublicNewTeacherClassCatalogRequestCreateView.as_view(), name="class-catalog-request-public-teacher-create"),
@@ -228,7 +229,6 @@ urlpatterns = [
     path("pagamentos/cancelado/", PaymentCancelView.as_view(), name="payment-cancel"),
     path("pagamentos/webhook/asaas/", AsaasWebhookView.as_view(), name="asaas-webhook"),
     path("pagamentos/webhook/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
-    path("reset/done/", PortalPasswordResetCompleteView.as_view(), name="password-reset-complete"),
     path("password-change/", PortalChangePasswordView.as_view(), name="password-change"),
     path("dashboard/", DashboardRedirectView.as_view(), name="dashboard-redirect"),
     path("account/profile/update/", ClientProfileUpdateView.as_view(), name="client-profile-update"),

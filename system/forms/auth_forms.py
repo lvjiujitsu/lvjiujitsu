@@ -41,61 +41,6 @@ class PortalAuthenticationForm(forms.Form):
         return identifier
 
 
-class PortalPasswordResetRequestForm(forms.Form):
-    cpf = forms.CharField(
-        label="CPF",
-        widget=forms.TextInput(
-            attrs={
-                "placeholder": "Digite seu CPF",
-                "autocomplete": "username",
-            }
-        ),
-    )
-
-    def clean_cpf(self):
-        try:
-            return ensure_formatted_cpf(self.cleaned_data["cpf"].strip())
-        except ValueError as error:
-            raise forms.ValidationError(str(error)) from error
-
-
-class PortalSetPasswordForm(forms.Form):
-    new_password1 = forms.CharField(
-        label="Nova senha",
-        strip=False,
-        widget=forms.PasswordInput(
-            attrs={
-                "placeholder": "Digite a nova senha",
-                "autocomplete": "new-password",
-            }
-        ),
-    )
-    new_password2 = forms.CharField(
-        label="Confirmar nova senha",
-        strip=False,
-        widget=forms.PasswordInput(
-            attrs={
-                "placeholder": "Repita a nova senha",
-                "autocomplete": "new-password",
-            }
-        ),
-    )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        new_password1 = cleaned_data.get("new_password1") or ""
-        new_password2 = cleaned_data.get("new_password2") or ""
-
-        if not new_password1 or not new_password2:
-            return cleaned_data
-
-        if new_password1 != new_password2:
-            self.add_error("new_password2", "As senhas não coincidem.")
-            return cleaned_data
-
-        return cleaned_data
-
-
 class PortalChangePasswordForm(forms.Form):
     old_password = forms.CharField(
         label="Senha antiga",

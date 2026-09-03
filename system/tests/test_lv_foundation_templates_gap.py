@@ -21,12 +21,12 @@ class LvFoundationTemplatesGapTestCase(TestCase):
         response = self.client.get(reverse("system:password-reset"))
         self.assertEqual(response.status_code, 200)
 
-    def test_password_reset_done_renders(self):
-        response = self.client.get(reverse("system:password-reset-done"))
+    def test_password_reset_sent_renders(self):
+        response = self.client.get(reverse("system:password-reset-sent"))
         self.assertEqual(response.status_code, 200)
 
-    def test_password_reset_complete_renders(self):
-        response = self.client.get(reverse("system:password-reset-complete"))
+    def test_password_reset_done_renders(self):
+        response = self.client.get(reverse("system:password-reset-done"))
         self.assertEqual(response.status_code, 200)
 
     def test_admin_hub_renders_with_module_cards(self):

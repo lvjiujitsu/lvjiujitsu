@@ -18,7 +18,6 @@ from system.models import (
     PortalAccount,
     PortalPasswordResetToken,
 )
-from system.services.portal_auth import reset_portal_password
 from system.services.registration import create_portal_registration
 
 
@@ -86,29 +85,6 @@ class PersonModelTestCase(TestCase):
 
         self.assertTrue(reset_token.is_valid())
         self.assertGreater(reset_token.expires_at, timezone.now())
-
-    def test_reset_password_marks_other_open_tokens_as_used(self):
-        person = Person.objects.create(
-            full_name="Carlos Silva",
-            cpf="960.013.389-14",
-            email="carlos@example.com",
-        )
-        access_account = PortalAccount(person=person)
-        access_account.set_password("123456")
-        access_account.save()
-
-        target_token = PortalPasswordResetToken.objects.create(access_account=access_account)
-        extra_token = PortalPasswordResetToken.objects.create(access_account=access_account)
-
-        reset_portal_password(target_token, "NovaSenha@123")
-
-        target_token.refresh_from_db()
-        extra_token.refresh_from_db()
-        access_account.refresh_from_db()
-
-        self.assertIsNotNone(target_token.used_at)
-        self.assertIsNotNone(extra_token.used_at)
-        self.assertTrue(access_account.check_password("NovaSenha@123"))
 
     def test_other_registration_creates_single_selected_type(self):
         PersonType.objects.create(code="instructor", display_name="Professor")

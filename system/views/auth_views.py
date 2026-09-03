@@ -3,18 +3,16 @@ from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView
 
 from system.forms import (
     PortalAuthenticationForm,
     PortalChangePasswordForm,
-    PortalPasswordResetRequestForm,
     PortalRegistrationForm,
-    PortalSetPasswordForm,
 )
 from system.constants import CheckoutAction, PersonTypeCode, RegistrationProfile
 from system.models import Person, PortalAccount, PreRegistration
@@ -28,11 +26,8 @@ from system.services import (
     asaas_client,
     authenticate_portal_identity,
     change_own_password,
-    get_valid_password_reset_token,
     login_portal_identity,
     logout_portal_identity,
-    reset_portal_password,
-    reset_portal_password_to_default,
 )
 from system.services.coupon import CouponError, apply_coupon, validate_coupon
 from system.services.class_catalog import get_ibjjf_age_category_payload
@@ -372,25 +367,11 @@ class PortalLoginView(FormView):
 class PortalLogoutView(View):
     def get(self, request, *args, **kwargs):
         logout_portal_identity(request)
-        return redirect("system:root")
+        return redirect("system:login")
 
     def post(self, request, *args, **kwargs):
         logout_portal_identity(request)
-        return redirect("system:root")
-
-
-class PortalPasswordResetView(FormView):
-    form_class = PortalPasswordResetRequestForm
-    template_name = "login/password_reset_form.html"
-    success_url = reverse_lazy("system:password-reset-done")
-
-    def form_valid(self, form):
-        reset_portal_password_to_default(form.cleaned_data["cpf"])
-        return super().form_valid(form)
-
-
-class PortalPasswordResetDoneView(TemplateView):
-    template_name = "login/password_reset_done.html"
+        return redirect("system:login")
 
 
 class PortalChangePasswordView(FormView):
@@ -430,26 +411,6 @@ class PortalChangePasswordView(FormView):
         else:
             messages.success(self.request, "Senha atualizada com sucesso.")
         return redirect("system:dashboard-redirect")
-
-
-class PortalPasswordResetConfirmView(FormView):
-    form_class = PortalSetPasswordForm
-    template_name = "login/password_reset_confirm.html"
-    success_url = reverse_lazy("system:password-reset-complete")
-
-    def dispatch(self, request, *args, **kwargs):
-        self.reset_token = get_valid_password_reset_token(kwargs["token"])
-        if self.reset_token is None:
-            raise Http404("Token de redefinição inválido.")
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        reset_portal_password(self.reset_token, form.cleaned_data["new_password1"])
-        return super().form_valid(form)
-
-
-class PortalPasswordResetCompleteView(TemplateView):
-    template_name = "login/password_reset_complete.html"
 
 
 class ChromeDevtoolsProbeView(View):
