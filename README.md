@@ -23,7 +23,8 @@ Django fica em `lvjiujitsu/`.
 
 A baseline de migrations é única: `system/migrations/0001_initial.py`.
 
-No repositório ficam apenas `CLAUDE.md`, `AGENTS.md`, `README.md` e `docs/prd/`.
+A documentação raiz do repositório é `CLAUDE.md`, `AGENTS.md`, `README.md`
+e `docs/prd/`; as ferramentas de agente têm instruções junto de seus scripts.
 Todo contrato de ciclo, PRD, UI, banco, deploy e operação vive no vault
 Obsidian.
 
@@ -78,8 +79,6 @@ As demais rotas, o que cada superfície entrega e quem acessa estão em
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
-.\.venv\Scripts\python.exe scripts\build_prd_index.py --check
-.\.venv\Scripts\python.exe scripts\audit_css.py
 .\.venv\Scripts\python.exe -m pip check
 ```
 
@@ -134,7 +133,8 @@ protocolo; os contratos acima ficam inalcançáveis.
 As três skills de ciclo autônomo são canônicas em `.agents/skills/`, com
 referências, scripts e testes de contrato; `.claude/skills/` guarda um adaptador
 fino de cada uma, mais `lvjiujitsu-remote-refresh`, de invocação manual. O slash
-command `/validar-tela` fica em `.claude/commands/`.
+commands `/validar-tela` e `/reset-local` ficam em `.claude/commands/`.
+O hook `Stop` verifica CSS, qualidade e índice de PRDs sem alterar arquivos.
 
 ## Licença
 

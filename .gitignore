@@ -27,8 +27,7 @@ Thumbs.db
 .vscode/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+.agents-runtime/
 .codex-runtime/
-static/initial_data/kanri_students_migration/
-static/initial_data/kanri_students_migration_review.json
 
 docs/evidencias/

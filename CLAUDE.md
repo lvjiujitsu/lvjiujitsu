@@ -14,8 +14,8 @@ vault, nunca aqui.
 **A documentação de contrato e de operação vive fora do repositório**, no vault
 Obsidian em `C:\Users\whsf\Documents\GitHub\obsidian\projetos\lvjiujitsu\`, cujo
 índice é `lvjiujitsu.md`. Este arquivo é o fato da plataforma; a §5 lista quem é
-dono de cada assunto. No repositório ficam apenas `CLAUDE.md`, `AGENTS.md`,
-`README.md` e `docs/prd/`.
+dono de cada assunto. A documentação raiz fica em `CLAUDE.md`, `AGENTS.md`,
+`README.md` e `docs/prd/`; as ferramentas mantêm suas instruções adjacentes.
 
 ## 1. Natureza do projeto
 
@@ -155,8 +155,8 @@ donos de cada assunto neste produto estão em
 
 ## 5. Contratos
 
-Um dono por assunto. Ao divergir do código, o código vence e o contrato é
-corrigido na mesma mudança.
+Um dono por assunto. Contrato define o exigido; código e testes mostram o
+observado. Divergências são reconciliadas explicitamente na mesma mudança.
 
 | Assunto | Documento |
 |---|---|
@@ -189,9 +189,8 @@ corrigido na mesma mudança.
 .\.venv\Scripts\python.exe manage.py check_database_connection
 .\.venv\Scripts\python.exe manage.py check_environment_parity
 .\.venv\Scripts\python.exe manage.py check_schema_parity
+.\.venv\Scripts\python.exe clear_migrations.py --check
 .\.venv\Scripts\python.exe clear_migrations.py
-.\.venv\Scripts\python.exe scripts\audit_css.py
-.\.venv\Scripts\python.exe scripts\build_prd_index.py --check
 .\.venv\Scripts\python.exe -m pip check
 ```
 

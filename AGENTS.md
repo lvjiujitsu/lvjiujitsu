@@ -15,8 +15,9 @@ dono por assunto, e nenhum arquivo repete a regra de outro.
 - Divergência material entre contratos bloqueia a conclusão até ser resolvida. A
   precedência define qual contrato corrigir; não autoriza ignorar a contradição,
   nem seguir a fonte mais alta fingindo que a mais baixa não existe.
-- Contrato descreve o que existe. Ao divergir do código, o código vence e o
-  contrato é corrigido na mesma mudança.
+- Contrato define o comportamento exigido; código e testes mostram o observado.
+  Divergências exigem reconciliação explícita com a solicitação do operador e
+  a referência funcional. Código existente não revoga regra de negócio.
 - Antes de editar: classificar o pedido, ler os arquivos diretos e adjacentes
   integralmente e confirmar o entendimento. Pergunta, leitura e diagnóstico sem
   escrita não exigem aprovação adicional. Ordem explícita e inequívoca autoriza
@@ -66,8 +67,8 @@ uma nota factualmente incorreta, e a nota corrigida não entra no Pull Request.
 ## Idioma
 
 - Código, nomes técnicos, arquivos, classes e funções: inglês.
-- Interface, mensagens, PRDs, commits e respostas: português pt-BR, com
-  acentuação correta.
+- Interface, mensagens, commits e respostas: português pt-BR, com acentuação
+  correta. PRDs seguem o idioma inglês definido pelo padrão do vault.
 - Informar entendimento, escopo, validação, limitações e próxima decisão.
 - Não repetir ao operador o que ele acabou de dizer, nem pedir confirmação do
   que já foi ordenado.
@@ -118,8 +119,9 @@ arquivo canônico e declara só o que é específico do Claude Code.
 vive somente em `.claude/skills/`: toca ambiente remoto e nunca é acionada como
 parte automática de outra entrega.
 
-Cada `SKILL.md` segue a estrutura `Quando acionar` / `Passos` / `Saída` /
-`Parar quando`.
+Skills manuais usam `Quando acionar` / `Passos` / `Saída` / `Parar quando`.
+Skills de ciclo mantêm resultado, leituras, ferramentas, ciclo, cobertura,
+PRDs, falhas e saída; adaptadores apontam para esse contrato canônico.
 
 Este contrato vale para toda mudança e não é reempacotado em skill. Skill que
 apenas reescreve o que já está aqui duplica contrato.
@@ -150,15 +152,15 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
   termina com o ciclo destrutivo local e uma `0001_initial` consistente — nunca
   com uma `0002`.
 - `clear_migrations.py` recusa qualquer ambiente que não seja inequivocamente
-  local: arquivo de ambiente fora da raiz, `.env.hg`, `.env.prod`,
+  local: arquivo de ambiente fora da raiz ou do compartilhado autorizado, `.env.hg`, `.env.prod`,
   `DJANGO_ENVIRONMENT` remoto, `DATABASE_URL` preenchida ou variável de seed
   ausente. Em toda recusa, nada é apagado.
 - Dado de negócio nunca entra por migration. Produção usa seed explícita;
   homologação pode ser reconstruída pelo Build Command aprovado.
 - Ação destrutiva no Supabase exige ambiente correto, `DEBUG=False`, host
-  oficial e conexão PostgreSQL. Produção exige ainda `SUPABASE_PROJECT_REF`
-  conferido, `SUPABASE_RESET_CONFIRM` e `--execute`; sem a flag, o comando
-  simula.
+  oficial, conexão PostgreSQL, `SUPABASE_PROJECT_REF` conferido,
+  `SUPABASE_RESET_CONFIRM` e `--execute` em HG e produção. Sem a flag,
+  o comando simula. Produção exige também `--confirm-ref`.
 - **Limpeza remota exige perguntar ao operador antes**, em HG e em produção,
   mesmo com a tarefa já autorizada de forma geral, salvo autorização explícita
   já registrada na mesma conversa.
@@ -174,8 +176,8 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
 - Toda mudança relevante tem PRD numerada em `docs/prd/PRD-<NNN>-<slug>.md`,
   aprovada e atualizada **durante** a execução, não depois. O número vem de
   `docs/prd/README.md`, não de `ls` — a listagem não revela gaps reservados nem
-  duplicatas. Ao criar ou fechar uma PRD, o índice é regenerado no mesmo passo
-  por `python scripts/build_prd_index.py`, que recusa colisão de número.
+  duplicatas. Ao criar ou fechar uma PRD, o índice é atualizado no mesmo passo,
+  sem reaproveitar número.
 - A PRD declara skills, critérios verificáveis, testes, evidências, desvios,
   limpeza, pendências e status. Critério só é marcado com evidência real;
   inferência não fecha critério, e checkbox permanece desmarcado até existir
@@ -190,8 +192,8 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
   ato da implementação. Django: `check`, teste focado e suíte proporcional.
   Persistência: `makemigrations --check --dry-run` e `showmigrations`.
   Configuração: parser ou comando oficial, nunca leitura a olho. PRD e índice:
-  `scripts/build_prd_index.py --check`. Documentação: links verificados em
-  disco.
+  número e status conferidos em `docs/prd/README.md`. Documentação: links
+  verificados em disco.
 - **Django MVT.** `models/` persistência e invariantes; `forms/` validação de
   entrada; `services/` regra de negócio e escrita transacional; `selectors/`
   leitura reutilizável e query otimizada; `views/` HTTP fino; `templates/`
@@ -257,3 +259,13 @@ anteriores.
 
 Todas as definições de agendamento vivem fora do Git, cada uma no aplicativo que
 a executa.
+
+## Paridade da base técnica
+
+Arquivos e ferramentas comuns mantêm os mesmos nomes relativos, ordem e
+comportamento nos três projetos, substituindo somente nome, slug e prefixo
+de ambiente. Dependências e instruções próprias do produto vêm ao final e
+têm consumidor e justificativa em `obsidian/projetos/lvjiujitsu/conhecimento-lvjiujitsu.md`.
+`/reset-local` e o hook `Stop` existem nos três; o hook só verifica e nunca aplica
+correções. Configuração ignorada `settings.local.json` é pessoal e não integra
+o contrato compartilhado; seus overrides são inventariados separadamente.

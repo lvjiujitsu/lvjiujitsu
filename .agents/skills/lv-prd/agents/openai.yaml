@@ -1,4 +1,0 @@
-interface:
-  display_name: "LV PRD"
-  short_description: "Cria PRDs verificáveis orientadas por spec"
-  default_prompt: "Use $lv-prd para criar ou atualizar a PRD desta mudança."

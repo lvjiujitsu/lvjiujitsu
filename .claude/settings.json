@@ -10,21 +10,23 @@
       "Glob",
       "WebSearch",
       "WebFetch",
-      "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_snapshot",
-      "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_console_messages",
-      "mcp__playwright__browser_network_requests",
-      "mcp__playwright__browser_resize",
-      "mcp__playwright__browser_click",
-      "mcp__playwright__browser_type",
-      "mcp__playwright__browser_fill_form",
-      "mcp__playwright__browser_select_option",
-      "mcp__playwright__browser_wait_for",
-      "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_close",
-      "mcp__playwright__browser_press_key",
-      "mcp__playwright__browser_hover"
+      "mcp__Claude_Browser__preview_start",
+      "mcp__Claude_Browser__preview_stop",
+      "mcp__Claude_Browser__preview_logs",
+      "mcp__Claude_Browser__navigate",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__find",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__computer",
+      "mcp__Claude_Browser__form_input",
+      "mcp__Claude_Browser__resize_window",
+      "mcp__Claude_Browser__javascript_tool",
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Claude_Browser__read_network_requests",
+      "mcp__Claude_Browser__tabs_context",
+      "mcp__Claude_Browser__tabs_create",
+      "mcp__Claude_Browser__tabs_select",
+      "mcp__Claude_Browser__tabs_close"
     ],
     "ask": [],
     "deny": []
@@ -33,13 +35,14 @@
     "PYTHONIOENCODING": "utf-8",
     "PYTHONUTF8": "1"
   },
+  "language": "portuguese",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.venv/Scripts/python.exe ${CLAUDE_PROJECT_DIR}/.claude/hooks/verify.py",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify.py\"",
             "timeout": 120
           }
         ]

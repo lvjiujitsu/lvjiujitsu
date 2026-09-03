@@ -2,20 +2,29 @@ name: CI
 
 on:
   push:
+    branches:
+      - stage
+      - developer
   pull_request:
+    branches:
+      - stage
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
+  quality-gates:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     env:
       DJANGO_ENVIRONMENT: local
-      DJANGO_SECRET_KEY: ci-only-not-for-production
       DJANGO_DEBUG: "True"
+      DJANGO_SECRET_KEY: ci-only-not-a-secret
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
       ADMIN_SUPERUSER_USERNAME: ci-admin
       ADMIN_SUPERUSER_EMAIL: ci-admin@example.com
@@ -23,13 +32,14 @@ jobs:
       SEED_INITIAL_TEACHER_PASSWORD: ci-only-password
       SEED_INITIAL_ADMINISTRATIVE_PASSWORD: ci-only-password
       SEED_TEST_PORTAL_PASSWORD: ci-only-password
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12.10"
           cache: pip
@@ -42,17 +52,48 @@ jobs:
       - name: Validate dependencies
         run: python -m pip check
 
-      - name: Validate skill frontmatter
-        run: python scripts/validate_skill_frontmatter.py
-
-      - name: Verify PRD index
-        run: python scripts/build_prd_index.py --check
-
       - name: Django system check
         run: python manage.py check
+
+      - name: Compile sources
+        run: python -m compileall -q lvjiujitsu system
+
+      - name: Show migration plan
+        run: python manage.py showmigrations --plan
 
       - name: Verify migration baseline
         run: python manage.py makemigrations --check --dry-run
 
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --dry-run
+
+      - name: Autonomous cycle contract
+        run: python .agents/skills/lvjiujitsu-autonomous-developer/tests/test_contract.py
+
+      - name: Visual auditor contract
+        run: python .agents/skills/lvjiujitsu-visual-auditor/tests/test_visual_contract.py
+
+      - name: Clean code contract
+        run: python .agents/skills/lvjiujitsu-clean-code/tests/test_clean_contract.py
+
       - name: Run test suite
         run: python manage.py test --verbosity 2
+
+      - name: Scan comments, docstrings and residue
+        run: python .agents/skills/lvjiujitsu-autonomous-developer/scripts/quality_scan.py --all
+
+      - name: Determine whitespace diff base
+        id: diff-base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.event.pull_request.base.ref }}"
+            echo "ref=origin/${{ github.event.pull_request.base.ref }}" >> "$GITHUB_OUTPUT"
+          elif git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
+            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whitespace against the base ref
+        if: steps.diff-base.outputs.ref != ''
+        run: git diff --check "${{ steps.diff-base.outputs.ref }}...HEAD"

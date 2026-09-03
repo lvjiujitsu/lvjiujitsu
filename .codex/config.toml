@@ -1,3 +1,7 @@
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 1
+
 [mcp_servers.context7]
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]

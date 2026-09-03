@@ -2,10 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Django Dev Server",
+      "name": "lvjiujitsu",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["manage.py", "runserver", "localhost:8000"],
+      "runtimeArgs": [
+        "manage.py",
+        "runserver",
+        "localhost:8000"
+      ],
       "port": 8000,
+      "url": "http://localhost:8000",
       "autoPort": false
     }
   ]

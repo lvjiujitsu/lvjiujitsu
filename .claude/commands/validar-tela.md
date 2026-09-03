@@ -6,9 +6,9 @@ argument-hint: "<rota>"
 # /validar-tela $ARGUMENTS
 
 Valida `http://localhost:8000/$ARGUMENTS` no navegador interno, seguindo o
-roteiro de `obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` §11 e o contrato de
-`obsidian/projetos/lvjiujitsu/contrato-ui-lvjiujitsu.md`, conforme `lv-ui-delivery`. Não declarar
-sucesso sem screenshot registrado.
+contrato de `obsidian/projetos/lvjiujitsu/contrato-ui-lvjiujitsu.md` e o checklist
+de `.agents/skills/lvjiujitsu-visual-auditor/references/checklist-visual.md`.
+Não declarar sucesso sem screenshot registrado.
 
 ## Pré-condição
 
@@ -33,7 +33,7 @@ atende, não com a primeira disponível; as superfícies e seus papéis estão e
 7. Verificar permissões e estados: vazio, erro, `disabled` e `loading`.
 8. Em regra de privacidade, inspecionar e salvar registro sanitizado da
    resposta de rede.
-9. Auditar a renderização conforme o checklist de `obsidian/projetos/lvjiujitsu/ciclo-execucao-lvjiujitsu.md` §11
+9. Auditar a renderização conforme `.agents/skills/lvjiujitsu-visual-auditor/references/checklist-visual.md`
    — screenshot é material a auditar, não carimbo de aprovação.
 10. Capturar screenshot desktop e mobile e registrar os caminhos.
 

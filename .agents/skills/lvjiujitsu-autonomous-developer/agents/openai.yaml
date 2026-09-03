@@ -1,0 +1,4 @@
+interface:
+  display_name: "LV JIU JITSU Autonomous Developer"
+  short_description: "Ciclo autônomo de auditoria, correção e Pull Request"
+  default_prompt: "Use $lvjiujitsu-autonomous-developer para executar o ciclo autônomo sobre developer."
