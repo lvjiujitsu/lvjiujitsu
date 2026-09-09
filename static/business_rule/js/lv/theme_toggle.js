@@ -19,7 +19,7 @@
 
   toggle.addEventListener('click', function () {
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('lv-theme', next);
+    localStorage.setItem(window.THEME_STORAGE_KEY, next);
     document.documentElement.setAttribute('data-theme', next);
     applyIcons(next);
   });

@@ -48,8 +48,8 @@ REQUIRED_LOCAL_SEED_SETTINGS = {
     "ADMIN_SUPERUSER_USERNAME",
     "ADMIN_SUPERUSER_EMAIL",
     "ADMIN_SUPERUSER_PASSWORD",
-    "SEED_INITIAL_TEACHER_PASSWORD",
-    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",
+    "SEED_INITIAL_TEACHER_PASSWORD",  # BN - business rule
+    "SEED_INITIAL_ADMINISTRATIVE_PASSWORD",  # BN - business rule
 }
 
 
@@ -555,7 +555,8 @@ def validate_project(root: Path = PROJECT_ROOT) -> None:
     required = (
         root / "manage.py",
         root / "lvjiujitsu" / "settings.py",
-        root / "system" / "migrations" / "__init__.py",
+        root / "system" / "core" / "migrations" / "__init__.py",
+        root / "system" / "business_rule" / "migrations" / "__init__.py",
     )
     if any(not path.is_file() for path in required):
         raise CleanupError("O script não está na raiz válida do LV Jiu Jitsu.")

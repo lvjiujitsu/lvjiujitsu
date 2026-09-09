@@ -280,11 +280,11 @@
   var METHOD_LABELS = { pix: 'PIX', credit_card: 'Cartão' };
   var PAYMENT_METHOD_ICONS = {
     pix: '<span class="payment-method-icons payment-method-icons--pix" aria-hidden="true">' +
-      '<img class="payment-method-icon payment-method-icon--pix" src="' + (window.STATIC_URL || '/static/') + 'system/img/icons/pix.svg" alt="">' +
+      '<img class="payment-method-icon payment-method-icon--pix" src="' + (window.STATIC_URL || '/static/') + 'business_rule/icons/pix.svg" alt="">' +
       '</span>',
     credit_card: '<span class="payment-method-icons payment-method-icons--card" aria-hidden="true">' +
-      '<img class="payment-method-icon payment-method-icon--brand" src="' + (window.STATIC_URL || '/static/') + 'system/img/icons/mastercard.svg" alt="">' +
-      '<img class="payment-method-icon payment-method-icon--brand" src="' + (window.STATIC_URL || '/static/') + 'system/img/icons/visa.svg" alt="">' +
+      '<img class="payment-method-icon payment-method-icon--brand" src="' + (window.STATIC_URL || '/static/') + 'business_rule/icons/mastercard.svg" alt="">' +
+      '<img class="payment-method-icon payment-method-icon--brand" src="' + (window.STATIC_URL || '/static/') + 'business_rule/icons/visa.svg" alt="">' +
       '</span>',
   };
 

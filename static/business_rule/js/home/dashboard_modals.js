@@ -247,7 +247,7 @@
 
     function setText(panel, selector, value) {
       var node = panel.querySelector(selector);
-      if (node) node.textContent = value || 'â€”';
+      if (node) node.textContent = value || '—';
     }
 
     function updateHeader(panel, person) {
@@ -344,7 +344,7 @@
           .then(function (result) {
             if (submit) {
               submit.disabled = false;
-              submit.textContent = 'Salvar alteraÃ§Ãµes';
+              submit.textContent = 'Salvar alterações';
             }
             if (!result.ok || !result.data.success) {
               setClientProfileErrors(panel, result.data.errors || {});
@@ -361,9 +361,9 @@
           .catch(function () {
             if (submit) {
               submit.disabled = false;
-              submit.textContent = 'Salvar alteraÃ§Ãµes';
+              submit.textContent = 'Salvar alterações';
             }
-            setClientProfileErrors(panel, { __all__: ['Falha de conexÃ£o ao salvar.'] });
+            setClientProfileErrors(panel, { __all__: ['Falha de conexão ao salvar.'] });
           });
       });
     });
@@ -391,9 +391,9 @@
             if (!result.ok || !result.data.success) {
               if (submit) {
                 submit.disabled = false;
-                submit.textContent = 'Confirmar exclusÃ£o';
+                submit.textContent = 'Confirmar exclusão';
               }
-              if (deleteError) deleteError.textContent = result.data.error || 'NÃ£o foi possÃ­vel encerrar o cadastro.';
+              if (deleteError) deleteError.textContent = result.data.error || 'Não foi possível encerrar o cadastro.';
               return;
             }
             window.location.href = result.data.redirect_url || '/login/';
@@ -401,9 +401,9 @@
           .catch(function () {
             if (submit) {
               submit.disabled = false;
-              submit.textContent = 'Confirmar exclusÃ£o';
+              submit.textContent = 'Confirmar exclusão';
             }
-            if (deleteError) deleteError.textContent = 'Falha de conexÃ£o.';
+            if (deleteError) deleteError.textContent = 'Falha de conexão.';
           });
       });
     }
@@ -576,7 +576,7 @@
             if (!result.ok || !result.data.success) {
               submitBtn.disabled = false;
               if (errorEl) {
-                errorEl.textContent = (result.data && result.data.error) || 'Erro ao criar aulÃ£o.';
+                errorEl.textContent = (result.data && result.data.error) || 'Erro ao criar aulão.';
               }
               return;
             }
@@ -585,7 +585,7 @@
           })
           .catch(function () {
             submitBtn.disabled = false;
-            if (errorEl) errorEl.textContent = 'Falha de conexÃ£o.';
+            if (errorEl) errorEl.textContent = 'Falha de conexão.';
           });
       });
     }
@@ -611,7 +611,7 @@
       if (!sourceDiv) return;
 
       var className = sourceDiv.getAttribute('data-class-name') || 'Turma';
-      modalTitle.textContent = 'PresenÃ§as â€” ' + className;
+      modalTitle.textContent = 'Presenças — ' + className;
 
       modalBody.replaceChildren();
       var children = sourceDiv.childNodes;
@@ -740,7 +740,7 @@
       if (nextButton) nextButton.disabled = currentPage >= totalPages || filteredItems.length === 0;
       if (pageStatus) {
         pageStatus.textContent = filteredItems.length
-          ? 'PÃ¡gina ' + currentPage + ' de ' + totalPages
+          ? 'Página ' + currentPage + ' de ' + totalPages
           : 'Sem resultados';
       }
     }
@@ -823,7 +823,7 @@
     if (!overlay) return;
 
     var titleEl = document.getElementById('modal-grad-title');
-    var defaultTitle = titleEl ? titleEl.textContent : 'HistÃ³rico de graduaÃ§Ãµes';
+    var defaultTitle = titleEl ? titleEl.textContent : 'Histórico de graduações';
 
     function closeModal() {
       overlay.setAttribute('hidden', '');
@@ -839,7 +839,7 @@
         list.hidden = list.getAttribute('data-history-for') !== historyFor;
       });
       if (titleEl) {
-        titleEl.textContent = personName ? defaultTitle + ' â€” ' + personName : defaultTitle;
+        titleEl.textContent = personName ? defaultTitle + ' — ' + personName : defaultTitle;
       }
       overlay.removeAttribute('hidden');
       document.body.style.overflow = 'hidden';
@@ -1005,7 +1005,7 @@
           })
           .catch(function () {
             if (submitBtn) submitBtn.disabled = false;
-            if (errorEl) errorEl.textContent = 'Falha de conexÃ£o.';
+            if (errorEl) errorEl.textContent = 'Falha de conexão.';
           });
       });
     }
@@ -1079,7 +1079,7 @@
           })
           .catch(function () {
             if (submitBtn) submitBtn.disabled = false;
-            if (errorEl) errorEl.textContent = 'Falha de conexÃ£o.';
+            if (errorEl) errorEl.textContent = 'Falha de conexão.';
           });
       });
     }
@@ -1142,11 +1142,11 @@
         return;
       }
       if (!isSpecial && (!scheduleInput || !scheduleInput.value)) {
-        if (errorEl) errorEl.textContent = 'Turma invÃ¡lida.';
+        if (errorEl) errorEl.textContent = 'Turma inválida.';
         return;
       }
       if (isSpecial && (!specialInput || !specialInput.value)) {
-        if (errorEl) errorEl.textContent = 'AulÃ£o invÃ¡lido.';
+        if (errorEl) errorEl.textContent = 'Aulão inválido.';
         return;
       }
 
@@ -1175,7 +1175,7 @@
         .then(function (result) {
           if (!result.ok || !result.data.success) {
             if (submitBtn) submitBtn.disabled = false;
-            if (errorEl) errorEl.textContent = result.data.error || 'NÃ£o foi possÃ­vel indicar substituto.';
+            if (errorEl) errorEl.textContent = result.data.error || 'Não foi possível indicar substituto.';
             return;
           }
           closeModal();
@@ -1183,7 +1183,7 @@
         })
         .catch(function () {
           if (submitBtn) submitBtn.disabled = false;
-          if (errorEl) errorEl.textContent = 'Falha de conexÃ£o.';
+          if (errorEl) errorEl.textContent = 'Falha de conexão.';
         });
     });
   }
@@ -1200,11 +1200,11 @@
       if (!url) return;
       var message;
       if (restoreBtn) {
-        message = isSpecial ? 'Deseja restaurar este aulÃ£o?' : 'Deseja restaurar esta aula?';
+        message = isSpecial ? 'Deseja restaurar este aulão?' : 'Deseja restaurar esta aula?';
       } else {
         message = isSpecial
-          ? 'NinguÃ©m vai ministrar este aulÃ£o. Deseja cancelÃ¡-lo?'
-          : 'NinguÃ©m vai ministrar esta aula. Deseja cancelÃ¡-la?';
+          ? 'Ninguém vai ministrar este aulão. Deseja cancelá-lo?'
+          : 'Ninguém vai ministrar esta aula. Deseja cancelá-la?';
       }
       if (!window.confirm(message)) return;
 

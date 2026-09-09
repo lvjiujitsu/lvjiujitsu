@@ -1,0 +1,48 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Excluir preço — {{ site_name }}{% endblock %}
+
+{% block page_class %} --narrow{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow">
+        <a href="{% url 'system:plan-tier-detail' pk=tier.pk %}">← {{ tier.display_name }}</a>
+      </p>
+      <h1 class="page-header__title">Excluir preço</h1>
+      <p class="page-header__meta">{{ price.get_payment_method_display }} — {{ price.get_billing_cycle_display }}</p>
+    </div>
+
+    <section class="delete-panel" aria-labelledby="delete-title">
+      <h2 class="delete-panel__title" id="delete-title">Confirmação necessária</h2>
+      {% if usage.membership_count %}
+      <p class="delete-panel__text">
+        Este preço possui {{ usage.membership_count }} assinatura{{ usage.membership_count|pluralize }} vinculada{{ usage.membership_count|pluralize }}. Para retirar da venda, desative-o na edição.
+      </p>
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{% url 'system:plan-tier-detail' pk=tier.pk %}">Voltar</a>
+        <a class="btn btn--primary" href="{% url 'system:plan-price-update' pk=price.pk %}">Editar preço</a>
+      </div>
+      {% else %}
+      <p class="delete-panel__text">
+        Excluir remove o preço do catálogo administrativo. Use esta ação apenas se ele não foi usado em assinaturas.
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+          <a class="btn btn--secondary" href="{% url 'system:plan-tier-detail' pk=tier.pk %}">Cancelar</a>
+          <button class="btn btn--danger" type="submit">Excluir preço</button>
+        </div>
+      </form>
+      {% endif %}
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1" defer></script>
+{% endblock %}

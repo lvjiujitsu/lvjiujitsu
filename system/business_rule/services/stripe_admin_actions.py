@@ -1,0 +1,193 @@
+import logging
+from decimal import Decimal
+
+import stripe
+from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
+
+from system.business_rule.models.membership import MembershipStatus
+from system.business_rule.models.membership_timeline import MembershipTimelineEventType
+from system.business_rule.models.registration_order import PaymentStatus
+from system.business_rule.services.family_pricing import recompute_family_discounts_for_person
+from system.business_rule.services.membership_timeline import record_membership_event
+from system.business_rule.services.payroll_rules import append_order_refund_record
+
+
+logger = logging.getLogger(__name__)
+
+
+class StripeAdminActionError(Exception):
+    pass
+
+
+def get_stripe_client():
+    if not settings.STRIPE_SECRET_KEY:
+        raise StripeAdminActionError("STRIPE_SECRET_KEY não configurada no .env")
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    return stripe
+
+
+def _to_cents(value):
+    return int((Decimal(value) * 100).quantize(Decimal("1")))
+
+
+@transaction.atomic
+def cancel_membership(membership, *, at_period_end=True, admin_user=None, reason=""):
+    client = get_stripe_client()
+    if not membership.stripe_subscription_id:
+        membership.status = MembershipStatus.CANCELED
+        membership.canceled_at = timezone.now()
+        membership.cancel_at_period_end = False
+        membership.notes = (membership.notes + "\n" + reason).strip() if reason else membership.notes
+        membership.save(
+            update_fields=["status", "canceled_at", "cancel_at_period_end", "notes", "updated_at"]
+        )
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.MEMBERSHIP_CANCELED,
+            membership=membership,
+            actor_is_admin=True,
+            context={"plan_name": membership.effective_display_name},
+        )
+        recompute_family_discounts_for_person(membership.person)
+        return membership
+
+    try:
+        if at_period_end:
+            client.Subscription.modify(
+                membership.stripe_subscription_id,
+                cancel_at_period_end=True,
+                metadata={
+                    "canceled_by_admin": str(getattr(admin_user, "pk", "")),
+                    "cancel_reason": reason[:200],
+                },
+            )
+            membership.cancel_at_period_end = True
+        else:
+            client.Subscription.delete(
+                membership.stripe_subscription_id,
+                prorate=True,
+            )
+            membership.status = MembershipStatus.CANCELED
+            membership.canceled_at = timezone.now()
+            membership.cancel_at_period_end = False
+    except Exception as exc:
+        logger.exception("Falha ao cancelar assinatura %s", membership.pk)
+        raise StripeAdminActionError(str(exc)) from exc
+
+    if reason:
+        membership.notes = (membership.notes + "\n" + reason).strip()
+    membership.save()
+    if not at_period_end:
+        record_membership_event(
+            membership.person,
+            MembershipTimelineEventType.MEMBERSHIP_CANCELED,
+            membership=membership,
+            actor_is_admin=True,
+            context={
+                "plan_name": membership.effective_display_name,
+                "stripe_subscription_id": membership.stripe_subscription_id,
+            },
+        )
+        recompute_family_discounts_for_person(membership.person)
+    return membership
+
+
+@transaction.atomic
+def refund_order(order, *, amount=None, admin_user=None, reason=""):
+    client = get_stripe_client()
+    if not order.stripe_payment_intent_id:
+        raise StripeAdminActionError(
+            "Pedido sem PaymentIntent Stripe — não é possível estornar."
+        )
+
+    try:
+        params = {"payment_intent": order.stripe_payment_intent_id}
+        if amount is not None:
+            params["amount"] = _to_cents(amount)
+        if reason:
+            params["metadata"] = {"admin_reason": reason[:200]}
+        refund = client.Refund.create(**params)
+    except Exception as exc:
+        logger.exception("Falha ao estornar pedido %s", order.pk)
+        raise StripeAdminActionError(str(exc)) from exc
+
+    refunded_amount = Decimal(refund["amount"] if "amount" in refund else 0) / Decimal("100")
+    order.refunded_at = timezone.now()
+    if amount is None or refunded_amount >= (order.total or Decimal("0")):
+        order.payment_status = PaymentStatus.REFUNDED
+    if reason:
+        order.notes = (order.notes + "\n" + f"Estorno: {reason}").strip()
+    append_order_refund_record(
+        order,
+        refunded_amount,
+        source="stripe_admin",
+        cumulative=False,
+        reason=reason,
+        save=False,
+    )
+    order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
+    record_membership_event(
+        order.person,
+        MembershipTimelineEventType.REFUND_ISSUED,
+        actor_is_admin=True,
+        context={"amount": str(refunded_amount), "order_id": order.pk},
+    )
+    return {"refund_id": refund["id"], "amount": refunded_amount, "order": order}
+
+
+@transaction.atomic
+def change_membership_plan(membership, new_plan, *, admin_user=None):
+    client = get_stripe_client()
+    if not membership.stripe_subscription_id:
+        raise StripeAdminActionError(
+            "Assinatura sem Subscription Stripe — use 'troca manual' em vez disso."
+        )
+    if not new_plan.stripe_price_id:
+        raise StripeAdminActionError(
+            f"Plano '{new_plan.display_name}' sem Stripe Price sincronizado."
+        )
+
+    old_plan = membership.plan
+
+    try:
+        subscription = client.Subscription.retrieve(membership.stripe_subscription_id)
+        items_obj = subscription["items"] if "items" in subscription else None
+        items = (items_obj["data"] if items_obj is not None and "data" in items_obj else []) or []
+        if not items:
+            raise StripeAdminActionError(
+                "Assinatura sem itens — estado inconsistente."
+            )
+        first_item_id = items[0]["id"]
+        updated = client.Subscription.modify(
+            membership.stripe_subscription_id,
+            items=[{"id": first_item_id, "price": new_plan.stripe_price_id}],
+            proration_behavior="create_prorations",
+            metadata={
+                "plan_changed_by_admin": str(getattr(admin_user, "pk", "")),
+                "plan_id": str(new_plan.pk),
+            },
+        )
+    except StripeAdminActionError:
+        raise
+    except Exception as exc:
+        logger.exception("Falha ao trocar plano da assinatura %s", membership.pk)
+        raise StripeAdminActionError(str(exc)) from exc
+
+    membership.plan = new_plan
+    membership.save(update_fields=["plan", "updated_at"])
+    record_membership_event(
+        membership.person,
+        MembershipTimelineEventType.PLAN_CHANGED,
+        membership=membership,
+        actor_is_admin=True,
+        context={
+            "old_plan_name": old_plan.display_name if old_plan else "",
+            "new_plan_name": new_plan.display_name,
+            "old_price": str(old_plan.price) if old_plan else "",
+            "new_price": str(new_plan.price),
+        },
+    )
+    recompute_family_discounts_for_person(membership.person)
+    return membership

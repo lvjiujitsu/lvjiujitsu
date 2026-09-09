@@ -1,0 +1,389 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %} — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+
+    <div class="page-header">
+      <p class="page-header__eyebrow">
+        {% if object %}
+          <a href="{% url 'system:person-detail' pk=object.pk %}">← {{ object.full_name }}</a>
+        {% else %}
+          <a href="{% url 'system:person-list' %}">← Pessoas</a>
+        {% endif %}
+      </p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">
+            {% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %}
+          </h1>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="system-messages" role="alert">
+        {% for error in form.non_field_errors %}
+        <div class="system-message system-message--error">{{ error }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Identificação</div>
+          <div class="form-grid">
+
+            <div class="form-field form-field--full">
+              <label for="{{ form.full_name.id_for_label }}">{{ form.full_name.label }} *</label>
+              {{ form.full_name }}
+              {{ form.full_name.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.cpf.id_for_label }}">{{ form.cpf.label }} *</label>
+              {{ form.cpf }}
+              {{ form.cpf.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+              {{ form.email }}
+              {{ form.email.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+              {{ form.phone }}
+              {{ form.phone.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.birth_date.id_for_label }}">{{ form.birth_date.label }}</label>
+              {{ form.birth_date }}
+              {{ form.birth_date.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.biological_sex.id_for_label }}">{{ form.biological_sex.label }}</label>
+              {{ form.biological_sex }}
+              {{ form.biological_sex.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Saúde e emergência</div>
+          <div class="form-grid">
+
+            <div class="form-field">
+              <label for="{{ form.blood_type.id_for_label }}">{{ form.blood_type.label }}</label>
+              {{ form.blood_type }}
+              {{ form.blood_type.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.emergency_contact.id_for_label }}">{{ form.emergency_contact.label }}</label>
+              {{ form.emergency_contact }}
+              {{ form.emergency_contact.errors }}
+            </div>
+
+            <div class="form-field form-field--full">
+              <label for="{{ form.allergies.id_for_label }}">{{ form.allergies.label }}</label>
+              {{ form.allergies }}
+              {{ form.allergies.errors }}
+            </div>
+
+            <div class="form-field form-field--full">
+              <label for="{{ form.previous_injuries.id_for_label }}">{{ form.previous_injuries.label }}</label>
+              {{ form.previous_injuries }}
+              {{ form.previous_injuries.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Arte marcial</div>
+          <div class="form-grid">
+
+            <div class="form-field">
+              <label for="{{ form.has_martial_art.id_for_label }}">{{ form.has_martial_art.label }}</label>
+              {{ form.has_martial_art }}
+              {{ form.has_martial_art.errors }}
+            </div>
+
+          </div>
+
+          <div id="martial-art-fields" style="margin-top:1rem;">
+            <div class="form-grid">
+
+              <div class="form-field">
+                <label for="{{ form.martial_art.id_for_label }}">{{ form.martial_art.label }}</label>
+                {{ form.martial_art }}
+                {{ form.martial_art.errors }}
+              </div>
+
+              <div class="form-field">
+                <label for="{{ form.martial_art_graduation.id_for_label }}">{{ form.martial_art_graduation.label }}</label>
+                {{ form.martial_art_graduation }}
+                {{ form.martial_art_graduation.errors }}
+              </div>
+
+              <div class="form-field">
+                <label for="{{ form.jiu_jitsu_belt.id_for_label }}">{{ form.jiu_jitsu_belt.label }}</label>
+                {{ form.jiu_jitsu_belt }}
+                {{ form.jiu_jitsu_belt.errors }}
+              </div>
+
+              <div class="form-field">
+                <label for="{{ form.jiu_jitsu_stripes.id_for_label }}">{{ form.jiu_jitsu_stripes.label }}</label>
+                {{ form.jiu_jitsu_stripes }}
+                {{ form.jiu_jitsu_stripes.errors }}
+              </div>
+
+              <div class="form-field">
+                <label for="{{ form.martial_art_started_at.id_for_label }}">{{ form.martial_art_started_at.label }}</label>
+                {{ form.martial_art_started_at }}
+                {{ form.martial_art_started_at.errors }}
+              </div>
+
+              <div class="form-field">
+                <label for="{{ form.martial_art_last_graduation_at.id_for_label }}">{{ form.martial_art_last_graduation_at.label }}</label>
+                {{ form.martial_art_last_graduation_at }}
+                {{ form.martial_art_last_graduation_at.errors }}
+              </div>
+
+              <div class="form-field form-field--full">
+                <label for="{{ form.previous_academy.id_for_label }}">{{ form.previous_academy.label }}</label>
+                {{ form.previous_academy }}
+                {{ form.previous_academy.errors }}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Vínculo e turmas</div>
+          <div class="form-grid">
+
+            <div class="form-field">
+              <label for="{{ form.person_type.id_for_label }}">{{ form.person_type.label }} *</label>
+              {{ form.person_type }}
+              {{ form.person_type.errors }}
+            </div>
+
+            <div class="form-field">
+              <div class="form-checkbox-row">
+                {{ form.is_active }}
+                <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+              </div>
+              {{ form.is_active.errors }}
+            </div>
+
+            {% if form.class_groups %}
+            <div class="form-field form-field--full">
+              <label>{{ form.class_groups.label }}</label>
+              <div style="margin-top:0.5rem;">
+                {{ form.class_groups }}
+              </div>
+              {% if form.class_groups.help_text %}
+              <span class="form-field__help">{{ form.class_groups.help_text }}</span>
+              {% endif %}
+              {{ form.class_groups.errors }}
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+      </div>
+
+      {% if can_manage_people %}
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Papéis operacionais</div>
+          <div class="form-grid">
+
+            <div class="form-field form-field--full">
+              <label>{{ form.operational_roles.label }}</label>
+              <div style="margin-top:0.5rem;">
+                {{ form.operational_roles }}
+              </div>
+              {% if form.operational_roles.help_text %}
+              <span class="form-field__help">{{ form.operational_roles.help_text }}</span>
+              {% endif %}
+              {{ form.operational_roles.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.class_assistant_group.id_for_label }}">{{ form.class_assistant_group.label }}</label>
+              {{ form.class_assistant_group }}
+              {% if form.class_assistant_group.help_text %}
+              <span class="form-field__help">{{ form.class_assistant_group.help_text }}</span>
+              {% endif %}
+              {{ form.class_assistant_group.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Endereço</div>
+          <div class="form-grid">
+
+            <div class="form-field">
+              <label for="{{ form.postal_code.id_for_label }}">{{ form.postal_code.label }}</label>
+              {{ form.postal_code }}
+              {{ form.postal_code.errors }}
+            </div>
+
+            <div class="form-field form-field--full">
+              <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+              {{ form.address }}
+              {{ form.address.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.address_number.id_for_label }}">{{ form.address_number.label }}</label>
+              {{ form.address_number }}
+              {{ form.address_number.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.address_complement.id_for_label }}">{{ form.address_complement.label }}</label>
+              {{ form.address_complement }}
+              {{ form.address_complement.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.address_neighborhood.id_for_label }}">{{ form.address_neighborhood.label }}</label>
+              {{ form.address_neighborhood }}
+              {{ form.address_neighborhood.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
+              {{ form.city }}
+              {{ form.city.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {% if can_manage_people %}
+      <div class="form-card">
+        <div class="form-group">
+          <div class="form-group__title">Repasse do professor</div>
+          <div class="form-grid">
+
+            <div class="form-field">
+              <div class="form-checkbox-row">
+                {{ form.payroll_enabled }}
+                <label for="{{ form.payroll_enabled.id_for_label }}">{{ form.payroll_enabled.label }}</label>
+              </div>
+              {{ form.payroll_enabled.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.payroll_payment_day.id_for_label }}">{{ form.payroll_payment_day.label }}</label>
+              {{ form.payroll_payment_day }}
+              {{ form.payroll_payment_day.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.payroll_fixed_monthly.id_for_label }}">{{ form.payroll_fixed_monthly.label }}</label>
+              {{ form.payroll_fixed_monthly }}
+              {{ form.payroll_fixed_monthly.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.payroll_per_student_amount.id_for_label }}">{{ form.payroll_per_student_amount.label }}</label>
+              {{ form.payroll_per_student_amount }}
+              {{ form.payroll_per_student_amount.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.payroll_student_percentage.id_for_label }}">{{ form.payroll_student_percentage.label }}</label>
+              {{ form.payroll_student_percentage }}
+              {{ form.payroll_student_percentage.errors }}
+            </div>
+
+            <div class="form-field">
+              <label for="{{ form.payroll_per_class_amount.id_for_label }}">{{ form.payroll_per_class_amount.label }}</label>
+              {{ form.payroll_per_class_amount }}
+              {{ form.payroll_per_class_amount.errors }}
+            </div>
+
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="form-actions">
+        {% if object %}
+        <a class="btn btn--secondary" href="{% url 'system:person-detail' pk=object.pk %}">Cancelar</a>
+        {% else %}
+        <a class="btn btn--secondary" href="{% url 'system:person-list' %}">Cancelar</a>
+        {% endif %}
+        <button class="btn btn--primary" type="submit">Salvar pessoa</button>
+      </div>
+
+    </form>
+{% endblock %}
+
+{% block modals %}
+
+  <script>
+    (function () {
+      var toggle = document.getElementById('theme-toggle');
+      var sun = document.getElementById('icon-sun');
+      var moon = document.getElementById('icon-moon');
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') { sun.removeAttribute('hidden'); moon.setAttribute('hidden', ''); }
+        else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
+      }
+      applyTheme(localStorage.getItem(window.THEME_STORAGE_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      toggle.addEventListener('click', function () {
+        var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(window.THEME_STORAGE_KEY, next);
+        applyTheme(next);
+      });
+      var MARTIAL_ART_YES = 'yes';
+      var hasMartialSelect = document.getElementById('{{ form.has_martial_art.id_for_label }}');
+      var martialFields = document.getElementById('martial-art-fields');
+      function toggleMartialFields() {
+        if (!hasMartialSelect || !martialFields) return;
+        if (hasMartialSelect.value === MARTIAL_ART_YES) {
+          martialFields.removeAttribute('hidden');
+        } else {
+          martialFields.setAttribute('hidden', '');
+        }
+      }
+      if (hasMartialSelect) {
+        hasMartialSelect.addEventListener('change', toggleMartialFields);
+        toggleMartialFields();
+      }
+    })();
+  </script>
+{% endblock %}

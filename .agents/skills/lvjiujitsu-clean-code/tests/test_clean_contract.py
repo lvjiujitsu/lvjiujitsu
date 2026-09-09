@@ -81,7 +81,7 @@ class CleanContractTest(unittest.TestCase):
         dirty = self.scan("dirty.py")
         self.assertTrue(any(item["kind"] == "url" for item in dirty["hardcode"]))
         self.assertTrue(any(item["kind"].startswith("identifier") for item in dirty["language"]))
-        fixture = self.scan("system/tests/test_fixture.py")
+        fixture = self.scan("system/business_rule/tests/test_fixture.py")
         self.assertEqual(fixture["hardcode"], [])
         self.assertEqual(self.scan("clean.py")["total"], 0)
 

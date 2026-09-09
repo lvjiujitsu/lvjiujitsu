@@ -1,0 +1,54 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Graduação — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Graduação</h1>
+          <p class="page-header__meta">Progresso de evolução em {{ reference_date }}</p>
+        </div>
+        <div class="page-header__actions">
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:belt-rank-list' %}">Faixas</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:graduation-rule-list' %}">Regras</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:graduation-list' %}">Histórico</a>
+        </div>
+      </div>
+    </div>
+
+    <section class="section" aria-labelledby="graduation-overview-title">
+      <div class="section__header">
+        <h2 class="section__title" id="graduation-overview-title">{{ rows|length }} aluno{{ rows|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if rows %}
+        <ul class="entity-list" aria-label="Progresso de graduação">
+          {% for row in rows %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ row.person.full_name }}</div>
+              <div class="entity-card__meta">
+                {% if row.current_belt_rank %}{{ row.current_belt_rank.display_name }} grau {{ row.current_grade_number }}{% else %}Sem graduação registrada{% endif %}
+                {% if row.blocker %} · {{ row.blocker }}{% endif %}
+              </div>
+            </div>
+            <div class="entity-card__badges">
+              {% if row.is_eligible %}<span class="badge badge--success">Elegível</span>{% else %}<span class="badge badge--neutral">{{ row.progress_pct|floatformat:0 }}%</span>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhum aluno ativo para acompanhar.</p></div>
+        {% endif %}
+      </div>
+    </section>
+{% endblock %}

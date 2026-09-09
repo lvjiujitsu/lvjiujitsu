@@ -1,0 +1,69 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }} — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow">
+        <a href="{% url 'system:plan-tier-detail' pk=tier.pk %}">← {{ tier.display_name }}</a>
+      </p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ form_title }}</h1>
+          <p class="page-header__meta">Precificação por meio de pagamento e ciclo</p>
+        </div>
+      </div>
+    </div>
+
+    <form class="plan-form" method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="form-errors" role="alert">
+        {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <section class="form-section" aria-labelledby="price-form-title">
+        <div class="form-section__header">
+          <h2 class="form-section__title" id="price-form-title">Precificação</h2>
+          <p class="price-preview" data-price-preview>Informe o valor líquido mensal para estimar o preço calculado.</p>
+        </div>
+        <div class="form-grid form-grid--compact">
+          {% for field in form %}
+            {% if field.field.widget.input_type == "checkbox" %}
+            <div class="form-field form-field--checkbox">
+              {{ field }}
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% if field.help_text %}<p class="form-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+            </div>
+            {% else %}
+            <div class="form-field">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="form-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{% url 'system:plan-tier-detail' pk=tier.pk %}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ form_action_label }}</button>
+      </div>
+    </form>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1" defer></script>
+{% endblock %}

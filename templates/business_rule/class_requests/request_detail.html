@@ -1,0 +1,120 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Solicitação de turma — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:class-catalog-request-list' %}">← Solicitações</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ class_request.get_request_type_display }}</h1>
+          <p class="page-header__meta">{% if class_request.teacher_person %}{{ class_request.teacher_person.full_name }}{% else %}{{ class_request.full_name }}{% endif %}</p>
+        </div>
+        <span class="badge {% if class_request.status == 'pending' %}badge--warning{% elif class_request.status == 'approved' %}badge--success{% elif class_request.status == 'rejected' %}badge--danger{% else %}badge--neutral{% endif %}">{{ class_request.get_status_display }}</span>
+      </div>
+    </div>
+
+    <section class="form-card">
+      <div class="form-group">
+        <h2 class="form-group__title">Resumo</h2>
+        <dl class="request-summary">
+          <div><dt>Origem</dt><dd>{{ class_request.get_origin_display }}</dd></div>
+          <div><dt>Turma existente</dt><dd>{{ class_request.target_class_group|default:"—" }}</dd></div>
+          <div><dt>Categoria</dt><dd>{{ class_request.class_category|default:"—" }}</dd></div>
+          <div><dt>Nome da turma</dt><dd>{{ class_request.display_name|default:"—" }}</dd></div>
+          <div><dt>Dia</dt><dd>{{ class_request.get_weekday_display }}</dd></div>
+          <div><dt>Horário</dt><dd>{{ class_request.start_time|time:"H:i" }}</dd></div>
+          <div><dt>Estilo</dt><dd>{{ class_request.get_training_style_display }}</dd></div>
+          <div><dt>Duração</dt><dd>{{ class_request.duration_minutes }} min</dd></div>
+          {% if class_request.payload.payout %}
+          <div class="request-summary__full">
+            <dt>Recebimento</dt>
+            <dd>
+              {% if class_request.payload.payout.method == "pix" %}
+                PIX · {{ class_request.payload.payout.pix_key_type }} · {{ class_request.payload.payout.pix_key }}
+                {% if class_request.payload.payout.holder_name %}<br>Titular: {{ class_request.payload.payout.holder_name }}{% endif %}
+                {% if class_request.payload.payout.holder_document %}<br>Documento: {{ class_request.payload.payout.holder_document }}{% endif %}
+              {% elif class_request.payload.payout.method == "bank_account" %}
+                Conta bancária<br>{{ class_request.payload.payout.bank_account_details|linebreaksbr }}
+                {% if class_request.payload.payout.holder_name %}<br>Titular: {{ class_request.payload.payout.holder_name }}{% endif %}
+                {% if class_request.payload.payout.holder_document %}<br>Documento: {{ class_request.payload.payout.holder_document }}{% endif %}
+              {% else %}
+                Informar depois
+              {% endif %}
+              {% if financial_arrangement_label %}
+                <br>Condição: {{ financial_arrangement_label }}{% if class_request.payload.payout.fixed_amount %} · R$ {{ class_request.payload.payout.fixed_amount|floatformat:2 }}{% endif %}{% if class_request.payload.payout.student_percentage %} · {{ class_request.payload.payout.student_percentage|floatformat:2 }}% por aluno{% endif %}
+              {% endif %}
+            </dd>
+          </div>
+          {% endif %}
+          {% if class_request.extra_schedules %}
+          <div class="request-summary__full">
+            <dt>Horários adicionais</dt>
+            <dd>
+              <ul>
+                {% for extra in class_request.extra_schedules %}
+                <li>{{ extra.weekday }} · {{ extra.training_style }} · {{ extra.start_time }} · {{ extra.duration_minutes }} min</li>
+                {% endfor %}
+              </ul>
+            </dd>
+          </div>
+          {% endif %}
+          <div class="request-summary__full"><dt>Justificativa</dt><dd>{{ class_request.justification }}</dd></div>
+          {% if class_request.created_class_group %}<div><dt>Turma criada</dt><dd>{{ class_request.created_class_group }}</dd></div>{% endif %}
+          {% if class_request.decision_notes %}<div class="request-summary__full"><dt>Decisão</dt><dd>{{ class_request.decision_notes }}</dd></div>{% endif %}
+        </dl>
+      </div>
+    </section>
+
+    {% if class_request.status == 'pending' %}
+    <form method="post" class="form-card" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <h2 class="form-group__title">Ajustar e decidir</h2>
+        {% if decision_form.non_field_errors %}
+        <div class="system-message system-message--error">{{ decision_form.non_field_errors }}</div>
+        {% endif %}
+        <div class="form-grid">
+          {% for field in decision_form %}
+          <div class="form-field{% if field.name == 'decision_notes' %} form-field--full{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--secondary" type="submit" name="action" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn btn--danger-outline" type="submit" name="action" value="reject">Recusar</button>
+        <button class="btn btn--primary" type="submit" name="action" value="approve">Aprovar</button>
+      </div>
+    </form>
+    {% elif class_request.status == 'approved' and can_activate_payroll and payroll_activation_form %}
+    <form method="post" class="form-card" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <h2 class="form-group__title">Ativar repasse</h2>
+        <p class="form-field__hint">Revise a proposta financeira do cadastro e confirme o dia de pagamento antes de ativar a folha.</p>
+        <div class="form-grid">
+          {% for field in payroll_activation_form %}
+          <div class="form-field{% if field.name == 'payroll_activation_notes' %} form-field--full{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--primary" type="submit" name="action" value="activate_payroll">Ativar repasse</button>
+      </div>
+    </form>
+    {% endif %}
+{% endblock %}

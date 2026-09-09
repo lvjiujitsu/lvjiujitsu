@@ -16,12 +16,18 @@ estão em [CLAUDE.md](CLAUDE.md).
 
 ## Estrutura
 
-App único `system/`, organizado por responsabilidade: `models/`, `forms/`,
-`services/`, `selectors/`, `views/`, `management/commands/`, `utils/` e
-`tests/`. `templates/` e `static/` ficam na raiz do repositório. O projeto
+`system/` não é um app: é o namespace de dois apps Django, `system.core` (base técnica) e `system.business_rule` (domínio). `system/core/`
+guarda o que é comum a qualquer produto: identidade e permissão, aparência,
+auditoria, e-mail, redefinição de senha, documento brasileiro, data, paginação,
+health, base de modelo, leitura de configuração, runner de teste e os comandos
+de infraestrutura. O domínio fica nas camadas usuais:
+`models/`, `forms/`, `services/`, `selectors/`, `views/`,
+`management/commands/` e `tests/`, mais os módulos próprios do domínio. `templates/` e `static/` ficam na raiz do repositório. O projeto
 Django fica em `lvjiujitsu/`.
 
-A baseline de migrations é única: `system/migrations/0001_initial.py`.
+A baseline de migrations é única por app,
+`<app>/migrations/0001_initial.py`, e o checkout atual não versiona nenhuma: ela
+é regerada pelo ciclo destrutivo local.
 
 A documentação raiz do repositório é `CLAUDE.md`, `AGENTS.md`, `README.md`
 e `docs/prd/`; as ferramentas de agente têm instruções junto de seus scripts.
@@ -134,7 +140,8 @@ As três skills de ciclo autônomo são canônicas em `.agents/skills/`, com
 referências, scripts e testes de contrato; `.claude/skills/` guarda um adaptador
 fino de cada uma, mais `lvjiujitsu-remote-refresh`, de invocação manual. O slash
 commands `/validar-tela` e `/reset-local` ficam em `.claude/commands/`.
-O hook `Stop` verifica CSS, qualidade e índice de PRDs sem alterar arquivos.
+O hook `Stop` roda a varredura de qualidade sobre todo o repositório, sem
+alterar arquivos.
 
 ## Licença
 

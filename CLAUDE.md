@@ -68,7 +68,7 @@ O inventário do que este produto não tem por decisão de domínio vive em
 |---|---|
 | Nome | LV Jiu Jitsu |
 | Objetivo | `obsidian/projetos/lvjiujitsu/regras-negocio-lvjiujitsu.md` |
-| App de domínio | `system/` |
+| App de domínio | `system/business_rule/` |
 | Projeto Django | `lvjiujitsu/` |
 | Banco local | SQLite em `db.sqlite3` |
 | HG e produção | PostgreSQL Supabase via `DATABASE_URL` |
@@ -77,9 +77,12 @@ O inventário do que este produto não tem por decisão de domínio vive em
 | Idioma da UI | Português pt-BR |
 | URL local canônica | `http://localhost:8000` |
 
-O trabalho diário acontece em `/`, entrada única que resolve o papel pela sessão
-e serve conteúdo diferente por permissão. O painel do produto **não** usa
-`AdminSite`.
+A entrada canônica é `/`, que resolve a identidade da requisição e serve
+conteúdo diferente por capability. `request.identity` é o único nome autorizado
+para o ator; as guardas do produto compõem `capability_required` e
+`CapabilityRequired` do núcleo. Superfícies de entrada adicionais, quando
+existirem, são regra de negócio e ficam abaixo do marcador `BN - business rule`
+em `system/urls.py`. O painel do produto **não** usa `AdminSite`.
 
 `/health/` responde ao health check do Render. O Django Admin técnico
 (`/django-admin/`) é isolado e **não** é o painel operacional do produto.
@@ -121,30 +124,76 @@ em `obsidian/projetos/lvjiujitsu/performance-plataforma-lvjiujitsu.md`.
 
 ## 4. Arquitetura em camadas
 
+`system/` não é um app: é o namespace de dois apps Django. `system.core`
+(label `core`) guarda a base técnica; `system.business_rule` (label
+`business_rule`) guarda o domínio. Os modelos do produto têm `app_label`
+`business_rule`, e `AUTH_USER_MODEL` é `business_rule.User`.
+
 ```text
 system/
-├── models/
-├── forms/
-├── services/
-├── selectors/
-├── views/
-├── tests/
-├── management/commands/
-└── utils/
+├── urls.py
+├── core/
+│   ├── access/
+│   ├── audit/
+│   ├── mail/
+│   ├── password_reset/
+│   ├── management/commands/
+│   ├── migrations/
+│   ├── appearance.py
+│   ├── apps.py
+│   ├── documents.py
+│   ├── environment.py
+│   ├── health.py
+│   ├── models.py
+│   ├── storage.py
+│   └── test_runner.py
+└── business_rule/
+    ├── access.py
+    ├── admin.py
+    ├── constants.py
+    ├── apps.py
+    ├── signals.py
+    ├── models/
+    ├── forms/
+    ├── services/
+    ├── selectors/
+    ├── views/
+    ├── management/commands/
+    ├── migrations/
+    └── tests/
 ```
 
 | Caminho | Responsabilidade |
 |---|---|
-| `system/models/` | persistência e invariantes |
-| `system/forms/` | validação server-side |
-| `system/services/` | regra de negócio e escrita transacional |
-| `system/selectors/` | leitura reutilizável, fora de views |
-| `system/views/` | HTTP fino |
-| `system/utils/` | apoio sem estado, sem acesso ao ORM |
-| `system/management/commands/` | seeds, checagens de conexão e limpeza de dado de teste |
-| `system/tests/` | um arquivo por camada ou funcionalidade |
-| `templates/` | apresentação |
-| `static/system/` | CSS e JS editáveis |
+| `system/core/` | base técnica compartilhável; não conhece o domínio |
+| `system/core/access/` | identidade, capability e guarda de acesso |
+| `system/core/audit/` | trilha de auditoria |
+| `system/core/mail/` | canal de e-mail transacional e sonda de entrega ponta a ponta |
+| `system/core/password_reset/` | fluxo de redefinição de senha por registro |
+| `system/core/appearance.py` | identidade e marca no contexto de template |
+| `system/core/documents.py` | documento brasileiro |
+| `system/core/dates.py` | data em pt-BR |
+| `system/core/pagination.py` | paginação de listagem |
+| `system/core/models.py` | bases de modelo: carimbo de tempo e exclusão lógica |
+| `system/core/config.py` | leitura tipada de configuração |
+| `system/core/environment.py` | contrato de ambiente: descoberta do arquivo, carga e leitura tipada de URL de banco |
+| `system/core/storage.py` | validação de URL de armazenamento de objeto |
+| `system/core/health.py` | resposta ao health check |
+| `system/core/test_runner.py` | runner de teste |
+| `system/core/management/commands/` | conexão, paridade de ambiente e schema, reset controlado, trava de API e superusuário |
+| `system/business_rule/access.py` | resolve a identidade do produto e registra seus contratos |
+| `system/business_rule/constants.py` | vocabulário do produto: `class Capability`, módulos de auditoria e unidades de listagem |
+| `system/business_rule/models/` | persistência e invariantes |
+| `system/business_rule/forms/` | validação server-side |
+| `system/business_rule/services/` | regra de negócio e escrita transacional |
+| `system/business_rule/selectors/` | leitura reutilizável, fora de views |
+| `system/business_rule/views/` | HTTP fino |
+| `system/business_rule/management/commands/` | seeds e limpeza de dado de teste do produto |
+| `system/business_rule/tests/` | um arquivo por camada ou funcionalidade |
+| `templates/core/` | mensagens da base técnica |
+| `templates/business_rule/` | telas do produto |
+| `static/system/` | CSS e JS da base técnica |
+| `static/business_rule/` | CSS e JS do produto |
 | `staticfiles/` | saída gerada por `collectstatic`; nunca editar à mão |
 
 Ao alterar asset versionado, atualizar o parâmetro `?v=` da referência.
@@ -208,8 +257,9 @@ ordem explícita do operador.
 
 ## 7. Banco e migrations
 
-- O projeto adota uma única migration vigente,
-  `system/migrations/0001_initial.py`.
+- Cada app admite no máximo uma migration vigente,
+  `<app>/migrations/0001_initial.py`. O checkout atual não versiona nenhuma: a
+  baseline é regerada pelo ciclo destrutivo local quando o schema muda.
 - Não criar migration incremental por padrão.
 - Mudança de schema local pode regenerar a baseline quando o objetivo pedir
   primeira carga ou reconstrução.

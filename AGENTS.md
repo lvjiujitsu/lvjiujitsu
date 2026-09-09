@@ -147,10 +147,10 @@ aqui de propósito, para sobreviverem a quem não alcança o vault.
 - Reset, migrations, testes e ORM **locais** necessários ao escopo são
   autorizados sem perguntar. Testes Django usam banco isolado e não tocam o
   SQLite local.
-- Enquanto os ambientes forem descartáveis, o checkout versiona uma **única**
-  migration vigente, `system/migrations/0001_initial.py`. Mudança de schema
-  termina com o ciclo destrutivo local e uma `0001_initial` consistente — nunca
-  com uma `0002`.
+- Enquanto os ambientes forem descartáveis, cada app admite no máximo uma
+  migration vigente, `<app>/migrations/0001_initial.py`, e o checkout atual não
+  versiona nenhuma. Mudança de schema termina com o ciclo destrutivo local e uma
+  `0001_initial` consistente por app — nunca com uma `0002`.
 - `clear_migrations.py` recusa qualquer ambiente que não seja inequivocamente
   local: arquivo de ambiente fora da raiz ou do compartilhado autorizado, `.env.hg`, `.env.prod`,
   `DJANGO_ENVIRONMENT` remoto, `DATABASE_URL` preenchida ou variável de seed
@@ -267,10 +267,22 @@ a executa.
 
 A base técnica deste repositório — arquivos de plataforma, ferramentas de ciclo e
 suas ordens — é estável: nome relativo, sequência e comportamento não mudam por
-conveniência de uma entrega. O que é próprio do produto vem sempre ao final do
+conveniência de uma entrega.
+
+A fronteira entre base técnica e produto tem duas formas. Para módulo Python,
+template e asset, a fronteira é **diretório**: `system/core/`,
+`templates/core/` e `static/system/` são base; `system/business_rule/`,
+`templates/business_rule/` e `static/business_rule/` são produto. `system/core/`
+nunca importa `system/business_rule/`; o caminho contrário é o único permitido, e
+o produto se liga ao núcleo por registro explícito em `BusinessRuleConfig.ready()`.
+
+Para o artefato achatado, que não comporta diretório — `settings.py`,
+`urls.py` do pacote, `wsgi.py`, `asgi.py`, `manage.py`, `system/urls.py`,
+`clear_migrations.py`, `requirements.txt`, `.env.example` e
+`.github/workflows/ci.yml` — o que é próprio do produto vem ao final do
 arquivo, marcado como `BN - business rule`, com consumidor e justificativa em
 `obsidian/projetos/lvjiujitsu/conhecimento-lvjiujitsu.md`.
 
 `/reset-local` e o hook `Stop` são desta base; o hook só verifica e nunca aplica
-correções. `settings.local.json` é configuração pessoal, ignorada pelo Git, e não
+correções. `.claude/settings.local.json` é configuração pessoal, ignorada pelo Git, e não
 integra o contrato deste repositório.

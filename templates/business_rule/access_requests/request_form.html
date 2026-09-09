@@ -1,0 +1,112 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }} — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{{ back_url }}">← Voltar</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ form_title }}</h1>
+          <p class="page-header__meta">{{ form_subtitle }}</p>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="system-messages" role="alert">
+        <div class="system-message system-message--error">{{ form.non_field_errors }}</div>
+      </div>
+      {% endif %}
+
+      <div class="form-card">
+        <section class="form-group">
+          <h2 class="form-group__title">Identificação</h2>
+          <div class="form-grid">
+            {% for field in form %}
+              {% if field.name in "full_name,cpf,email,phone" %}
+              <div class="form-field">
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="form-group">
+          <h2 class="form-group__title">Intenção no cadastro</h2>
+          <div class="form-grid">
+            {% for field in form %}
+              {% if field.name in "training_intent,compensation_preference,pix_key_type,pix_key" %}
+              <div class="form-field">
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="form-group">
+          <h2 class="form-group__title">Acesso solicitado</h2>
+          <div class="form-grid">
+            <div class="form-field form-field--full">
+              <label>{{ form.requested_roles.label }}</label>
+              <div class="checkbox-list">
+                {% for checkbox in form.requested_roles %}
+                <label class="checkbox-card">{{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span></label>
+                {% endfor %}
+              </div>
+              {{ form.requested_roles.errors }}
+            </div>
+            <div class="form-field form-field--full">
+              <div class="form-checkbox-row">
+                {{ form.grant_full_administrative }}
+                {{ form.grant_full_administrative.label_tag }}
+              </div>
+              {{ form.grant_full_administrative.errors }}
+            </div>
+            <div class="form-field form-field--full">
+              {{ form.justification.label_tag }}
+              {{ form.justification }}
+              {{ form.justification.errors }}
+            </div>
+          </div>
+        </section>
+
+        {% if form.password %}
+        <section class="form-group">
+          <h2 class="form-group__title">Senha inicial</h2>
+          <div class="form-grid">
+            <div class="form-field">
+              {{ form.password.label_tag }}
+              {{ form.password }}
+              {{ form.password.errors }}
+            </div>
+            <div class="form-field">
+              {{ form.password_confirm.label_tag }}
+              {{ form.password_confirm }}
+              {{ form.password_confirm.errors }}
+            </div>
+          </div>
+        </section>
+        {% endif %}
+      </div>
+
+      <div class="form-actions">
+        <a class="btn btn--secondary" href="{{ back_url }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">Enviar solicitação</button>
+      </div>
+    </form>
+{% endblock %}

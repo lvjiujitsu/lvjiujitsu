@@ -1,0 +1,55 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}{{ product.display_name }} — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:product-list' %}">← Materiais</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">{{ product.display_name }}</h1>
+          <p class="page-header__meta">{{ product.category.display_name }} · SKU {{ product.sku }}</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="panel" style="padding:1.25rem;">
+        <p>Preço unitário: R$ {{ product.unit_price|floatformat:2 }}</p>
+        {% if product.description %}<p style="margin-top:0.5rem;">{{ product.description }}</p>{% endif %}
+        <div class="entity-card__badges" style="margin-top:0.5rem;">
+          {% if product.is_active %}<span class="badge badge--success">Ativo</span>{% else %}<span class="badge badge--neutral">Inativo</span>{% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="variants-title">
+      <div class="section__header"><h2 class="section__title" id="variants-title">Variantes e estoque</h2></div>
+      <div class="panel">
+        {% if product.variants.all %}
+        <ul class="entity-list">
+          {% for variant in product.variants.all %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ variant.size|default:"—" }} · {{ variant.color|default:"—" }}</div>
+              <div class="entity-card__meta">{{ variant.stock_quantity }} em estoque</div>
+            </div>
+            <div class="entity-card__badges">
+              {% if variant.is_active %}<span class="badge badge--success">Ativa</span>{% else %}<span class="badge badge--neutral">Inativa</span>{% endif %}
+              {% if variant.stock_quantity == 0 %}<span class="badge badge--danger">Esgotado</span>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhuma variante cadastrada.</p></div>
+        {% endif %}
+      </div>
+    </section>
+{% endblock %}

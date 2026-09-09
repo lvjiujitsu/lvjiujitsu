@@ -1,0 +1,69 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Histórico de assinaturas — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/audit/membership_timeline.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:admin-hub' %}">← Administração</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Histórico de assinaturas e família</h1>
+          <p class="page-header__meta">Trilha técnica de eventos de dependente, plano, pausa, cobrança e cancelamento</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <form class="filter-form" method="get">
+        <div class="filter-field">
+          <label class="filter-label" for="person-filter">Pessoa</label>
+          <input class="filter-input" id="person-filter" type="text" name="person" value="{{ person_search }}" placeholder="Nome da pessoa">
+        </div>
+        <div class="filter-field">
+          <label class="filter-label" for="event-type-filter">Tipo de evento</label>
+          <select class="filter-select" id="event-type-filter" name="event_type">
+            <option value="">Todos</option>
+            {% for value, label in event_type_choices %}
+            <option value="{{ value }}" {% if event_type_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:membership-timeline-admin-list' %}">Limpar</a>
+        </div>
+      </form>
+    </div>
+
+    <section class="section" aria-labelledby="membership-timeline-title">
+      <div class="section__header">
+        <h2 class="section__title" id="membership-timeline-title">{{ events|length }} evento{{ events|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if events %}
+        <ul class="entity-list" aria-label="Histórico de assinaturas e família">
+          {% for event in events %}
+          <li class="entity-card membership-timeline-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ event.person_name }}</div>
+              <div class="entity-card__meta">{{ event.description }} · {{ event.created_at|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="entity-card__badges">
+              <span class="badge badge--info">{{ event.event_type_label }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhum evento encontrado.</p></div>
+        {% endif %}
+      </div>
+    </section>
+{% endblock %}

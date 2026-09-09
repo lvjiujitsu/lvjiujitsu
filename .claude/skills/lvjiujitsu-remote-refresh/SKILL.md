@@ -31,7 +31,7 @@ Por pedido explícito para reconstruir HG ou produção. Ler
    da nota de banco. Conferir nomes e flags com `manage.py help <comando>`.
    Aplicar as particularidades do produto abaixo somente quando solicitadas.
 7. Executar `lock_supabase_api_access` e `lock_supabase_api_access --check`.
-8. Validar `check`, `showmigrations system`, `check_schema_parity` e contagens
+8. Validar `check`, `showmigrations core business_rule`, `check_schema_parity` e contagens
    dos modelos efetivamente semeados. Teste local não comprova estado remoto.
 9. Restaurar as variáveis de processo ao estado anterior, inclusive em falha.
    Parar no primeiro erro e registrar o passo para retomada.
@@ -46,6 +46,8 @@ proteção da Data API, schema, contagens e falhas com saída observada.
 - Faltar autorização, confirmação, configuração, fonte de seed ou conexão válida.
 - Existir dado que precise ser preservado.
 - Qualquer comando falhar, o schema divergir ou a Data API continuar exposta.
+
+<!-- BN - business rule: particularidades do produto. -->
 
 ## Particularidades do produto
 

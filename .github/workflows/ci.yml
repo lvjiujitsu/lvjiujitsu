@@ -29,9 +29,9 @@ jobs:
       ADMIN_SUPERUSER_USERNAME: ci-admin
       ADMIN_SUPERUSER_EMAIL: ci-admin@example.com
       ADMIN_SUPERUSER_PASSWORD: ci-only-password
-      SEED_INITIAL_TEACHER_PASSWORD: ci-only-password
-      SEED_INITIAL_ADMINISTRATIVE_PASSWORD: ci-only-password
-      SEED_TEST_PORTAL_PASSWORD: ci-only-password
+      SEED_INITIAL_TEACHER_PASSWORD: ci-only-password  # BN - business rule
+      SEED_INITIAL_ADMINISTRATIVE_PASSWORD: ci-only-password  # BN - business rule
+      SEED_TEST_PORTAL_PASSWORD: ci-only-password  # BN - business rule
     steps:
       - name: Checkout
         uses: actions/checkout@v7

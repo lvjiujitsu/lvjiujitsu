@@ -1,34 +1,70 @@
 from django.urls import path
-from django.views.generic import RedirectView
 
-from system.views.auth_views import (
-    ChromeDevtoolsProbeView,
-    HealthCheckView,
-    FinalizeRegistrationView,
-    MaterialsCheckoutView,
-    PortalChangePasswordView,
-    PortalLoginView,
-    RegistrationCpfAvailabilityView,
-    RegistrationEligibilityView,
-    PortalLogoutView,
-    PortalRegisterView,
-    ResetRegistrationView,
-    ValidateCouponView,
-)
-from system.views.password_reset_views import (
+from system.core.health import health
+from system.business_rule.views.auth_views import LoginView, LogoutView
+from system.business_rule.views.home_views import HomeView
+from system.business_rule.views.password_reset_views import (
     PasswordResetConfirmView,
     PasswordResetDoneView,
     PasswordResetRequestView,
     PasswordResetSentView,
 )
-from system.views.access_request_views import (
+
+app_name = "system"
+
+urlpatterns = [
+    path("", HomeView.as_view(), name="home"),
+    path("health/", health, name="health"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path(
+        "password-reset/",
+        PasswordResetRequestView.as_view(),
+        name="password-reset",
+    ),
+    path(
+        "password-reset/sent/",
+        PasswordResetSentView.as_view(),
+        name="password-reset-sent",
+    ),
+    path(
+        "password-reset/done/",
+        PasswordResetDoneView.as_view(),
+        name="password-reset-done",
+    ),
+    path(
+        "password-reset/<str:identifier>/<str:token>/",
+        PasswordResetConfirmView.as_view(),
+        name="password-reset-confirm",
+    ),
+]
+
+# ----------------------------------------------------------------------------
+# BN - business rule: rotas do produto. Acima desta linha esta a base de rotas
+# e os imports que ela exige, com os mesmos nomes e na mesma ordem. Registro em
+# obsidian/projetos/lvjiujitsu/.
+# ----------------------------------------------------------------------------
+
+from django.views.generic import RedirectView
+from system.business_rule.views.auth_views import (
+    ChromeDevtoolsProbeView,
+    FinalizeRegistrationView,
+    MaterialsCheckoutView,
+    PortalChangePasswordView,
+    PortalRegisterView,
+    RegistrationCpfAvailabilityView,
+    RegistrationEligibilityView,
+    ResetRegistrationView,
+    ValidateCouponView,
+)
+from system.business_rule.views.access_request_views import (
     AdministrativeAccessRequestDetailView,
     AdministrativeAccessRequestQueueView,
     AdministrativeAccessRequestSelfCancelView,
     PortalAdministrativeAccessRequestCreateView,
     PublicAdministrativeAccessRequestCreateView,
 )
-from system.views.asaas_views import (
+from system.business_rule.views.asaas_views import (
     AsaasWebhookView,
     CreateCreditCardChargeView,
     CreatePixChargeView,
@@ -38,8 +74,8 @@ from system.views.asaas_views import (
     PayoutQueueView,
     PayoutRefuseView,
 )
-from system.views.admin_views import AdminHubView, AuditLogListView, MembershipTimelineAdminListView
-from system.views.billing_admin_views import (
+from system.business_rule.views.admin_views import AdminHubView, AuditLogListView, MembershipTimelineAdminListView
+from system.business_rule.views.billing_admin_views import (
     ApprovalQueueView,
     CancelMembershipActionView,
     ChangeMembershipPlanActionView,
@@ -49,14 +85,14 @@ from system.views.billing_admin_views import (
     PendingPaymentListView,
     RefundOrderActionView,
 )
-from system.views.category_views import (
+from system.business_rule.views.category_views import (
     ClassCategoryCreateView,
     ClassCategoryDeleteView,
     ClassCategoryDetailView,
     ClassCategoryListView,
     ClassCategoryUpdateView,
 )
-from system.views.class_views import (
+from system.business_rule.views.class_views import (
     ClassGroupCreateView,
     ClassGroupDeleteView,
     ClassGroupDetailView,
@@ -68,14 +104,14 @@ from system.views.class_views import (
     ClassScheduleListView,
     ClassScheduleUpdateView,
 )
-from system.views.class_request_views import (
+from system.business_rule.views.class_request_views import (
     ClassCatalogRequestDetailView,
     ClassCatalogRequestQueueView,
     ClassCatalogRequestSelfCancelView,
     ExistingTeacherClassCatalogRequestCreateView,
     PublicNewTeacherClassCatalogRequestCreateView,
 )
-from system.views.graduation_views import (
+from system.business_rule.views.graduation_views import (
     BeltRankCreateView,
     BeltRankDeleteView,
     BeltRankDetailView,
@@ -90,19 +126,18 @@ from system.views.graduation_views import (
     GraduationRuleListView,
     GraduationRuleUpdateView,
 )
-from system.views.stripe_views import StripeWebhookView
-from system.views.home_views import (
+from system.business_rule.views.stripe_views import StripeWebhookView
+from system.business_rule.views.home_views import (
     ClientProfileDeactivateView,
     ClientProfileUpdateView,
     DashboardRedirectView,
-    HomeView,
 )
-from system.views.dependent_views import (
+from system.business_rule.views.dependent_views import (
     DependentProfileUpdateView,
     DependentRegistrationView,
     DependentRemoveView,
 )
-from system.views.person_views import (
+from system.business_rule.views.person_views import (
     PersonCreateView,
     PersonDeleteView,
     PersonDetailView,
@@ -115,14 +150,14 @@ from system.views.person_views import (
     PersonUpdateView,
     VeteranPlanDecisionView,
 )
-from system.views.plan_views import (
+from system.business_rule.views.plan_views import (
     PlanCreateView,
     PlanDeleteView,
     PlanDetailView,
     PlanListView,
     PlanUpdateView,
 )
-from system.views.plan_tier_views import (
+from system.business_rule.views.plan_tier_views import (
     PlanPriceCreateView,
     PlanPriceDeleteView,
     PlanPriceUpdateView,
@@ -132,14 +167,14 @@ from system.views.plan_tier_views import (
     PlanTierListView,
     PlanTierUpdateView,
 )
-from system.views.plan_change_views import MembershipUpdateCardView, PlanChangeSelectView
-from system.views.membership_pause_views import (
+from system.business_rule.views.plan_change_views import MembershipUpdateCardView, PlanChangeSelectView
+from system.business_rule.views.membership_pause_views import (
     MembershipPauseQuotaView,
     MembershipPauseRequestCreateView,
     MembershipPauseRequestDetailView,
     MembershipPauseRequestQueueView,
 )
-from system.views.calendar_views import (
+from system.business_rule.views.calendar_views import (
     CalendarView,
     InstructorApproveCheckinView,
     InstructorApproveSpecialCheckinView,
@@ -157,14 +192,14 @@ from system.views.calendar_views import (
     StudentSpecialClassCheckinCancelView,
     StudentSpecialClassCheckinView,
 )
-from system.views.payment_views import (
+from system.business_rule.views.payment_views import (
     DeferPaymentView,
     PaymentCancelView,
     PaymentMethodChoiceView,
     PaymentSuccessView,
     RetryPendingOrderView,
 )
-from system.views.product_views import (
+from system.business_rule.views.product_views import (
     AdminBackorderQueueView,
     CreateProductOrderView,
     ProductBackorderCreateView,
@@ -185,25 +220,7 @@ from system.views.product_views import (
     StudentOrderHistoryView,
 )
 
-
-app_name = "system"
-
-
-urlpatterns = [
-    path("", HomeView.as_view(), name="home"),
-    path("health/", HealthCheckView.as_view(), name="health"),
-    path("login/", PortalLoginView.as_view(), name="login"),
-    path("logout/", PortalLogoutView.as_view(), name="logout"),
-    path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
-    path("password-reset/sent/", PasswordResetSentView.as_view(), name="password-reset-sent"),
-    path("password-reset/done/", PasswordResetDoneView.as_view(), name="password-reset-done"),
-    path("password-reset/<str:identifier>/<str:token>/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
-
-# ----------------------------------------------------------------------------
-# BN - business rule: rotas do produto. Acima desta linha está a base de rotas
-# do repositório, com os mesmos nomes e na mesma ordem. Registro em
-# obsidian/projetos/lvjiujitsu/.
-# ----------------------------------------------------------------------------
+urlpatterns += [
     path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("register/admin-access/", PublicAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-public-create"),

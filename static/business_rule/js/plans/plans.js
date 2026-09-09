@@ -4,7 +4,7 @@
   var moon = document.getElementById("icon-moon");
 
   function resolveInitialTheme() {
-    var storedTheme = localStorage.getItem("lv-theme");
+    var storedTheme = localStorage.getItem(window.THEME_STORAGE_KEY);
     if (storedTheme === "dark" || storedTheme === "light") {
       return storedTheme;
     }
@@ -29,7 +29,7 @@
     applyTheme(resolveInitialTheme());
     toggle.addEventListener("click", function () {
       var nextTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      localStorage.setItem("lv-theme", nextTheme);
+      localStorage.setItem(window.THEME_STORAGE_KEY, nextTheme);
       applyTheme(nextTheme);
     });
   }

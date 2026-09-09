@@ -1,0 +1,177 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Cronograma — {{ site_name }}{% endblock %}
+
+{% block body_class %}{% if is_embedded %}calendar-embedded{% endif %}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/home/dashboard.css' %}?v=18">
+{% endblock %}
+
+{% block topbar %}
+{% if not is_embedded %}
+{{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block page_class %} page--calendar{% endblock %}
+
+{% block content %}
+
+    {% if show_instructor_area %}
+    <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
+    <script type="application/json" id="cal-config">{
+      "toggleSessionUrl": "{% url 'system:instructor-toggle-session' %}",
+      "specialCreateUrl": "{% url 'system:instructor-special-class-create' %}",
+      "specialDeleteUrl": "{% url 'system:instructor-special-class-delete' %}",
+      "ownedScheduleIds": {{ instructor_owned_schedule_ids|default:"[]" }},
+      "ownedSpecialIds": {{ instructor_owned_special_ids|default:"[]" }}
+    }</script>
+    {% endif %}
+
+    <div class="page-header">
+      {% if not is_embedded %}
+      <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      {% endif %}
+      <h1 class="page-header__title">Cronograma</h1>
+    </div>
+
+    <section class="section calendar-board" aria-labelledby="calendar-title">
+      <div class="cal-nav">
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.prev_year month=calendar.prev_month %}{{ calendar_query_suffix }}">← Mês anterior</a>
+        <span class="cal-nav__title" id="calendar-title">{{ calendar.month_name }} {{ calendar.year }}</span>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:calendar-month' year=calendar.next_year month=calendar.next_month %}{{ calendar_query_suffix }}">Próximo mês →</a>
+        {% if show_instructor_area %}
+        <button class="btn btn--primary btn--sm js-open-special-modal" type="button">Criar aulão</button>
+        <a class="btn btn--secondary btn--sm" href="{% url 'system:class-catalog-request-create' %}">Solicitar novo horário</a>
+        {% endif %}
+      </div>
+
+      <div class="cal-grid cal-grid--weekdays">
+        <div class="cal-header-cell">Seg</div>
+        <div class="cal-header-cell">Ter</div>
+        <div class="cal-header-cell">Qua</div>
+        <div class="cal-header-cell">Qui</div>
+        <div class="cal-header-cell">Sex</div>
+        <div class="cal-header-cell">Sáb</div>
+        <div class="cal-header-cell">Dom</div>
+      </div>
+
+      <div class="cal-grid cal-grid--days">
+        {% for day in calendar.days %}
+        <div class="cal-day{% if day.is_today %} cal-day--today{% endif %}{% if day.is_holiday %} cal-day--holiday{% endif %}">
+          <button class="cal-day__button js-open-day-detail" type="button" aria-haspopup="dialog" data-day-title="{{ day.day }} de {{ calendar.month_name }} de {{ calendar.year }}" data-detail-id="cal-detail-{{ forloop.counter }}">
+            <span class="cal-day__num" title="{% if day.holiday_name %}{{ day.holiday_name }}{% endif %}">
+              {{ day.day }}{% if day.is_holiday %} 🏖{% endif %}
+            </span>
+            <span class="cal-day__weekday">{{ day.weekday }}</span>
+            <span class="cal-day__events">
+              {% for class in day.classes %}
+              <span class="cal-class-pill{% if class.is_cancelled %} cal-class-pill--cancelled{% elif show_instructor_area and class.schedule_id in instructor_owned_schedule_ids %} cal-class-pill--owned{% endif %}"
+                    title="{{ class.group_name }} — {{ class.category_name }}{% if class.teacher_name %} ({{ class.teacher_name }}){% endif %}{% if class.is_cancelled %} — Cancelada{% endif %}">
+                {{ class.start_time }} {{ class.group_name }}
+              </span>
+              {% endfor %}
+              {% for special in day.specials %}
+              <span class="cal-class-pill{% if show_instructor_area and special.special_id in instructor_owned_special_ids %} cal-class-pill--special{% elif not show_instructor_area %} cal-class-pill--special{% endif %}"
+                    title="{{ special.group_name }}{% if special.teacher_name %} ({{ special.teacher_name }}){% endif %}">
+                {{ special.start_time }} ★ {{ special.group_name }}
+              </span>
+              {% endfor %}
+              {% if not day.classes and not day.specials %}
+              <span class="cal-day__empty">Sem aulas</span>
+              {% endif %}
+            </span>
+          </button>
+          <div class="calendar-day-detail" id="cal-detail-{{ forloop.counter }}" hidden>
+            {% if day.holiday_name %}
+            <p class="calendar-day-detail__holiday">{{ day.holiday_name }}</p>
+            {% endif %}
+            {% for class in day.classes %}
+            <div class="calendar-day-detail__item{% if class.is_cancelled %} calendar-day-detail__item--cancelled{% endif %}">
+              <span class="calendar-day-detail__time">{{ class.start_time }}</span>
+              <div class="calendar-day-detail__body">
+                <span class="calendar-day-detail__title">{{ class.group_name }}</span>
+                <span class="calendar-day-detail__meta">{{ class.category_name }}{% if class.teacher_name %} · {{ class.teacher_name }}{% endif %}{% if class.is_cancelled %} · Cancelada{% endif %}</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for special in day.specials %}
+            <div class="calendar-day-detail__item calendar-day-detail__item--special">
+              <span class="calendar-day-detail__time">{{ special.start_time }}</span>
+              <div class="calendar-day-detail__body">
+                <span class="calendar-day-detail__title">★ {{ special.group_name }}</span>
+                <span class="calendar-day-detail__meta">Aulão{% if special.teacher_name %} · {{ special.teacher_name }}{% endif %}</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% if not day.classes and not day.specials and not day.holiday_name %}
+            <p class="modal-empty">Sem aulas neste dia.</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="cal-legend">
+        {% if show_instructor_area %}
+        <span><span class="cal-class-pill cal-class-pill--owned">Minhas turmas</span></span>
+        {% else %}
+        <span><span class="cal-class-pill">Aula regular</span></span>
+        {% endif %}
+        <span><span class="cal-class-pill cal-class-pill--special">★ Aulão</span></span>
+        <span><span class="cal-class-pill cal-class-pill--cancelled">Cancelada</span></span>
+      </div>
+    </section>
+
+{% endblock %}
+
+{% block modals %}
+  <div class="modal-overlay" id="calendar-day-modal" hidden role="dialog" aria-modal="true" aria-labelledby="calendar-day-modal-title">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="calendar-day-modal-title">Dia</h2>
+        <button class="modal__close js-close-day-detail" type="button" aria-label="Fechar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="calendar-day-modal-body" id="calendar-day-modal-body"></div>
+    </div>
+  </div>
+
+  {% if show_instructor_area %}
+  <div class="modal-overlay" id="special-class-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-cal-title">
+    <div class="modal">
+      <h2 class="modal__title" id="modal-cal-title">Criar aulão</h2>
+      <form class="js-special-class-form" novalidate>
+        <div class="modal__field">
+          <label class="modal__label" for="cal-aulao-title">Título</label>
+          <input class="modal__input" type="text" id="cal-aulao-title" name="title" placeholder="Ex: Aulão de raspagem" autocomplete="off">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="cal-aulao-date">Data</label>
+          <input class="modal__input" type="date" id="cal-aulao-date" name="date">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="cal-aulao-time">Horário</label>
+          <input class="modal__input" type="time" id="cal-aulao-time" name="start_time">
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="cal-aulao-duration">Duração (minutos)</label>
+          <input class="modal__input" type="number" id="cal-aulao-duration" name="duration_minutes" min="15" max="360" placeholder="Ex: 90">
+        </div>
+        <p class="modal__error" role="alert" aria-live="assertive"></p>
+        <div class="modal__actions">
+          <button class="btn btn--secondary js-close-modal" type="button">Cancelar</button>
+          <button class="btn btn--primary" type="submit">Criar aulão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'business_rule/js/calendar/calendar.js' %}?v=3" defer></script>
+{% endblock %}

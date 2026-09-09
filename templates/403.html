@@ -1,0 +1,18 @@
+{% extends "business_rule/auth/base_auth.html" %}
+
+{% block title %}{{ site_name }} | Acesso negado{% endblock %}
+{% block body_class %}error-page{% endblock %}
+
+{% block auth_body %}
+<main class="error-shell" id="main-content">
+    <section class="error-card" aria-labelledby="error-title">
+        <p class="error-code">Erro 403</p>
+        <h1 class="error-title" id="error-title">Você não possui permissão</h1>
+        <p class="error-description">
+            Seu perfil não tem acesso a esta área. Fale com a administração
+            caso precise de acesso.
+        </p>
+        <a href="{% url 'system:home' %}" class="error-action">Voltar ao início</a>
+    </section>
+</main>
+{% endblock %}

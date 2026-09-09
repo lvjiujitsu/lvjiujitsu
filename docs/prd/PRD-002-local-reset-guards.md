@@ -28,7 +28,7 @@ Expected evidence: commands, outputs and focused regression tests. Output format
 
 ## Scope
 
-clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
+clear_migrations.py, system/business_rule/tests/test_tooling_parity.py, system/business_rule/tests/test_remote_reset_parity.py, system/core/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
 
 ## Out of scope
 
@@ -36,7 +36,7 @@ Product redesign, schema changes, real local database reset, remote reset, netwo
 
 ## Impacted files
 
-clear_migrations.py, system/tests/test_tooling_parity.py, system/tests/test_remote_reset_parity.py, system/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
+clear_migrations.py, system/business_rule/tests/test_tooling_parity.py, system/business_rule/tests/test_remote_reset_parity.py, system/core/management/commands/_supabase_public_schema_reset.py and HG/prod subclasses; the settings loader and the missing environment/schema check commands; Obsidian database operation notes.
 
 ## Risks and edge cases
 

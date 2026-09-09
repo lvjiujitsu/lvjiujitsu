@@ -1,0 +1,234 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Pessoas — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+
+    <div class="page-header">
+      <p class="page-header__eyebrow">
+        <a href="{% url 'system:home' %}">← Início</a>
+      </p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Pessoas</h1>
+          <p class="page-header__meta">Pessoas cadastradas no sistema</p>
+        </div>
+        <div class="page-header__actions">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-crud-modal-open="{% url 'system:person-create' %}?modal=1"
+          >
+            + {{ person_create_label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <form class="filter-form" method="get" action="{% url 'system:person-list' %}">
+
+        <div class="filter-field filter-field--wide">
+          <label class="filter-label" for="{{ filter_form.full_name.id_for_label }}">Nome</label>
+          <input
+            class="filter-input"
+            type="text"
+            id="{{ filter_form.full_name.id_for_label }}"
+            name="{{ filter_form.full_name.html_name }}"
+            value="{{ filter_form.full_name.value|default:'' }}"
+            placeholder="Buscar por nome..."
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.cpf.id_for_label }}">CPF</label>
+          <input
+            class="filter-input"
+            type="text"
+            id="{{ filter_form.cpf.id_for_label }}"
+            name="{{ filter_form.cpf.html_name }}"
+            value="{{ filter_form.cpf.value|default:'' }}"
+            placeholder="000.000.000-00"
+            autocomplete="off"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.class_category.id_for_label }}">Categoria</label>
+          <select class="filter-select" id="{{ filter_form.class_category.id_for_label }}" name="{{ filter_form.class_category.html_name }}">
+            <option value="">Todas</option>
+            {% for value, label in filter_form.class_category.field.choices %}
+            {% if value %}
+            <option value="{{ value }}" {% if filter_form.class_category.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label" for="{{ filter_form.weekday.id_for_label }}">Dia</label>
+          <select class="filter-select" id="{{ filter_form.weekday.id_for_label }}" name="{{ filter_form.weekday.html_name }}">
+            <option value="">Todos</option>
+            {% for value, label in filter_form.weekday.field.choices %}
+            {% if value %}
+            <option value="{{ value }}" {% if filter_form.weekday.value == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if can_manage_people %}
+        <div class="filter-field">
+          <div class="filter-checkbox-row" style="padding-top:1.25rem">
+            {{ filter_form.is_teacher }}
+            <label for="{{ filter_form.is_teacher.id_for_label }}">Somente professores</label>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="filter-actions">
+          <button class="btn btn--primary btn--sm" type="submit">Filtrar</button>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:person-list' %}">Limpar</a>
+        </div>
+
+      </form>
+    </div>
+
+    <section class="section" aria-labelledby="people-list-title">
+      <div class="section__header">
+        <h2 class="section__title" id="people-list-title">{{ people|length }} pessoa{{ people|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if people %}
+        <ul class="person-list" aria-label="Lista de pessoas">
+          {% for person in people %}
+          <li class="person-card">
+
+            <span class="person-card__avatar" aria-hidden="true">
+              {{ person.full_name|first|upper }}
+            </span>
+
+            <div class="person-card__body">
+              <div class="person-card__name">{{ person.full_name }}</div>
+
+              <div class="person-card__badges">
+                {% if person.person_type %}
+                  {% with code=person.person_type.code %}
+                  {% if code == "student" or code == "dependent" %}
+                    <span class="badge badge--info">{{ person.person_type.display_name }}</span>
+                  {% elif code == "instructor" %}
+                    <span class="badge badge--success">{{ person.person_type.display_name }}</span>
+                  {% elif code == "administrative-assistant" %}
+                    <span class="badge badge--warning">{{ person.person_type.display_name }}</span>
+                  {% elif code == "guardian" %}
+                    <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+                  {% else %}
+                    <span class="badge badge--neutral">{{ person.person_type.display_name }}</span>
+                  {% endif %}
+                  {% endwith %}
+                {% else %}
+                  <span class="badge badge--neutral">Sem tipo</span>
+                {% endif %}
+
+                {% if not person.is_active %}
+                  <span class="badge badge--neutral">Inativo</span>
+                {% elif not person.has_portal_access %}
+                  <span class="badge badge--warning">Sem acesso</span>
+                {% else %}
+                  <span class="badge badge--success">Ativo</span>
+                {% endif %}
+              </div>
+
+              {% if person.show_student_context and person.active_group_labels %}
+              <div class="person-card__meta">
+                {{ person.active_group_labels|join:" · " }}
+                {% if person.active_schedule_labels %}
+                  · {{ person.active_schedule_labels|join:", " }}
+                {% endif %}
+              </div>
+              {% elif person.show_teacher_context and person.teaching_group_labels %}
+              <div class="person-card__meta">
+                Leciona: {{ person.teaching_group_labels|join:", " }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="person-card__actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:person-detail' pk=person.pk %}">
+                Detalhe
+              </a>
+              {% if can_manage_people %}
+              <button
+                type="button"
+                class="btn-icon"
+                data-crud-modal-open="{% url 'system:person-update' pk=person.pk %}?modal=1"
+                aria-label="Editar {{ person.full_name }}"
+                title="Editar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <a
+                class="btn-icon"
+                href="{% url 'system:person-delete' pk=person.pk %}"
+                data-confirm-delete-open
+                data-confirm-delete-label="{{ person.full_name }}"
+                aria-label="Excluir {{ person.full_name }}"
+                title="Excluir"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </a>
+              {% endif %}
+            </div>
+
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status">
+          <span class="empty-state__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </span>
+          <p class="empty-state__text">Nenhuma pessoa encontrada com os filtros aplicados.</p>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+{% endblock %}
+
+{% block modals %}
+  <dialog class="crud-modal" data-crud-modal aria-label="Formulário de pessoa">
+    <iframe class="crud-modal__frame" data-crud-modal-frame src="about:blank" title="Formulário de pessoa"></iframe>
+  </dialog>
+
+  <dialog class="confirm-delete-dialog" data-confirm-delete-dialog aria-label="Confirmar exclusão">
+    <form method="post" data-confirm-delete-form>
+      {% csrf_token %}
+      <p class="confirm-delete-dialog__text">
+        Confirma excluir <strong data-confirm-delete-name></strong>? Essa ação não pode ser desfeita.
+      </p>
+      <div class="confirm-delete-dialog__actions">
+        <button type="button" class="btn btn--secondary" data-confirm-delete-cancel>Cancelar</button>
+        <button type="submit" class="btn btn--danger">Excluir</button>
+      </div>
+    </form>
+  </dialog>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'business_rule/js/lv/crud_modal.js' %}?v=20260709-1"></script>
+  <script src="{% static 'business_rule/js/lv/confirm_delete.js' %}"></script>
+{% endblock %}

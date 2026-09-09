@@ -1,0 +1,279 @@
+from django.conf import settings
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.views import View
+
+from system.business_rule.models.person import PersonRelationship, PersonRelationshipKind, PortalAccount
+from system.business_rule.models import PreRegistration, PreRegistrationStatus
+from system.business_rule.models.registration_order import (
+    PaymentStatus,
+    RegistrationOrder,
+)
+from system.business_rule.access import (
+    is_technical_admin,
+    login_portal_identity,
+    portal_person,
+)
+from system.business_rule.services.dependent_registration import DEPENDENT_FLOW_KIND
+from system.business_rule.services.membership import get_latest_open_order
+from system.business_rule.services.trial_access import grant_trial_for_order
+from system.business_rule.services.stripe_checkout import StripeCheckoutError, create_subscription_session_for_plan_change
+
+
+def _redirect_missing_order(request):
+    messages.error(request, "Pedido não encontrado.")
+    return redirect("system:home")
+
+
+def _is_authorized_for_order(request, order):
+    person = order.person
+    actor = portal_person(request)
+    if actor and actor.pk == person.pk:
+        return True
+    if actor and PersonRelationship.objects.filter(
+        source_person=person,
+        target_person=actor,
+        relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+    ).exists():
+        return True
+    if actor and PersonRelationship.objects.filter(
+        source_person=actor,
+        target_person=person,
+        relationship_kind=PersonRelationshipKind.RESPONSIBLE_FOR,
+    ).exists():
+        return True
+    if is_technical_admin(request):
+        return True
+    session_order_id = request.session.get("pending_checkout_order_id")
+    if session_order_id and int(session_order_id) == order.pk:
+        return True
+    return False
+
+
+class PaymentMethodChoiceView(View):
+    def get(self, request, order_id, *args, **kwargs):
+        try:
+            order = RegistrationOrder.objects.select_related(
+                "plan", "plan_price_ref", "person"
+            ).get(pk=order_id)
+        except RegistrationOrder.DoesNotExist:
+            return _redirect_missing_order(request)
+        if not _is_authorized_for_order(request, order):
+            return _redirect_missing_order(request)
+        if order.payment_status in (
+            PaymentStatus.PAID,
+            PaymentStatus.EXEMPTED,
+            PaymentStatus.REFUNDED,
+        ):
+            messages.info(request, "Este pedido já foi processado.")
+            return redirect("system:dashboard-redirect")
+        gateway_code = _resolve_order_gateway_code(order)
+        if gateway_code == "stripe_card":
+
+            try:
+                session = create_subscription_session_for_plan_change(order, request)
+            except StripeCheckoutError as exc:
+                messages.error(request, str(exc))
+                return redirect("system:dashboard-redirect")
+            return redirect(session["url"])
+        if gateway_code == "asaas_card":
+            return redirect("system:asaas-card-create", order_id=order.pk)
+        return redirect("system:asaas-pix-create", order_id=order.pk)
+
+
+def _resolve_order_gateway_code(order):
+    if order.plan_price_ref_id:
+        return order.plan_price_ref.gateway_code
+    if order.plan_id and order.plan:
+        return order.plan.gateway_code
+    return "asaas_pix"
+
+
+class DeferPaymentView(View):
+    def get(self, request, order_id, *args, **kwargs):
+        return self._defer(request, order_id)
+
+    def post(self, request, order_id, *args, **kwargs):
+        return self._defer(request, order_id)
+
+    def _defer(self, request, order_id):
+        try:
+            order = RegistrationOrder.objects.select_related("plan", "person").get(
+                pk=order_id
+            )
+        except RegistrationOrder.DoesNotExist:
+            return _redirect_missing_order(request)
+
+        if not _is_authorized_for_order(request, order):
+            return _redirect_missing_order(request)
+
+        if order.payment_status in (
+            PaymentStatus.PAID,
+            PaymentStatus.EXEMPTED,
+            PaymentStatus.REFUNDED,
+        ):
+            messages.info(request, "Este pedido já foi processado.")
+            return redirect("system:dashboard-redirect")
+
+        grant_trial_for_order(
+            order,
+            notes="Pagamento adiado pelo usuário na tela de checkout.",
+        )
+        request.session["post_plan_payment_complete"] = True
+        request.session["plan_order_id"] = order.pk
+        request.session.pop("post_materials_payment_complete", None)
+        request.session.pop("materials_order_id", None)
+        messages.info(
+            request,
+            f"Você tem {settings.TRIAL_ACCESS_DEFAULT_CLASSES} aula(s) experimental(is) "
+            "liberada. Finalize seu cadastro para ativar a mensalidade.",
+        )
+        return redirect("system:register")
+
+
+class RetryPendingOrderView(View):
+    def get(self, request, *args, **kwargs):
+        return self._retry(request)
+
+    def post(self, request, *args, **kwargs):
+        return self._retry(request)
+
+    def _retry(self, request):
+        actor = portal_person(request)
+        if actor is None:
+            session_order_id = request.session.get("pending_checkout_order_id")
+            if not session_order_id:
+                return redirect("system:login")
+            return redirect("system:payment-checkout", order_id=session_order_id)
+        order = get_latest_open_order(actor)
+        if order is None:
+            messages.info(request, "Não há pagamento pendente.")
+            return redirect("system:dashboard-redirect")
+        return redirect("system:payment-checkout", order_id=order.pk)
+
+
+class PaymentSuccessView(View):
+    def get(self, request, *args, **kwargs):
+        pre_registration_response = self._handle_pre_registration_success(request)
+        if pre_registration_response is not None:
+            return pre_registration_response
+
+        order_id = request.session.pop("pending_checkout_order_id", None)
+        order = None
+
+        if order_id:
+            try:
+                order = RegistrationOrder.objects.select_related("person").get(pk=order_id)
+            except RegistrationOrder.DoesNotExist:
+                order = None
+
+        if order is None:
+            asaas_payment_id = request.GET.get("id")
+            if asaas_payment_id:
+                order = (
+                    RegistrationOrder.objects
+                    .select_related("person")
+                    .filter(asaas_payment_id=asaas_payment_id)
+                    .first()
+                )
+
+        if order is not None:
+            person = order.person
+
+            portal_account = PortalAccount.objects.filter(
+                person=person, is_active=True
+            ).first()
+            if portal_account:
+                login_portal_identity(request, portal_account=portal_account)
+                messages.success(request, "Pagamento confirmado!")
+                return redirect("system:dashboard-redirect")
+
+        messages.success(request, "Pagamento confirmado!")
+        return redirect("system:login")
+
+    def _handle_pre_registration_success(self, request):
+        pre_registration_id = request.GET.get("pre_registration_id") or request.session.get(
+            "pending_pre_registration_id"
+        )
+        stage = request.GET.get("stage") or ""
+
+        pre_registration = None
+        if pre_registration_id and stage in ("plan", "materials"):
+            pre_registration = PreRegistration.objects.filter(pk=pre_registration_id).first()
+
+        if pre_registration is None:
+            asaas_payment_id = request.GET.get("id") or ""
+            if asaas_payment_id:
+                pr = PreRegistration.objects.filter(
+                    form_snapshot__plan_payment__asaas_payment_id=asaas_payment_id
+                ).first()
+                if pr:
+                    pre_registration = pr
+                    stage = "plan"
+                else:
+                    pr = PreRegistration.objects.filter(
+                        form_snapshot__materials_payment__asaas_payment_id=asaas_payment_id
+                    ).first()
+                    if pr:
+                        pre_registration = pr
+                        stage = "materials"
+
+        if pre_registration is None:
+            stripe_session_id = request.GET.get("session_id") or ""
+            if stripe_session_id:
+                pr = PreRegistration.objects.filter(
+                    form_snapshot__plan_payment__stripe_session_id=stripe_session_id
+                ).first()
+                if pr:
+                    pre_registration = pr
+                    stage = "plan"
+
+        if pre_registration is None:
+            return None
+
+        snapshot = pre_registration.form_snapshot or {}
+        if snapshot.get("flow_kind") == DEPENDENT_FLOW_KIND:
+            request.session["pending_dependent_pre_registration_id"] = pre_registration.pk
+            if stage == "plan":
+                snapshot["plan_paid"] = True
+                pre_registration.form_snapshot = snapshot
+                pre_registration.status = PreRegistrationStatus.PAYMENT_CONFIRMED
+                pre_registration.save(update_fields=["form_snapshot", "status", "updated_at"])
+            elif stage == "materials":
+                snapshot["materials_paid"] = True
+                pre_registration.form_snapshot = snapshot
+                pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+            messages.success(
+                request,
+                "Pagamento confirmado. Revise os dados e finalize o dependente.",
+            )
+            return redirect(f"{reverse('system:home')}?dependent_modal=1")
+
+        request.session["pending_pre_registration_id"] = pre_registration.pk
+        if stage == "plan":
+            snapshot["plan_paid"] = True
+            pre_registration.form_snapshot = snapshot
+            pre_registration.status = PreRegistrationStatus.PAYMENT_CONFIRMED
+            pre_registration.save(update_fields=["form_snapshot", "status", "updated_at"])
+            request.session["post_plan_payment_complete"] = True
+            request.session.pop("post_materials_payment_complete", None)
+            request.session.pop("post_materials_skipped", None)
+        else:
+            snapshot["materials_paid"] = True
+            pre_registration.form_snapshot = snapshot
+            pre_registration.save(update_fields=["form_snapshot", "updated_at"])
+            request.session["post_materials_payment_complete"] = True
+            request.session.pop("post_materials_skipped", None)
+        messages.success(request, "Pagamento confirmado!")
+        return redirect("system:register")
+
+
+class PaymentCancelView(View):
+    def get(self, request, *args, **kwargs):
+        messages.warning(
+            request,
+            "Pagamento cancelado. Retorne ao cadastro e tente novamente.",
+        )
+        return redirect("system:register")
+

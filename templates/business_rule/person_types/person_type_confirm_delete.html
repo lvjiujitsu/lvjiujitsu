@@ -1,0 +1,13 @@
+{% extends "business_rule/lv/modal_frame.html" %}
+
+{% block modal_title %}Excluir perfil — {{ site_name }}{% endblock %}
+{% block modal_header_title %}Excluir perfil{% endblock %}
+
+{% block modal_content %}
+<p>Confirma excluir <strong>{{ object.display_name }}</strong>? Essa ação não pode ser desfeita.</p>
+<form method="post" class="form-actions" style="margin-top:1rem;">
+  {% csrf_token %}
+  <button type="button" class="btn btn--secondary" data-modal-close>Cancelar</button>
+  <button type="submit" class="btn btn--danger">Excluir</button>
+</form>
+{% endblock %}

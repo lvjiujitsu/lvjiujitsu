@@ -1,0 +1,119 @@
+{% extends "business_rule/lv/modal_frame.html" %}
+{% load static %}
+
+{% block modal_title %}{{ form_title }} — {{ site_name }}{% endblock %}
+{% block modal_header_title %}{{ form_title }}{% endblock %}
+
+{% block modal_extra_head %}
+<link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
+{% endblock %}
+
+{% block modal_content %}
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="form-errors" role="alert">
+    {% for error in form.non_field_errors %}
+    <p>{{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <section class="form-section" aria-labelledby="identity-title">
+    <h2 class="form-section__title" id="identity-title">Identificação</h2>
+    <div class="form-grid">
+      {% for field in form.identity_fields %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-field form-field--checkbox">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% else %}
+        <div class="form-field">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="segmentation-title">
+    <h2 class="form-section__title" id="segmentation-title">Segmentação</h2>
+    <div class="form-grid form-grid--compact">
+      {% for field in form.segmentation_fields %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-field form-field--checkbox">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% else %}
+        <div class="form-field">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="pricing-form-title">
+    <div class="form-section__header">
+      <h2 class="form-section__title" id="pricing-form-title">Precificação</h2>
+      <p class="price-preview" data-price-preview>Informe o valor líquido mensal para estimar o preço calculado.</p>
+    </div>
+    <div class="form-grid form-grid--compact">
+      {% for field in form.pricing_fields %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-field form-field--checkbox">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% else %}
+        <div class="form-field">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="gateway-form-title">
+    <h2 class="form-section__title" id="gateway-form-title">Gateway</h2>
+    <div class="form-grid form-grid--compact">
+      {% for field in form.gateway_fields %}
+        {% if field.field.widget.input_type == "checkbox" %}
+        <div class="form-field form-field--checkbox">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% else %}
+        <div class="form-field">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button type="button" class="btn btn--secondary" data-modal-close>Cancelar</button>
+    <button class="btn btn--primary" type="submit">{{ form_action_label }}</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block modal_extra_scripts %}
+<script src="{% static 'business_rule/js/plans/plans.js' %}?v=1"></script>
+{% endblock %}

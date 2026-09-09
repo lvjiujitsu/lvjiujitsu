@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Criar conta — {{ site_name }}</title>
+  {% load static %}
+  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
+  <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
+    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=26">
+
+
+  {{ registration_catalog_json|json_script:"reg-catalog-json" }}
+  {{ plan_catalog_json|json_script:"reg-plan-catalog-json" }}
+  {{ product_catalog_json|json_script:"reg-product-catalog-json" }}
+  {{ ibjjf_categories_json|json_script:"reg-ibjjf-json" }}
+  {{ fee_config_json|json_script:"reg-fee-config-json" }}
+  <script type="application/json" id="reg-post-plan-json">{{ post_plan_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-plan-is-trial-json">{{ plan_is_trial|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-post-materials-json">{{ post_materials_payment_complete|yesno:"true,false" }}</script>
+  <script type="application/json" id="reg-post-materials-skipped-json">{{ post_materials_skipped|yesno:"true,false" }}</script>
+  {{ plan_order_json|json_script:"reg-plan-order-json" }}
+  {{ materials_order_json|json_script:"reg-materials-order-json" }}
+  {{ pending_person_json|json_script:"reg-pending-person-json" }}
+</head>
+<body class="register-page">
+
+  <div class="wizard-shell">
+
+
+    <header class="wizard-header">
+      <a href="{% url 'system:login' %}" class="wizard-back" id="wizard-back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span id="wizard-back-label">Voltar</span>
+      </a>
+      <img
+        src="{% static 'logo/logo-dark.png' %}"
+        alt="{{ site_name }}"
+        class="wizard-header__logo"
+        width="100"
+      >
+      <div class="wizard-progress" id="wizard-progress" aria-live="polite">
+        Etapa <span id="wizard-step-current">1</span> de <span id="wizard-step-total">6</span>
+      </div>
+    </header>
+
+
+    <div class="wizard-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
+      <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:16.66%"></div>
+    </div>
+
+
+    {% if messages %}
+      <div class="wizard-system-messages" role="alert" aria-live="assertive">
+        {% for message in messages %}
+          <div class="wizard-system-message wizard-system-message--{{ message.tags }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+
+    <form
+      class="wizard-form"
+      id="wizard-form"
+      method="post"
+      action="{% url 'system:register' %}"
+      data-eligibility-url="{% url 'system:registration-eligibility' %}"
+      data-validate-coupon-url="{% url 'system:validate-coupon' %}"
+      novalidate
+    >
+      {% csrf_token %}
+
+
+      <input type="hidden" name="registration_profile" id="id_registration_profile" value="{{ form.registration_profile.value|default:'' }}">
+      <input type="hidden" name="include_dependent" id="id_include_dependent" value="">
+      <input type="hidden" name="other_type_code" id="id_other_type_code" value="{{ form.other_type_code.value|default:'' }}">
+      <input type="hidden" name="extra_dependents_payload" id="id_extra_dependents_payload" value="{{ form.extra_dependents_payload.value|default:'[]' }}">
+
+
+      {% for field in form %}
+        {% if field.name not in "registration_profile,include_dependent,other_type_code,extra_dependents_payload,selected_plan,selected_products_payload,coupon_code,checkout_action" %}
+          <input type="hidden" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default:'' }}">
+        {% endif %}
+      {% endfor %}
+
+
+      <input type="hidden" name="selected_plan" id="id_selected_plan" value="{{ form.selected_plan.value|default:'' }}">
+      <input type="hidden" name="selected_plans_payload" id="id_selected_plans_payload" value="[]">
+      <input type="hidden" name="selected_products_payload" id="id_selected_products_payload" value="{{ form.selected_products_payload.value|default:'[]' }}">
+      <input type="hidden" name="coupon_code" id="id_coupon_code" value="{{ form.coupon_code.value|default:'' }}">
+      <input type="hidden" name="checkout_action" id="id_checkout_action" value="{{ form.checkout_action.value|default:'pay_later' }}">
+
+      <section class="wizard-step" id="step-profile" data-step="1">
+
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Como você vai se cadastrar?</h1>
+          <p class="wizard-step__subtitle">Escolha o seu perfil para começar</p>
+        </div>
+
+        {% if form.non_field_errors %}
+          <div class="wizard-errors" role="alert">
+            {% for error in form.non_field_errors %}
+              <p class="wizard-errors__item">{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if form.registration_profile.errors %}
+          <div class="wizard-errors" role="alert">
+            {% for error in form.registration_profile.errors %}
+              <p class="wizard-errors__item">{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="profile-options" role="group" aria-label="Tipo de cadastro">
+
+
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-holder"
+            data-profile="holder"
+            aria-pressed="false"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Aluno</span>
+              <span class="profile-card__desc">Quero me matricular como aluno</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+
+          <div class="profile-suboption" id="holder-suboption" hidden>
+            <label class="profile-suboption__label profile-suboption__label--toggle">
+              <input
+                type="checkbox"
+                class="profile-suboption__checkbox"
+                id="include-dependent-checkbox"
+                aria-controls="holder-count-area"
+              >
+              <span class="profile-suboption__text">
+                Treino com <strong>dependentes</strong> também
+              </span>
+            </label>
+            <div class="profile-suboption__counter-area" id="holder-count-area" hidden>
+              <span class="profile-suboption__counter-label">Quantos dependentes?</span>
+              <div class="student-counter" role="group" aria-label="Número de dependentes">
+                <button type="button" class="student-counter__btn" id="holder-dep-dec" aria-label="Diminuir">−</button>
+                <span class="student-counter__value" id="holder-dep-value" aria-live="polite">1</span>
+                <button type="button" class="student-counter__btn" id="holder-dep-inc" aria-label="Aumentar">+</button>
+              </div>
+            </div>
+          </div>
+
+
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-guardian"
+            data-profile="guardian"
+            aria-pressed="false"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Responsável</span>
+              <span class="profile-card__desc">Vou cadastrar aluno(s) sob minha responsabilidade</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+
+          <div class="profile-suboption" id="guardian-suboption" hidden>
+            <div class="profile-suboption__label">
+              <span class="profile-suboption__text">
+                <strong>Quantos alunos</strong> você vai cadastrar?
+              </span>
+              <div class="student-counter" role="group" aria-label="Número de alunos">
+                <button
+                  type="button"
+                  class="student-counter__btn"
+                  id="student-count-dec"
+                  aria-label="Diminuir"
+                >−</button>
+                <span class="student-counter__value" id="student-count-value" aria-live="polite">1</span>
+                <button
+                  type="button"
+                  class="student-counter__btn"
+                  id="student-count-inc"
+                  aria-label="Aumentar"
+                >+</button>
+              </div>
+            </div>
+          </div>
+
+
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-teacher-request"
+            data-profile="teacher_request"
+            aria-pressed="false"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 8 12 3l9 5-9 5-9-5Z"/>
+                <path d="M7 11v4c0 1.7 2.2 3 5 3s5-1.3 5-3v-4"/>
+                <path d="M21 8v6"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Professor</span>
+              <span class="profile-card__desc">Quero propor uma turma ou horário inicial</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+          <div class="profile-suboption" id="teacher-request-suboption" hidden>
+            <div class="profile-suboption__label">
+              <span class="profile-suboption__text">
+                Você segue pelo cadastro de pessoa e informa turma, horário e recebimento nas próximas etapas.
+              </span>
+            </div>
+          </div>
+
+
+          <button
+            type="button"
+            class="profile-card"
+            id="profile-card-administrative-request"
+            data-profile="administrative_request"
+            aria-pressed="false"
+          >
+            <div class="profile-card__icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="7" width="18" height="13" rx="2"/>
+                <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <path d="M3 12h18"/>
+                <path d="M12 11v3"/>
+              </svg>
+            </div>
+            <div class="profile-card__body">
+              <span class="profile-card__title">Administrativo</span>
+              <span class="profile-card__desc">Quero solicitar acesso operacional</span>
+            </div>
+            <div class="profile-card__check" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+          <div class="profile-suboption" id="administrative-request-suboption" hidden>
+            <div class="profile-suboption__section">
+              <span class="profile-suboption__counter-label">Você também vai treinar?</span>
+              <div class="profile-segmented" role="radiogroup" aria-label="Intenção de treino do administrativo">
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-training-intent" value="none" checked>
+                  <span>Somente administrativo</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-training-intent" value="student">
+                  <span>Administrativo e aluno</span>
+                </label>
+              </div>
+            </div>
+            <div class="profile-suboption__section">
+              <span class="profile-suboption__counter-label">Compensação prevista</span>
+              <div class="profile-segmented" role="radiogroup" aria-label="Compensação prevista do administrativo">
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="none" checked>
+                  <span>Sem recebimento</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="barter">
+                  <span>Permuta</span>
+                </label>
+                <label class="profile-segmented__option">
+                  <input type="radio" name="admin-compensation-preference" value="pix">
+                  <span>PIX</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="wizard-step__actions">
+          <button
+            type="button"
+            class="btn-next"
+            id="step-1-next"
+            disabled
+            aria-disabled="true"
+          >
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+
+      </section>
+
+      <section class="wizard-step" id="step-principal" data-step="2" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Seus dados pessoais</h1>
+          <p class="wizard-step__subtitle" id="s2-subtitle">Preencha suas informações de cadastro</p>
+        </div>
+
+        <div class="wizard-form__fields">
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-name">Nome completo</label>
+            <input type="text" class="form-input" id="ui-s2-name" autocomplete="name" placeholder="Seu nome completo">
+            <p class="form-field__error" id="ui-s2-name-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-cpf">CPF</label>
+            <input type="text" class="form-input" id="ui-s2-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+            <p class="form-field__error" id="ui-s2-cpf-error" hidden></p>
+          </div>
+
+          <div class="form-field" id="s2-birthdate-field">
+            <label class="form-label" for="ui-s2-birthdate">Data de nascimento</label>
+            <input type="text" class="form-input" id="ui-s2-birthdate" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="bday">
+            <p class="form-field__error" id="ui-s2-birthdate-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-sex">Sexo biológico</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-s2-sex">
+                <option value="">Selecione</option>
+                <option value="male">Masculino</option>
+                <option value="female">Feminino</option>
+              </select>
+            </div>
+            <p class="form-field__error" id="ui-s2-sex-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-phone">Telefone / WhatsApp</label>
+            <input type="tel" class="form-input" id="ui-s2-phone" inputmode="tel" placeholder="(00) 00000-0000" maxlength="16" autocomplete="tel">
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-email">E-mail</label>
+            <input type="email" class="form-input" id="ui-s2-email" inputmode="email" placeholder="seu@email.com" autocomplete="email">
+            <p class="form-field__error" id="ui-s2-email-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-password">Senha</label>
+            <div class="form-input-wrapper">
+              <input type="password" class="form-input" id="ui-s2-password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+              <button type="button" class="password-toggle" id="ui-s2-pw-toggle" aria-label="Mostrar senha" aria-controls="ui-s2-password">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <p class="form-field__error" id="ui-s2-password-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-password-confirm">Confirmar senha</label>
+            <div class="form-input-wrapper">
+              <input type="password" class="form-input" id="ui-s2-password-confirm" autocomplete="new-password" placeholder="Repita a senha">
+              <button type="button" class="password-toggle" id="ui-s2-pwc-toggle" aria-label="Mostrar senha" aria-controls="ui-s2-password-confirm">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <p class="form-field__error" id="ui-s2-password-confirm-error" hidden></p>
+          </div>
+
+          <p class="wizard-step__subtitle" style="margin-top:1rem;margin-bottom:0.25rem">Endereço <span style="font-weight:400;font-size:0.8125rem;color:var(--muted)">(opcional — pré-preenche o pagamento)</span></p>
+
+          <div class="form-row form-row--2col">
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-postal-code">CEP</label>
+              <input type="text" class="form-input" id="ui-s2-postal-code" inputmode="numeric" placeholder="00000-000" maxlength="9" autocomplete="postal-code">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-city">Cidade</label>
+              <input type="text" class="form-input" id="ui-s2-city" placeholder="Sua cidade" autocomplete="address-level2">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-address">Logradouro</label>
+            <input type="text" class="form-input" id="ui-s2-address" placeholder="Rua, Avenida…" autocomplete="street-address">
+          </div>
+
+          <div class="form-row form-row--2col">
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-address-number">Número</label>
+              <input type="text" class="form-input" id="ui-s2-address-number" placeholder="123" maxlength="20">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-s2-address-complement">Complemento</label>
+              <input type="text" class="form-input" id="ui-s2-address-complement" placeholder="Apto, Sala…" maxlength="100" autocomplete="address-line2">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-s2-address-neighborhood">Bairro</label>
+            <input type="text" class="form-input" id="ui-s2-address-neighborhood" placeholder="Seu bairro" maxlength="100">
+          </div>
+
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-2-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-dep" data-step="dep" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge" id="dep-step-badge">Dependente 1 de 1</p>
+          <h1 class="wizard-step__title" id="dep-step-title">Dados do dependente</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-kinship">Grau de parentesco</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-dep-kinship">
+                <option value="">Selecione</option>
+                <option value="father">Pai</option>
+                <option value="mother">Mãe</option>
+                <option value="uncle">Tio/Tia</option>
+                <option value="stepchild">Enteado(a)</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+            <p class="form-field__error" id="ui-dep-kinship-error" hidden></p>
+          </div>
+
+          <div class="form-field" id="dep-kinship-other-field" hidden>
+            <label class="form-label" for="ui-dep-kinship-other">Qual grau de parentesco?</label>
+            <input type="text" class="form-input" id="ui-dep-kinship-other" placeholder="Ex: avô, prima, padrinho…" autocomplete="off">
+            <p class="form-field__error" id="ui-dep-kinship-other-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-name">Nome completo</label>
+            <input type="text" class="form-input" id="ui-dep-name" autocomplete="off" placeholder="Nome do dependente">
+            <p class="form-field__error" id="ui-dep-name-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-cpf">CPF</label>
+            <input type="text" class="form-input" id="ui-dep-cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+            <p class="form-field__error" id="ui-dep-cpf-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-birthdate">Data de nascimento</label>
+            <input type="text" class="form-input" id="ui-dep-birthdate" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off">
+            <p class="form-field__error" id="ui-dep-birthdate-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-sex">Sexo biológico</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-dep-sex">
+                <option value="">Selecione</option>
+                <option value="male">Masculino</option>
+                <option value="female">Feminino</option>
+              </select>
+            </div>
+            <p class="form-field__error" id="ui-dep-sex-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-phone">Telefone / WhatsApp <span class="form-label-optional">(opcional)</span></label>
+            <input type="tel" class="form-input" id="ui-dep-phone" inputmode="tel" placeholder="(00) 00000-0000" maxlength="16" autocomplete="off">
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-email">E-mail <span class="form-label-optional">(opcional)</span></label>
+            <input type="email" class="form-input" id="ui-dep-email" inputmode="email" placeholder="email@exemplo.com" autocomplete="off">
+            <p class="form-field__error" id="ui-dep-email-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-password">Senha de acesso</label>
+            <div class="form-input-wrapper">
+              <input type="password" class="form-input" id="ui-dep-password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+              <button type="button" class="password-toggle" id="ui-dep-pw-toggle" aria-label="Mostrar senha" aria-controls="ui-dep-password">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <p class="form-field__error" id="ui-dep-password-error" hidden></p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-dep-password-confirm">Confirmar senha</label>
+            <div class="form-input-wrapper">
+              <input type="password" class="form-input" id="ui-dep-password-confirm" autocomplete="new-password" placeholder="Repita a senha">
+              <button type="button" class="password-toggle" id="ui-dep-pwc-toggle" aria-label="Mostrar senha" aria-controls="ui-dep-password-confirm">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <p class="form-field__error" id="ui-dep-password-confirm-error" hidden></p>
+          </div>
+
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-dep-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-health" data-step="health" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge" id="health-step-badge">Saúde</p>
+          <h1 class="wizard-step__title" id="health-step-title">Dados de saúde</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+
+          <div class="form-field">
+            <label class="form-label" for="ui-health-blood-type">Tipo sanguíneo <span class="form-label-optional">(opcional)</span></label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-health-blood-type">
+                <option value="">Selecione</option>
+                <option value="A+">A+</option>
+                <option value="A-">A−</option>
+                <option value="B+">B+</option>
+                <option value="B-">B−</option>
+                <option value="O+">O+</option>
+                <option value="O-">O−</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB−</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-health-allergies">Alergias <span class="form-label-optional">(opcional)</span></label>
+            <textarea class="form-input form-textarea" id="ui-health-allergies" rows="3" placeholder="Informe alergias conhecidas"></textarea>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-health-injuries">Lesões ou condições relevantes <span class="form-label-optional">(opcional)</span></label>
+            <textarea class="form-input form-textarea" id="ui-health-injuries" rows="3" placeholder="Lesões, limitações ou condições de saúde"></textarea>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="ui-health-emergency">Contato de emergência <span class="form-label-optional">(opcional)</span></label>
+            <input type="text" class="form-input" id="ui-health-emergency" placeholder="Nome e telefone de contato">
+          </div>
+
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-health-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-martial" data-step="martial" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge" id="martial-step-badge">Histórico esportivo</p>
+          <h1 class="wizard-step__title" id="martial-step-title">Artes marciais</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+
+          <div class="form-field">
+            <label class="form-label">Já praticou alguma arte marcial ou luta?</label>
+            <div class="martial-has-toggle" role="group" aria-label="Experiência em artes marciais">
+              <button type="button" class="martial-has-btn martial-has-btn--active" id="martial-toggle-no" data-value="no">Não, sou iniciante</button>
+              <button type="button" class="martial-has-btn" id="martial-toggle-yes" data-value="yes">Já pratiquei</button>
+            </div>
+            <select id="ui-martial-has" style="display:none" aria-hidden="true" tabindex="-1">
+              <option value="no" selected>Não, sou iniciante</option>
+              <option value="yes">Sim, já pratiquei</option>
+            </select>
+            <p class="form-field__error" id="ui-martial-has-error" hidden></p>
+          </div>
+
+          <div id="martial-detail-section" hidden>
+
+            <div class="form-field">
+              <label class="form-label" for="ui-martial-art">Modalidade</label>
+              <div class="form-select-wrapper">
+                <select class="form-input form-select" id="ui-martial-art">
+                  <option value="">Selecione</option>
+                  <option value="jiu_jitsu">Jiu-Jitsu</option>
+                  <option value="muay_thai">Muay Thai</option>
+                  <option value="judo">Judô</option>
+                  <option value="boxing">Boxe</option>
+                  <option value="karate">Karatê</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+              <p class="form-field__error" id="ui-martial-art-error" hidden></p>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="ui-martial-academy">Academia anterior <span class="form-label-optional">(opcional)</span></label>
+              <input type="text" class="form-input" id="ui-martial-academy" placeholder="Nome da academia anterior">
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="ui-martial-started">Início na modalidade <span class="form-label-optional">(opcional)</span></label>
+              <input type="text" class="form-input" id="ui-martial-started" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10">
+              <p class="form-field__error" id="ui-martial-started-error" hidden></p>
+            </div>
+
+            <div class="form-field" id="martial-other-grad-field">
+              <label class="form-label" for="ui-martial-graduation">Graduação atual <span class="form-label-optional">(opcional)</span></label>
+              <input type="text" class="form-input" id="ui-martial-graduation" placeholder="Ex: Faixa azul, 2º dan…">
+            </div>
+
+            <div id="martial-jj-section" hidden>
+
+              <div class="form-field">
+                <label class="form-label" for="ui-martial-jj-belt">Faixa no Jiu-Jitsu</label>
+                <div class="form-select-wrapper">
+                  <select class="form-input form-select" id="ui-martial-jj-belt">
+                    <option value="">Selecione</option>
+                    <option value="white">Branca</option>
+                    <option value="blue">Azul</option>
+                    <option value="purple">Roxa</option>
+                    <option value="brown">Marrom</option>
+                    <option value="black">Preta</option>
+                  </select>
+                </div>
+                <p class="form-field__error" id="ui-martial-jj-belt-error" hidden></p>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="ui-martial-jj-stripes">Graus</label>
+                <div class="form-select-wrapper">
+                  <select class="form-input form-select" id="ui-martial-jj-stripes">
+                    <option value="0">0 graus</option>
+                    <option value="1">1 grau</option>
+                    <option value="2">2 graus</option>
+                    <option value="3">3 graus</option>
+                    <option value="4">4 graus</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for="ui-martial-jj-last-grad">Data da última graduação <span class="form-label-optional">(opcional)</span></label>
+                <input type="text" class="form-input" id="ui-martial-jj-last-grad" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10">
+                <p class="form-field__error" id="ui-martial-jj-last-grad-error" hidden></p>
+              </div>
+
+              <div class="ibjjf-notice" role="note">
+                <svg class="ibjjf-notice__icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p class="ibjjf-notice__text">A {{ site_name }} segue os critérios de <strong>tempo mínimo de graduação da IBJJF</strong>. O histórico informado será verificado antes da confirmação da faixa atual.</p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-martial-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-teacher-schedule" data-step="teacher-schedule" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Vínculo com horário</h1>
+          <p class="wizard-step__subtitle">Escolha turmas existentes ou proponha um novo horário</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="operational-option-group" role="radiogroup" aria-label="Tipo de vínculo do professor">
+            <label class="operational-choice">
+              <input type="radio" name="teacher-assignment-mode" value="existing">
+              <span class="operational-choice__body">
+                <strong>Selecionar turma existente</strong>
+                <small>Vincular-se a uma ou mais turmas ativas para aprovação da gestão.</small>
+              </span>
+            </label>
+            <label class="operational-choice">
+              <input type="radio" name="teacher-assignment-mode" value="propose" checked>
+              <span class="operational-choice__body">
+                <strong>Criar proposta de horário</strong>
+                <small>Informar os dados para aprovação da gestão.</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="form-field" id="teacher-existing-schedule-field" hidden>
+            <label class="form-label">Turmas ativas</label>
+            <div class="teacher-class-list" id="teacher-existing-class-list"></div>
+            <p class="form-field__hint">
+              A solicitação registra o vínculo desejado. Quando já houver professor vinculado, a troca fica sujeita à aprovação da gestão e do professor atual.
+            </p>
+            <p class="form-field__error" id="teacher-existing-class-error" hidden></p>
+          </div>
+
+          <div class="teacher-proposed-schedule" id="teacher-proposed-schedule-field">
+            <button type="button" class="btn-checkout-later" id="teacher-open-schedule-modal">Criar horário</button>
+            <div class="teacher-proposed-schedule__summary" id="teacher-proposed-schedule-summary">
+              Nenhum horário proposto.
+            </div>
+            <p class="form-field__error" id="teacher-proposed-schedule-error" hidden></p>
+          </div>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-teacher-schedule-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-administrative-access" data-step="administrative-access" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Áreas administrativas</h1>
+          <p class="wizard-step__subtitle">Selecione as áreas que deseja solicitar para aprovação</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="admin-role-grid" aria-label="Áreas solicitadas">
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="people-support">
+              <span class="operational-choice__body"><strong>Apoio de pessoas</strong><small>Cadastro e suporte a alunos.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="class-assistant">
+              <span class="operational-choice__body"><strong>Apoio de turma</strong><small>Presença, aulas e rotina de turma.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="academy-manager">
+              <span class="operational-choice__body"><strong>Gestor da academia</strong><small>Acesso operacional amplo.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="financial-operator">
+              <span class="operational-choice__body"><strong>Operador financeiro</strong><small>Rotinas financeiras.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="stock-operator">
+              <span class="operational-choice__body"><strong>Operador de estoque</strong><small>Materiais e pedidos.</small></span>
+            </label>
+            <label class="operational-choice">
+              <input type="checkbox" name="admin-role" value="graduation-operator">
+              <span class="operational-choice__body"><strong>Operador de graduação</strong><small>Histórico e graduações.</small></span>
+            </label>
+          </div>
+          <p class="form-field__error" id="admin-role-error" hidden></p>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-administrative-access-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-operational-finance" data-step="operational-finance" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Condição financeira</h1>
+          <p class="wizard-step__subtitle">Informe como esse perfil se enquadra em mensalidade ou recebimento</p>
+        </div>
+
+        <div class="operational-panel">
+          <div class="form-field">
+            <label class="form-label">Condição do perfil</label>
+            <div class="operational-option-group" role="radiogroup" aria-label="Condição financeira do perfil">
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="pays_monthly" checked>
+                <span class="operational-choice__body"><strong>Paga mensalidade</strong><small>Seleciona plano como aluno quando também treina.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="barter">
+                <span class="operational-choice__body"><strong>Permuta</strong><small>Abatimento de plano anual, sem recebimento financeiro.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="volunteer">
+                <span class="operational-choice__body"><strong>Sem mensalidade e sem recebimento</strong><small>Somente solicitação operacional.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_fixed">
+                <span class="operational-choice__body"><strong>Recebe valor fixo</strong><small>Exemplo: valor fechado por uma aula ou rotina.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_per_student">
+                <span class="operational-choice__body"><strong>Recebe por aluno</strong><small>Percentual por aluno vinculado à turma.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-financial-arrangement" value="paid_mixed">
+                <span class="operational-choice__body"><strong>Recebe fixo e por aluno</strong><small>Combina valor fixo e percentual por aluno.</small></span>
+              </label>
+            </div>
+            <p class="form-field__error" id="operational-finance-error" hidden></p>
+          </div>
+
+          <div class="operational-money-fields" id="operational-money-fields" hidden>
+            <div class="form-field" id="operational-fixed-amount-field" hidden>
+              <label class="form-label" for="ui-operational-fixed-amount">Valor fixo combinado</label>
+              <input type="text" class="form-input" id="ui-operational-fixed-amount" inputmode="decimal" placeholder="Ex: 300,00">
+            </div>
+            <div class="form-field" id="operational-student-percentage-field" hidden>
+              <label class="form-label" for="ui-operational-student-percentage">Percentual por aluno</label>
+              <input type="text" class="form-input" id="ui-operational-student-percentage" inputmode="decimal" placeholder="Ex: 20">
+            </div>
+          </div>
+
+          <div class="form-field" id="operational-payout-method-field" hidden>
+            <label class="form-label">Dados para recebimento</label>
+            <div class="operational-option-group" role="radiogroup" aria-label="Meio de recebimento do perfil">
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="none" checked>
+                <span class="operational-choice__body"><strong>Sem recebimento</strong><small>Nenhum dado de pagamento.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="pix">
+                <span class="operational-choice__body"><strong>Receber por PIX</strong><small>Informar chave PIX.</small></span>
+              </label>
+              <label class="operational-choice">
+                <input type="radio" name="operational-payout-method" value="bank">
+                <span class="operational-choice__body"><strong>Conta bancária</strong><small>Informar dados bancários.</small></span>
+              </label>
+            </div>
+          </div>
+
+          <p class="operational-finance-note" id="operational-finance-note"></p>
+
+          <div class="operational-payout-fields" id="operational-pix-fields" hidden>
+            <div class="form-field">
+              <label class="form-label" for="ui-operational-pix-key-type">Tipo da chave PIX</label>
+              <div class="form-select-wrapper">
+                <select class="form-input form-select" id="ui-operational-pix-key-type">
+                  <option value="">Selecione</option>
+                  <option value="cpf">CPF</option>
+                  <option value="email">E-mail</option>
+                  <option value="phone">Telefone</option>
+                  <option value="random">Chave aleatória</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="ui-operational-pix-key">Chave PIX</label>
+              <input type="text" class="form-input" id="ui-operational-pix-key" placeholder="Informe a chave PIX">
+            </div>
+          </div>
+
+          <div class="form-field" id="operational-bank-fields" hidden>
+            <label class="form-label" for="ui-operational-bank-details">Dados bancários</label>
+            <textarea class="form-input form-textarea" id="ui-operational-bank-details" rows="4" placeholder="Banco, agência, conta, tipo de conta e titular"></textarea>
+          </div>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-operational-finance-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-classes" data-step="classes" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge" id="class-step-badge">Turma</p>
+          <h1 class="wizard-step__title" id="class-step-title">Escolha a turma</h1>
+          <p class="wizard-step__subtitle" id="class-step-subtitle">Selecione a turma que deseja frequentar</p>
+        </div>
+
+        <div class="class-catalog" id="class-catalog-list" role="radiogroup" aria-label="Turmas disponíveis"></div>
+        <p class="form-field__error" id="class-step-error" hidden></p>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-classes-next">
+            Próximo
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" id="step-plan" data-step="plan" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Escolha seu plano</h1>
+          <p class="wizard-step__subtitle">Selecione o plano ideal para você</p>
+        </div>
+
+        <div id="plan-filters-area"></div>
+        <div id="plan-cards-area"></div>
+        <p class="form-field__error" id="plan-step-error" hidden></p>
+
+
+        <div class="stripe-commitment-notice" id="stripe-commitment-notice" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>
+            <strong>Assinatura recorrente — cobrança mensal automática no cartão</strong>
+            <p>Este plano exige permanência mínima de <strong>12 meses</strong>. Trocar de plano ou trancar a matrícula sem atestado médico só é possível depois desse período.</p>
+          </div>
+        </div>
+
+
+        <div class="plan-policy-notice" id="plan-policy-notice">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div>
+            <strong>Trancamento e pausa por atestado médico</strong>
+            <p>
+              Você pode trancar a matrícula por até <strong>30 dias por ano</strong> de matrícula, sem justificativa
+              — liberado fora do período de permanência mínima, quando houver. Atestado médico
+              <strong>sempre suspende a cobrança</strong> pelo período informado, mesmo durante a permanência mínima,
+              e a permanência é prorrogada pelo mesmo número de dias. Toda pausa passa por aprovação do administrativo.
+            </p>
+          </div>
+        </div>
+
+
+        <div class="coupon-area" id="coupon-area">
+          <div class="coupon-area__row">
+            <input
+              type="text"
+              id="coupon-code-input"
+              class="coupon-area__input"
+              placeholder="Cupom de desconto"
+              maxlength="50"
+              autocomplete="off"
+              autocapitalize="characters"
+            >
+            <button type="button" id="coupon-apply-btn" class="coupon-area__btn">Aplicar</button>
+          </div>
+          <p id="coupon-message" class="coupon-msg" hidden></p>
+        </div>
+
+        <div class="wizard-step__actions">
+          <button type="button" class="btn-next" id="step-plan-next">
+            Pagar mensalidade
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button type="button" class="btn-trial" id="btn-trial-class">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Fazer uma aula experimental
+          </button>
+        </div>
+      </section>
+
+    </form>
+
+
+    <section id="step-plan-confirmed" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Pagamento do plano</h1>
+        <p class="wizard-step__subtitle">Revise a confirmação e avance para os materiais</p>
+      </div>
+      <div id="plan-confirmed-summary-area"></div>
+      <div id="plan-confirmed-actions-area" class="checkout-actions"></div>
+    </section>
+
+
+    <section id="step-products" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Materiais e equipamentos</h1>
+        <p class="wizard-step__subtitle" id="products-subtitle">Adicione kimonos ou outros itens ao seu pedido (opcional)</p>
+      </div>
+
+
+      <div id="products-confirm-area"></div>
+
+
+      <form id="products-payment-form" method="post" action="{% url 'system:register-materials-checkout' %}" hidden>
+        {% csrf_token %}
+        <input type="hidden" name="selected_products_payload" id="products-payload-hidden" value="[]">
+        <input type="hidden" name="checkout_action" id="products-checkout-action-hidden" value="pay_later">
+      </form>
+
+
+      <div id="products-subview-catalog">
+        <div id="products-catalog-area" class="prod-cards"></div>
+        <div id="products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:auto;padding-top:1rem">
+          <button type="button" id="products-btn-view-cart" class="btn-next" hidden>
+            Ver carrinho
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button type="button" id="products-btn-skip-catalog" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+        </div>
+      </div>
+
+
+      <div id="products-subview-configure" hidden>
+        <button type="button" class="prod-configure__back" id="products-btn-back-catalog">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Voltar ao catálogo
+        </button>
+        <div id="products-configure-area"></div>
+        <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
+          <button type="button" id="products-btn-add-to-cart" class="btn-next" disabled>
+            Adicionar ao carrinho
+          </button>
+          <button type="button" id="products-btn-cancel-configure" class="btn-checkout-later">Cancelar</button>
+        </div>
+      </div>
+
+
+      <div id="products-subview-cart" hidden>
+        <button type="button" class="prod-configure__back" id="products-btn-back-to-catalog">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Continuar comprando
+        </button>
+        <div id="products-cart-area"></div>
+        <div class="checkout-actions" style="margin-top:1rem">
+          <button type="button" id="products-btn-pay-card" class="btn-checkout-pay">
+            <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Pagar com Cartão
+          </button>
+          <button type="button" id="products-btn-pay-pix" class="btn-checkout-pay">
+            <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Pagar com PIX
+          </button>
+          <button type="button" id="products-btn-skip-cart" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="step-review" class="wizard-step" hidden>
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Confirmar cadastro</h1>
+        <p class="wizard-step__subtitle">Revise o resumo e finalize sua conta no sistema</p>
+      </div>
+
+      <div id="review-summary-area"></div>
+
+      <form id="finalize-form" method="post" action="{% url 'system:register-finalize' %}" style="margin-top:0.5rem">
+        {% csrf_token %}
+        <button type="submit" class="btn-checkout-pay">
+          Finalizar cadastro e acessar o sistema
+        </button>
+      </form>
+    </section>
+
+    <dialog class="schedule-dialog" id="teacher-schedule-modal" aria-labelledby="teacher-schedule-modal-title">
+      <div class="schedule-dialog__body">
+        <div class="wizard-step__heading">
+          <h2 class="wizard-step__title" id="teacher-schedule-modal-title">Criar horário</h2>
+          <p class="wizard-step__subtitle">Informe os dados da proposta para aprovação</p>
+        </div>
+
+        <div class="wizard-form__fields">
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-category">Categoria</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-teacher-schedule-category">
+                <option value="">Selecione</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-name">Nome da turma</label>
+            <input type="text" class="form-input" id="ui-teacher-schedule-name" placeholder="Ex: Adulto Noite">
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label">Dias da semana</label>
+            <div class="weekday-checklist" id="teacher-schedule-weekdays" aria-label="Dias da semana">
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="monday">
+                <span>Segunda</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="tuesday">
+                <span>Terça</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="wednesday">
+                <span>Quarta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="thursday">
+                <span>Quinta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="friday">
+                <span>Sexta</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="saturday">
+                <span>Sábado</span>
+              </label>
+              <label class="weekday-check">
+                <input type="checkbox" name="teacher-schedule-weekdays" value="sunday">
+                <span>Domingo</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-style">Estilo</label>
+            <div class="form-select-wrapper">
+              <select class="form-input form-select" id="ui-teacher-schedule-style">
+                <option value="kimono">Kimono</option>
+                <option value="no_gi">No-Gi</option>
+                <option value="mixed">Misto</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-start">Horário de início</label>
+            <input type="time" class="form-input" id="ui-teacher-schedule-start">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-duration">Duração em minutos</label>
+            <input type="number" class="form-input" id="ui-teacher-schedule-duration" min="30" step="5" value="60">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="ui-teacher-schedule-capacity">Capacidade</label>
+            <input type="number" class="form-input" id="ui-teacher-schedule-capacity" min="0" step="1" value="0">
+          </div>
+          <div class="form-field form-field--full">
+            <label class="form-label" for="ui-teacher-schedule-justification">Justificativa</label>
+            <textarea class="form-input form-textarea" id="ui-teacher-schedule-justification" rows="3" placeholder="Explique a proposta de turma ou horário"></textarea>
+          </div>
+        </div>
+
+        <p class="form-field__error" id="teacher-schedule-modal-error" hidden></p>
+        <div class="schedule-dialog__actions">
+          <button type="button" class="btn-checkout-later" id="teacher-cancel-schedule-modal">Cancelar</button>
+          <button type="button" class="btn-next" id="teacher-save-schedule-modal">Salvar horário</button>
+        </div>
+      </div>
+    </dialog>
+
+  </div>
+
+  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/auth/wizard_shared.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/auth/register.js' %}?v=57" defer></script>
+</body>
+</html>

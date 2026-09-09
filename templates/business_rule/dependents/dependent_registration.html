@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Adicionar dependente — {{ site_name }}</title>
+  {% load static %}
+  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
+  <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
+    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=26">
+  <link rel="stylesheet" href="{% static 'business_rule/css/dependents/dependent_registration.css' %}?v=14">
+
+  {{ class_catalog_json|json_script:"dep-class-catalog-json" }}
+  {{ plan_catalog_json|json_script:"dep-plan-catalog-json" }}
+  {{ product_catalog_json|json_script:"dep-product-catalog-json" }}
+  {{ owner_plan_context_json|json_script:"dep-owner-plan-context-json" }}
+  {{ ibjjf_categories_json|json_script:"dep-ibjjf-json" }}
+</head>
+<body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
+
+  <div class="wizard-shell">
+
+    <div class="wizard-shell__top">
+      <div class="dep-wizard-topbar">
+        {% if is_modal %}
+        <button class="wizard-back" type="button" id="wizard-back" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span id="wizard-back-label">Voltar</span>
+        </button>
+        {% else %}
+        <a class="wizard-back" href="{% url 'system:home' %}" id="wizard-back">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span id="wizard-back-label">Voltar</span>
+        </a>
+        {% endif %}
+        <div class="wizard-progress" id="wizard-progress" aria-live="polite">
+          Etapa <span id="wizard-step-current">1</span> de <span id="wizard-step-total">7</span>
+        </div>
+      </div>
+
+      <div class="wizard-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1">
+        <div class="wizard-progress-bar__fill" id="wizard-progress-fill" style="width:14%"></div>
+      </div>
+
+      {% if messages %}
+      <div class="wizard-system-messages" role="alert" aria-live="assertive">
+        {% for message in messages %}
+        <div class="wizard-system-message wizard-system-message--{{ message.tags }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if payment_confirmed %}
+      <div class="wizard-system-message wizard-system-message--success">
+        Pagamento confirmado. Confira os dados e informe a senha do dependente para finalizar.
+      </div>
+      {% endif %}
+    </div>
+
+    <form
+      class="wizard-form"
+      id="dep-wizard-form"
+      method="post"
+      action="{% url 'system:dependent-add' %}{% if is_modal %}?modal=1{% endif %}"
+      data-payment-confirmed="{{ payment_confirmed|yesno:'true,false' }}"
+      data-materials-confirmed="{{ materials_confirmed|yesno:'true,false' }}"
+      data-family-plan-available="{{ family_plan_available|yesno:'true,false' }}"
+      data-eligibility-url="{% url 'system:registration-eligibility' %}"
+      novalidate
+    >
+      {% csrf_token %}
+      {% if is_modal %}<input type="hidden" name="_modal" value="1">{% endif %}
+
+      {% if form.non_field_errors %}
+      <div class="wizard-system-message wizard-system-message--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+      {% endif %}
+
+
+      <section class="wizard-step" data-step="1">
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Dependente de {{ owner.full_name }}</p>
+          <h1 class="wizard-step__title">Dados do dependente</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_kinship_type.id_for_label }}">Grau de parentesco</label>
+            <div class="form-select-wrapper">{{ form.dependent_kinship_type }}</div>
+            {% for error in form.dependent_kinship_type.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field" id="dep-kinship-other-field" hidden>
+            <label class="form-label" for="{{ form.dependent_kinship_other_label.id_for_label }}">Qual grau de parentesco?</label>
+            {{ form.dependent_kinship_other_label }}
+            {% for error in form.dependent_kinship_other_label.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_name.id_for_label }}">Nome completo</label>
+            {{ form.dependent_name }}
+            {% for error in form.dependent_name.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_cpf.id_for_label }}">CPF</label>
+            {{ form.dependent_cpf }}
+            {% for error in form.dependent_cpf.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_birthdate.id_for_label }}">Data de nascimento</label>
+            {{ form.dependent_birthdate }}
+            {% for error in form.dependent_birthdate.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_biological_sex.id_for_label }}">Sexo biológico</label>
+            <div class="form-select-wrapper">{{ form.dependent_biological_sex }}</div>
+            {% for error in form.dependent_biological_sex.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_phone.id_for_label }}">Telefone / WhatsApp <span class="form-label-optional">(opcional)</span></label>
+            {{ form.dependent_phone }}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_email.id_for_label }}">E-mail <span class="form-label-optional">(opcional)</span></label>
+            {{ form.dependent_email }}
+            {% for error in form.dependent_email.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_password.id_for_label }}">Senha de acesso</label>
+            <div class="form-input-wrapper">
+              {{ form.dependent_password }}
+              <button type="button" class="password-toggle" id="dep-pw-toggle" aria-label="Mostrar senha" aria-controls="{{ form.dependent_password.id_for_label }}">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            {% for error in form.dependent_password.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_password_confirm.id_for_label }}">Confirmar senha</label>
+            <div class="form-input-wrapper">
+              {{ form.dependent_password_confirm }}
+              <button type="button" class="password-toggle" id="dep-pwc-toggle" aria-label="Mostrar senha" aria-controls="{{ form.dependent_password_confirm.id_for_label }}">
+                <svg class="password-toggle__icon password-toggle__icon--show" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="password-toggle__icon password-toggle__icon--hide" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            {% for error in form.dependent_password_confirm.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          </div>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" data-step="2" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Saúde</p>
+          <h1 class="wizard-step__title">Dados de saúde</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_blood_type.id_for_label }}">Tipo sanguíneo <span class="form-label-optional">(opcional)</span></label>
+            <div class="form-select-wrapper">{{ form.dependent_blood_type }}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_allergies.id_for_label }}">Alergias <span class="form-label-optional">(opcional)</span></label>
+            {{ form.dependent_allergies }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_injuries.id_for_label }}">Lesões ou condições relevantes <span class="form-label-optional">(opcional)</span></label>
+            {{ form.dependent_injuries }}
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="{{ form.dependent_emergency_contact.id_for_label }}">Contato de emergência <span class="form-label-optional">(opcional)</span></label>
+            {{ form.dependent_emergency_contact }}
+          </div>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" data-step="3" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Histórico esportivo</p>
+          <h1 class="wizard-step__title">Artes marciais</h1>
+        </div>
+
+        <div class="wizard-form__fields">
+          <div class="form-field">
+            <label class="form-label">Já praticou alguma arte marcial ou luta?</label>
+            <div class="martial-has-toggle" role="group" aria-label="Experiência em artes marciais">
+              <button type="button" class="martial-has-btn martial-has-btn--active" data-martial-toggle="no">Não, sou iniciante</button>
+              <button type="button" class="martial-has-btn" data-martial-toggle="yes">Já pratiquei</button>
+            </div>
+            <div hidden>{{ form.dependent_has_martial_art }}</div>
+          </div>
+
+          <div id="dep-martial-detail-section" hidden>
+            <div class="form-field">
+              <label class="form-label" for="{{ form.dependent_martial_art.id_for_label }}">Modalidade</label>
+              <div class="form-select-wrapper">{{ form.dependent_martial_art }}</div>
+              {% for error in form.dependent_martial_art.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="{{ form.dependent_previous_academy.id_for_label }}">Academia anterior <span class="form-label-optional">(opcional)</span></label>
+              {{ form.dependent_previous_academy }}
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="{{ form.dependent_martial_art_started_at.id_for_label }}">Início na modalidade <span class="form-label-optional">(opcional)</span></label>
+              {{ form.dependent_martial_art_started_at }}
+            </div>
+
+            <div class="form-field" id="dep-martial-other-grad-field">
+              <label class="form-label" for="{{ form.dependent_martial_art_graduation.id_for_label }}">Graduação atual <span class="form-label-optional">(opcional)</span></label>
+              {{ form.dependent_martial_art_graduation }}
+              {% for error in form.dependent_martial_art_graduation.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+            </div>
+
+            <div id="dep-martial-jj-section" hidden>
+              <div class="form-field">
+                <label class="form-label" for="{{ form.dependent_jiu_jitsu_belt.id_for_label }}">Faixa no Jiu-Jitsu</label>
+                <div class="form-select-wrapper">{{ form.dependent_jiu_jitsu_belt }}</div>
+                {% for error in form.dependent_jiu_jitsu_belt.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="{{ form.dependent_jiu_jitsu_stripes.id_for_label }}">Graus</label>
+                {{ form.dependent_jiu_jitsu_stripes }}
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="{{ form.dependent_martial_art_last_graduation_at.id_for_label }}">Data da última graduação <span class="form-label-optional">(opcional)</span></label>
+                {{ form.dependent_martial_art_last_graduation_at }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" data-step="4" data-step-key="classes" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Turma</p>
+          <h1 class="wizard-step__title">Escolha a turma</h1>
+          <p class="wizard-step__subtitle">Turma para o dependente — você pode escolher mais de uma.</p>
+        </div>
+
+        <div class="class-catalog" id="dep-class-catalog"></div>
+        <div hidden>{{ form.dependent_class_groups }}</div>
+        {% for error in form.dependent_class_groups.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+      </section>
+
+
+      <section class="wizard-step" data-step="5" data-step-key="plan" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Plano do dependente</h1>
+          <p class="wizard-step__subtitle">Escolha frequência e período para ver as opções disponíveis</p>
+        </div>
+
+        <div hidden>{{ form.use_family_plan }}{{ form.financial_mode }}</div>
+        {% for error in form.use_family_plan.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+        {% for error in form.financial_mode.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+
+        <div id="dep-plan-section" class="financial-plan-section">
+          <p class="plan-mode-hint" id="dep-plan-mode-hint">Escolha frequência e período para liberar os planos.</p>
+
+          <div class="plan-policy-notice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <div>
+              <strong>Trancamento e pausa por atestado médico</strong>
+              <p>
+                É possível trancar a matrícula por até <strong>30 dias por ano</strong> de matrícula, sem justificativa
+                — liberado fora do período de permanência mínima, quando houver. Atestado médico
+                <strong>sempre suspende a cobrança</strong> pelo período informado, mesmo durante a permanência mínima,
+                e a permanência é prorrogada pelo mesmo número de dias. Toda pausa passa por aprovação do administrativo.
+              </p>
+            </div>
+          </div>
+
+          <div id="dep-plan-filters-area"></div>
+          <div id="dep-plan-cards-area"></div>
+          <div hidden>{{ form.selected_plan }}{{ form.checkout_action }}{{ form.card_strategy }}</div>
+          {% for error in form.selected_plan.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          {% for error in form.card_strategy.errors %}<p class="form-field__error">{{ error }}</p>{% endfor %}
+          <div id="dep-card-strategy-area" class="card-strategy-section" hidden>
+            <p class="card-strategy-section__title">Como cobrar o cartão do dependente?</p>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="new_card" checked>
+              <span>Novo cartão</span>
+            </label>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="same_card_merged">
+              <span>Mesmo cartão do responsável — fundir em 1 cobrança</span>
+            </label>
+            <label class="card-strategy-option">
+              <input type="radio" name="dep_card_strategy_choice" value="same_card_staggered">
+              <span>Mesmo cartão do responsável — manter separado, escalonar horário</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="wizard-step" data-step="6" data-step-key="materials" hidden>
+        <div class="wizard-step__heading">
+          <h1 class="wizard-step__title">Materiais e equipamentos</h1>
+          <p class="wizard-step__subtitle" id="dep-products-subtitle">Adicione kimonos ou outros itens ao pedido do dependente (opcional)</p>
+        </div>
+
+
+        <div id="dep-products-confirm-area"></div>
+
+
+        <div hidden>
+          {% for group in material_groups %}
+            {% for product_row in group.products %}
+              {% for variant_row in product_row.variants %}
+                {{ variant_row.field }}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+          {{ form.materials_checkout_action }}
+        </div>
+
+        {% if material_groups %}
+
+        <div id="dep-products-subview-catalog">
+          <div id="dep-products-catalog-area" class="prod-cards"></div>
+          <div id="dep-products-catalog-footer" style="display:flex;flex-direction:column;gap:.75rem;margin-top:1rem">
+            <button type="button" id="dep-products-btn-view-cart" class="btn-next" hidden>
+              Ver carrinho
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button type="button" id="dep-products-btn-skip-catalog" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+          </div>
+        </div>
+
+
+        <div id="dep-products-subview-configure" hidden>
+          <button type="button" class="prod-configure__back" id="dep-products-btn-back-catalog">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar ao catálogo
+          </button>
+          <div id="dep-products-configure-area"></div>
+          <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem">
+            <button type="button" id="dep-products-btn-add-to-cart" class="btn-next" disabled>
+              Adicionar ao carrinho
+            </button>
+            <button type="button" id="dep-products-btn-cancel-configure" class="btn-checkout-later">Cancelar</button>
+          </div>
+        </div>
+
+
+        <div id="dep-products-subview-cart" hidden>
+          <button type="button" class="prod-configure__back" id="dep-products-btn-back-to-catalog">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Continuar comprando
+          </button>
+          <div id="dep-products-cart-area"></div>
+          <div class="checkout-actions" style="margin-top:1rem">
+            <button type="button" id="dep-products-btn-pay-card" class="btn-checkout-pay">
+              <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              Pagar com Cartão
+            </button>
+            <button type="button" id="dep-products-btn-pay-pix" class="btn-checkout-pay">
+              <svg class="btn-checkout-pay__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Pagar com PIX
+            </button>
+            <button type="button" id="dep-products-btn-skip-cart" class="btn-checkout-later">Pular — adicionar materiais depois</button>
+          </div>
+        </div>
+        {% else %}
+        <div class="materials-empty" role="status">
+          Nenhum material disponível em estoque para compra no momento.
+        </div>
+        {% endif %}
+      </section>
+
+
+      <section class="wizard-step" data-step="7" data-step-key="review" hidden>
+        <div class="wizard-step__heading">
+          <p class="dep-step-badge">Revisão</p>
+          <h1 class="wizard-step__title">Revisar e confirmar</h1>
+          <p class="wizard-step__subtitle">Confira os dados do dependente antes de confirmar</p>
+        </div>
+
+        <div class="review-summary" id="dep-review-summary"></div>
+      </section>
+
+    </form>
+
+    <div class="wizard-shell__footer">
+      <button
+        class="btn-next"
+        type="button"
+        id="dep-wizard-next-btn"
+        form="dep-wizard-form"
+        data-step-next
+        data-final-label="{% if payment_confirmed or family_plan_selected %}Continuar{% else %}Ir para pagamento{% endif %}"
+      >
+        <span data-btn-label>Próximo</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/auth/wizard_shared.js' %}?v=1"></script>
+  <script src="{% static 'business_rule/js/dependents/dependent_registration.js' %}?v=26" defer></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
+
+{% block title %}Turmas — {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+      <p class="page-header__eyebrow"><a href="{% url 'system:home' %}">← Início</a></p>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Turmas</h1>
+          <p class="page-header__meta">Turmas, professores e capacidade</p>
+        </div>
+        <div class="page-header__actions">
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:class-category-list' %}">Categorias</a>
+          <a class="btn btn--secondary btn--sm" href="{% url 'system:class-schedule-list' %}">Horários</a>
+          <button type="button" class="btn btn--primary" data-crud-modal-open="{% url 'system:class-group-create' %}?modal=1">+ Nova turma</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="section" aria-labelledby="class-group-list-title">
+      <div class="section__header">
+        <h2 class="section__title" id="class-group-list-title">{{ class_groups|length }} turma{{ class_groups|length|pluralize }}</h2>
+      </div>
+      <div class="panel">
+        {% if class_groups %}
+        <ul class="entity-list" aria-label="Lista de turmas">
+          {% for group in class_groups %}
+          <li class="entity-card">
+            <div class="entity-card__body">
+              <div class="entity-card__name">{{ group.display_name }} · {{ group.class_category.display_name }}</div>
+              <div class="entity-card__badges">
+                {% if group.is_active %}<span class="badge badge--success">Ativa</span>{% else %}<span class="badge badge--neutral">Inativa</span>{% endif %}
+              </div>
+              <div class="entity-card__meta">
+                {% if group.main_teacher %}Professor: {{ group.main_teacher.full_name }}{% else %}Sem professor principal{% endif %}
+                {% if group.schedule_labels %} · {{ group.schedule_labels|join:", " }}{% endif %}
+              </div>
+            </div>
+            <div class="entity-card__actions">
+              <a class="btn btn--secondary btn--sm" href="{% url 'system:class-group-detail' pk=group.pk %}">Detalhe</a>
+              <button type="button" class="btn-icon" data-crud-modal-open="{% url 'system:class-group-update' pk=group.pk %}?modal=1" aria-label="Editar {{ group.display_name }}" title="Editar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <a class="btn-icon" href="{% url 'system:class-group-delete' pk=group.pk %}" data-confirm-delete-open data-confirm-delete-label="{{ group.display_name }}" aria-label="Excluir {{ group.display_name }}" title="Excluir">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </a>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state" role="status"><p class="empty-state__text">Nenhuma turma cadastrada.</p></div>
+        {% endif %}
+      </div>
+    </section>
+{% endblock %}
+
+{% block modals %}
+<dialog class="crud-modal" data-crud-modal aria-label="Formulário de turma">
+    <iframe class="crud-modal__frame" data-crud-modal-frame src="about:blank" title="Formulário de turma"></iframe>
+  </dialog>
+  <dialog class="confirm-delete-dialog" data-confirm-delete-dialog aria-label="Confirmar exclusão">
+    <form method="post" data-confirm-delete-form>
+      {% csrf_token %}
+      <p class="confirm-delete-dialog__text">Confirma excluir <strong data-confirm-delete-name></strong>? Essa ação não pode ser desfeita.</p>
+      <div class="confirm-delete-dialog__actions">
+        <button type="button" class="btn btn--secondary" data-confirm-delete-cancel>Cancelar</button>
+        <button type="submit" class="btn btn--danger">Excluir</button>
+      </div>
+    </form>
+  </dialog>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'business_rule/js/lv/crud_modal.js' %}?v=20260709-1"></script>
+  <script src="{% static 'business_rule/js/lv/confirm_delete.js' %}"></script>
+{% endblock %}

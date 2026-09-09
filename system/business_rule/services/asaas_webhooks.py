@@ -1,0 +1,241 @@
+import logging
+from decimal import Decimal, InvalidOperation
+
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+
+from system.business_rule.models.asaas import (
+    AsaasWebhookEvent,
+    PayoutStatus,
+    TeacherPayout,
+)
+from system.business_rule.models.registration_order import PaymentStatus, RegistrationOrder
+from system.business_rule.services.asaas_payroll import mark_payout_failed, mark_payout_paid
+from system.business_rule.services.financial_transactions import apply_order_financials
+from system.business_rule.services.membership import activate_membership_from_paid_order
+from system.business_rule.services.payroll_rules import append_order_refund_record
+from system.business_rule.services.order_stock import apply_order_variant_stock
+from system.business_rule.services.plan_change import apply_plan_change
+from system.business_rule.models.membership import Membership, MembershipStatus
+
+
+logger = logging.getLogger(__name__)
+
+
+PAYMENT_RECEIVED_EVENTS = {
+    "PAYMENT_CONFIRMED",
+    "PAYMENT_RECEIVED",
+}
+
+PAYMENT_FAILURE_EVENTS = {
+    "PAYMENT_OVERDUE",
+    "PAYMENT_DELETED",
+    "PAYMENT_REFUND_REQUESTED",
+    "PAYMENT_CHARGEBACK_REQUESTED",
+    "PAYMENT_CHARGEBACK_DISPUTE",
+}
+
+PAYMENT_REFUND_EVENTS = {
+    "PAYMENT_REFUNDED",
+    "PAYMENT_PARTIALLY_REFUNDED",
+}
+
+TRANSFER_SUCCESS_EVENTS = {
+    "TRANSFER_DONE",
+    "TRANSFER_PAID",
+    "TRANSFER_CONFIRMED",
+}
+
+TRANSFER_FAILURE_EVENTS = {
+    "TRANSFER_FAILED",
+    "TRANSFER_CANCELLED",
+    "TRANSFER_DENIED",
+}
+
+ACTIONABLE_PAYMENT_EVENTS = (
+    PAYMENT_RECEIVED_EVENTS | PAYMENT_FAILURE_EVENTS | PAYMENT_REFUND_EVENTS
+)
+ACTIONABLE_TRANSFER_EVENTS = TRANSFER_SUCCESS_EVENTS | TRANSFER_FAILURE_EVENTS
+
+
+@transaction.atomic
+def process_asaas_event(event: dict):
+    event_id = event.get("id") or ""
+    event_type = event.get("event") or ""
+    if not event_id:
+        logger.warning("Webhook Asaas sem id — ignorando")
+        return {"order": None, "payout": None, "duplicate": False}
+
+    order = None
+    payout = None
+
+    if event_type.startswith("PAYMENT_"):
+        if event_type not in ACTIONABLE_PAYMENT_EVENTS:
+            return {"order": None, "payout": None, "duplicate": False}
+    elif event_type.startswith("TRANSFER_"):
+        if event_type not in ACTIONABLE_TRANSFER_EVENTS:
+            return {"order": None, "payout": None, "duplicate": False}
+
+    existing = AsaasWebhookEvent.objects.filter(event_id=event_id).first()
+    if existing is not None:
+        return {
+            "order": existing.order,
+            "payout": existing.payout,
+            "duplicate": True,
+        }
+
+    try:
+        log_row = AsaasWebhookEvent.objects.create(
+            event_id=event_id,
+            event_type=event_type,
+            payload=event,
+        )
+    except IntegrityError:
+        existing = AsaasWebhookEvent.objects.filter(event_id=event_id).first()
+        if existing is None:
+            raise
+        return {
+            "order": existing.order,
+            "payout": existing.payout,
+            "duplicate": True,
+        }
+
+    order = None
+    payout = None
+    if event_type.startswith("PAYMENT_"):
+        order = _handle_payment_event(event_type, event)
+    elif event_type.startswith("TRANSFER_"):
+        payout = _handle_transfer_event(event_type, event)
+
+    log_row.order = order
+    log_row.payout = payout
+    log_row.save(update_fields=["order", "payout", "updated_at"])
+
+    return {"order": order, "payout": payout, "duplicate": False}
+
+
+def _handle_payment_event(event_type, event):
+    payment = event.get("payment") or {}
+    asaas_payment_id = payment.get("id")
+    if not asaas_payment_id:
+        return None
+
+    order = RegistrationOrder.objects.filter(
+        asaas_payment_id=asaas_payment_id
+    ).first()
+    if order is None:
+        external_ref = payment.get("externalReference")
+        if external_ref:
+            try:
+                order = RegistrationOrder.objects.filter(pk=int(external_ref)).first()
+            except (ValueError, TypeError):
+                order = None
+    if order is None:
+        return None
+
+    if event_type in PAYMENT_RECEIVED_EVENTS:
+        was_paid = order.payment_status in (
+            PaymentStatus.PAID,
+            PaymentStatus.EXEMPTED,
+        )
+        if order.payment_status not in (
+            PaymentStatus.PAID,
+            PaymentStatus.EXEMPTED,
+            PaymentStatus.REFUNDED,
+        ):
+            order.payment_status = PaymentStatus.PAID
+            order.paid_at = timezone.now()
+            order.save(
+                update_fields=["payment_status", "paid_at", "updated_at"]
+            )
+        if not was_paid:
+            apply_order_variant_stock(order)
+        apply_order_financials(
+            order,
+            financial_transaction_id=asaas_payment_id,
+            mark_available=True,
+        )
+        if order.is_plan_change and (order.plan_id or order.plan_price_ref_id):
+
+            active = (
+                Membership.objects.filter(
+                    person=order.person,
+                    status__in=(MembershipStatus.ACTIVE, MembershipStatus.EXEMPTED),
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if active:
+                new_plan = order.plan_price_ref if order.plan_price_ref_id else order.plan
+                apply_plan_change(order, active, new_plan)
+        else:
+            activate_membership_from_paid_order(
+                order,
+                notes="Pagamento confirmado via Asaas.",
+            )
+    elif event_type in PAYMENT_FAILURE_EVENTS:
+        if order.payment_status == PaymentStatus.PENDING:
+            order.payment_status = PaymentStatus.FAILED
+            order.save(update_fields=["payment_status", "updated_at"])
+    elif event_type in PAYMENT_REFUND_EVENTS:
+        refunded_amount = _extract_refund_amount(event_type, payment, order)
+        order.refunded_at = timezone.now()
+        if event_type != "PAYMENT_PARTIALLY_REFUNDED":
+            order.payment_status = PaymentStatus.REFUNDED
+        if refunded_amount > Decimal("0"):
+            append_order_refund_record(
+                order,
+                refunded_amount,
+                source="asaas_webhook",
+                cumulative=False,
+                save=False,
+            )
+        order.save(update_fields=["refunded_at", "payment_status", "notes", "updated_at"])
+    return order
+
+
+def _extract_refund_amount(event_type, payment, order):
+    for key in (
+        "refundedValue",
+        "refundValue",
+        "valueRefunded",
+        "amountRefunded",
+    ):
+        raw_value = payment.get(key)
+        if raw_value in (None, ""):
+            continue
+        try:
+            return Decimal(str(raw_value).replace(",", ".")).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError) as exc:
+            raise ValueError(f"Valor de estorno Asaas inválido: {key}") from exc
+    if event_type == "PAYMENT_REFUNDED":
+        return Decimal(order.total or 0).quantize(Decimal("0.01"))
+    return Decimal("0.00")
+
+
+def _handle_transfer_event(event_type, event):
+    transfer = event.get("transfer") or {}
+    transfer_id = transfer.get("id")
+    if not transfer_id:
+        return None
+
+    payout = TeacherPayout.objects.filter(asaas_transfer_id=transfer_id).first()
+    if payout is None:
+        external_ref = transfer.get("externalReference") or ""
+        if external_ref.startswith("payout-"):
+            try:
+                payout_pk = int(external_ref.split("-", 1)[1])
+                payout = TeacherPayout.objects.filter(pk=payout_pk).first()
+            except (ValueError, IndexError):
+                payout = None
+    if payout is None:
+        return None
+
+    if event_type in TRANSFER_SUCCESS_EVENTS:
+        if payout.status != PayoutStatus.PAID:
+            mark_payout_paid(payout)
+    elif event_type in TRANSFER_FAILURE_EVENTS:
+        if not payout.is_terminal:
+            reason = transfer.get("failReason") or event_type
+            mark_payout_failed(payout, reason=reason)
+    return payout

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Escolher parcelamento — {{ site_name }}</title>
+  {% load static %}
+  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
+    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
+  <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=7">
+  <style>
+    .installment-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.125rem 1.25rem;
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      border-radius: 0.75rem;
+      box-shadow: var(--card-shadow);
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      width: 100%;
+      text-align: left;
+    }
+    .installment-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
+    }
+    .installment-card input[type="radio"] {
+      accent-color: var(--accent);
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+    }
+    .installment-card input[type="radio"]:checked ~ .installment-card__info {
+      color: var(--accent);
+    }
+    .installment-card--selected {
+      border-color: var(--accent);
+      background: var(--accent-muted);
+    }
+    .installment-card__info {
+      flex: 1;
+    }
+    .installment-card__label {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .installment-card__detail {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      margin-top: 0.125rem;
+    }
+    .installment-card__amount {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .order-summary {
+      background: var(--panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+    .order-summary__label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .order-summary__plan {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .order-summary__total {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .order-summary__total strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .installment-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 0.625rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      text-align: center;
+    }
+    .btn-primary:hover { background: var(--accent-strong); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+    .btn-ghost {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      border-radius: 0.625rem;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      text-align: center;
+      text-decoration: none;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+    .btn-ghost:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+    .action-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body class="register-page">
+
+  <div class="wizard-shell">
+
+    <header class="wizard-header">
+      <a href="javascript:history.back()" class="wizard-back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Voltar</span>
+      </a>
+      <img
+        src="{% static 'logo/logo-dark.png' %}"
+        alt="{{ site_name }}"
+        class="wizard-header__logo"
+        width="100"
+      >
+      <div class="wizard-progress">Pagamento</div>
+    </header>
+
+    <div class="wizard-progress-bar" role="progressbar">
+      <div class="wizard-progress-bar__fill" style="width:100%"></div>
+    </div>
+
+    {% if messages %}
+      <div class="wizard-errors" role="alert">
+        {% for message in messages %}
+          <p class="wizard-errors__item">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="wizard-step">
+
+      <div class="wizard-step__heading">
+        <h1 class="wizard-step__title">Escolha o parcelamento</h1>
+        <p class="wizard-step__subtitle">Selecione como deseja pagar com cartão de crédito</p>
+      </div>
+
+      <div class="order-summary">
+        <span class="order-summary__label">Pedido #{{ order.pk }}</span>
+        <span class="order-summary__plan">{{ order.plan.display_name|default:order.plan_price_ref.tier.display_name }}</span>
+        <span class="order-summary__total">Total: <strong>R$ {{ order.total|floatformat:2 }}</strong></span>
+      </div>
+
+      <form method="post" id="installment-form">
+        {% csrf_token %}
+
+        <div class="installment-options" role="group" aria-labelledby="installment-group-label">
+          <p id="installment-group-label" class="wizard-step__subtitle" style="margin-bottom:0.25rem">Opções de parcelamento:</p>
+
+          {% for opt in options %}
+            <label class="installment-card{% if forloop.first %} installment-card--selected{% endif %}" id="label-installment-{{ opt.count }}">
+              <input
+                type="radio"
+                name="installment_count"
+                value="{{ opt.count }}"
+                {% if forloop.first %}checked{% endif %}
+                onchange="document.querySelectorAll('.installment-card').forEach(function(el){el.classList.remove('installment-card--selected')});document.getElementById('label-installment-'+this.value).classList.add('installment-card--selected')"
+              >
+              <div class="installment-card__info">
+                <div class="installment-card__label">
+                  {% if opt.count == 1 %}
+                    À vista
+                  {% else %}
+                    {{ opt.count }}x sem juros
+                  {% endif %}
+                </div>
+                {% if opt.count > 1 %}
+                  <div class="installment-card__detail">Total: R$ {{ opt.total|floatformat:2 }}</div>
+                {% endif %}
+              </div>
+              <span class="installment-card__amount">R$ {{ opt.value_per|floatformat:2 }}</span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <div class="action-stack">
+          <button type="submit" class="btn-primary">
+            Continuar para pagamento
+          </button>
+          <a href="javascript:history.back()" class="btn-ghost">Voltar</a>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('installment-form');
+      var btn = form.querySelector('button[type="submit"]');
+      form.addEventListener('submit', function () {
+        btn.disabled = true;
+        btn.textContent = 'Redirecionando…';
+      });
+    })();
+  </script>
+
+</body>
+</html>

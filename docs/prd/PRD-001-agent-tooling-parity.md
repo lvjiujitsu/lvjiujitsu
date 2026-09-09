@@ -28,7 +28,7 @@ Expected evidence: commands, outputs and focused regression tests. Output format
 
 ## Scope
 
-AGENTS.md, CLAUDE.md, README.md, .agents/, .claude/, .codex/, manage.py; scripts/strip_comments.py and its CI caller; Obsidian platform and operation notes.
+AGENTS.md, CLAUDE.md, README.md, .agents/, .claude/, .codex/, manage.py; the clean-code scan and its CI caller; Obsidian platform and operation notes.
 
 ## Out of scope
 
@@ -36,7 +36,7 @@ Product redesign, schema changes, real local database reset, remote reset, netwo
 
 ## Impacted files
 
-AGENTS.md, CLAUDE.md, README.md, .agents/, .claude/, .codex/, manage.py; scripts/strip_comments.py and its CI caller; Obsidian platform and operation notes.
+AGENTS.md, CLAUDE.md, README.md, .agents/, .claude/, .codex/, manage.py; the clean-code scan and its CI caller; Obsidian platform and operation notes.
 
 ## Risks and edge cases
 
