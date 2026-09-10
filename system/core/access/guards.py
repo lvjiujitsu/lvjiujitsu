@@ -1,13 +1,24 @@
 from functools import wraps
 
+from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 
 from system.core.access.contracts import ANONYMOUS
 
 
 def identity_of(request):
     return getattr(request, "identity", ANONYMOUS)
+
+
+def redirect_with_message(target, message=""):
+    def on_denied(request):
+        if message:
+            messages.error(request, message)
+        return redirect(target)
+
+    return on_denied
 
 
 def require_identity(request, capabilities, login_url=None, on_denied=None):

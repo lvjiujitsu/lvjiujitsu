@@ -1,14 +1,14 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 {% load static %}
 
-{% block modal_title %}{{ person.full_name }} — {{ site_name }}{% endblock %}
-{% block modal_header_title %}{{ person.full_name }}{% endblock %}
+{% block title %}{{ person.full_name }} — {{ site_name }}{% endblock %}
+{% block header_title %}{{ person.full_name }}{% endblock %}
 
-{% block modal_extra_head %}
+{% block head_extra %}
 <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
 {% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <div class="person-card__badges" style="margin-bottom:1rem;">
   {% if person.person_type %}
   <span class="badge badge--info">{{ person.person_type.display_name }}</span>

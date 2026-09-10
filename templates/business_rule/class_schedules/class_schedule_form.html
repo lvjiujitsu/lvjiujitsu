@@ -1,14 +1,14 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 {% load static %}
 
-{% block modal_title %}{{ form_title }} — {{ site_name }}{% endblock %}
-{% block modal_header_title %}{{ form_title }}{% endblock %}
+{% block title %}{{ form_title }} — {{ site_name }}{% endblock %}
+{% block header_title %}{{ form_title }}{% endblock %}
 
-{% block modal_extra_head %}
+{% block head_extra %}
 <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
 {% endblock %}
 
-{% block modal_content %}
+{% block content %}
 {% if selected_class_group %}
 <p class="form-field__help">Turma: {{ selected_class_group.catalog_title }}</p>
 {% endif %}

@@ -1,0 +1,10 @@
+{% if messages %}
+    <div class="alert-stack" role="alert" aria-live="assertive" data-auto-dismiss>
+        {% for message in messages %}
+            <div class="alert alert--{{ message.tags|default:'info' }}">
+                <span>{{ message }}</span>
+                <button class="alert__close" type="button" data-alert-close aria-label="Fechar aviso">{% include "core/icons/close.html" %}</button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

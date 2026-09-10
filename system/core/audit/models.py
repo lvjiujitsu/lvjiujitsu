@@ -13,7 +13,6 @@ class AuditEntry(models.Model):
     module = models.CharField("módulo", max_length=40)
     action = models.CharField("ação", max_length=30)
     actor_label = models.CharField("autor", max_length=150)
-    entity = models.CharField("entidade", max_length=40)
     entity_label = models.CharField("registro", max_length=200)
     summary = models.CharField("resumo", max_length=300, blank=True)
     created_at = models.DateTimeField("registrado em", auto_now_add=True)

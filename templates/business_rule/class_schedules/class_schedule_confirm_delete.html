@@ -1,9 +1,9 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 
-{% block modal_title %}Excluir horário — {{ site_name }}{% endblock %}
-{% block modal_header_title %}Excluir horário{% endblock %}
+{% block title %}Excluir horário — {{ site_name }}{% endblock %}
+{% block header_title %}Excluir horário{% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <p>Confirma excluir este horário ({{ object.get_weekday_display }} {{ object.start_time|time:"H:i" }})? Essa ação não pode ser desfeita.</p>
 <form method="post" class="form-actions" style="margin-top:1rem;">
   {% csrf_token %}

@@ -1,0 +1,41 @@
+{% if pagination.has_results %}
+<nav class="pagination" aria-label="Paginação da lista">
+    <p class="pagination__summary">{{ pagination.range_start }}–{{ pagination.range_end }} de {{ pagination.count }} {{ pagination.unit }}</p>
+    {% if pagination.show_nav %}
+    <div class="pagination__nav">
+        {% if pagination.previous_url %}
+        <a class="pagination__step" href="{{ pagination.previous_url }}" rel="prev" aria-label="Página anterior">
+            {% include "core/icons/chevron_left.html" %}<span>Anterior</span>
+        </a>
+        {% else %}
+        <span class="pagination__step pagination__step--disabled" aria-disabled="true">
+            {% include "core/icons/chevron_left.html" %}<span>Anterior</span>
+        </span>
+        {% endif %}
+        <p class="pagination__compact">Página {{ pagination.current }} de {{ pagination.num_pages }}</p>
+        <ol class="pagination__pages">
+            {% for item in pagination.items %}
+            <li class="pagination__pages-item">
+                {% if item.is_gap %}
+                <span class="pagination__gap" aria-hidden="true">…</span>
+                {% elif item.is_current %}
+                <span class="pagination__page pagination__page--current" aria-current="page">{{ item.label }}</span>
+                {% else %}
+                <a class="pagination__page" href="{{ item.url }}" aria-label="Página {{ item.label }}">{{ item.label }}</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+        {% if pagination.next_url %}
+        <a class="pagination__step" href="{{ pagination.next_url }}" rel="next" aria-label="Próxima página">
+            <span>Próxima</span>{% include "core/icons/chevron_right.html" %}
+        </a>
+        {% else %}
+        <span class="pagination__step pagination__step--disabled" aria-disabled="true">
+            <span>Próxima</span>{% include "core/icons/chevron_right.html" %}
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+</nav>
+{% endif %}

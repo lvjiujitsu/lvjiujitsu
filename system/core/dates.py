@@ -1,6 +1,8 @@
 from datetime import date, datetime
 
 from django import forms
+from django.utils import timezone
+from django.utils.formats import date_format
 
 
 class NativeDateInput(forms.DateInput):
@@ -11,11 +13,21 @@ PT_BR_DATE_INPUT_ATTRS = {
     "autocomplete": "off",
     "lang": "pt-BR",
     "title": "Selecione a data no calendário.",
-    "data-pt-br-native-date": "true",
+    "data-mask": "date",
 }
 
 PT_BR_DATE_INPUT_FORMAT = "%Y-%m-%d"
 PT_BR_DATE_INPUT_FORMATS = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"]
+
+
+def today_context():
+    today = timezone.localdate()
+    return {
+        "today": today,
+        "today_weekday": date_format(today, "l"),
+        "today_date": date_format(today, "SHORT_DATE_FORMAT"),
+        "today_iso": today.strftime(PT_BR_DATE_INPUT_FORMAT),
+    }
 
 
 def parse_flexible_date(value: str | None):

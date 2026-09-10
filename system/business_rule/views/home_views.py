@@ -7,6 +7,7 @@ from django.views import View
 from django.views.generic import RedirectView, TemplateView
 
 from system.core.audit import AuditAction
+from system.core.forms import form_error_payload
 from system.business_rule.forms import ClientProfileForm
 from system.business_rule.constants import AuditModule
 from system.business_rule.models.calendar import ClassSession, SpecialClass as SpecialClassModel
@@ -27,7 +28,6 @@ from system.business_rule.selectors.home_context import (
     empty_context,
     get_active_instructor_choices,
     get_portal_display_name,
-    json_form_errors,
     merge_class_entries,
     role_labels,
 )
@@ -52,7 +52,7 @@ from system.business_rule.services.class_requests import (
     get_class_catalog_requests_for_person,
     get_pending_class_catalog_request_count,
 )
-from system.business_rule.services.audit import record_event
+from system.core.audit import record_event
 from system.business_rule.access import (
     is_administrative,
     is_instructor,
@@ -255,7 +255,7 @@ class ClientProfileUpdateView(PortalLoginRequiredMixin, View):
         form = ClientProfileForm(request.POST, instance=person)
         if not form.is_valid():
             return JsonResponse(
-                {"success": False, "errors": json_form_errors(form)},
+                {"success": False, "errors": form_error_payload(form)},
                 status=400,
             )
 

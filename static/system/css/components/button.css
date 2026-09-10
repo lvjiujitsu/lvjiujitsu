@@ -1,0 +1,106 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.375rem);
+  min-height: var(--touch-target, 44px);
+  padding: var(--space-3, 0.5rem) var(--space-8, 1.25rem);
+  border: var(--border-width-strong, 1.5px) solid transparent;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: var(--text, currentColor);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn svg {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+.btn--primary {
+  border-color: var(--accent, currentColor);
+  background: var(--accent, transparent);
+  color: var(--on-accent, #ffffff);
+}
+
+.btn--primary:hover {
+  border-color: var(--accent-strong, currentColor);
+  background: var(--accent-strong, transparent);
+  box-shadow: 0 0 0 3px var(--accent-muted, rgba(0, 0, 0, 0.12));
+}
+
+.btn--secondary {
+  border-color: var(--border, currentColor);
+  background: var(--panel, transparent);
+  color: var(--text, currentColor);
+}
+
+.btn--secondary:hover {
+  border-color: var(--muted, currentColor);
+  background: var(--surface, transparent);
+}
+
+.btn--danger {
+  border-color: var(--danger, currentColor);
+  background: var(--danger-muted, transparent);
+  color: var(--danger, currentColor);
+}
+
+.btn--danger:hover {
+  box-shadow: 0 0 0 3px var(--danger-muted, rgba(0, 0, 0, 0.12));
+}
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted, currentColor);
+}
+
+.btn--ghost:hover {
+  background: var(--surface, transparent);
+  color: var(--text, currentColor);
+}
+
+.btn--sm {
+  min-height: var(--control-height-sm, 34px);
+  padding: var(--space-1, 0.25rem) var(--space-6, 0.875rem);
+  font-size: 0.8125rem;
+}
+
+.btn--icon {
+  width: var(--touch-target, 44px);
+  min-width: var(--touch-target, 44px);
+  padding: 0;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--focus-ring-color, currentColor);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--focus-ring-halo, rgba(0, 0, 0, 0.16));
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none !important;
+  }
+}

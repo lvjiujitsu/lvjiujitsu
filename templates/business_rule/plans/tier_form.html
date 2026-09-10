@@ -3,7 +3,7 @@
 
 {% block title %}{{ form_title }} — {{ site_name }}{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
 {% endblock %}
 
@@ -61,6 +61,6 @@
     </form>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1" defer></script>
 {% endblock %}

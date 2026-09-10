@@ -12,7 +12,6 @@ class AuditEntryAdmin(admin.ModelAdmin):
         "module",
         "action",
         "actor_label",
-        "entity",
         "entity_label",
         "summary",
         "created_at",

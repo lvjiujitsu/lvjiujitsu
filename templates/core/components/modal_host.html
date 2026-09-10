@@ -1,0 +1,9 @@
+<dialog class="dialog dialog--{{ size|default:'md' }}" data-frame-modal="{{ name }}" aria-modal="true" aria-label="{{ label }}">
+    <div class="dialog__panel">
+        <header class="dialog__header">
+            <h2 class="dialog__title">{{ label }}</h2>
+            <button class="dialog__close" type="button" data-frame-modal-close aria-label="Fechar">{% include "core/icons/close.html" %}</button>
+        </header>
+        <iframe class="dialog__frame" data-frame-modal-frame title="{{ label }}"></iframe>
+    </div>
+</dialog>

@@ -1,0 +1,10 @@
+{% if brand_logo_light %}
+    <img class="{{ css_class|default:'brand-logo' }} brand-logo--on-light" src="{{ brand_logo_light.image_url }}" alt="{{ site_name }}" draggable="false">
+{% else %}
+    <span class="brand-wordmark brand-logo--on-light">{{ site_name_upper }}</span>
+{% endif %}
+{% if brand_logo_dark %}
+    <img class="{{ css_class|default:'brand-logo' }} brand-logo--on-dark" src="{{ brand_logo_dark.image_url }}" alt="{{ site_name }}" draggable="false">
+{% else %}
+    <span class="brand-wordmark brand-logo--on-dark">{{ site_name_upper }}</span>
+{% endif %}

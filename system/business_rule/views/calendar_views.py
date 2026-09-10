@@ -19,7 +19,7 @@ from system.business_rule.constants import AuditModule
 from system.business_rule.models import ClassSchedule, SpecialClass
 from system.business_rule.models.calendar import ClassCheckin, SpecialClassCheckin
 from system.business_rule.models.person import Person, PersonRelationship, PersonRelationshipKind
-from system.business_rule.services.audit import record_event
+from system.core.audit import record_event
 from system.business_rule.services.class_calendar import (
     assign_session_substitute,
     assign_special_substitute,

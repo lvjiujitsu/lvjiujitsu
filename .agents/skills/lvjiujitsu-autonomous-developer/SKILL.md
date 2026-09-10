@@ -98,11 +98,3 @@ Quota, rede ou autenticação externas podem interromper a execução, mas nunca
 # Saída
 
 Informar lease, baseline, cobertura, PRDs criadas e resolvidas, testes, gates, SHA publicado, URL do Pull Request, limpeza e pendências. Nunca declarar concluído sem evidência observável.
-
-- A interface é do produto, nunca do navegador: lista de valores, sugestão,
-  confirmação e aviso são HTML, CSS e JavaScript deste projeto, com os tokens do
-  tema. `<datalist>`, `alert`, `confirm`, `prompt` e qualquer widget desenhado
-  pelo agente de usuário estão proibidos; a exceção é o que só o dispositivo
-  entrega, como teclado virtual, seletor de arquivo e comportamento nativo de
-  campo no celular. Componente equivalente já existente no produto é
-  reaproveitado em vez de reinventado.

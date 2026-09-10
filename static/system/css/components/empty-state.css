@@ -1,0 +1,51 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5, 0.75rem);
+  padding: var(--space-11, 2.5rem) var(--space-7, 1rem);
+  border: var(--border-width-strong, 1.5px) dashed var(--border, currentColor);
+  border-radius: var(--radius-md, 8px);
+  color: var(--muted, currentColor);
+  text-align: center;
+}
+
+.empty-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, currentColor);
+  opacity: 0.55;
+}
+
+.empty-state__icon svg {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+}
+
+.empty-state__text {
+  margin: 0;
+  color: var(--muted, currentColor);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 0.5rem);
+}
+
+.empty-state--compact {
+  gap: var(--space-3, 0.5rem);
+  padding: var(--space-7, 1rem) var(--space-5, 0.75rem);
+  border: 0;
+}
+
+.empty-state--compact .empty-state__text {
+  font-size: 0.8125rem;
+}

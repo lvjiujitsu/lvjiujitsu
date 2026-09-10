@@ -1,0 +1,10 @@
+<dialog class="dialog dialog--sm app-confirm" data-confirm-delete-dialog aria-modal="true">
+    <form class="dialog__panel" method="post" data-confirm-delete-form>
+        {% csrf_token %}
+        <p class="dialog__body" data-confirm-delete-text>{{ text|default:"Confirma a exclusão?" }}</p>
+        <div class="dialog__footer form-actions">
+            <button class="btn btn--secondary" type="button" data-confirm-delete-close>Cancelar</button>
+            <button class="btn btn--danger" type="submit">Excluir</button>
+        </div>
+    </form>
+</dialog>

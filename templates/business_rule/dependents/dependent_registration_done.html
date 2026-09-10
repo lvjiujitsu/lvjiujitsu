@@ -1,23 +1,21 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Dependente adicionado — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=26">
-  <link rel="stylesheet" href="{% static 'business_rule/css/dependents/dependent_registration.css' %}?v=7">
-  <script src="{% static 'business_rule/js/dependents/dependent_registration_done.js' %}?v=1" defer></script>
-</head>
-<body class="register-page dependent-page dependent-page--modal dependent-page--done">
-  <main class="dependent-shell dependent-shell--done" id="main-content">
+{% extends "core/layouts/blank.html" %}
+{% load static %}
+
+{% block title %}Dependente adicionado — {{ site_name }}{% endblock %}
+{% block body_class %}register-page dependent-page dependent-page--modal dependent-page--done{% endblock %}
+
+{% block head_extra %}
+    <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}">
+    <link rel="stylesheet" href="{% static 'business_rule/css/dependents/dependent_registration.css' %}">
+    <script src="{% static 'business_rule/js/dependents/dependent_registration_done.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<main class="dependent-shell dependent-shell--done" id="main-content">
     <section class="dependent-modal-done" data-dependent-modal-done role="status" aria-live="polite">
       <span class="dependent-modal-done__icon" aria-hidden="true">OK</span>
       <h1>Dependente atualizado</h1>
       <p>{{ message }}</p>
     </section>
   </main>
-</body>
-</html>
+{% endblock %}

@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.generic import ListView
 
+from system.core.http import safe_redirect_target
 from system.business_rule.models.asaas import (
     PayoutStatus,
     TeacherBankAccount,
@@ -285,7 +286,11 @@ class PayoutApproveView(AdministrativeRequiredMixin, View):
             messages.success(request, "Pagamento aprovado.")
         except PayrollError as exc:
             messages.error(request, str(exc))
-        return redirect(request.POST.get("next") or self.success_url)
+        return redirect(
+            safe_redirect_target(
+                request, request.POST.get("next"), fallback=self.success_url
+            )
+        )
 
 
 class PayoutRefuseView(AdministrativeRequiredMixin, View):
@@ -300,7 +305,11 @@ class PayoutRefuseView(AdministrativeRequiredMixin, View):
             messages.success(request, "Pagamento recusado.")
         except PayrollError as exc:
             messages.error(request, str(exc))
-        return redirect(request.POST.get("next") or self.success_url)
+        return redirect(
+            safe_redirect_target(
+                request, request.POST.get("next"), fallback=self.success_url
+            )
+        )
 
 
 class PayoutDispatchView(AdministrativeRequiredMixin, View):
@@ -313,4 +322,8 @@ class PayoutDispatchView(AdministrativeRequiredMixin, View):
             messages.success(request, "Pagamento enviado ao Asaas.")
         except PayrollError as exc:
             messages.error(request, f"Falha: {exc}")
-        return redirect(request.POST.get("next") or self.success_url)
+        return redirect(
+            safe_redirect_target(
+                request, request.POST.get("next"), fallback=self.success_url
+            )
+        )

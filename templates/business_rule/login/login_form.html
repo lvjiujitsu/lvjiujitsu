@@ -1,13 +1,13 @@
-{% extends "business_rule/auth/base_auth.html" %}
+{% extends "core/layouts/base_auth.html" %}
 {% load static %}
 
 {% block title %}{{ site_name }} | Acesso{% endblock %}
 
-{% block auth_head %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/auth/login.css' %}?v=20260629-4">
 {% endblock %}
 
-{% block auth_body %}
+{% block content %}
 <button
   class="theme-toggle"
   type="button"
@@ -131,6 +131,6 @@
 </main>
 {% endblock %}
 
-{% block auth_scripts %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/auth/login.js' %}?v=20260629-4" defer></script>
 {% endblock %}

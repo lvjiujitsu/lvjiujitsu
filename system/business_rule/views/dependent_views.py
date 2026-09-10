@@ -9,11 +9,12 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views import View
 from django.views.generic import TemplateView
 
+from system.core.forms import form_error_payload
 from system.core.audit import AuditAction
 from system.business_rule.forms import DependentProfileForm, DependentRegistrationForm
 from system.business_rule.constants import AuditModule
 from system.business_rule.models.person import PersonRelationship, PersonRelationshipKind
-from system.business_rule.services.audit import record_event
+from system.core.audit import record_event
 from system.business_rule.services.asaas_client import AsaasClientError
 from system.business_rule.services.dependent_registration import (
     find_dependent_pre_registration,
@@ -235,7 +236,7 @@ class DependentProfileUpdateView(PortalLoginRequiredMixin, View):
         form = DependentProfileForm(request.POST, instance=dependent)
         if not form.is_valid():
             return JsonResponse(
-                {"success": False, "errors": _dependent_form_errors(form)},
+                {"success": False, "errors": form_error_payload(form)},
                 status=400,
             )
 
@@ -264,13 +265,6 @@ def _dependent_checkout_error_message(error):
                 return description
         return "Não foi possível iniciar o pagamento no Asaas. Tente novamente."
     return str(error)
-
-
-def _dependent_form_errors(form):
-    errors = {}
-    for field_name, error_list in form.errors.items():
-        errors[field_name] = [str(error) for error in error_list]
-    return errors
 
 
 def _dependent_profile_payload(person):

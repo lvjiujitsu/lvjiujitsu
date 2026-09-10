@@ -1,0 +1,12 @@
+#logout-form button,
+.theme-toggle {
+  display: inline-flex;
+  min-width: var(--touch-target, 44px);
+  min-height: var(--touch-target, 44px);
+  align-items: center;
+  justify-content: center;
+}
+
+#logout-form button {
+  padding: var(--space-4, 0.625rem) var(--space-1, 0.25rem);
+}

@@ -1,0 +1,62 @@
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border, currentColor);
+  border-top-color: var(--accent, currentColor);
+  border-radius: 50%;
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+.spinner--lg {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+.spinner[hidden] {
+  display: none;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay {
+  position: fixed;
+  z-index: var(--z-overlay, 90);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8, 1.25rem);
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.loading-overlay[hidden] {
+  display: none;
+}
+
+.loading-overlay > * {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5, 0.75rem);
+  width: min(360px, 100%);
+  padding: var(--space-10, 2rem) var(--space-9, 1.5rem);
+  border: var(--border-width, 1px) solid var(--border, currentColor);
+  border-radius: var(--radius-xl, 14px);
+  background: var(--panel, transparent);
+  box-shadow: var(--card-shadow, none);
+  color: var(--text, currentColor);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s !important;
+  }
+}

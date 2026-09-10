@@ -1,0 +1,14 @@
+<header class="topbar" role="banner">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="{{ site_name }}">
+        {% include "core/components/brand_logo.html" with css_class="topbar__logo" %}
+    </a>
+    <nav class="topbar__actions" aria-label="Ações do usuário">
+        {% include "core/components/theme_toggle.html" %}
+        {% if identity.authenticated %}
+        <form class="topbar__logout" method="post" action="{% url 'system:logout' %}">
+            {% csrf_token %}
+            <button class="icon-button" type="submit" aria-label="Sair">{% include "core/icons/logout.html" %}</button>
+        </form>
+        {% endif %}
+    </nav>
+</header>

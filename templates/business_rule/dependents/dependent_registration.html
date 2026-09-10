@@ -1,25 +1,22 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Adicionar dependente — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
+{% extends "core/layouts/blank.html" %}
+{% load static %}
+
+{% block title %}Adicionar dependente — {{ site_name }}{% endblock %}
+{% block body_class %}register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}{% endblock %}
+
+{% block head_extra %}
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
   <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=26">
   <link rel="stylesheet" href="{% static 'business_rule/css/dependents/dependent_registration.css' %}?v=14">
-
   {{ class_catalog_json|json_script:"dep-class-catalog-json" }}
   {{ plan_catalog_json|json_script:"dep-plan-catalog-json" }}
   {{ product_catalog_json|json_script:"dep-product-catalog-json" }}
   {{ owner_plan_context_json|json_script:"dep-owner-plan-context-json" }}
   {{ ibjjf_categories_json|json_script:"dep-ibjjf-json" }}
-</head>
-<body class="register-page dependent-page{% if is_modal %} dependent-page--modal{% endif %}">
+{% endblock %}
 
-  <div class="wizard-shell">
+{% block content %}
+<div class="wizard-shell">
 
     <div class="wizard-shell__top">
       <div class="dep-wizard-topbar">
@@ -414,10 +411,9 @@
       </button>
     </div>
   </div>
+{% endblock %}
 
-  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/auth/wizard_shared.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/dependents/dependent_registration.js' %}?v=26" defer></script>
-</body>
-</html>
+{% block scripts %}
+<script src="{% static 'business_rule/js/auth/wizard_shared.js' %}" defer></script>
+<script src="{% static 'business_rule/js/dependents/dependent_registration.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,48 @@
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color, currentColor);
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring-color, currentColor);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--focus-ring-halo, rgba(0, 0, 0, 0.16));
+}
+
+.skip-link {
+  position: fixed;
+  z-index: var(--z-toast, 200);
+  top: -100px;
+  left: var(--space-5, 0.75rem);
+  display: inline-flex;
+  min-height: var(--touch-target, 44px);
+  align-items: center;
+  padding: 0 var(--space-6, 0.875rem);
+  color: var(--on-accent, #ffffff);
+  border-radius: var(--radius-md, 8px);
+  background: var(--accent, currentColor);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-5, 0.75rem);
+}

@@ -125,6 +125,7 @@ CONTEXT_PROCESSORS = [
 ]
 
 TEMPLATE_LIBRARIES = {
+    "core_filters": "system.core.templatetags.core_filters",
 }
 
 if DEBUG:
@@ -259,6 +260,7 @@ WHITENOISE_MAX_AGE = config(
 SITE_NAME = config("SITE_NAME", default="LV Jiu Jitsu")
 SITE_NAME_UPPER = config("SITE_NAME_UPPER", default=SITE_NAME.upper())
 SITE_BASE_URL = config("SITE_BASE_URL", default="http://127.0.0.1:8000").rstrip("/")
+THEME_STORAGE_KEY = "lvjiujitsu-theme"
 
 EMAIL_BACKEND = config(
     "DJANGO_EMAIL_BACKEND",
@@ -377,6 +379,10 @@ SEED_INITIAL_ADMINISTRATIVE_PASSWORD = config(
 )
 SEED_TEST_PORTAL_PASSWORD = config("SEED_TEST_PORTAL_PASSWORD", default="")
 
+PORTAL_DEFAULT_TEMP_PASSWORD = config(
+    "PORTAL_DEFAULT_TEMP_PASSWORD", default=""
+).strip()
+
 PAYMENT_CURRENCY = config("PAYMENT_CURRENCY", default="brl").lower()
 
 CREDIT_CARD_FEE_PASS_THROUGH = config(
@@ -399,6 +405,23 @@ ASAAS_PIX_DUE_DAYS = config("ASAAS_PIX_DUE_DAYS", default=1, cast=int)
 ASAAS_PIX_EXPIRATION_MINUTES = config(
     "ASAAS_PIX_EXPIRATION_MINUTES", default=30, cast=int
 )
+
+if DJANGO_ENVIRONMENT in REMOTE_ENVIRONMENTS:
+    if ASAAS_API_URL.strip() and not ASAAS_API_KEY.strip():
+        raise ImproperlyConfigured(
+            f"ASAAS_API_KEY deve ser definida no ambiente {DJANGO_ENVIRONMENT} "
+            "para a cobrança pelo gateway."
+        )
+    if ASAAS_API_URL.strip() and not ASAAS_WEBHOOK_TOKEN.strip():
+        raise ImproperlyConfigured(
+            f"ASAAS_WEBHOOK_TOKEN deve ser definido no ambiente {DJANGO_ENVIRONMENT} "
+            "para autenticar o webhook de cobrança."
+        )
+    if STRIPE_PLAN_SYNC_ENABLED and not STRIPE_SECRET_KEY.strip():
+        raise ImproperlyConfigured(
+            f"STRIPE_SECRET_KEY deve ser definida no ambiente {DJANGO_ENVIRONMENT} "
+            "para a sincronização de planos."
+        )
 ASAAS_PIX_FIXED_FEE = config("ASAAS_PIX_FIXED_FEE", default="1.99")
 ASAAS_CREDIT_PERCENT_FEE = config("ASAAS_CREDIT_PERCENT_FEE", default="0.0429")
 ASAAS_CREDIT_FIXED_FEE = config("ASAAS_CREDIT_FIXED_FEE", default="0.49")

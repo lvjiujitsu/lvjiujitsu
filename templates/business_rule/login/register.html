@@ -1,17 +1,12 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Criar conta — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
+{% extends "core/layouts/blank.html" %}
+{% load static %}
+
+{% block title %}Criar conta — {{ site_name }}{% endblock %}
+{% block body_class %}register-page{% endblock %}
+
+{% block head_extra %}
   <script>window.STATIC_URL = "{% get_static_prefix %}";</script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=26">
-
-
   {{ registration_catalog_json|json_script:"reg-catalog-json" }}
   {{ plan_catalog_json|json_script:"reg-plan-catalog-json" }}
   {{ product_catalog_json|json_script:"reg-product-catalog-json" }}
@@ -24,10 +19,10 @@
   {{ plan_order_json|json_script:"reg-plan-order-json" }}
   {{ materials_order_json|json_script:"reg-materials-order-json" }}
   {{ pending_person_json|json_script:"reg-pending-person-json" }}
-</head>
-<body class="register-page">
+{% endblock %}
 
-  <div class="wizard-shell">
+{% block content %}
+<div class="wizard-shell">
 
 
     <header class="wizard-header">
@@ -1172,10 +1167,9 @@
     </dialog>
 
   </div>
+{% endblock %}
 
-  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/auth/wizard_shared.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/auth/register.js' %}?v=57" defer></script>
-</body>
-</html>
+{% block scripts %}
+<script src="{% static 'business_rule/js/auth/wizard_shared.js' %}" defer></script>
+<script src="{% static 'business_rule/js/auth/register.js' %}" defer></script>
+{% endblock %}

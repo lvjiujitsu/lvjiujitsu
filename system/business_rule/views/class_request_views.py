@@ -5,6 +5,7 @@ from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView
 
+from system.core.http import safe_redirect_target
 from system.business_rule.constants import Capability
 from system.business_rule.forms import (
     ClassCatalogDecisionForm,
@@ -285,7 +286,11 @@ class ClassCatalogRequestSelfCancelView(PortalLoginRequiredMixin, View):
             messages.error(request, "; ".join(getattr(error, "messages", None) or [str(error)]))
             return redirect("system:home")
         messages.success(request, "Solicitação de turma/horário cancelada.")
-        return redirect(request.POST.get("next") or "system:home")
+        return redirect(
+            safe_redirect_target(
+                request, request.POST.get("next"), fallback=reverse("system:home")
+            )
+        )
 
 
 def _add_validation_error(form, error):

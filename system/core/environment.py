@@ -25,15 +25,15 @@ def shared_env_dir(contract):
 def env_file_candidates(contract):
     configured = os.environ.get(ENV_FILE_VARIABLE, "").strip()
     if not configured:
-        return [contract.base_dir / ".env", shared_env_dir(contract) / ".env"]
+        return [shared_env_dir(contract) / ".env", contract.base_dir / ".env"]
     path = Path(configured)
     if path.is_absolute():
         return [path]
-    return [contract.base_dir / path, shared_env_dir(contract) / path]
+    return [shared_env_dir(contract) / path, contract.base_dir / path]
 
 
 def locate_env_file(contract, name):
-    for candidate in (contract.base_dir / name, shared_env_dir(contract) / name):
+    for candidate in (shared_env_dir(contract) / name, contract.base_dir / name):
         if candidate.is_file():
             return candidate
     return None
@@ -65,11 +65,6 @@ def base_dir_path_setting(contract, config, name, default):
 
 
 def env_value_strip_outer_quotes(config, name, default=""):
-    """Tolera aspas em volta do valor no arquivo de ambiente.
-
-    Citar um valor é engano de operador, não decisão de produto: a limpeza
-    pertence ao contrato de ambiente e vale para qualquer chave.
-    """
     raw = config(name, default=default).strip()
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
         return raw[1:-1].strip()

@@ -1,0 +1,34 @@
+.avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--accent-muted, var(--surface, transparent));
+  color: var(--accent-ink, currentColor);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar--sm {
+  width: 26px;
+  height: 26px;
+  font-size: 0.6875rem;
+}
+
+.avatar--lg {
+  width: 46px;
+  height: 46px;
+  font-size: 1.05rem;
+}

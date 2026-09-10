@@ -1,0 +1,27 @@
+.progress {
+  width: 100%;
+  min-width: 0;
+  height: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-soft, var(--surface, transparent));
+}
+
+.progress__fill {
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--accent, currentColor);
+  transition: width 0.6s ease;
+}
+
+.progress--success .progress__fill {
+  background: var(--success, currentColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress__fill {
+    transition: none !important;
+  }
+}

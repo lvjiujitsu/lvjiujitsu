@@ -92,12 +92,11 @@ from .request_workflows import (
 from .trial_access import TrialAccessGrant
 from .membership_timeline import MembershipTimelineEvent, MembershipTimelineEventType
 
-from .user import User, UserManager
+from .user import User
 
 __all__ = [
     "CYCLE_MONTHS",
     "User",
-    "UserManager",
     "AdministrativeAccessRequest",
     "AdministrativeAccessRequestOrigin",
     "AdministrativeAccessRequestStatus",

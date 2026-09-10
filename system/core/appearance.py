@@ -15,6 +15,7 @@ def site_identity(request):
         "identity": getattr(request, "identity", ANONYMOUS),
         "site_name": settings.SITE_NAME,
         "site_name_upper": settings.SITE_NAME_UPPER,
+        "theme_storage_key": settings.THEME_STORAGE_KEY,
     }
     if _theme_provider is not None:
         context.update(_theme_provider(request))

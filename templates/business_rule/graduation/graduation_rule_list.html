@@ -3,7 +3,7 @@
 
 {% block title %}Regras de graduação — {{ site_name }}{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
 {% endblock %}
@@ -72,7 +72,6 @@
   </dialog>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/lv/crud_modal.js' %}?v=20260709-1"></script>
-  <script src="{% static 'business_rule/js/lv/confirm_delete.js' %}"></script>
 {% endblock %}

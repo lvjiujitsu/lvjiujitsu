@@ -1,4 +1,4 @@
-from system.core.audit import AuditAction
+from system.core.audit import AuditAction, record_event
 from system.core.password_reset import (
     PasswordResetConfirmView as CorePasswordResetConfirmView,
     PasswordResetDoneView as CorePasswordResetDoneView,
@@ -11,21 +11,20 @@ from system.business_rule.forms.password_reset_forms import (
     PasswordResetConfirmForm,
     PasswordResetRequestForm,
 )
-from system.business_rule.services.audit import record_event
 
 
 class PasswordResetRequestView(CorePasswordResetRequestView):
     form_class = PasswordResetRequestForm
-    template_name = "business_rule/auth/password_reset_request.html"
+    template_name = "core/auth/password_reset_request.html"
 
 
 class PasswordResetSentView(CorePasswordResetSentView):
-    template_name = "business_rule/auth/password_reset_sent.html"
+    template_name = "core/auth/password_reset_sent.html"
 
 
 class PasswordResetConfirmView(CorePasswordResetConfirmView):
     form_class = PasswordResetConfirmForm
-    template_name = "business_rule/auth/password_reset_confirm.html"
+    template_name = "core/auth/password_reset_confirm.html"
 
     def record_reset(self, kind, account):
         record_event(
@@ -38,4 +37,4 @@ class PasswordResetConfirmView(CorePasswordResetConfirmView):
 
 
 class PasswordResetDoneView(CorePasswordResetDoneView):
-    template_name = "business_rule/auth/password_reset_done.html"
+    template_name = "core/auth/password_reset_done.html"

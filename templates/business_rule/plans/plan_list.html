@@ -3,7 +3,7 @@
 
 {% block title %}Planos — {{ site_name }}{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
 {% endblock %}
 
@@ -219,8 +219,7 @@
   </dialog>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/lv/crud_modal.js' %}?v=20260709-1"></script>
-  <script src="{% static 'business_rule/js/lv/confirm_delete.js' %}"></script>
   <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1" defer></script>
 {% endblock %}

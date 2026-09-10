@@ -22,8 +22,7 @@
   }
 
   function notifyParent(type) {
-    if (window.parent === window) return;
-    window.parent.postMessage({ type: type }, window.location.origin);
+    window.APP.FrameBridge.post(type);
   }
 
   function fmtPrice(val) {

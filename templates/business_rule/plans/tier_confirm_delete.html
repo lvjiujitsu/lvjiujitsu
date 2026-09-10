@@ -3,9 +3,9 @@
 
 {% block title %}Excluir tier — {{ site_name }}{% endblock %}
 
-{% block page_class %} --narrow{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
 {% endblock %}
 
@@ -42,6 +42,6 @@
     </section>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1" defer></script>
 {% endblock %}

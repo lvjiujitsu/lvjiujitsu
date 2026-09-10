@@ -9,6 +9,7 @@ from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import FormView
 
+from system.core.http import safe_redirect_target
 from system.business_rule.forms import (
     PortalAuthenticationForm,
     PortalChangePasswordForm,
@@ -362,8 +363,14 @@ class LoginView(FormView):
             portal_account=identity["portal_account"],
             technical_admin_user=identity["technical_admin_user"],
         )
-        redirect_to = self.request.POST.get("next") or self.request.GET.get("next")
-        return redirect(redirect_to or reverse("system:dashboard-redirect"))
+        candidate = self.request.POST.get("next") or self.request.GET.get("next")
+        return redirect(
+            safe_redirect_target(
+                self.request,
+                candidate,
+                fallback=reverse("system:dashboard-redirect"),
+            )
+        )
 
 
 class LogoutView(View):

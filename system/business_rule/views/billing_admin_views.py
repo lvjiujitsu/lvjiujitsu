@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import ListView
 
+from system.core.http import safe_redirect_target
 from system.business_rule.models.membership import Membership
 from system.business_rule.models.plan import SubscriptionPlan
 from system.business_rule.models.registration_order import (
@@ -14,7 +15,7 @@ from system.business_rule.models.registration_order import (
 )
 from system.business_rule.constants import ADMINISTRATIVE_PERSON_TYPE_CODES
 from system.business_rule.constants import AuditModule, ProductAuditAction
-from system.business_rule.services.audit import record_event
+from system.core.audit import record_event
 from system.business_rule.services.membership import (
     exempt_order,
     mark_order_manually_paid,
@@ -36,11 +37,6 @@ class _BillingAdminMixin(PortalRoleRequiredMixin):
     allowed_codes = ADMINISTRATIVE_PERSON_TYPE_CODES
 
     def _resolve_admin_user(self, request):
-        """O administrador tecnico vem da sessao, nao do request.
-
-        Ninguem pendura `technical_admin_user` no request: ler dali devolvia
-        None sempre, e `approved_by` era gravado vazio.
-        """
         return resolve_technical_admin_from_session(request)
 
 
@@ -107,7 +103,11 @@ class ExemptOrderActionView(_BillingAdminMixin, View):
         messages.success(
             request, f"Pedido #{order.pk} isento com sucesso."
         )
-        return redirect(request.POST.get("next") or reverse("system:approval-queue"))
+        return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:approval-queue")
+                )
+            )
 
 
 class MarkOrderPaidActionView(_BillingAdminMixin, View):
@@ -126,7 +126,11 @@ class MarkOrderPaidActionView(_BillingAdminMixin, View):
         messages.success(
             request, f"Pedido #{order.pk} marcado como pago."
         )
-        return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+        return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
 
 
 class RefundOrderActionView(_BillingAdminMixin, View):
@@ -140,7 +144,11 @@ class RefundOrderActionView(_BillingAdminMixin, View):
                 amount = Decimal(raw_amount.replace(",", "."))
             except InvalidOperation:
                 messages.error(request, "Valor de reembolso inválido.")
-                return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+                return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
         try:
             result = refund_order(
                 order,
@@ -150,12 +158,20 @@ class RefundOrderActionView(_BillingAdminMixin, View):
             )
         except StripeAdminActionError as exc:
             messages.error(request, f"Falha ao estornar: {exc}")
-            return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+            return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
         messages.success(
             request,
             f"Estorno R$ {result['amount']} realizado para pedido #{order.pk}.",
         )
-        return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+        return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
 
 
 class CancelMembershipActionView(_BillingAdminMixin, View):
@@ -172,12 +188,20 @@ class CancelMembershipActionView(_BillingAdminMixin, View):
             )
         except StripeAdminActionError as exc:
             messages.error(request, f"Falha ao cancelar assinatura: {exc}")
-            return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+            return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
         kind = "fim do período" if at_period_end else "imediata"
         messages.success(
             request, f"Assinatura #{membership.pk} cancelada ({kind})."
         )
-        return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+        return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
 
 
 class ChangeMembershipPlanActionView(_BillingAdminMixin, View):
@@ -193,8 +217,16 @@ class ChangeMembershipPlanActionView(_BillingAdminMixin, View):
             )
         except StripeAdminActionError as exc:
             messages.error(request, f"Falha ao trocar plano: {exc}")
-            return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+            return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )
         messages.success(
             request, f"Plano da assinatura #{membership.pk} alterado para {new_plan.display_name}."
         )
-        return redirect(request.POST.get("next") or reverse("system:pending-payments"))
+        return redirect(
+                safe_redirect_target(
+                    request, request.POST.get("next"), fallback=reverse("system:pending-payments")
+                )
+            )

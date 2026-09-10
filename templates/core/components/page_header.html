@@ -1,0 +1,5 @@
+<header class="page-header">
+    {% if back_url %}<a class="page-header__eyebrow" href="{{ back_url }}">{% include "core/icons/chevron_left.html" %}{{ back_label|default:"Voltar" }}</a>{% endif %}
+    <h1 class="page-header__title">{{ title }}</h1>
+    {% if meta %}<p class="page-header__meta">{{ meta }}</p>{% endif %}
+</header>

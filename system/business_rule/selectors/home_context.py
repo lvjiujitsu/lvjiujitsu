@@ -51,13 +51,6 @@ def merge_class_entries(personal_entries, support_entries):
     return merged
 
 
-def json_form_errors(form):
-    errors = {}
-    for field_name, error_list in form.errors.items():
-        errors[field_name] = [str(error) for error in error_list]
-    return errors
-
-
 def client_profile_payload(person):
     address_parts = [
         person.address,

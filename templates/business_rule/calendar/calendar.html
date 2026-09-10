@@ -5,17 +5,17 @@
 
 {% block body_class %}{% if is_embedded %}calendar-embedded{% endif %}{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/home/dashboard.css' %}?v=18">
 {% endblock %}
 
-{% block topbar %}
+{% block header %}
 {% if not is_embedded %}
 {{ block.super }}
 {% endif %}
 {% endblock %}
 
-{% block page_class %} page--calendar{% endblock %}
+{% block page_class %}page--calendar{% endblock %}
 
 {% block content %}
 
@@ -172,6 +172,6 @@
   {% endif %}
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/calendar/calendar.js' %}?v=3" defer></script>
 {% endblock %}

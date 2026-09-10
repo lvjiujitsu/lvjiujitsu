@@ -235,3 +235,8 @@ class PortalAccountAdapter(AccountAdapter):
 
     def login_url(self, account):
         return reverse("system:login")
+
+
+def actor_label_for(source):
+    person = getattr(source, "person", None)
+    return person.full_name if person is not None else str(source)

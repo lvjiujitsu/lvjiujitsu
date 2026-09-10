@@ -76,7 +76,7 @@
 }
 
 .app-confirm__button--confirm {
-  color: #04140c;
+  color: var(--on-accent);
   background: var(--accent);
   border: 1.5px solid var(--accent);
 }
@@ -86,7 +86,7 @@
 }
 
 .app-confirm--danger .app-confirm__button--confirm {
-  color: #fff;
+  color: var(--on-danger, #ffffff);
   background: var(--danger);
   border-color: var(--danger);
 }

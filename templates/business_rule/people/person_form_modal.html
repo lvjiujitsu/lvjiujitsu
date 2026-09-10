@@ -1,14 +1,14 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 {% load static %}
 
-{% block modal_title %}{% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %} — {{ site_name }}{% endblock %}
-{% block modal_header_title %}{% if object %}Editar {{ object.full_name }}{% else %}{{ person_create_label|default:"Nova pessoa" }}{% endif %}{% endblock %}
+{% block title %}{% if object %}Editar {{ object.full_name }}{% else %}Nova pessoa{% endif %} — {{ site_name }}{% endblock %}
+{% block header_title %}{% if object %}Editar {{ object.full_name }}{% else %}{{ person_create_label|default:"Nova pessoa" }}{% endif %}{% endblock %}
 
-{% block modal_extra_head %}
+{% block head_extra %}
 <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
 {% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <form method="post" novalidate>
   {% csrf_token %}
 

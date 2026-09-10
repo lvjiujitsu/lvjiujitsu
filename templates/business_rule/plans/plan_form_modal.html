@@ -1,14 +1,14 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 {% load static %}
 
-{% block modal_title %}{{ form_title }} — {{ site_name }}{% endblock %}
-{% block modal_header_title %}{{ form_title }}{% endblock %}
+{% block title %}{{ form_title }} — {{ site_name }}{% endblock %}
+{% block header_title %}{{ form_title }}{% endblock %}
 
-{% block modal_extra_head %}
+{% block head_extra %}
 <link rel="stylesheet" href="{% static 'business_rule/css/plans/plans.css' %}?v=1">
 {% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <form method="post" novalidate>
   {% csrf_token %}
 
@@ -114,6 +114,6 @@
 </form>
 {% endblock %}
 
-{% block modal_extra_scripts %}
+{% block scripts %}
 <script src="{% static 'business_rule/js/plans/plans.js' %}?v=1"></script>
 {% endblock %}

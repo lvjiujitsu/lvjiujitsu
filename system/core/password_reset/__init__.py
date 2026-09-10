@@ -1,3 +1,4 @@
+from .adapters import EmailAccountAdapter
 from .contracts import AccountAdapter
 from .forms import EmailPasswordResetRequestForm, PasswordResetConfirmForm
 from .registry import adapter_for, register_resettable_kind, registered_kinds
@@ -22,6 +23,7 @@ from .service import (
 
 __all__ = [
     "AccountAdapter",
+    "EmailAccountAdapter",
     "EmailPasswordResetRequestForm",
     "PasswordResetConfirmForm",
     "PasswordResetConfirmView",

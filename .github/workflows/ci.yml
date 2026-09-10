@@ -55,6 +55,24 @@ jobs:
       - name: Django system check
         run: python manage.py check
 
+      - name: Environment contract
+        run: python manage.py check_environment_parity --missing-ok
+
+      - name: Deployment checks
+        env:
+          DJANGO_ENVIRONMENT: prod
+          DJANGO_DEBUG: "False"
+          DJANGO_SECRET_KEY: ci-deploy-check-secret-key-not-used-anywhere-0123456789
+          DJANGO_ALLOWED_HOSTS: ci.example.com
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://ci.example.com
+          DJANGO_SECURE_HSTS_PRELOAD: "True"
+          DJANGO_EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+          SITE_BASE_URL: https://ci.example.com
+          DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+          ASAAS_API_URL: ""
+          STRIPE_PLAN_SYNC_ENABLED: "False"
+        run: python manage.py check --deploy --fail-level WARNING
+
       - name: Compile sources
         run: python -m compileall -q lvjiujitsu system
 

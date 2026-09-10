@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 
 from django.conf import settings
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 from django.db import transaction
+
+from system.core.management.destructive import DestructiveCommand
 
 from system.business_rule.models import (
     ClassInstructorAssignment,
@@ -14,7 +16,6 @@ from system.business_rule.models import (
 )
 from system.business_rule.services.seed_test_fixtures import TEST_SEED_NOTE
 
-CONFIRMATION = "CLEAR_TEST_DATA"
 FIXTURE_FILENAMES = (
     "seed_system_initial_test_students.json",
     "seed_system_initial_test_guardians.json",
@@ -23,35 +24,20 @@ FIXTURE_FILENAMES = (
 )
 
 
-class Command(BaseCommand):
+class Command(DestructiveCommand):
+    confirmation_token = "CLEAR_TEST_DATA"
     help = (
-        "Remove somente as pessoas ficticias das seeds de homologacao. "
+        "Remove somente as pessoas fictícias das seeds de homologação. "
         "Preserva as seeds iniciais de referência."
     )
 
-    def add_arguments(self, parser):
-        parser.add_argument("--confirm", required=True)
-        parser.add_argument(
-            "--allow-production",
-            action="store_true",
-            help="Confirma a remocao dos dados ficticios em producao.",
-        )
-
     @transaction.atomic
     def handle(self, *args, **options):
-        if options["confirm"] != CONFIRMATION:
-            raise CommandError(f"Confirmacao invalida. Use --confirm {CONFIRMATION}.")
-        if (
-            getattr(settings, "DJANGO_ENVIRONMENT", "") == "prod"
-            and not options["allow_production"]
-        ):
-            raise CommandError(
-                "Producao recusada. Repita com --allow-production para confirmar."
-            )
+        self.guard(options)
 
         fixture_cpfs = self._fixture_cpfs()
         if not fixture_cpfs:
-            raise CommandError("Nenhum CPF ficticio encontrado nos JSON de fixture.")
+            raise CommandError("Nenhum CPF fictício encontrado nos JSON de fixture.")
 
         relationships_deleted = self._delete(
             PersonRelationship.objects.filter(notes=TEST_SEED_NOTE)
@@ -66,9 +52,9 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Dados ficticios removidos: "
+                "Dados fictícios removidos: "
                 f"pessoas={people_deleted}; relacionamentos={relationships_deleted}; "
-                f"papeis={roles_deleted}; atribuicoes={assignments_deleted}."
+                f"papéis={roles_deleted}; atribuições={assignments_deleted}."
             )
         )
 

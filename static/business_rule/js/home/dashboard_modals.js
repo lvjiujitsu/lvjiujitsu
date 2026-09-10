@@ -115,16 +115,13 @@
       if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
     });
 
-    window.addEventListener('message', function (event) {
-      if (event.origin !== window.location.origin) return;
-      var data = event.data || {};
-      if (data.type === 'dependent-modal-close') {
-        closeModal();
-      }
-      if (data.type === 'dependent-modal-done') {
-        closeModal();
-        window.location.href = window.location.pathname;
-      }
+    window.APP.FrameBridge.on('dependent-modal-close', function () {
+      closeModal();
+    });
+
+    window.APP.FrameBridge.on('dependent-modal-done', function () {
+      closeModal();
+      window.location.href = window.location.pathname;
     });
 
     if (overlay.getAttribute('data-open-on-load') === 'true') {

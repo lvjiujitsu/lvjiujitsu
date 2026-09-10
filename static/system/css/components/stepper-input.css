@@ -1,0 +1,61 @@
+.stepper-input {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  overflow: hidden;
+  border: var(--border-width-strong, 1.5px) solid var(--border, currentColor);
+  border-radius: var(--radius-md, 8px);
+}
+
+.stepper-input__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target, 44px);
+  min-width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+  padding: 0;
+  border: 0;
+  background: var(--input-bg, transparent);
+  color: var(--text, currentColor);
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.stepper-input__btn:hover:not(:disabled) {
+  background: var(--accent-muted, transparent);
+  color: var(--accent-ink, currentColor);
+}
+
+.stepper-input__btn:focus-visible {
+  outline: 2px solid var(--focus-ring-color, currentColor);
+  outline-offset: -2px;
+}
+
+.stepper-input__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-input__value {
+  min-width: 2.75rem;
+  padding: 0 var(--space-1, 0.25rem);
+  border-left: var(--border-width-strong, 1.5px) solid var(--border, currentColor);
+  border-right: var(--border-width-strong, 1.5px) solid var(--border, currentColor);
+  color: var(--text, currentColor);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: var(--touch-target, 44px);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepper-input__btn {
+    transition: none !important;
+  }
+}

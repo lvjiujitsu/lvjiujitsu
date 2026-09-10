@@ -3,7 +3,7 @@
 
 {% block title %}Loja — {{ site_name }}{% endblock %}
 
-{% block extra_css %}
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/people/people.css' %}?v=2">
   <link rel="stylesheet" href="{% static 'business_rule/css/classes/classes.css' %}?v=1">
 {% endblock %}
@@ -92,6 +92,6 @@
     </form>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
   <script src="{% static 'business_rule/js/products/store_cart.js' %}?v=1"></script>
 {% endblock %}

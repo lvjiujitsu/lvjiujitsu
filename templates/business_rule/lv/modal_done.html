@@ -1,16 +1,12 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Concluído — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
-</head>
-<body class="modal-frame-body" data-modal-name="{{ crud_modal_name }}" data-modal-auto-complete>
-  <div class="modal-done">
+{% extends "core/layouts/blank.html" %}
+{% load static %}
+
+{% block title %}Concluído — {{ site_name }}{% endblock %}
+{% block body_attrs %}data-modal-name="{{ crud_modal_name }}" data-modal-auto-complete{% endblock %}
+{% block body_class %}modal-frame-body{% endblock %}
+
+{% block content %}
+<div class="modal-done">
     <span class="modal-done__icon" aria-hidden="true">
       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
@@ -18,6 +14,4 @@
     </span>
     <p class="modal-done__text">Salvo com sucesso.</p>
   </div>
-  <script src="{% static 'business_rule/js/lv/modal_child.js' %}"></script>
-</body>
-</html>
+{% endblock %}

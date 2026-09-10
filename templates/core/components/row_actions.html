@@ -1,0 +1,5 @@
+<div class="row-actions">
+    {% if view_url %}<a class="icon-button" href="{{ view_url }}" aria-label="Ver">{% include "core/icons/view.html" %}</a>{% endif %}
+    {% if edit_url %}<a class="icon-button" href="{{ edit_url }}" aria-label="Editar">{% include "core/icons/edit.html" %}</a>{% endif %}
+    {% if delete_url %}<button class="icon-button icon-button--danger" type="button" data-confirm-delete-open data-confirm-delete-action="{{ delete_url }}" data-confirm-delete-name="{{ delete_label }}" aria-label="Excluir">{% include "core/icons/delete.html" %}</button>{% endif %}
+</div>

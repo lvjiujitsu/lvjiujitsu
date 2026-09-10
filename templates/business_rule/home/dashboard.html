@@ -1,59 +1,36 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Início — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
-  <link rel="stylesheet" href="{% static 'business_rule/css/lv/base.css' %}?v=1">
-  <link rel="stylesheet" href="{% static 'business_rule/css/home/dashboard.css' %}?v=29">
-</head>
-<body>
+{% extends "business_rule/lv/base.html" %}
+{% load static %}
 
+{% block title %}Início — {{ site_name }}{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{% static 'business_rule/css/home/dashboard.css' %}?v=29">
+{% endblock %}
+
+{% block header %}
   <header class="topbar" role="banner">
-    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="{{ site_name }} — Início">
-      <img class="topbar__logo" src="{% static 'logo/logo-dark.png' %}" alt="{{ site_name }}" width="80" height="30">
+    <a class="topbar__brand" href="{% url 'system:home' %}" aria-label="{{ site_name }}">
+      {% include "core/components/brand_logo.html" with css_class="topbar__logo" %}
+      <span class="topbar__name">{{ site_name_upper }}</span>
     </a>
     <nav class="topbar__actions" aria-label="Ações do usuário">
       {% if client_person %}
-      <button class="btn-icon js-open-client-profile" type="button" aria-label="Dados do cliente" title="Dados do cliente" aria-haspopup="dialog">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/>
-        </svg>
+      <button class="icon-button js-open-client-profile" type="button" aria-label="Dados do cliente" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       {% endif %}
-      <button class="btn-icon" id="theme-toggle" type="button" aria-label="Alternar tema">
-        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      <form class="logout-form" method="post" action="{% url 'system:logout' %}">
+      {% include "core/components/theme_toggle.html" %}
+      <form class="topbar__logout" method="post" action="{% url 'system:logout' %}">
         {% csrf_token %}
-        <button class="btn-icon" type="submit" aria-label="Sair do sistema" title="Sair">
-          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-        </button>
+        <button class="icon-button" type="submit" aria-label="Sair">{% include "core/icons/logout.html" %}</button>
       </form>
     </nav>
   </header>
+{% endblock %}
 
-  <main class="page" id="main-content">
+{% block content %}
     <form class="csrf-holder" aria-hidden="true">{% csrf_token %}</form>
     <script type="application/json" id="home-config">{"studentCheckinUrl":"{% url 'system:student-checkin' %}","studentCheckinCancelUrl":"{% url 'system:student-checkin-cancel' %}","studentSpecialCheckinUrl":"{% url 'system:student-special-checkin' %}","studentSpecialCheckinCancelUrl":"{% url 'system:student-special-checkin-cancel' %}","instructorApproveUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-checkin' %}{% endif %}","instructorApproveSpecialUrl":"{% if show_instructor_area %}{% url 'system:instructor-approve-special-checkin' %}{% endif %}","instructorSpecialCreateUrl":"{% if show_instructor_area %}{% url 'system:instructor-special-class-create' %}{% endif %}","instructorSelfCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin' %}{% endif %}","instructorSelfCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-checkin-cancel' %}{% endif %}","instructorSelfSpecialCheckinUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin' %}{% endif %}","instructorSelfSpecialCheckinCancelUrl":"{% if show_instructor_area %}{% url 'system:instructor-self-special-checkin-cancel' %}{% endif %}","instructorSessionSubstituteUrl":"{% if show_instructor_area %}{% url 'system:instructor-session-substitute' %}{% endif %}","instructorCancelClassUrl":"{% if show_instructor_area %}{% url 'system:instructor-cancel-class-today' %}{% endif %}","planChangeUrl":"{% url 'system:plan-change-select' %}","membershipPauseCreateUrl":"{% url 'system:membership-pause-request-create' %}"}</script>
-
-    {% if messages %}
-    <div class="system-messages" role="alert" aria-live="assertive">
-      {% for message in messages %}
-      <div class="system-message system-message--{{ message.tags }}">{{ message }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
 
     {% if needs_split %}
     <section class="area-block" aria-labelledby="personal-area-title">
@@ -702,16 +679,13 @@
     {% if needs_split or show_staff_area and not has_personal_area %}
     </section>
     {% endif %}
+{% endblock %}
 
-  </main>
-
+{% block modals %}
   {% include "business_rule/home/includes/dashboard_modals.html" %}
+{% endblock %}
 
-  <script src="{% static 'system/js/shared/csrf.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/lv/dom_utils.js' %}?v=1"></script>
-  <script src="{% static 'system/js/shared/modal.js' %}?v=1"></script>
-  <script src="{% static 'business_rule/js/home/dashboard_modals.js' %}?v=1" defer></script>
-  <script src="{% static 'business_rule/js/home/dashboard.js' %}?v=31" defer></script>
-
-</body>
-</html>
+{% block scripts %}
+<script src="{% static 'business_rule/js/home/dashboard_modals.js' %}" defer></script>
+<script src="{% static 'business_rule/js/home/dashboard.js' %}" defer></script>
+{% endblock %}

@@ -3,11 +3,6 @@ name: lvjiujitsu-visual-auditor
 description: Executa o ciclo do agente visual do LV Jiu Jitsu. Usar para auditar toda a superfície de interface — CSS, HTML e JavaScript — rota por rota em desktop e mobile, tema claro e escuro, exercitando cada elemento interativo, medindo responsividade, rolagem, contraste e alvo de toque pelo navegador interno, abrindo uma PRD por defeito visual, corrigindo o lote em uma única feature e entregando o Pull Request de developer para stage sem fazer merge.
 ---
 
-# Resultado
-
-Entregar `developer` com os defeitos visuais corrigidos e um Pull Request para
-`stage`. Nunca alterar `stage`, `main` ou produção.
-
 # Arquivos obrigatórios
 
 Ler antes de agir:
@@ -31,10 +26,8 @@ Ler antes de agir:
 - `.agents/skills/lvjiujitsu-autonomous-developer/scripts/quality_scan.py` para
   resíduos e integridade do diff.
 
-O lease desta trilha é privado e vive no próprio checkpoint: o que ocorre nas
-trilhas de código e de limpeza não bloqueia esta. Ele vale por prova de vida, e
-uma execução que trava perde a chave depois de quarenta e cinco minutos sem
-carimbar `heartbeat`, de modo que a execução seguinte retoma o lote registrado.
+O lease desta trilha é privado: as trilhas de código e de limpeza não a bloqueiam.
+Vale por prova de vida e expira em quarenta e cinco minutos sem `heartbeat`.
 
 # Ciclo
 
@@ -80,21 +73,15 @@ Rota só conta como coberta com as quatro combinações registradas. O script
 recusa sondagem com viewport incompatível, tema divergente, interativos não
 exercitados por completo ou defeito medido sem achado.
 
-# Interface do produto, nunca do navegador
+# Interface do produto
 
-Lista de valores, sugestão, confirmação e aviso são HTML, CSS e JavaScript deste
-projeto, com os tokens do tema. `<datalist>`, `alert`, `confirm`, `prompt` e
-qualquer widget desenhado pelo agente de usuário são defeito visual e viram PRD:
-ignoram tema, idioma, layout e largura de tela. A única exceção é o que só o
-dispositivo entrega — teclado virtual por `inputmode`, seletor de arquivo e
-comportamento nativo de campo no celular. Quando já existir componente
-equivalente no produto, ele é reaproveitado em vez de reinventado.
+Widget do agente de usuário é defeito visual e vira PRD. A regra completa está
+em [ui-browser.md](../lvjiujitsu-autonomous-developer/references/ui-browser.md).
 
 # PRDs
 
-Seguir `padrao-prd-lvjiujitsu.md` do vault e a numeração já existente em
-`docs/prd/`, sem
-reaproveitar número. Cada PRD registra a rota, o viewport, o tema, a medição que
+Seguir a nota de padrão de PRD do vault e a numeração já existente em
+`docs/prd/`, sem reaproveitar número. Cada PRD registra a rota, o viewport, o tema, a medição que
 comprova o defeito, o comportamento esperado e a evidência depois da correção.
 
 # Falhas

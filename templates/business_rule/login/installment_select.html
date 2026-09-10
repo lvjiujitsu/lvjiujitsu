@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Escolher parcelamento — {{ site_name }}</title>
-  {% load static %}
-  <script src="{% static 'system/js/shared/theme_boot.js' %}?v=20260709-1"></script>
-    <link rel="stylesheet" href="{% static 'business_rule/css/theme.css' %}?v=20260727-1">
+{% extends "core/layouts/blank.html" %}
+{% load static %}
+
+{% block title %}Escolher parcelamento — {{ site_name }}{% endblock %}
+{% block body_class %}register-page{% endblock %}
+
+{% block head_extra %}
   <link rel="stylesheet" href="{% static 'business_rule/css/auth/register.css' %}?v=7">
   <style>
     .installment-card {
@@ -61,7 +59,6 @@
       color: var(--accent);
       white-space: nowrap;
     }
-
     .order-summary {
       background: var(--panel);
       border: 1px solid var(--border-soft);
@@ -91,13 +88,11 @@
       color: var(--text);
       font-weight: 700;
     }
-
     .installment-options {
       display: flex;
       flex-direction: column;
       gap: 0.625rem;
     }
-
     .btn-primary {
       display: block;
       width: 100%;
@@ -115,7 +110,6 @@
     .btn-primary:hover { background: var(--accent-strong); }
     .btn-primary:active { transform: scale(0.98); }
     .btn-primary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-
     .btn-ghost {
       display: block;
       width: 100%;
@@ -133,7 +127,6 @@
     }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
     .btn-ghost:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-
     .action-stack {
       display: flex;
       flex-direction: column;
@@ -141,10 +134,10 @@
       margin-top: 0.5rem;
     }
   </style>
-</head>
-<body class="register-page">
+{% endblock %}
 
-  <div class="wizard-shell">
+{% block content %}
+<div class="wizard-shell">
 
     <header class="wizard-header">
       <a href="javascript:history.back()" class="wizard-back">
@@ -239,6 +232,4 @@
       });
     })();
   </script>
-
-</body>
-</html>
+{% endblock %}

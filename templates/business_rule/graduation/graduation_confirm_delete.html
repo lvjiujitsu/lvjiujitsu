@@ -1,9 +1,9 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 
-{% block modal_title %}Excluir graduação — {{ site_name }}{% endblock %}
-{% block modal_header_title %}Excluir graduação{% endblock %}
+{% block title %}Excluir graduação — {{ site_name }}{% endblock %}
+{% block header_title %}Excluir graduação{% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <p>Confirma excluir o registro de graduação de <strong>{{ object.person.full_name }}</strong> ({{ object.belt_rank.display_name }} grau {{ object.grade_number }})? Essa ação não pode ser desfeita e afeta o histórico oficial.</p>
 <form method="post" class="form-actions" style="margin-top:1rem;">
   {% csrf_token %}

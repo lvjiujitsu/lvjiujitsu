@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme-storage-key="{{ theme_storage_key }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    {% include "core/components/theme_boot.html" %}
+    {% include "business_rule/partials/fonts.html" %}
+    {% include "core/components/base_styles.html" %}
+    {% include "business_rule/partials/product_styles.html" %}
+    {% block head_extra %}{% endblock %}
+</head>
+<body {% block body_attrs %}{% endblock %} class="{% block body_class %}modal-frame-page{% endblock %}" data-modal-height-sync>
+    <header class="dialog__header">
+        <h1 class="dialog__title">{% block header_title %}{% endblock %}</h1>
+        <button class="dialog__close" type="button" data-modal-close aria-label="Fechar">{% include "core/icons/close.html" %}</button>
+    </header>
+    {% include "core/components/messages.html" %}
+    <main class="modal-frame__body {% block page_class %}{% endblock %}" id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    {% include "core/components/base_scripts.html" %}
+    {% include "business_rule/partials/product_scripts.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

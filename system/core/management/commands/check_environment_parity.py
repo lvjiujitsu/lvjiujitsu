@@ -34,6 +34,11 @@ class Command(BaseCommand):
             default="",
             help="Sobrescreve o diretório compartilhado desta execução.",
         )
+        parser.add_argument(
+            "--missing-ok",
+            action="store_true",
+            help="Aceita arquivo de ambiente ausente; confere apenas os presentes.",
+        )
 
     def locate(self, name, override):
         if override is None:
@@ -67,8 +72,11 @@ class Command(BaseCommand):
             self.stdout.write(f"== {name}")
             pairs = read_pairs(found)
             if pairs is None:
-                problems.append(f"{name}: não encontrado")
-                self.stdout.write(self.style.ERROR("   não encontrado"))
+                if options["missing_ok"]:
+                    self.stdout.write(self.style.WARNING("   ausente: não conferido"))
+                else:
+                    problems.append(f"{name}: não encontrado")
+                    self.stdout.write(self.style.ERROR("   não encontrado"))
                 continue
 
             origin = (

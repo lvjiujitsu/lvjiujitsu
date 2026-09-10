@@ -1,0 +1,213 @@
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: var(--print-ink, #000000) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html,
+  body {
+    background-color: var(--print-paper, #ffffff) !important;
+    color: var(--print-ink, #000000) !important;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+  }
+
+  .print-hide,
+  .topbar,
+  .skip-link,
+  .theme-toggle,
+  .filter-bar,
+  .page-header__actions,
+  .section__actions,
+  .card__footer,
+  .form-actions,
+  .row-actions,
+  .btn,
+  .icon-button,
+  .tabs,
+  .pagination,
+  .loading-overlay,
+  .spinner,
+  dialog:not([open]) {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-title {
+    margin: 0 0 0.25rem;
+    color: var(--print-ink, #000000) !important;
+    font-size: 16pt;
+    font-weight: bold;
+  }
+
+  .print-meta {
+    margin: 0;
+    color: var(--print-ink-soft, #444444) !important;
+    font-size: 8pt;
+  }
+
+  .page {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .page-header {
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 2px solid var(--print-ink, #000000) !important;
+  }
+
+  .page-header__title {
+    color: var(--print-ink, #000000) !important;
+    font-size: 16pt !important;
+    font-weight: bold !important;
+  }
+
+  .page-header__eyebrow,
+  .page-header__meta {
+    color: var(--print-ink-soft, #444444) !important;
+    font-size: 8.5pt !important;
+  }
+
+  .section,
+  .card {
+    margin-bottom: 12pt !important;
+    padding: 10pt !important;
+    border: 1px solid var(--print-rule, #cccccc) !important;
+    background: var(--print-paper, #ffffff) !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+  }
+
+  .section__title,
+  .card__header h2,
+  .card__header h3 {
+    color: var(--print-ink, #000000) !important;
+    font-size: 12pt !important;
+  }
+
+  .table__wrap,
+  .table__wrap--scroll {
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  .table {
+    width: 100% !important;
+    margin-top: 0.5rem !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  .table th {
+    position: static !important;
+    padding: 6pt 8pt !important;
+    border-bottom: 2px solid var(--print-ink, #000000) !important;
+    background-color: var(--print-head-fill, #f0f0f0) !important;
+    color: var(--print-ink, #000000) !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    box-shadow: none !important;
+  }
+
+  .table td {
+    padding: 6pt 8pt !important;
+    border-bottom: 1px solid var(--print-rule-soft, #dddddd) !important;
+    color: var(--print-ink, #000000) !important;
+    font-size: 9.5pt !important;
+  }
+
+  .table--stacked td::before {
+    display: none !important;
+  }
+
+  .badge,
+  .chip {
+    padding: 2pt 4pt !important;
+    border: 1px solid var(--print-rule-strong, #888888) !important;
+    background: transparent !important;
+    color: var(--print-ink, #000000) !important;
+    font-weight: bold !important;
+  }
+
+  .progress,
+  .progress__fill {
+    border: 1px solid var(--print-rule-strong, #888888) !important;
+    background: transparent !important;
+  }
+
+  .empty-state {
+    border: 1px solid var(--print-rule, #cccccc) !important;
+    color: var(--print-ink, #000000) !important;
+  }
+
+  .dialog[open] {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: none !important;
+    background: var(--print-paper, #ffffff) !important;
+    box-shadow: none !important;
+    color: var(--print-ink, #000000) !important;
+    transform: none !important;
+  }
+
+  .dialog[open] .dialog__panel {
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .dialog[open] .dialog__header {
+    margin-bottom: 1rem !important;
+    padding: 0 0 0.5rem !important;
+    border-bottom: 2px solid var(--print-ink, #000000) !important;
+  }
+
+  .dialog[open] .dialog__title {
+    color: var(--print-ink, #000000) !important;
+    font-size: 14pt !important;
+  }
+
+  .dialog[open] .dialog__body {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .dialog[open] .dialog__close,
+  .dialog[open] .dialog__footer {
+    display: none !important;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+}

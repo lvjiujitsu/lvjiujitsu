@@ -1,0 +1,47 @@
+.topbar {
+  position: sticky;
+  z-index: var(--z-sticky, 30);
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-7, 1rem);
+  min-height: 56px;
+  padding: var(--space-3, 0.5rem) var(--space-8, 1.25rem);
+  border-bottom: var(--border-width, 1px) solid var(--border, currentColor);
+  background: var(--panel, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5, 0.75rem);
+  min-width: 0;
+  color: var(--text, currentColor);
+  text-decoration: none;
+}
+
+.topbar__logo {
+  display: block;
+  width: auto;
+  height: 30px;
+}
+
+.topbar__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-3, 0.5rem);
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding-inline: var(--space-7, 1rem);
+  }
+
+  .topbar__brand {
+    gap: var(--space-3, 0.5rem);
+  }
+}

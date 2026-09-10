@@ -1,9 +1,9 @@
 {% extends "business_rule/lv/modal_frame.html" %}
 
-{% block modal_title %}Excluir categoria — {{ site_name }}{% endblock %}
-{% block modal_header_title %}Excluir categoria{% endblock %}
+{% block title %}Excluir categoria — {{ site_name }}{% endblock %}
+{% block header_title %}Excluir categoria{% endblock %}
 
-{% block modal_content %}
+{% block content %}
 <p>Confirma excluir <strong>{{ object.display_name }}</strong>? Essa ação não pode ser desfeita.</p>
 <form method="post" class="form-actions" style="margin-top:1rem;">
   {% csrf_token %}

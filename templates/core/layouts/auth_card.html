@@ -1,0 +1,17 @@
+{% extends "core/layouts/base_auth.html" %}
+
+{% block content %}
+    {% block auth_header %}{% endblock %}
+    {% include "core/components/theme_toggle.html" %}
+
+    <main class="auth-shell" id="main-content">
+        <section class="auth-card" aria-labelledby="auth-card-title">
+            {% include "core/components/brand_logo.html" with css_class="auth-card__logo" %}
+            <p class="auth-card__eyebrow">{% block eyebrow %}{% endblock %}</p>
+            <h1 class="auth-card__title" id="auth-card-title">{% block heading %}{% endblock %}</h1>
+            <p class="auth-card__copy">{% block copy %}{% endblock %}</p>
+            {% include "core/components/messages.html" %}
+            {% block card %}{% endblock %}
+        </section>
+    </main>
+{% endblock %}

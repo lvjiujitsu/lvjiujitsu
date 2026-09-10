@@ -1,0 +1,22 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme-storage-key="{{ theme_storage_key }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    {% include "core/components/theme_color_meta.html" %}
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    {% include "business_rule/partials/favicon.html" %}
+    {% include "core/components/theme_boot.html" %}
+    {% include "business_rule/partials/fonts.html" %}
+    {% include "core/components/base_styles.html" %}
+    {% include "business_rule/partials/product_styles.html" %}
+    {% block head_extra %}{% endblock %}
+</head>
+<body {% block body_attrs %}{% endblock %} class="{% block body_class %}auth-page{% endblock %}">
+    {% block content %}{% endblock %}
+    {% include "core/components/base_scripts.html" %}
+    {% include "business_rule/partials/product_scripts.html" %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -29,3 +29,13 @@ Usar `.env` e banco local descartável para validar a feature. Criar autenticaç
 Verificar foco, teclado, rótulos, contraste, mensagens, feedback, overflow, toque, hierarquia, consistência e responsividade. Screenshot isolada não comprova funcionamento.
 
 Quando a mudança e a baseline auditada não tocarem UI, registrar que o gate visual não se aplica e justificar.
+
+## Interface do produto
+
+A interface é do produto, nunca do navegador: lista de valores, sugestão,
+confirmação e aviso são HTML, CSS e JavaScript deste projeto, com os tokens do
+tema. `<datalist>`, `alert`, `confirm`, `prompt` e qualquer widget desenhado
+pelo agente de usuário estão proibidos; a exceção é o que só o dispositivo
+entrega, como teclado virtual, seletor de arquivo e comportamento nativo de
+campo no celular. Componente equivalente já existente no produto é
+reaproveitado em vez de reinventado.

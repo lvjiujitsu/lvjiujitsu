@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Prefetch
 
@@ -12,13 +13,15 @@ User = get_user_model()
 PORTAL_ACCOUNT_SESSION_KEY = "portal_account_id"
 TECHNICAL_ADMIN_SESSION_KEY = "technical_admin_user_id"
 FORCED_PASSWORD_CHANGE_SESSION_KEY = "forced_password_change_account_id"
-DEFAULT_TEMP_PASSWORD = "LV@123"
+DEFAULT_TEMP_PASSWORD = settings.PORTAL_DEFAULT_TEMP_PASSWORD
 
 
 def authenticate_portal_identity(identifier: str, password: str):
     access_account = _authenticate_local_portal_account(identifier, password)
     if access_account is not None:
-        if access_account.check_password(DEFAULT_TEMP_PASSWORD):
+        if DEFAULT_TEMP_PASSWORD and access_account.check_password(
+            DEFAULT_TEMP_PASSWORD
+        ):
             return {"blocked_reason": "must_change_password", "portal_account": access_account}
         pending_order = get_latest_open_order(access_account.person)
         if pending_order is not None and not has_active_trial_for_person(

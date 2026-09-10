@@ -28,7 +28,7 @@ from system.business_rule.selectors import (
     is_veteran_plan_eligible,
 )
 from system.business_rule.services.access_requests import get_administrative_access_requests_for_person
-from system.business_rule.services.audit import record_event
+from system.core.audit import record_event
 from system.business_rule.services.class_catalog import prepare_class_group_for_display
 from system.business_rule.services.class_overview import build_class_group_filter_value
 from system.business_rule.services.class_requests import get_class_catalog_requests_history_for_person

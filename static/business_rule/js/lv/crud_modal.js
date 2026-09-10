@@ -1,54 +1,30 @@
 (function () {
-  function initCrudModal(dialog) {
-    var frame = dialog.querySelector('[data-crud-modal-frame]');
-    if (!frame) return;
+  'use strict';
 
-    if (window.APP && window.APP.Modal) {
-      window.APP.Modal.bindBackdropClose(dialog);
-    }
+  function start() {
+    var handle = window.APP.FrameModal.bind({
+      modalSelector: '[data-crud-modal]',
+      frameSelector: '[data-crud-modal-frame]',
+      openSelector: '[data-crud-modal-open]',
+      closeSelector: '[data-crud-modal-dialog-close]',
+      urlAttribute: 'data-crud-modal-open',
+      clearFrameOnClose: true
+    });
+    if (!handle) return;
 
-    document.querySelectorAll('[data-crud-modal-open]').forEach(function (trigger) {
-      trigger.addEventListener('click', function (event) {
-        event.preventDefault();
-        frame.src = trigger.getAttribute('data-crud-modal-open');
-        if (window.APP && window.APP.Modal) {
-          window.APP.Modal.openDialog(dialog);
-        } else if (typeof dialog.showModal === 'function') {
-          dialog.showModal();
-        } else {
-          dialog.setAttribute('open', '');
-        }
-      });
+    window.APP.FrameBridge.on('modal-close', function () {
+      handle.close();
     });
 
-    dialog.addEventListener('click', function (event) {
-      if (event.target === dialog) {
-        dialog.close();
-      }
-    });
-
-    var closeButton = dialog.querySelector('[data-crud-modal-dialog-close]');
-    if (closeButton) {
-      closeButton.addEventListener('click', function () {
-        dialog.close();
-      });
-    }
-
-    dialog.addEventListener('close', function () {
-      frame.src = 'about:blank';
-    });
-
-    window.addEventListener('message', function (event) {
-      if (event.origin !== window.location.origin) return;
-      var data = event.data || {};
-      if (data.type === 'lv-modal-close') {
-        dialog.close();
-      } else if (data.type === 'lv-modal-complete') {
-        dialog.close();
-        window.location.reload();
-      }
+    window.APP.FrameBridge.on('modal-complete', function () {
+      handle.close();
+      window.location.reload();
     });
   }
 
-  document.querySelectorAll('[data-crud-modal]').forEach(initCrudModal);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 })();
