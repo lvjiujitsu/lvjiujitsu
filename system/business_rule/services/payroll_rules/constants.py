@@ -1,0 +1,46 @@
+from decimal import Decimal
+
+
+PAYROLL_RULES_VERSION = 1
+
+
+PAYROLL_METHOD_FIXED_MONTHLY = "fixed_monthly"
+
+
+PAYROLL_METHOD_PER_STUDENT_FIXED = "per_student_fixed"
+
+
+PAYROLL_METHOD_STUDENT_PERCENTAGE = "student_percentage"
+
+
+PAYROLL_METHOD_PER_CLASS_ATTENDANCE = "per_class_attendance"
+
+
+PAYROLL_SCOPE_ALL = "all"
+
+
+PAYROLL_SCOPE_CLASS_GROUP = "class_group"
+
+
+PAYROLL_REFUND_NOTE_PREFIX = "PAYROLL_REFUND_ADJUSTMENT:"
+
+
+PAYROLL_REFUND_ABSORPTION_PREFIX = "PAYROLL_REFUND_ABSORPTION:"
+
+
+ZERO = Decimal("0.00")
+
+
+CENT = Decimal("0.01")
+
+
+PAYROLL_METHOD_LABELS = {
+    PAYROLL_METHOD_FIXED_MONTHLY: "Fixo mensal",
+    PAYROLL_METHOD_PER_STUDENT_FIXED: "Valor por aluno",
+    PAYROLL_METHOD_STUDENT_PERCENTAGE: "Percentual por aluno",
+    PAYROLL_METHOD_PER_CLASS_ATTENDANCE: "Valor por aluno/aula",
+}
+
+
+class PayrollRuleError(ValueError):
+    pass
