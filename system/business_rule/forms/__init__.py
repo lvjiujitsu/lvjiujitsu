@@ -16,7 +16,10 @@ from .class_request_forms import (
 )
 from .dependent_forms import DependentProfileForm, DependentRegistrationForm
 from .membership_pause_forms import MembershipPauseDecisionForm, MembershipPauseRequestForm
-from .person_forms import ClientProfileForm, PersonForm, PersonListFilterForm, PersonTypeForm
+from .client_profile_forms import ClientProfileForm
+from .person_filter_forms import PersonListFilterForm
+from .person_forms import PersonForm
+from .person_type_forms import PersonTypeForm
 from .plan_forms import PlanForm, PlanListFilterForm
 from .product_forms import ProductCartForm, ProductForm, ProductVariantForm
 from .registration_forms import PortalRegistrationForm

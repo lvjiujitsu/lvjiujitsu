@@ -1,10 +1,7 @@
 from django import forms
-
-from system.core.dates import PT_BR_DATE_INPUT_FORMATS
 from system.business_rule.models import (
     BiologicalSex,
     BloodType,
-    ClassCategory,
     ClassGroup,
     JiuJitsuBelt,
     MartialArt,
@@ -16,9 +13,7 @@ from system.business_rule.models.class_membership import get_class_group_eligibi
 from system.business_rule.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES, OperationalRoleCode
 from system.business_rule.services.class_overview import (
     build_class_group_filter_value,
-    get_class_group_filter_choices,
     get_public_class_group_choice_options,
-    get_weekday_filter_choices,
     resolve_class_group_selection,
 )
 from system.business_rule.services.operational_roles import sync_person_operational_roles
@@ -36,166 +31,16 @@ from system.business_rule.forms.person_payroll_fields import PersonPayrollMixin
 
 
 MARTIAL_ART_EXPERIENCE_YES = "yes"
+
+
 MARTIAL_ART_EXPERIENCE_NO = "no"
+
+
 MARTIAL_ART_EXPERIENCE_CHOICES = [
     ("", "Selecione"),
     (MARTIAL_ART_EXPERIENCE_YES, "Sim"),
     (MARTIAL_ART_EXPERIENCE_NO, "Não"),
 ]
-
-
-class PersonTypeForm(forms.ModelForm):
-    class Meta:
-        model = PersonType
-        fields = ("code", "display_name", "description", "is_active")
-        labels = {
-            "code": "Código técnico",
-            "display_name": "Nome exibido",
-            "description": "Descrição",
-            "is_active": "Ativo",
-        }
-        widgets = {
-            "description": forms.Textarea(attrs={"rows": 3}),
-        }
-
-
-class PersonListFilterForm(forms.Form):
-    full_name = forms.CharField(required=False, label="Nome")
-    cpf = forms.CharField(required=False, label="CPF")
-    is_teacher = forms.BooleanField(required=False, label="Somente professores")
-    person_type = forms.ModelChoiceField(
-        queryset=PersonType.objects.none(),
-        required=False,
-        label="Tipo",
-        empty_label="Todos",
-    )
-    jiu_jitsu_belt = forms.ChoiceField(required=False, label="Faixa")
-    class_category = forms.ModelChoiceField(
-        queryset=ClassCategory.objects.none(),
-        required=False,
-        label="Categoria",
-        empty_label="Todas",
-    )
-    class_group_key = forms.ChoiceField(required=False, label="Turma")
-    weekday = forms.ChoiceField(required=False, label="Horário")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["person_type"].queryset = PersonType.objects.filter(
-            is_active=True
-        ).order_by("display_name")
-        self.fields["jiu_jitsu_belt"].choices = [("", "Todas")] + list(JiuJitsuBelt.choices)
-        self.fields["class_category"].queryset = ClassCategory.objects.filter(
-            is_active=True
-        ).order_by("display_order", "display_name")
-        self.fields["class_group_key"].choices = [("", "Todas")] + get_class_group_filter_choices()
-        self.fields["weekday"].choices = [("", "Todos")] + get_weekday_filter_choices()
-
-
-class ClientProfileForm(forms.ModelForm):
-    birth_date = forms.DateField(
-        required=False,
-        input_formats=PT_BR_DATE_INPUT_FORMATS,
-        label="Data de nascimento",
-        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
-    )
-    martial_art_started_at = forms.DateField(
-        required=False,
-        input_formats=PT_BR_DATE_INPUT_FORMATS,
-        label="Início no treino",
-        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
-    )
-    martial_art_last_graduation_at = forms.DateField(
-        required=False,
-        input_formats=PT_BR_DATE_INPUT_FORMATS,
-        label="Última graduação",
-        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
-    )
-    jiu_jitsu_stripes = forms.IntegerField(
-        required=False,
-        min_value=0,
-        max_value=4,
-        label="Graus",
-    )
-
-    class Meta:
-        model = Person
-        fields = (
-            "full_name",
-            "birth_date",
-            "biological_sex",
-            "email",
-            "phone",
-            "postal_code",
-            "address",
-            "address_number",
-            "address_complement",
-            "address_neighborhood",
-            "city",
-            "blood_type",
-            "allergies",
-            "previous_injuries",
-            "emergency_contact",
-            "martial_art",
-            "martial_art_graduation",
-            "jiu_jitsu_belt",
-            "jiu_jitsu_stripes",
-            "martial_art_started_at",
-            "martial_art_last_graduation_at",
-            "previous_academy",
-        )
-        labels = {
-            "full_name": "Nome completo",
-            "biological_sex": "Sexo biológico",
-            "email": "E-mail",
-            "phone": "Telefone",
-            "postal_code": "CEP",
-            "address": "Logradouro",
-            "address_number": "Número",
-            "address_complement": "Complemento",
-            "address_neighborhood": "Bairro",
-            "city": "Cidade",
-            "blood_type": "Tipo sanguíneo",
-            "allergies": "Alergias",
-            "previous_injuries": "Lesões",
-            "emergency_contact": "Contato de emergência",
-            "martial_art": "Arte marcial",
-            "martial_art_graduation": "Graduação",
-            "jiu_jitsu_belt": "Faixa de Jiu Jitsu",
-            "previous_academy": "Academia anterior",
-        }
-        widgets = {
-            "allergies": forms.Textarea(attrs={"rows": 3}),
-            "previous_injuries": forms.Textarea(attrs={"rows": 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            widget = field.widget
-            if isinstance(widget, forms.Textarea):
-                widget.attrs.setdefault("class", "form-input form-textarea")
-            elif isinstance(widget, forms.Select):
-                widget.attrs.setdefault("class", "form-input form-select")
-            else:
-                widget.attrs.setdefault("class", "form-input")
-
-    def clean(self):
-        cleaned_data = super().clean()
-        martial_art = cleaned_data.get("martial_art") or ""
-        if martial_art == MartialArt.JIU_JITSU:
-            cleaned_data["martial_art_graduation"] = ""
-        elif martial_art:
-            cleaned_data["jiu_jitsu_belt"] = ""
-            cleaned_data["jiu_jitsu_stripes"] = None
-        else:
-            cleaned_data["martial_art_graduation"] = ""
-            cleaned_data["jiu_jitsu_belt"] = ""
-            cleaned_data["jiu_jitsu_stripes"] = None
-            cleaned_data["martial_art_started_at"] = None
-            cleaned_data["martial_art_last_graduation_at"] = None
-            cleaned_data["previous_academy"] = ""
-        return cleaned_data
 
 
 class PersonForm(
@@ -637,6 +482,7 @@ class PersonForm(
                     class_assistant_group=self.cleaned_data.get("class_assistant_group"),
                 )
         return person
+
 
 def _get_initial_class_group_values(person):
     logical_values = []
