@@ -29,8 +29,10 @@ from system.business_rule.services.payroll_rules import (
     save_person_payroll_config,
 )
 from system.core.documents import ensure_formatted_cpf
-from system.business_rule.constants import CLASS_STAFF_PERSON_TYPE_CODES
-from system.business_rule.services.payroll_rules import build_payroll_payload_from_form
+from system.business_rule.forms.person_field_groups import PersonFieldGroupsMixin
+from system.business_rule.forms.person_martial_art_history import PersonMartialArtMixin
+from system.business_rule.forms.person_operational_roles import PersonOperationalRolesMixin
+from system.business_rule.forms.person_payroll_fields import PersonPayrollMixin
 
 
 MARTIAL_ART_EXPERIENCE_YES = "yes"
@@ -196,7 +198,13 @@ class ClientProfileForm(forms.ModelForm):
         return cleaned_data
 
 
-class PersonForm(forms.ModelForm):
+class PersonForm(
+    PersonFieldGroupsMixin,
+    PersonMartialArtMixin,
+    PersonOperationalRolesMixin,
+    PersonPayrollMixin,
+    forms.ModelForm,
+):
     address_field_names = (
         "postal_code",
         "address",
@@ -546,49 +554,6 @@ class PersonForm(forms.ModelForm):
             ]
         )
 
-    @property
-    def main_fields(self):
-        return [self[name] for name in self.main_field_names]
-
-    @property
-    def identity_fields(self):
-        return self._bound_fields(self.identity_field_names)
-
-    @property
-    def address_fields(self):
-        return self._bound_fields(self.address_field_names)
-
-    @property
-    def health_fields(self):
-        return self._bound_fields(self.health_field_names)
-
-    @property
-    def martial_art_fields(self):
-        return self._bound_fields(self.martial_art_field_names)
-
-    @property
-    def martial_art_history_fields(self):
-        return []
-
-    @property
-    def relationship_fields(self):
-        return self._bound_fields(self.relationship_field_names)
-
-    @property
-    def payroll_fields(self):
-        if not self.show_payroll_fields:
-            return []
-        return self._bound_fields(self.payroll_field_names)
-
-    @property
-    def operational_role_fields(self):
-        if not self.show_operational_role_fields:
-            return []
-        return self._bound_fields(self.operational_role_field_names)
-
-    def _bound_fields(self, field_names):
-        return [self[name] for name in field_names]
-
     def clean_cpf(self):
         try:
             return ensure_formatted_cpf(self.cleaned_data.get("cpf", ""))
@@ -650,36 +615,6 @@ class PersonForm(forms.ModelForm):
         self._clean_operational_roles(cleaned_data)
         return cleaned_data
 
-    def _clean_operational_roles(self, cleaned_data):
-        if not self.show_operational_role_fields:
-            cleaned_data["operational_roles"] = []
-            return
-        selected_roles = cleaned_data.get("operational_roles") or []
-        needs_class_group = any(
-            role.code == OperationalRoleCode.CLASS_ASSISTANT for role in selected_roles
-        )
-        if needs_class_group and not cleaned_data.get("class_assistant_group"):
-            self.add_error(
-                "class_assistant_group",
-                "Selecione a turma para o apoio de turma.",
-            )
-
-    def _clear_martial_art_history(self, cleaned_data):
-        cleaned_data["martial_art"] = ""
-        cleaned_data["martial_art_graduation"] = ""
-        cleaned_data["jiu_jitsu_belt"] = ""
-        cleaned_data["jiu_jitsu_stripes"] = None
-        cleaned_data["martial_art_started_at"] = None
-        cleaned_data["martial_art_last_graduation_at"] = None
-        cleaned_data["previous_academy"] = ""
-
-    def _martial_art_detail_field_names(self):
-        return [
-            field_name
-            for field_name in self.martial_art_field_names
-            if field_name != "has_martial_art"
-        ]
-
     def save(self, commit=True):
         person = super().save(commit=False)
         class_groups = list(self.cleaned_data.get("class_groups") or [])
@@ -702,39 +637,6 @@ class PersonForm(forms.ModelForm):
                     class_assistant_group=self.cleaned_data.get("class_assistant_group"),
                 )
         return person
-
-    def _clean_payroll_config(self, cleaned_data):
-        person_type = cleaned_data.get("person_type")
-        payroll_enabled = bool(cleaned_data.get("payroll_enabled"))
-        has_payroll_values = any(
-            cleaned_data.get(field_name)
-            for field_name in (
-                "payroll_fixed_monthly",
-                "payroll_per_student_amount",
-                "payroll_student_percentage",
-                "payroll_per_class_amount",
-                "payroll_rules_json",
-            )
-        )
-        is_staff = bool(
-            person_type and person_type.code in CLASS_STAFF_PERSON_TYPE_CODES
-        )
-        if (payroll_enabled or has_payroll_values) and not is_staff:
-            self.add_error(
-                "payroll_enabled",
-                "Repasse permitido apenas para Professor ou Administrativo.",
-            )
-            return
-        if not payroll_enabled:
-            return
-        if not cleaned_data.get("payroll_payment_day"):
-            cleaned_data["payroll_payment_day"] = 28
-        try:
-
-            build_payroll_payload_from_form(cleaned_data)
-        except PayrollRuleError as exc:
-            self.add_error("payroll_rules_json", str(exc))
-
 
 def _get_initial_class_group_values(person):
     logical_values = []
