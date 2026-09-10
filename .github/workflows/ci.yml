@@ -76,6 +76,9 @@ jobs:
       - name: Compile sources
         run: python -m compileall -q lvjiujitsu system
 
+      - name: Generate migration baseline
+        run: python manage.py makemigrations core business_rule --noinput
+
       - name: Show migration plan
         run: python manage.py showmigrations --plan
 

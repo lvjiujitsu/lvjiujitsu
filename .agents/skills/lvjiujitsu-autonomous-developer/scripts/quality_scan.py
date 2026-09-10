@@ -8,7 +8,14 @@ import tokenize
 
 
 TEXT_SUFFIXES = {".py", ".html", ".css", ".js"}
-COMMENT_EXEMPT_FILES = {"settings.py", "urls.py"}
+COMMENT_EXEMPT_FILES = {
+    "asgi.py",
+    "clear_migrations.py",
+    "manage.py",
+    "settings.py",
+    "urls.py",
+    "wsgi.py",
+}
 
 
 def run(*args: str) -> str:

@@ -4,6 +4,8 @@
 !.env.example
 __pycache__/
 *.py[cod]
+system/*/migrations/*.py
+!system/*/migrations/__init__.py
 db.sqlite3
 db.sqlite3-journal
 db.sqlite3-wal

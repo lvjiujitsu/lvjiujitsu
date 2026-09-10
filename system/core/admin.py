@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 
 from system.core.audit.models import AuditEntry
 
@@ -16,3 +17,12 @@ class AuditEntryAdmin(admin.ModelAdmin):
         "summary",
         "created_at",
     )
+
+
+@admin.register(get_user_model())
+class TechnicalUserAdmin(admin.ModelAdmin):
+    list_display = ("username", "name", "email", "is_active", "is_staff", "is_superuser")
+    list_filter = ("is_active", "is_staff", "is_superuser")
+    search_fields = ("username", "name", "email")
+    ordering = ("username",)
+    readonly_fields = ("last_login", "created_at", "updated_at")

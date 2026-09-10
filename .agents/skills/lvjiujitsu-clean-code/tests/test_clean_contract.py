@@ -44,7 +44,7 @@ class CleanContractTest(unittest.TestCase):
             "endereco = 'https://cdn.example.com/app.js'\n", encoding="utf-8"
         )
         (self.repo / "page.html").write_text("<main>Salvar</main>\n", encoding="utf-8")
-        tests = self.repo / "system" / "tests"
+        tests = self.repo / "system" / "business_rule" / "tests"
         tests.mkdir(parents=True)
         (tests / "test_fixture.py").write_text(
             "email = 'agent@example.invalid'\n", encoding="utf-8"

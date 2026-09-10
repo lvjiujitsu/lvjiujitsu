@@ -5,8 +5,6 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from system.core.models import TimeStampedModel
-from system.business_rule.services.portal_capabilities import person_has_any_capability
-from system.business_rule.services.portal_capabilities import get_person_operational_role_codes
 from system.business_rule.constants import CLASS_ENROLLMENT_PERSON_TYPE_CODES, PersonTypeCode
 
 
@@ -193,10 +191,16 @@ class Person(TimeStampedModel):
         return self.person_type.code in codes
 
     def has_operational_role(self, *codes: str) -> bool:
+        from system.business_rule.services.portal_capabilities import (
+            get_person_operational_role_codes,
+        )
 
         return bool(set(codes) & get_person_operational_role_codes(self))
 
     def has_capability(self, *capabilities: str) -> bool:
+        from system.business_rule.services.portal_capabilities import (
+            person_has_any_capability,
+        )
 
         return person_has_any_capability(self, *capabilities)
 

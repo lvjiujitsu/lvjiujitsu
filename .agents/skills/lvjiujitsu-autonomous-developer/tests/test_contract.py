@@ -426,14 +426,16 @@ class ContractTest(unittest.TestCase):
                 "lvjiujitsu-agent-visual.md",
             ],
         )
-        canonical_skills = [
-            "lvjiujitsu-autonomous-developer",
-            "lvjiujitsu-clean-code",
-            "lvjiujitsu-visual-auditor",
-        ]
-        expected_claude_skills = sorted(canonical_skills + ["lvjiujitsu-remote-refresh"])
+        canonical_skills = sorted(
+            [
+                "lvjiujitsu-autonomous-developer",
+                "lvjiujitsu-clean-code",
+                "lvjiujitsu-remote-refresh",
+                "lvjiujitsu-visual-auditor",
+            ]
+        )
         self.assertEqual(sorted(skills), canonical_skills)
-        self.assertEqual(sorted(claude_skills), expected_claude_skills)
+        self.assertEqual(sorted(claude_skills), canonical_skills)
         for name in canonical_skills:
             adapter = REPOSITORY / ".claude" / "skills" / name / "SKILL.md"
             self.assertIn(f".agents/skills/{name}/SKILL.md", adapter.read_text(encoding="utf-8"))
