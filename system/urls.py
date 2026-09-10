@@ -1,6 +1,6 @@
 from django.urls import path
 
-from system.core.health import health
+from system.core.health import CHROME_DEVTOOLS_PROBE_PATH, chrome_devtools_probe, health
 from system.business_rule.views.auth_views import LoginView, LogoutView
 from system.business_rule.views.home_views import HomeView
 from system.business_rule.views.password_reset_views import (
@@ -15,6 +15,11 @@ app_name = "system"
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
     path("health/", health, name="health"),
+    path(
+        CHROME_DEVTOOLS_PROBE_PATH,
+        chrome_devtools_probe,
+        name="chrome-devtools-probe",
+    ),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path(
@@ -46,11 +51,10 @@ urlpatterns = [
 # ----------------------------------------------------------------------------
 
 from django.views.generic import RedirectView
-from system.business_rule.views.auth_views import (
-    ChromeDevtoolsProbeView,
+from system.business_rule.views.auth_views import PortalChangePasswordView
+from system.business_rule.views.registration_views import (
     FinalizeRegistrationView,
     MaterialsCheckoutView,
-    PortalChangePasswordView,
     PortalRegisterView,
     RegistrationCpfAvailabilityView,
     RegistrationEligibilityView,
@@ -221,7 +225,6 @@ from system.business_rule.views.product_views import (
 )
 
 urlpatterns += [
-    path(".well-known/appspecific/com.chrome.devtools.json", ChromeDevtoolsProbeView.as_view(), name="chrome-devtools-probe"),
     path("register/", PortalRegisterView.as_view(), name="register"),
     path("register/admin-access/", PublicAdministrativeAccessRequestCreateView.as_view(), name="administrative-access-public-create"),
     path("register/teacher-proposal/", PublicNewTeacherClassCatalogRequestCreateView.as_view(), name="class-catalog-request-public-teacher-create"),
