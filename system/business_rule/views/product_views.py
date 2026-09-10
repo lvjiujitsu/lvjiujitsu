@@ -25,7 +25,7 @@ from system.business_rule.selectors.product_backorders import (
     get_admin_backorder_queue,
     get_backorders_for_person,
 )
-from system.business_rule.selectors.person_selectors import (
+from system.business_rule.selectors.person import (
     get_material_request_recipient_queryset,
     resolve_material_request_recipient,
 )

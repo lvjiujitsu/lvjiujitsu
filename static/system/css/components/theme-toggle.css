@@ -60,3 +60,10 @@ html[data-theme="dark"] .theme-toggle__icon--moon {
     transition: none !important;
   }
 }
+
+.theme-toggle__icons {
+  position: relative;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}

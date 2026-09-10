@@ -24,3 +24,9 @@
     padding-inline: var(--space-10, 2rem);
   }
 }
+
+.app-page {
+  min-height: 100dvh;
+  background: var(--bg, #f5f7f6);
+  color: var(--text, #101c1f);
+}

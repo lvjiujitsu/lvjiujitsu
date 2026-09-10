@@ -1,4 +1,4 @@
-from .person_selectors import (
+from .person import (
     get_material_request_recipient_queryset,
     get_person_queryset,
     resolve_material_request_recipient,

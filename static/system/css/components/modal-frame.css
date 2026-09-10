@@ -1,0 +1,17 @@
+.modal-frame-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--panel, #ffffff);
+}
+
+.modal-frame__body {
+  flex: 1;
+  padding: var(--space-5, 1.25rem);
+}
+
+.modal-frame__body > form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}

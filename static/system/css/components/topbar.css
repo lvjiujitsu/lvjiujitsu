@@ -45,3 +45,8 @@
     gap: var(--space-3, 0.5rem);
   }
 }
+
+.topbar__logout {
+  display: inline-flex;
+  align-items: center;
+}
